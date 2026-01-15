@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Max, F
 from django.core.paginator import Paginator
 from .models import Consultation, ConsultationNote, Referral, SOAPNote, ConsultationOrder, ConsultingRoom, WaitingList
 from .forms import QuickLabOrderForm, QuickRadiologyOrderForm, QuickPrescriptionForm, ConsultingRoomForm, WaitingListForm, ReferralForm, ConsultationForm, VitalsSelectionForm
@@ -23,33 +23,48 @@ from core.models import send_notification_email, send_notification_sms, Internal
 
 @login_required
 def unified_dashboard(request):
-    """Unified dashboard combining waiting list and consultations"""
-    # Superusers and admins see all consultations
+    """Unified dashboard combining waiting list and consultations - Optimized"""
+    # Superusers and admins see all consultations with select_related
     if request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role in ['admin', 'health_record_officer', 'receptionist']):
-        consultations = Consultation.objects.all().order_by('-consultation_date')
+        consultations = Consultation.objects.select_related(
+            'patient', 'doctor', 'consulting_room'
+        ).all().order_by('-consultation_date')
         waiting_entries = WaitingList.objects.filter(
             status__in=['waiting', 'in_progress']
-        ).order_by('priority', 'check_in_time')
+        ).select_related('patient', 'doctor', 'consulting_room', 'appointment').order_by('priority', 'check_in_time')
     elif hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor':
-        # Doctors see only their consultations
-        consultations = Consultation.objects.filter(doctor=request.user).order_by('-consultation_date')
+        # Doctors see only their consultations with select_related
+        consultations = Consultation.objects.filter(
+            doctor=request.user
+        ).select_related('patient', 'doctor', 'consulting_room').order_by('-consultation_date')
         waiting_entries = WaitingList.objects.filter(
             doctor=request.user,
             status__in=['waiting', 'in_progress']
-        ).order_by('priority', 'check_in_time')
+        ).select_related('patient', 'doctor', 'consulting_room', 'appointment').order_by('priority', 'check_in_time')
     else:
-        # Default: show all
-        consultations = Consultation.objects.all().order_by('-consultation_date')
+        # Default: show all with select_related
+        consultations = Consultation.objects.select_related(
+            'patient', 'doctor', 'consulting_room'
+        ).all().order_by('-consultation_date')
         waiting_entries = WaitingList.objects.filter(
             status__in=['waiting', 'in_progress']
-        ).order_by('priority', 'check_in_time')
+        ).select_related('patient', 'doctor', 'consulting_room', 'appointment').order_by('priority', 'check_in_time')
     
-    # Calculate statistics
-    total_waiting = waiting_entries.filter(status='waiting').count()
-    in_progress_count = waiting_entries.filter(status='in_progress').count()
+    # Calculate statistics using aggregate for efficiency
+    from django.db.models import Count as CountFunc, Q as Q2
+    today = timezone.now().date()
+    
+    stats = WaitingList.objects.aggregate(
+        total_waiting=CountFunc('id', filter=Q2(status='waiting')),
+        in_progress=CountFunc('id', filter=Q2(status='in_progress'))
+    )
+    
+    total_waiting = stats['total_waiting']
+    in_progress_count = stats['in_progress']
+    
     completed_today = consultations.filter(
         status='completed',
-        consultation_date__date=timezone.now().date()
+        consultation_date__date=today
     ).count()
     
     context = {
@@ -64,26 +79,32 @@ def unified_dashboard(request):
 
 @login_required
 def consultation_list(request):
-    """View to list consultations for the logged-in doctor with waiting list integration"""
-    # Superusers and admins see all consultations
+    """View to list consultations for the logged-in doctor with waiting list integration - Optimized"""
+    # Superusers and admins see all consultations with select_related
     if request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role in ['admin', 'health_record_officer', 'receptionist']):
-        consultations = Consultation.objects.all().order_by('-consultation_date')
+        consultations = Consultation.objects.select_related(
+            'patient', 'doctor', 'consulting_room'
+        ).all().order_by('-consultation_date')
         waiting_entries = WaitingList.objects.filter(
             status__in=['waiting', 'in_progress']
-        ).order_by('priority', 'check_in_time')
+        ).select_related('patient', 'doctor', 'consulting_room', 'appointment').order_by('priority', 'check_in_time')
     elif hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor':
-        # Doctors see only their consultations
-        consultations = Consultation.objects.filter(doctor=request.user).order_by('-consultation_date')
+        # Doctors see only their consultations with select_related
+        consultations = Consultation.objects.filter(
+            doctor=request.user
+        ).select_related('patient', 'doctor', 'consulting_room').order_by('-consultation_date')
         waiting_entries = WaitingList.objects.filter(
             doctor=request.user,
             status__in=['waiting', 'in_progress']
-        ).order_by('priority', 'check_in_time')
+        ).select_related('patient', 'doctor', 'consulting_room', 'appointment').order_by('priority', 'check_in_time')
     else:
-        # Default: show all
-        consultations = Consultation.objects.all().order_by('-consultation_date')
+        # Default: show all with select_related
+        consultations = Consultation.objects.select_related(
+            'patient', 'doctor', 'consulting_room'
+        ).all().order_by('-consultation_date')
         waiting_entries = WaitingList.objects.filter(
             status__in=['waiting', 'in_progress']
-        ).order_by('priority', 'check_in_time')
+        ).select_related('patient', 'doctor', 'consulting_room', 'appointment').order_by('priority', 'check_in_time')
     
     context = {
         'consultations': consultations,
@@ -517,13 +538,13 @@ def doctor_dashboard(request):
 
 @login_required
 def patient_list(request):
-    """View for doctors to see their patients"""
+    """View for doctors to see their patients - Optimized to avoid N+1 queries"""
     doctor = request.user
 
-    # Get patients with appointments for this doctor
+    # Get patients with appointments for this doctor with optimized query
     patients = Patient.objects.filter(
         appointments__doctor=doctor
-    ).distinct().order_by('-appointments__appointment_date')
+    ).distinct().select_related().order_by('-appointments__appointment_date')
 
     # Search functionality
     search_query = request.GET.get('search', '')
@@ -539,7 +560,7 @@ def patient_list(request):
     paginator = Paginator(patients, 10)  # Show 10 patients per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+
     # Get waiting list statistics
     waiting_patients = WaitingList.objects.filter(
         doctor=request.user,
@@ -549,29 +570,35 @@ def patient_list(request):
         doctor=request.user,
         status='in_progress'
     )
-    
+
+    # Get patient IDs in waiting list to avoid N+1 queries
+    waiting_patient_ids = set(waiting_patients.values_list('patient_id', flat=True))
+    in_progress_patient_ids = set(in_progress_patients.values_list('patient_id', flat=True))
+
+    # Get last consultation dates for all patients in a single query
+    last_consultations = Consultation.objects.filter(
+        patient__in=[p.id for p in page_obj],
+        doctor=doctor
+    ).values('patient_id').annotate(
+        last_date=Max('consultation_date'),
+        status=F('status')
+    ).order_by('patient_id')
+
+    # Create a lookup dictionary for last consultation status
+    last_consultation_status = {}
+    for lc in last_consultations:
+        last_consultation_status[lc['patient_id']] = lc['status']
+
     # Pre-calculate waiting status for each patient
     patient_waiting_status = {}
     for patient in page_obj:
-        has_waiting_entry = WaitingList.objects.filter(
-            patient=patient,
-            doctor=request.user,
-            status='waiting'
-        ).exists()
-        patient_waiting_status[patient.id] = has_waiting_entry
-    
-    # Get last consultation status for each patient
+        patient_waiting_status[patient.id] = patient.id in waiting_patient_ids
+
+    # Get last consultation status for each patient from the lookup
     patient_consultation_status = {}
     for patient in page_obj:
-        last_consultation = Consultation.objects.filter(
-            patient=patient,
-            doctor=request.user
-        ).order_by('-consultation_date').first()
-        if last_consultation:
-            patient_consultation_status[patient.id] = last_consultation.status
-        else:
-            patient_consultation_status[patient.id] = None
-    
+        patient_consultation_status[patient.id] = last_consultation_status.get(patient.id)
+
     context = {
         'page_obj': page_obj,
         'search_query': search_query,

@@ -21,9 +21,9 @@ from core.billing_office_integration import BillingOfficePaymentProcessor
 
 @login_required
 def invoice_list(request):
-    """View for listing all invoices with search and filter functionality"""
+    """View for listing all invoices with search and filter functionality - Optimized"""
     search_form = InvoiceSearchForm(request.GET)
-    invoices = Invoice.objects.all().order_by('-created_at')
+    invoices = Invoice.objects.select_related('patient').all().order_by('-created_at')
 
     # Apply filters if the form is valid
     if search_form.is_valid():
@@ -54,18 +54,28 @@ def invoice_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Get counts for different statuses
-    pending_count = Invoice.objects.filter(status='pending').count()
-    paid_count = Invoice.objects.filter(status='paid').count()
-    partially_paid_count = Invoice.objects.filter(status='partially_paid').count()
-    overdue_count = Invoice.objects.filter(status='overdue').count()
-    cancelled_count = Invoice.objects.filter(status='cancelled').count()
+    # Get counts for different statuses - use aggregate for efficiency
+    status_counts = Invoice.objects.values('status').annotate(count=Count('id'))
+    status_count_dict = {item['status']: item['count'] for item in status_counts}
 
-    # Get total amounts
-    total_amount = Invoice.objects.aggregate(total=Sum('total_amount'))['total'] or 0
-    paid_amount = Invoice.objects.filter(status='paid').aggregate(total=Sum('total_amount'))['total'] or 0
-    pending_amount = Invoice.objects.filter(status='pending').aggregate(total=Sum('total_amount'))['total'] or 0
-    overdue_amount = Invoice.objects.filter(status='overdue').aggregate(total=Sum('total_amount'))['total'] or 0
+    pending_count = status_count_dict.get('pending', 0)
+    paid_count = status_count_dict.get('paid', 0)
+    partially_paid_count = status_count_dict.get('partially_paid', 0)
+    overdue_count = status_count_dict.get('overdue', 0)
+    cancelled_count = status_count_dict.get('cancelled', 0)
+
+    # Get total amounts - use aggregate for efficiency
+    total_stats = Invoice.objects.aggregate(
+        total_amount=Sum('total_amount'),
+        paid_amount=Sum('total_amount', filter=Q(status='paid')),
+        pending_amount=Sum('total_amount', filter=Q(status='pending')),
+        overdue_amount=Sum('total_amount', filter=Q(status='overdue'))
+    )
+
+    total_amount = total_stats['total_amount'] or 0
+    paid_amount = total_stats['paid_amount'] or 0
+    pending_amount = total_stats['pending_amount'] or 0
+    overdue_amount = total_stats['overdue_amount'] or 0
 
     context = {
         'page_obj': page_obj,

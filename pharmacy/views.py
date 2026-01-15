@@ -104,8 +104,8 @@ def features_showcase(request):
 @never_cache
 @login_required
 def inventory_list(request):
-    """View for listing pharmacy inventory"""
-    # Get all medications
+    """View for listing pharmacy inventory - Optimized with select_related"""
+    # Get all medications with optimized query
     medications = Medication.objects.filter(is_active=True).select_related('category')
 
     # Initialize the search form

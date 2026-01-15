@@ -146,8 +146,8 @@ def register_patient(request):
 
 @login_required
 def patient_detail(request, patient_id):
-    """View for displaying patient details"""
-    patient = get_object_or_404(Patient, id=patient_id)
+    """View for displaying patient details - Optimized with select_related and prefetch_related"""
+    patient = get_object_or_404(Patient.objects.select_related('nhia_info', 'retainership_info'), id=patient_id)
 
     # Set patient context in session for cross-page availability
     request.session['current_patient_id'] = patient.id
@@ -159,44 +159,47 @@ def patient_detail(request, patient_id):
         (today.month, today.day) < (patient.date_of_birth.month, patient.date_of_birth.day)
     )
 
-    # Get recent appointments
+    # Get recent appointments with optimized query
     recent_appointments = Appointment.objects.filter(
         patient=patient
-    ).order_by('-appointment_date')[:5]
+    ).select_related('doctor').order_by('-appointment_date')[:5]
 
-    # Get recent consultations
+    # Get recent consultations with optimized query
     recent_consultations = Consultation.objects.filter(
         patient=patient
-    ).order_by('-consultation_date')[:5]
+    ).select_related('doctor', 'consulting_room').order_by('-consultation_date')[:5]
 
-    # Get recent prescriptions
+    # Get recent prescriptions with optimized query (removed duplicate)
     recent_prescriptions = Prescription.objects.filter(
         patient=patient
-    ).order_by('-prescription_date')[:5]
+    ).select_related('doctor').order_by('-prescription_date')[:5]
 
-    # Get recent prescriptions
-    recent_prescriptions = Prescription.objects.filter(
-        patient=patient
-    ).order_by('-prescription_date')[:5]
-    # Get medical history and clinical notes
-    medical_histories = MedicalHistory.objects.filter(patient=patient).order_by('-date')
-    clinical_notes = ClinicalNote.objects.filter(patient=patient).order_by('-date')
-    
+    # Get medical history and clinical notes with optimized query
+    medical_histories = MedicalHistory.objects.filter(patient=patient).select_related('recorded_by').order_by('-date')
+    clinical_notes = ClinicalNote.objects.filter(patient=patient).select_related('doctor').order_by('-date')
+
     # Get physiotherapy requests
-    physiotherapy_requests = PhysiotherapyRequest.objects.filter(patient=patient).order_by('-request_date')
-    
+    physiotherapy_requests = PhysiotherapyRequest.objects.filter(patient=patient).select_related('doctor').order_by('-request_date')
+
     # Get NHIA and Retainership information
     nhia_info = getattr(patient, 'nhia_info', None)
     retainership_info = getattr(patient, 'retainership_info', None)
-    
-    # Get wallet information
-    has_wallet = hasattr(patient, 'wallet') and patient.wallet is not None
-    wallet_is_active = has_wallet and patient.wallet.is_active
-    
-    # Get retainership wallet information
+
+    # Get wallet information with optimized query
+    try:
+        patient_wallet = getattr(patient, 'wallet', None)
+        has_wallet = patient_wallet is not None and patient_wallet.id is not None
+        wallet_is_active = has_wallet and patient_wallet.is_active
+    except Exception:
+        has_wallet = False
+        wallet_is_active = False
+        patient_wallet = None
+
+    # Get retainership wallet information with optimized query
     retainership_wallet = None
     if hasattr(patient, 'wallet_memberships'):
-        retainership_wallet = patient.wallet_memberships.filter(wallet__wallet_type='retainership').first()
+        retainership_wallet = patient.wallet_memberships.select_related('wallet').filter(wallet__wallet_type='retainership').first()
+
     # Get recent vitals using the safe utility function
     vitals = get_safe_vitals_for_patient(patient)
     

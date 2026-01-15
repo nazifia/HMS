@@ -21,17 +21,28 @@ from accounts.permissions import permission_required
 
 @login_required
 def bed_dashboard(request):
-    """Visual dashboard for bed management"""
-    beds_list = Bed.objects.select_related('ward').prefetch_related('admissions__patient').order_by('ward__name', 'bed_number')
+    """Visual dashboard for bed management - Optimized to avoid N+1 queries"""
+    beds_list = Bed.objects.select_related('ward').prefetch_related(
+        models.Prefetch(
+            'admissions',
+            queryset=Admission.objects.filter(status='admitted').select_related('patient'),
+            to_attr='current_admissions_list'
+        )
+    ).order_by('ward__name', 'bed_number')
 
-    # Annotate each bed with its current admission (status='admitted')
-    for bed in beds_list:
-        bed.current_admission = bed.admissions.filter(status='admitted').first()
+    # Pre-calculate stats in a single query
+    from django.db.models import Count, Case, When, IntegerField
+    bed_stats = Bed.objects.aggregate(
+        total=Count('id'),
+        occupied=Count('id', filter=Q(is_occupied=True)),
+        available=Count('id', filter=Q(is_occupied=False, is_active=True)),
+        inactive=Count('id', filter=Q(is_active=False))
+    )
 
-    total_beds = beds_list.count()
-    occupied_beds = beds_list.filter(is_occupied=True).count()
-    available_beds = beds_list.filter(is_occupied=False, is_active=True).count()
-    inactive_beds = beds_list.filter(is_active=False).count()
+    total_beds = bed_stats['total']
+    occupied_beds = bed_stats['occupied']
+    available_beds = bed_stats['available']
+    inactive_beds = bed_stats['inactive']
     occupancy_rate = (occupied_beds / total_beds * 100) if total_beds > 0 else 0
 
     paginator = Paginator(beds_list, 20)  # Show 20 beds per page
@@ -154,15 +165,23 @@ def add_ward(request):
 
 @login_required
 def ward_detail(request, ward_id):
-    """View for displaying ward details"""
-    ward = get_object_or_404(Ward, id=ward_id)
-    beds = ward.beds.all().order_by('bed_number')
+    """View for displaying ward details - Optimized to avoid N+1 queries"""
+    ward = get_object_or_404(Ward.objects.prefetch_related(
+        models.Prefetch(
+            'beds',
+            queryset=Bed.objects.prefetch_related(
+                models.Prefetch(
+                    'admissions',
+                    queryset=Admission.objects.filter(status='admitted').select_related('patient', 'attending_doctor'),
+                    to_attr='current_admissions_list'
+                )
+            ).order_by('bed_number')
+        )
+    ), id=ward_id)
 
-    # Annotate each bed with its current admission (status='admitted')
-    for bed in beds:
-        bed.current_admission = bed.admissions.filter(status='admitted').first()
+    beds = ward.beds.all()
 
-    # Add missing bed counts
+    # Pre-calculate bed stats in single queries
     total_beds = beds.count()
     available_beds = beds.filter(is_occupied=False, is_active=True).count()
     occupied_beds = beds.filter(is_occupied=True).count()
@@ -227,12 +246,14 @@ def delete_ward(request, ward_id):
 
 @login_required
 def bed_list(request):
-    """View for listing all beds"""
-    beds = Bed.objects.all().select_related('ward')
-
-    # Annotate each bed with its current admission (status='admitted')
-    for bed in beds:
-        bed.current_admission = bed.admissions.filter(status='admitted').first()
+    """View for listing all beds - Optimized to avoid N+1 queries"""
+    beds = Bed.objects.select_related('ward').prefetch_related(
+        models.Prefetch(
+            'admissions',
+            queryset=Admission.objects.filter(status='admitted').select_related('patient'),
+            to_attr='current_admissions_list'
+        )
+    ).order_by('ward__name', 'bed_number')
 
     # Search functionality
     search_query = request.GET.get('search', '')

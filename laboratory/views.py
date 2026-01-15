@@ -636,9 +636,11 @@ def lab_statistics_report(request):
 # Test Request and Result Views
 @login_required
 def test_request_list(request):
-    """View for listing all test requests"""
+    """View for listing all test requests - Optimized with select_related"""
     search_form = TestRequestSearchForm(request.GET)
-    test_requests = TestRequest.objects.all().order_by('-request_date')
+    test_requests = TestRequest.objects.select_related(
+        'patient', 'doctor', 'created_by', 'invoice'
+    ).all().order_by('-request_date')
 
     # Apply filters if the form is valid
     if search_form.is_valid():
@@ -676,14 +678,16 @@ def test_request_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Get counts for different statuses
-    pending_count = TestRequest.objects.filter(status='pending').count()
-    # Corrected 'collected' to 'sample_collected' to match new status in model
-    collected_count = TestRequest.objects.filter(status='sample_collected').count() 
-    processing_count = TestRequest.objects.filter(status='processing').count()
-    completed_count = TestRequest.objects.filter(status='completed').count()
-    cancelled_count = TestRequest.objects.filter(status='cancelled').count()
-    awaiting_payment_count = TestRequest.objects.filter(status='awaiting_payment').count()
+    # Get counts for different statuses - use single aggregate query
+    status_counts = TestRequest.objects.values('status').annotate(count=Count('id'))
+    status_count_dict = {item['status']: item['count'] for item in status_counts}
+
+    pending_count = status_count_dict.get('pending', 0)
+    collected_count = status_count_dict.get('sample_collected', 0)
+    processing_count = status_count_dict.get('processing', 0)
+    completed_count = status_count_dict.get('completed', 0)
+    cancelled_count = status_count_dict.get('cancelled', 0)
+    awaiting_payment_count = status_count_dict.get('awaiting_payment', 0)
 
     # Advanced: Add role-based analytics for test requests
     role_counts = TestRequest.objects.values('doctor__first_name', 'doctor__last_name').annotate(count=models.Count('id')).order_by('-count')
