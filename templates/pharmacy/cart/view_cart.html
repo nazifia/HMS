@@ -492,17 +492,18 @@
     <div class="row">
         <!-- Cart Items -->
         <div class="col-lg-8">
-            <!-- Partial Dispensing Info -->
+            <!-- Partial & Selective Dispensing Info -->
             {% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}
             <div class="alert alert-info">
-                <h6 class="alert-heading"><i class="fas fa-info-circle"></i> Partial Dispensing Enabled</h6>
+                <h6 class="alert-heading"><i class="fas fa-info-circle"></i> Selective & Partial Dispensing Enabled</h6>
                 <p class="mb-2">
-                    You can now dispense <strong>some or all</strong> medications from this prescription.
+                    You can now <strong>selectively dispense</strong> medications from this prescription.
                 </p>
                 <ul class="mb-0" style="font-size: 0.9rem;">
-                    <li>Enter the quantity to dispense for each medication (0 to skip)</li>
-                    <li>Automatically pre-filled with maximum available stock</li>
-                    <li>Items with partial quantities will remain pending, allowing you to dispense again later</li>
+                    <li><strong>Select/Deselect:</strong> Use checkboxes to choose which items to dispense</li>
+                    <li><strong>Quantity Control:</strong> Set custom quantities or use default (max available)</li>
+                    <li><strong>Partial Dispensing:</strong> Items with less than maximum will remain pending</li>
+                    <li><strong>Quick Actions:</strong> Use shortcuts to select all or skip any items</li>
                 </ul>
             </div>
             {% endif %}
@@ -547,6 +548,15 @@
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
+                                {% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}
+                                <th style="width: 4%;">
+                                    <input type="checkbox" 
+                                           id="selectAllItems" 
+                                           checked 
+                                           title="Toggle selection for all items"
+                                           onclick="toggleAllSelections()">
+                                </th>
+                                {% endif %}
                                 <th style="width: 20%;">Medication</th>
                                 <th style="width: 7%;">Strength</th>
                                 <th style="width: 7%;">Form</th>
@@ -565,7 +575,20 @@
                         </thead>
                         <tbody>
                             {% for item in cart.items.all %}
-                            <tr>
+                            <tr id="cart_item_row_{{ item.id }}">
+                                {% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}
+                                <td class="text-center" style="vertical-align: middle;">
+                                    <input type="checkbox" 
+                                           class="item-selection" 
+                                           name="selected_items" 
+                                           value="{{ item.id }}" 
+                                           id="select_item_{{ item.id }}"
+                                           checked
+                                           data-available="{{ item.get_available_to_dispense_now }}"
+                                           data-prescribed="{{ item.prescription_item.quantity }}"
+                                           onchange="onItemSelectionChange({{ item.id }})">
+                                </td>
+                                {% endif %}
                                 <td class="medication-name">
                                     {% if item.is_substituted %}
                                         <div class="substituted-medication">
@@ -642,7 +665,7 @@
                                     <div class="cart-qty">
                                         {% with available_to_dispense=item.get_available_to_dispense_now %}
                                         <input type="number" 
-                                               class="quantity-input" 
+                                               class="quantity-input dispense-input" 
                                                name="dispense_qty_{{ item.id }}" 
                                                id="dispense_qty_{{ item.id }}"
                                                value="{{ available_to_dispense }}" 
@@ -650,7 +673,10 @@
                                                max="{{ available_to_dispense }}"
                                                step="1"
                                                placeholder="0"
-                                               title="Enter quantity to dispense (0 to skip this item)">
+                                               data-item-id="{{ item.id }}"
+                                               title="Enter quantity to dispense (0 to skip this item)"
+                                               style="width: 75px;"
+                                               onchange="validateSingleQuantity({{ item.id }}, this.value, {{ available_to_dispense }})">
                                         <small class="text-muted d-block" style="font-size: 0.7rem;">
                                             Max: {{ available_to_dispense }}
                                         </small>
@@ -689,7 +715,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="{% if is_nhia_patient %}12{% else %}11{% endif %}" class="empty-state">
+                                <td colspan="{% if is_nhia_patient %}{% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}13{% else %}12{% endif %}{% else %}{% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}12{% else %}11{% endif %}{% endif %}" class="empty-state">
                                     <i class="fas fa-shopping-basket"></i>
                                     <p class="mb-0 mt-3">No items in cart</p>
                                 </td>
@@ -704,25 +730,45 @@
             <!-- Quick Dispensing Actions -->
             <div class="card mb-3">
                 <div class="card-header">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-tools"></i> Quick Actions
-                    </h6>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-tools"></i> Quick Actions
+                        </h6>
+                        <span class="badge badge-info" id="selectedCountBadge">
+                            <span id="selectedCount">{{ cart.items.count }}</span> Selected
+                        </span>
+                    </div>
                 </div>
                 <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <p class="text-muted small mb-2">
+                                <strong>Selection:</strong> Click checkboxes to select which items to dispense
+                            </p>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllItems(true)" title="Select all items">
+                                    <i class="fas fa-check-square"></i> Select All
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllItems(false)" title="Deselect all items">
+                                    <i class="far fa-square"></i> Deselect All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     <p class="text-muted small mb-2">
-                        Click to quickly set dispensing quantities for all items:
+                        <strong>Quick Quantity Set:</strong> Set dispensing quantities for selected items:
                     </p>
                     <div class="btn-group" role="group">
                         <button type="button" class="btn btn-success btn-sm" onclick="setDefaultQuantity('all')" title="Set all to maximum available">
-                            <i class="fas fa-check-double"></i> Dispense All Available
+                            <i class="fas fa-check-double"></i> Selected: Dispense MAX
                         </button>
-                        <button type="button" class="btn btn-warning btn-sm" onclick="setDefaultQuantity('none')" title="Skip all items">
-                            <i class="fas fa-ban"></i> Skip All (0)
+                        <button type="button" class="btn btn-warning btn-sm" onclick="setDefaultQuantity('none')" title="Set to 0 (skip but still tracked)">
+                            <i class="fas fa-ban"></i> Selected: Skip All (0)
                         </button>
                     </div>
                     <p class="text-muted small mt-3 mb-0">
                         <i class="fas fa-info-circle"></i> 
-                        <strong>Tip:</strong> Leave quantity as default to dispense all available stock, or set to 0 to skip an item.
+                        <strong>Tip:</strong> Only selected items will be dispensed. Leave quantity as default or adjust as needed.
                     </p>
                 </div>
             </div>
@@ -1121,79 +1167,226 @@ function removeSubstitution(itemId) {
     }
 }
 
-function validateDispensingQuantities() {
-    // Get all dispensing quantity inputs
-    const inputs = document.querySelectorAll('input[name^="dispense_qty_"]');
-    let hasValidQuantity = false;
+function toggleAllSelections() {
+    const masterCheckbox = document.getElementById('selectAllItems');
+    const checkboxes = document.querySelectorAll('input[name="selected_items"]');
     
-    for (let input of inputs) {
-        const quantity = parseInt(input.value) || 0;
-        const max = parseInt(input.max) || 0;
-        const min = parseInt(input.min) || 0;
-        
-        // Validate positive quantity
-        if (quantity < min) {
-            alert(`Invalid quantity for item. Minimum is ${min}.`);
-            input.focus();
-            return false;
-        }
-        
-        // Validate maximum stock
-        if (quantity > max) {
-            alert(`Cannot dispense ${quantity} items. Maximum available is ${max}.`);
-            input.focus();
-            return false;
-        }
-        
-        // Check if any item is being dispensed
-        if (quantity > 0) {
-            hasValidQuantity = true;
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = masterCheckbox.checked;
+        onItemSelectionChange(parseInt(checkbox.value));
+    });
+}
+
+function selectAllItems(select) {
+    const masterCheckbox = document.getElementById('selectAllItems');
+    const checkboxes = document.querySelectorAll('input[name="selected_items"]');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = select;
+        onItemSelectionChange(parseInt(checkbox.value));
+    });
+    
+    // Update master checkbox
+    masterCheckbox.checked = select;
+}
+
+function onItemSelectionChange(itemId) {
+    const checkbox = document.getElementById(`select_item_${itemId}`);
+    const quantityInput = document.getElementById(`dispense_qty_${itemId}`);
+    const row = document.getElementById(`cart_item_row_${itemId}`);
+    
+    if (checkbox && quantityInput && row) {
+        if (checkbox.checked) {
+            // Enable and restore quantity input
+            quantityInput.disabled = false;
+            quantityInput.style.opacity = "1";
+            row.style.backgroundColor = "";
+            row.style.opacity = "1";
+        } else {
+            // Disable and zero out quantity input
+            quantityInput.disabled = true;
+            quantityInput.value = "0";
+            quantityInput.style.opacity = "0.5";
+            row.style.opacity = "0.4";
         }
     }
     
-    // Ensure at least one item is being dispensed
-    if (!hasValidQuantity) {
-        if (!confirm('Warning: No quantities specified. This will skip all items.\nClick OK if you want to skip dispensing for this cart (e.g., if all items are out of stock).')) {
-            return false;
-        }
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('input[name="selected_items"]:checked');
+    const countSpan = document.getElementById('selectedCount');
+    const badge = document.getElementById('selectedCountBadge');
+    
+    if (countSpan) {
+        countSpan.textContent = checkboxes.length;
     }
     
-    // Confirmation for partial dispensing
-    let totalDispensing = 0;
-    let pendingItems = 0;
-    for (let input of inputs) {
-        const quantity = parseInt(input.value) || 0;
-        const max = parseInt(input.max) || 0;
-        if (quantity > 0 && quantity < max) {
-            pendingItems++;
+    if (badge) {
+        if (checkboxes.length === 0) {
+            badge.className = "badge badge-danger";
+        } else {
+            badge.className = "badge badge-info";
         }
-        totalDispensing += quantity;
+    }
+}
+
+function validateSingleQuantity(itemId, qty, max) {
+    const quantity = parseInt(qty) || 0;
+    const maxQty = parseInt(max) || 0;
+    
+    if (quantity < 0) {
+        alert(`Invalid quantity for item. Must be 0 or greater.`);
+        document.getElementById(`dispense_qty_${itemId}`).value = "0";
+        return false;
     }
     
-    if (pendingItems > 0) {
-        return confirm(`You are about to partially dispense ${totalDispensing} item(s).\n${pendingItems} item(s) will remain pending.\nClick OK to proceed.`);
+    if (quantity > maxQty) {
+        if (!confirm(`Cannot dispense ${quantity} items (exceeds available ${maxQty}).\nClick OK to set to maximum available.`)) {
+            document.getElementById(`dispense_qty_${itemId}`).value = maxQty;
+        }
+        return false;
     }
     
     return true;
 }
 
-function setDefaultQuantity(operation) {
-    // Helper function to set default quantities
-    const inputs = document.querySelectorAll('input[name^="dispense_qty_"]');
+function validateDispensingQuantities() {
+    // Get all selected items
+    const selectedCheckboxes = document.querySelectorAll('input[name="selected_items"]:checked');
     
-    for (let input of inputs) {
+    if (selectedCheckboxes.length === 0) {
+        if (!confirm('No items selected for dispensing.\nClick OK to skip dispensing (cart will remain pending).')) {
+            return false;
+        }
+        // User accepted skipping, but we still need to disable quantity inputs for unselected items
+        const allCheckboxes = document.querySelectorAll('input[name="selected_items"]');
+        allCheckboxes.forEach(checkbox => {
+            const itemId = parseInt(checkbox.value);
+            const quantityInput = document.getElementById(`dispense_qty_${itemId}`);
+            if (quantityInput) {
+                quantityInput.disabled = checkbox.checked;
+                quantityInput.value = checkbox.checked ? quantityInput.value : "0";
+            }
+        });
+        return true;
+    }
+    
+    let hasValidQuantity = false;
+    let totalDispensing = 0;
+    let pendingItems = 0;
+    let invalidItems = [];
+    
+    // Only validate selected items
+    for (let checkbox of selectedCheckboxes) {
+        const itemId = parseInt(checkbox.value);
+        const quantityInput = document.getElementById(`dispense_qty_${itemId}`);
+        
+        if (!quantityInput || quantityInput.disabled) continue;
+        
+        const quantity = parseInt(quantityInput.value) || 0;
+        const max = parseInt(quantityInput.max) || 0;
+        
+        // Validate positive quantity for selected items (skip 0 for selected)
+        if (quantity === 0) {
+            invalidItems.push(`Item ${itemId}: Quantity is 0 (uncheck to skip)`);
+            continue;
+        }
+        
+        // Validate maximum stock
+        if (quantity > max) {
+            alert(`Cannot dispense ${quantity} items for item ${itemId}. Maximum available is ${max}.`);
+            quantityInput.focus();
+            return false;
+        }
+        
+        hasValidQuantity = true;
+        totalDispensing += quantity;
+        
+        if (quantity < max) {
+            pendingItems++;
+        }
+    }
+    
+    // Validate if any selected item is being dispensed
+    if (!hasValidQuantity) {
+        alert('All selected items have quantity 0.\nPlease enter valid quantities or deselect items you don\'t want to dispense.');
+        return false;
+    }
+    
+    // Calculate unselected items for information
+    const allCheckboxes = document.querySelectorAll('input[name="selected_items"]');
+    const unselectedCount = allCheckboxes.length - selectedCheckboxes.length;
+    
+    let message = `Selected Items: ${selectedCheckboxes.length}\nItems to dispense: ${totalDispensing}`;
+    
+    if (unselectedCount > 0) {
+        message += `\nSkipped items: ${unselectedCount}`;
+    }
+    
+    if (pendingItems > 0) {
+        message += `\nPartially dispensing: ${pendingItems} item(s) will remain pending`;
+        return confirm(message + '\n\nClick OK to proceed.');
+    }
+    
+    if (unselectedCount > 0) {
+        message += `\n\nThis will skip ${unselectedCount} items (deselected).`;
+        return confirm(message + '\n\nClick OK to proceed.');
+    }
+    
+    return confirm(message + '\n\nClick OK to proceed.');
+}
+
+function setDefaultQuantity(operation) {
+    // Helper function to set default quantities for SELECTED items only
+    const selectedCheckboxes = document.querySelectorAll('input[name="selected_items"]:checked');
+    
+    if (selectedCheckboxes.length === 0) {
+        alert('No items selected. Please select items first.');
+        return;
+    }
+    
+    for (let checkbox of selectedCheckboxes) {
+        const itemId = parseInt(checkbox.value);
+        const input = document.getElementById(`dispense_qty_${itemId}`);
+        
+        if (!input || input.disabled) continue;
+        
         const max = parseInt(input.max) || 0;
-        const remainingToDispense = max - parseInt(input.getAttribute('data-already-dispensed') || 0);
         
         if (operation === 'all') {
             // Set to maximum available
             input.value = max;
         } else if (operation === 'none') {
-            // Skip all
+            // Set to 0 (skip)
             input.value = 0;
         }
-                
     }
 }
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize selection count and disable quantity inputs for unchecked items
+    const allCheckboxes = document.querySelectorAll('input[name="selected_items"]');
+    
+    allCheckboxes.forEach(checkbox => {
+        const itemId = parseInt(checkbox.value);
+        const quantityInput = document.getElementById(`dispense_qty_${itemId}`);
+        
+        if (quantityInput) {
+            if (!checkbox.checked) {
+                quantityInput.disabled = true;
+                quantityInput.style.opacity = "0.5";
+                const row = document.getElementById(`cart_item_row_${itemId}`);
+                if (row) {
+                    row.style.opacity = "0.4";
+                }
+            }
+        }
+    });
+    
+    updateSelectedCount();
+});
 </script>
 {% endblock %}
