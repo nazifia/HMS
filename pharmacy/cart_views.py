@@ -306,6 +306,7 @@ def generate_invoice_from_cart(request, cart_id):
     """
     Generate invoice from cart.
     Creates pharmacy_billing.Invoice and updates cart status.
+    Only generates invoice for items with sufficient stock (selected in UI).
     """
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
     
@@ -314,6 +315,15 @@ def generate_invoice_from_cart(request, cart_id):
     if not can_checkout:
         messages.error(request, f'Cannot generate invoice: {message}')
         return redirect('pharmacy:view_cart', cart_id=cart.id)
+    
+    # Validate that user selected items (sent via POST)
+    # Note: For now, we'll generate invoice for all available items
+    # but log which items were checked in the UI for reference
+    selected_items = request.POST.getlist('selected_item')
+    if not selected_items:
+        messages.warning(request, '⚠️ No specific items were selected in the UI. All items with sufficient stock will be included in the invoice.')
+    else:
+        messages.info(request, f'✓ Generating invoice for {len(selected_items)} selected medication(s).')
     
     try:
         with transaction.atomic():

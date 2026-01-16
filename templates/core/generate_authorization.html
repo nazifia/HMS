@@ -232,7 +232,7 @@
                             </small>
                             {% endif %}
                             
-                            {% if model_type == 'prescription' and patient_amount %}
+                            {% if model_type == 'prescription' and nhia_covered_amount %}
                             <div class="mt-2 p-3 bg-light rounded border">
                                 <small class="form-text text-primary">
                                     <strong><i class="fas fa-calculator"></i> NHIA Prescription Cost Breakdown:</strong>
@@ -240,13 +240,13 @@
                                 <div class="mt-2">
                                     <small>
                                         <strong>Total Value:</strong> ₦{{ total_prescribed_price|floatformat:2 }}<br>
-                                        <span class="text-success"><strong>Patient Portion (10%):</strong> ₦{{ patient_amount|floatformat:2 }}</span><br>
-                                        <span class="text-info"><strong>NHIA Covers (90%):</strong> ₦{{ nhia_portion|floatformat:2 }}</span>
+                                        <span class="text-success"><strong>Patient Portion (10%):</strong> ₦{{ patient_portion|floatformat:2 }}</span><br>
+                                        <span class="text-info"><strong>NHIA Covers (90%):</strong> ₦{{ nhia_covered_amount|floatformat:2 }}</span>
                                     </small>
                                 </div>
                                 <small class="form-text text-muted mt-2">
                                     <i class="fas fa-info-circle"></i> 
-                                    <strong>Recommended Amount:</strong> Set this to <strong>₦{{ patient_amount|floatformat:2 }}</strong> (the patient's 10% portion).
+                                    <strong>Recommended Amount:</strong> Set this to <strong>₦{{ nhia_covered_amount|floatformat:2 }}</strong> (NHIA's 90% portion).
                                 </small>
                             </div>
                             {% endif %}

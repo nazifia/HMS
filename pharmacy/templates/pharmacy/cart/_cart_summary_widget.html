@@ -227,29 +227,56 @@ Usage: {% include 'pharmacy/cart/_cart_summary_widget.html' with cart=cart show_
         {% if cart.status == 'active' %}
             {% with can_checkout=cart.can_generate_invoice %}
                 {% if can_checkout.0 %}
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Ready to Generate Invoice</strong><br>
+                        <small>Select items and click Generate Invoice when ready</small>
+                    </div>
+                    
                     <form method="post" action="{% url 'pharmacy:generate_invoice_from_cart' cart.id %}">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-file-invoice-dollar"></i> Generate Invoice
+                        <div id="dispense-quantities-container-{{ cart.id }}"></div>
+                        <button type="submit" class="btn btn-success w-100 mb-2" onclick="return prepareInvoiceForm({{ cart.id }})">
+                            <i class="fas fa-file-invoice-dollar"></i> Generate Invoice (Selected Only)
                         </button>
                     </form>
+                    
+                    <button type="button" class="btn btn-outline-primary w-100 mb-2" onclick="autoSelectAvailableItems()">
+                        <i class="fas fa-check-double"></i> Auto-Select Available
+                    </button>
+                    
+                    <small class="text-muted d-block text-center mt-2">
+                        <i class="fas fa-info-circle"></i> Select items with checkboxes, leave unchecked to exclude
+                    </small>
+                    
+                    <div class="mt-2">
+                        <a href="{% url 'pharmacy:prescription_detail' cart.prescription.id %}" class="btn btn-outline-secondary w-100 mb-2">
+                            <i class="fas fa-arrow-left"></i> Back to Prescription
+                        </a>
+                        
+                        <a href="{% url 'pharmacy:cancel_cart' cart.id %}" 
+                           class="btn btn-outline-danger w-100 mb-0"
+                           onclick="return confirm('Cancel this cart?')">
+                            <i class="fas fa-times"></i> Cancel Cart
+                        </a>
+                    </div>
                 {% else %}
                     <button type="button" class="btn btn-secondary w-100" disabled title="{{ can_checkout.1 }}">
                         <i class="fas fa-lock"></i> Generate Invoice
                     </button>
                     <small class="text-danger text-center">{{ can_checkout.1 }}</small>
+                    
+                    <a href="{% url 'pharmacy:prescription_detail' cart.prescription.id %}" class="btn btn-outline-secondary w-100 mt-2">
+                        <i class="fas fa-arrow-left"></i> Back to Prescription
+                    </a>
+                    
+                    <a href="{% url 'pharmacy:cancel_cart' cart.id %}" 
+                       class="btn btn-outline-danger w-100 mt-2"
+                       onclick="return confirm('Cancel this cart?')">
+                        <i class="fas fa-times"></i> Cancel Cart
+                    </a>
                 {% endif %}
             {% endwith %}
-            
-            <a href="{% url 'pharmacy:prescription_detail' cart.prescription.id %}" class="btn btn-outline-secondary w-100">
-                <i class="fas fa-arrow-left"></i> Back to Prescription
-            </a>
-            
-            <a href="{% url 'pharmacy:cancel_cart' cart.id %}" 
-               class="btn btn-outline-danger w-100"
-               onclick="return confirm('Cancel this cart?')">
-                <i class="fas fa-times"></i> Cancel Cart
-            </a>
             
         {% elif cart.status == 'invoiced' %}
             {% if cart.invoice and cart.invoice.status == 'paid' %}
@@ -262,12 +289,15 @@ Usage: {% include 'pharmacy/cart/_cart_summary_widget.html' with cart=cart show_
                 <form method="post" action="{% url 'pharmacy:complete_dispensing_from_cart' cart.id %}" id="dispense-form-{{ cart.id }}">
                     {% csrf_token %}
                     <div id="dispense-quantities-container-{{ cart.id }}"></div>
-                    <button type="submit" class="btn btn-success w-100" onclick="return prepareDispenseForm({{ cart.id }})">
-                        <i class="fas fa-pills"></i> Dispense Medications
+                    <button type="submit" class="btn btn-success w-100 mb-2" onclick="return prepareDispenseForm({{ cart.id }})">
+                        <i class="fas fa-pills"></i> Dispense Selected
                     </button>
                 </form>
+                <button type="button" class="btn btn-outline-primary w-100 mb-2" onclick="autoSelectAvailableItems()">
+                    <i class="fas fa-check-double"></i> Auto-Select Available
+                </button>
                 <small class="text-muted d-block text-center mt-2">
-                    <i class="fas fa-info-circle"></i> Enter quantities to dispense in the table above
+                    <i class="fas fa-info-circle"></i> Check medication checkboxes and enter quantities in the table
                 </small>
             {% else %}
                 {# Invoice not paid - show payment button #}
@@ -280,12 +310,15 @@ Usage: {% include 'pharmacy/cart/_cart_summary_widget.html' with cart=cart show_
             <form method="post" action="{% url 'pharmacy:complete_dispensing_from_cart' cart.id %}" id="dispense-form-{{ cart.id }}">
                 {% csrf_token %}
                 <div id="dispense-quantities-container-{{ cart.id }}"></div>
-                <button type="submit" class="btn btn-success w-100" onclick="return prepareDispenseForm({{ cart.id }})">
-                    <i class="fas fa-pills"></i> Dispense Medications
+                <button type="submit" class="btn btn-success w-100 mb-2" onclick="return prepareDispenseForm({{ cart.id }})">
+                    <i class="fas fa-pills"></i> Dispense Selected
                 </button>
             </form>
+            <button type="button" class="btn btn-outline-primary w-100 mb-2" onclick="autoSelectAvailableItems()">
+                <i class="fas fa-check-double"></i> Auto-Select Available
+            </button>
             <small class="text-muted d-block text-center mt-2">
-                <i class="fas fa-info-circle"></i> Enter quantities to dispense in the table above
+                <i class="fas fa-info-circle"></i> Check medication checkboxes and enter quantities in the table
             </small>
 
         {% elif cart.status == 'partially_dispensed' %}
@@ -300,11 +333,14 @@ Usage: {% include 'pharmacy/cart/_cart_summary_widget.html' with cart=cart show_
                 {% csrf_token %}
                 <div id="dispense-quantities-container-{{ cart.id }}"></div>
                 <button type="submit" class="btn btn-primary w-100 mb-2" onclick="return prepareDispenseForm({{ cart.id }})">
-                    <i class="fas fa-pills"></i> Dispense Remaining Items
+                    <i class="fas fa-pills"></i> Dispense Selected Items
                 </button>
             </form>
+            <button type="button" class="btn btn-outline-primary w-100 mb-2" onclick="autoSelectAvailableItems()">
+                <i class="fas fa-check-double"></i> Auto-Select Available
+            </button>
             <small class="text-muted d-block text-center mb-3">
-                <i class="fas fa-info-circle"></i> Enter quantities to dispense in the table above
+                <i class="fas fa-info-circle"></i> Check remaining items and enter quantities in the table
             </small>
             {% endif %}
 

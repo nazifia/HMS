@@ -540,6 +540,88 @@
             transform: none;
         }
     }
+
+    /* Checkbox styling for partial dispensing */
+    .checkbox-cell {
+        width: 50px !important;
+        min-width: 50px;
+        text-align: center !important;
+    }
+
+    .checkbox-cell input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #28a745;
+    }
+
+    .checkbox-cell input[type="checkbox"]:disabled {
+        accent-color: #6c757d;
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    .dispense-quantity-input {
+        width: 80px;
+        text-align: center;
+        border-radius: 4px;
+        padding: 6px 3px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border: 2px solid #dee2e6;
+        transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .dispense-quantity-input:disabled {
+        background-color: #f8f9fa !important;
+        color: #6c757d !important;
+        border-color: #e9ecef !important;
+        pointer-events: none;
+    }
+
+    .dispense-quantity-input:focus {
+        border-color: #28a745;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.15);
+        outline: none;
+    }
+
+    /* Select All header styling */
+    th:has(#select-all) {
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    #select-all {
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
+        accent-color: #667eea;
+    }
+
+    /* Visual feedback for selected rows */
+    tr:has(.item-checkbox:checked) {
+        background-color: #f8fff9 !important;
+        border-left-color: #28a745;
+    }
+
+    tr:has(.item-checkbox:not(:checked)) {
+        background-color: #f8f9fa;
+    }
+
+    .item-checkbox:checked + .medication-name {
+        font-weight: 700;
+        color: #28a745;
+    }
+
+    /* Disabled state visual indicator */
+    .stock-badge.disabled {
+        opacity: 0.5;
+    }
+
+    tr:has(.item-checkbox:disabled) {
+        background-color: #e9ecef !important;
+        opacity: 0.7;
+    }
 </style>
 {% endblock %}
 
@@ -621,6 +703,12 @@
         <table class="table mb-0">
             <thead>
                 <tr>
+                    {% if cart.status in 'active,paid,partially_dispensed' %}
+                    <th style="width: 50px;">
+                        <input type="checkbox" id="select-all" class="form-check-input" onclick="toggleAllCheckboxes()">
+                        <span class="d-none">Select All</span>
+                    </th>
+                    {% endif %}
                     <th>
                         <i class="fas fa-capsules"></i>
                         <span>Medication</span>
@@ -633,7 +721,7 @@
                         <i class="fas fa-calculator"></i>
                         <span>Quantity</span>
                     </th>
-                    {% if cart.status in 'paid,partially_dispensed' %}
+                    {% if cart.status in 'active,paid,partially_dispensed' %}
                     <th>
                         <i class="fas fa-hand-holding-medical"></i>
                         <span>To Dispense</span>
@@ -683,6 +771,21 @@
                 {% for item in cart.items.all %}
                 {% with stock_status=item.get_stock_status %}
                 <tr id="cart-item-{{ item.id }}" {% if item.is_fully_dispensed %}style="background-color: #d4edda;"{% elif item.is_partially_dispensed %}style="background-color: #fff3cd;"{% endif %}>
+                    {% if cart.status in 'active,paid,partially_dispensed' %}
+                    <td class="text-center checkbox-cell">
+                        {% if item.get_remaining_quantity > 0 and item.available_stock > 0 %}
+                        <input type="checkbox" 
+                               class="form-check-input item-checkbox" 
+                               id="check-{{ item.id }}" 
+                               data-item-id="{{ item.id }}"
+                               data-available-stock="{{ item.available_stock }}"
+                               data-remaining-quantity="{{ item.get_remaining_quantity }}"
+                               onchange="updateDispenseInput({{ item.id }})">
+                        {% else %}
+                        <i class="fas fa-ban text-muted" title="Cannot dispense - No stock or fully dispensed"></i>
+                        {% endif %}
+                    </td>
+                    {% endif %}
                     <td class="medication-cell">
                         <span class="medication-name">{{ item.prescription_item.medication.name }}</span>
                         <span class="medication-strength">{{ item.prescription_item.medication.strength }}</span>
@@ -722,7 +825,7 @@
                         </span>
                         {% endif %}
                     </td>
-                    {% if cart.status in 'paid,partially_dispensed' %}
+                    {% if cart.status in 'active,paid,partially_dispensed' %}
                     <td class="numeric-cell">
                         {% with remaining=item.get_remaining_quantity available=item.get_available_to_dispense_now %}
                         {% if remaining > 0 %}
@@ -735,6 +838,8 @@
                                    max="{{ available }}"
                                    data-item-id="{{ item.id }}"
                                    data-max-available="{{ available }}"
+                                   data-base-value="{{ available }}"
+                                   {% if item.available_stock > 0 and item.get_remaining_quantity > 0 %}{% else %}disabled{% endif %}
                                    title="Max available: {{ available }}">
                             <small class="text-muted" style="font-size: 0.75rem;">Max: {{ available }}</small>
                         </div>
@@ -1083,8 +1188,8 @@ function updateDispensary() {
 }
 
 function prepareDispenseForm(cartId) {
-    // Get all dispense quantity inputs
-    const dispenseInputs = document.querySelectorAll('.dispense-quantity-input');
+    // Get all checked checkboxes
+    const checkedBoxes = document.querySelectorAll('.item-checkbox:checked');
     const container = document.getElementById(`dispense-quantities-container-${cartId}`);
 
     // Clear container
@@ -1093,9 +1198,10 @@ function prepareDispenseForm(cartId) {
     let hasQuantities = false;
     let invalidQuantities = [];
 
-    // Collect quantities and add hidden inputs
-    dispenseInputs.forEach(input => {
-        const itemId = input.dataset.itemId;
+    // Collect quantities for checked items only
+    checkedBoxes.forEach(checkbox => {
+        const itemId = checkbox.dataset.itemId;
+        const input = document.getElementById(`dispense-qty-${itemId}`);
         const quantity = parseInt(input.value) || 0;
         const maxAvailable = parseInt(input.dataset.maxAvailable) || 0;
 
@@ -1129,14 +1235,131 @@ function prepareDispenseForm(cartId) {
         return false;
     }
 
+    // Check if at least one item is selected
+    if (checkedBoxes.length === 0) {
+        alert('Please select at least one medication checkbox to dispense.');
+        return false;
+    }
+
     // Check if at least one quantity is entered
     if (!hasQuantities) {
-        alert('Please enter at least one quantity to dispense.');
+        alert('Please enter quantity (greater than 0) for at least one selected medication.');
         return false;
     }
 
     // Confirm before dispensing
-    return confirm('Are you sure you want to dispense these medications?');
+    return confirm(`Are you sure you want to dispense these medications?\n\nSelected items: ${checkedBoxes.length}`);
+}
+
+function prepareInvoiceForm(cartId) {
+    // For active carts, we need to ensure at least one checkbox is selected
+    const checkedBoxes = document.querySelectorAll('.item-checkbox:checked');
+    const container = document.getElementById(`dispense-quantities-container-${cartId}`);
+
+    // Clear container (not used for invoice generation, but consistent with API)
+    container.innerHTML = '';
+
+
+    // Check if at least one item is selected
+    if (checkedBoxes.length === 0) {
+        alert('Please select at least one medication checkbox to include in the invoice.\n\nIf you want to invoice all items, please use "Auto-Select Available" or check all items manually.');
+        return false;
+    }
+
+    // Optional: Add hidden inputs to track which items were selected
+    checkedBoxes.forEach(checkbox => {
+        const itemId = checkbox.dataset.itemId;
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = `selected_item`;
+        input.value = itemId;
+        container.appendChild(input);
+    });
+
+    // Confirm before generating invoice
+    const count = checkedBoxes.length;
+    return confirm(`Generate invoice for ${count} selected medication${count > 1 ? 's' : ''}?\n\nItems without checks will remain in the cart but excluded from this invoice.`);
+}
+
+// Toggle all checkboxes
+function toggleAllCheckboxes() {
+    const selectAllCheckbox = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    checkboxes.forEach(checkbox => {
+        if (!checkbox.disabled) {
+            checkbox.checked = selectAllCheckbox.checked;
+            // Trigger the update function for each checkbox
+            updateDispenseInput(checkbox.dataset.itemId);
+        }
+    });
+}
+
+// Update dispense input based on checkbox state
+function updateDispenseInput(itemId) {
+    const checkbox = document.getElementById(`check-${itemId}`);
+    const input = document.getElementById(`dispense-qty-${itemId}`);
+    
+    if (!checkbox || !input) return;
+
+    const isChecked = checkbox.checked;
+    const availableStock = parseInt(checkbox.dataset.availableStock);
+    const remainingQuantity = parseInt(checkbox.dataset.remainingQuantity);
+    const baseValue = parseInt(availableStock) > 0 ? Math.min(availableStock, remainingQuantity) : 0;
+
+    if (isChecked) {
+        // Enable input and set to optimal value
+        input.disabled = false;
+        input.value = baseValue;
+        input.max = baseValue;
+        input.style.borderColor = '#28a745';
+        input.style.backgroundColor = '#f8fff9';
+    } else {
+        // Disable input and clear value
+        input.disabled = true;
+        input.value = 0;
+        input.style.borderColor = '#e0e0e0';
+        input.style.backgroundColor = '#f8f9fa';
+    }
+}
+
+// Auto-select all items with sufficient stock
+function autoSelectAvailableItems() {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    let selectedCount = 0;
+    
+    checkboxes.forEach(checkbox => {
+        const availableStock = parseInt(checkbox.dataset.availableStock);
+        const remainingQuantity = parseInt(checkbox.dataset.remainingQuantity);
+        
+        // Auto-select if there's stock available
+        if (availableStock > 0 && remainingQuantity > 0) {
+            checkbox.checked = true;
+            updateDispenseInput(checkbox.dataset.itemId);
+            selectedCount++;
+        }
+    });
+
+    // Update select-all checkbox state
+    const selectAllCheckbox = document.getElementById('select-all');
+    const allCheckboxes = document.querySelectorAll('.item-checkbox');
+    const checkedBoxes = document.querySelectorAll('.item-checkbox:checked');
+    selectAllCheckbox.checked = allCheckboxes.length > 0 && allCheckboxes.length === checkedBoxes.length;
+
+    if (selectedCount > 0) {
+        // Show feedback
+        const summaryWidget = document.querySelector('.cart-summary-widget');
+        if (summaryWidget) {
+            const feedback = document.createElement('div');
+            feedback.className = 'alert alert-success mt-2 mb-0';
+            feedback.innerHTML = `<i class="fas fa-check-circle"></i> Auto-selected ${selectedCount} item(s) with available stock`;
+            summaryWidget.insertBefore(feedback, summaryWidget.firstChild);
+            
+            // Remove after 3 seconds
+            setTimeout(() => feedback.remove(), 3000);
+        }
+    } else {
+        alert('No medications with available stock found. Cannot auto-select any items.');
+    }
 }
 </script>
 {% endblock %}

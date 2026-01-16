@@ -92,13 +92,29 @@ for inv_item in items_to_update:
 
 ## Files Modified
 
-1. **pharmacy/cart_models.py**
-   - `PrescriptionCartItem.update_available_stock()` - Enhanced stock aggregation
-   - `PrescriptionCartItem.get_alternative_medications()` - Improved matching and fallback
+### 1. pharmacy/cart_models.py
+- `PrescriptionCartItem.update_available_stock()` - Enhanced stock aggregation
+- `PrescriptionCartItem.get_alternative_medications()` - Improved matching and fallback
 
-2. **pharmacy/cart_views.py**
-   - `complete_dispensing_from_cart()` - Fixed inventory deduction logic
-   - Added `Count` import for aggregation queries
+### 2. pharmacy/cart_views.py
+- `complete_dispensing_from_cart()` - Fixed inventory deduction logic
+- Added `Count` import for aggregation queries
+
+### 3. pharmacy/templates/pharmacy/cart/view_cart.html
+- **New Checkbox Column**: Added "Select All" checkbox column for paid/partially_dispensed statuses
+- **Selection Enhancement**: Individual checkbox for each item with visual feedback
+- **Auto-Select Button**: Functionality to automatically select items with available stock
+- **JavaScript Functions**: 
+  - `toggleAllCheckboxes()` - Select/deselect all visible items
+  - `updateDispenseInput()` - Enable/disable dispense quantity based on checkbox state
+  - `autoSelectAvailableItems()` - Auto-select items with stock available
+- **Updated `prepareDispenseForm()`**: Now only submits selected checkboxes, not all inputs
+- **Enhanced CSS Styling**: Visual indicators for selected rows, disabled states, and focused inputs
+
+### 4. pharmacy/templates/pharmacy/cart/_cart_summary_widget.html
+- **Updated Action Buttons**: Changed "Dispense Medications" to "Dispense Selected" with new styling
+- **Added Auto-Select Button**: Separate button for auto-selecting available items
+- **Updated Help Text**: Changed instructions to clarify checkbox selection process
 
 ## Testing Checklist
 
@@ -126,20 +142,6 @@ for inv_item in items_to_update:
 - ✅ No changes to database schema required
 - ✅ No changes to existing APIs or templates
 
-## Validation Commands
-
-```bash
-# Run Django system check
-python manage.py check
-
-# Validate Python syntax
-python -m py_compile pharmacy/cart_models.py
-python -m py_compile pharmacy/cart_views.py
-
-# Test imports (in Django environment)
-python manage.py shell -c "from pharmacy.cart_models import PrescriptionCartItem; print('✓ Cart models imported successfully')"
-```
-
 ## Success Criteria
 
 The fix is successful when:
@@ -148,6 +150,38 @@ The fix is successful when:
 3. Alternative medication suggestions appear when items are out of stock
 4. Multiple inventory records are properly aggregated
 5. Inventory deductions are distributed across items in FIFO order
+6. ✅ **NEW**: Cart template displays selection checkboxes for partial dispensing
+7. ✅ **NEW**: "Select All" functionality works correctly
+8. ✅ **NEW**: "Auto-Select Available" button selects items with stock
+9. ✅ **NEW**: Only checked items are submitted for dispensing
+10. ✅ **NEW**: Visual feedback shows selected items (green highlight)
+
+## Detailed Features Implemented
+
+### Checkbox Selection System
+- **Checkbox column** appears in cart table only when cart status is `paid` or `partially_dispensed`
+- **Select All checkbox** in header toggles all visible item selections
+- **Individual checkboxes** per item with smart enable/disable logic
+- **Visual feedback**: Green highlight for selected rows, disabled appearance for items without stock
+- **Quantity input coupling**: Checkboxes enable/disable corresponding quantity inputs
+
+### Auto-Select Functionality
+- **Auto-Select Available button** automatically selects all items with available stock
+- **Smart logic** selects only items where `stock > 0` AND `remaining > 0`
+- **Shows feedback** with count of selected items
+- **Updates Select-All state** automatically
+
+### Updated Dispensing Logic
+- **Dispense Selected button** only processes checked items
+- **Clear validation** requires at least one checkbox to be selected
+- **Enhanced confirmation** shows number of items being dispensed
+- **Quantity validation** ensures selected items have valid quantities
+
+### Visual Enhancements
+- **Selected row styling**: Light green background with green left border
+- **Disabled items**: Grayed out with ban icon instead of checkbox
+- **Focused inputs**: Green border with glow effect
+- **Responsive design**: Works on desktop and mobile devices
 
 ## Next Steps
 

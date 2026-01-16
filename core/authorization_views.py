@@ -113,37 +113,47 @@ def calculate_test_request_estimated_cost(test_request):
 
 def calculate_prescription_authorization_amount(prescription):
     """
-    Calculate the 10% patient portion for NHIA prescription authorization.
-    This is the amount NHIA patients actually need to pay (10% of total cost).
+    Calculate the NHIA covered amount (90%) for NHIA prescription authorization.
+    This is the amount that NHIA will cover for NHIA patients.
     
     Args:
         prescription (Prescription): The prescription object to calculate amount for
         
     Returns:
-        float: 10% of the total prescription cost for NHIA patients
+        float: 90% of the total prescription cost covered by NHIA
     """
     # Import the prescription model dynamically
     from pharmacy.models import Prescription
+    from decimal import Decimal
     
     if not isinstance(prescription, Prescription):
         return 0.00
     
-    # Use the prescription's built-in method to get the patient payable amount (10% for NHIA)
+    # Calculate total prescribed price
     try:
-        patient_amount = prescription.get_patient_payable_amount()
-        # Convert to float for compatibility
-        return float(patient_amount) if patient_amount else 0.00
+        total_prescribed_price = prescription.get_total_prescribed_price()
+        total_prescribed_price = Decimal(str(total_prescribed_price))
+        
+        # For NHIA patients, NHIA covers 90%, patient pays 10%
+        # For non-NHIA patients, there's no NHIA coverage (0%)
+        if prescription.patient.patient_type == 'nhia':
+            # NHIA covers 90% of the total cost
+            return float(total_prescribed_price * Decimal('0.90'))
+        else:
+            # Non-NHIA patients - no NHIA coverage
+            return 0.00
     except Exception:
         # Fallback calculation if method fails
         total_prescribed_price = 0.00
         for item in prescription.items.all():
             total_prescribed_price += float(item.medication.price * item.quantity)
         
-        # NHIA patients pay 10%, others pay 100%
+        # NHIA patients: NHIA covers 90%
+        # Non-NHIA patients: NHIA covers 0%
         if prescription.patient.patient_type == 'nhia':
-            return total_prescribed_price * 0.10
+            return float(total_prescribed_price * 0.90)
         else:
-            return total_prescribed_price
+            return 0.00
 
 
 @login_required
@@ -317,24 +327,28 @@ def generate_authorization(request, model_type, object_id):
             if 'form_data' not in context or not context['form_data'].get('amount'):
                 context['default_amount'] = estimated_cost
     
-    # Calculate patient portion for prescriptions
+    # Calculate NHIA covered amount for prescriptions
     elif model_type == 'prescription':
         try:
             from pharmacy.models import Prescription
             if isinstance(obj, Prescription):
-                # Get the 10% patient portion for NHIA patients
-                patient_amount = calculate_prescription_authorization_amount(obj)
+                # Get the NHIA covered amount (90% for NHIA patients, 0% for others)
+                nhia_covered_amount = calculate_prescription_authorization_amount(obj)
                 
                 # Also calculate total for reference
                 total_prescribed_price = obj.get_total_prescribed_price()
                 
-                context['patient_amount'] = patient_amount
-                context['total_prescribed_price'] = total_prescribed_price
-                context['nhia_portion'] = total_prescribed_price - patient_amount
+                # Calculate patient portion (10% for NHIA, 100% for non-NHIA)
+                from decimal import Decimal
+                patient_portion = Decimal(str(total_prescribed_price)) * Decimal('0.10') if obj.patient.patient_type == 'nhia' else total_prescribed_price
                 
-                # Set default amount to patient portion (10% for NHIA) if not provided in form data
+                context['nhia_covered_amount'] = nhia_covered_amount
+                context['patient_portion'] = float(patient_portion)
+                context['total_prescribed_price'] = total_prescribed_price
+                
+                # Set default amount to NHIA covered amount (90% for NHIA) if not provided in form data
                 if 'form_data' not in context or not context['form_data'].get('amount'):
-                    context['default_amount'] = patient_amount
+                    context['default_amount'] = nhia_covered_amount
         except Exception as e:
             # Log error but don't break the view
             import logging
