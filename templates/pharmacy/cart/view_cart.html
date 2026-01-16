@@ -493,17 +493,18 @@
         <!-- Cart Items -->
         <div class="col-lg-8">
             <!-- Partial & Selective Dispensing Info -->
-            {% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}
+            {% if cart.status == 'invoiced' or cart.status == 'paid' or cart.status == 'partially_dispensed' %}
             <div class="alert alert-info">
-                <h6 class="alert-heading"><i class="fas fa-info-circle"></i> Selective & Partial Dispensing Enabled</h6>
+                <h6 class="alert-heading"><i class="fas fa-info-circle"></i> Selective Medication Dispensing</h6>
                 <p class="mb-2">
-                    You can now <strong>selectively dispense</strong> medications from this prescription.
+                    <strong>{% if cart.status == 'invoiced' %}Before Payment:{% endif %}</strong> 
+                    Choose which medications to dispense and set quantities.
                 </p>
                 <ul class="mb-0" style="font-size: 0.9rem;">
                     <li><strong>Select/Deselect:</strong> Use checkboxes to choose which items to dispense</li>
                     <li><strong>Quantity Control:</strong> Set custom quantities or use default (max available)</li>
+                    <li><strong>Before Payment:</strong> Selections will be preserved through payment process</li>
                     <li><strong>Partial Dispensing:</strong> Items with less than maximum will remain pending</li>
-                    <li><strong>Quick Actions:</strong> Use shortcuts to select all or skip any items</li>
                 </ul>
             </div>
             {% endif %}
@@ -548,7 +549,7 @@
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                {% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}
+                                {% if cart.status == 'invoiced' or cart.status == 'paid' or cart.status == 'partially_dispensed' %}
                                 <th style="width: 4%;">
                                     <input type="checkbox" 
                                            id="selectAllItems" 
@@ -564,8 +565,8 @@
                                 <th style="width: 7%;">In Cart</th>
                                 <th style="width: 7%;">Dispensed</th>
                                 <th style="width: 8%;">Stock</th>
-                                {% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}
-                                <th style="width: 10%;"><i class="fas fa-syringe"></i> Dispensing Qty</th>
+                                {% if cart.status == 'invoiced' or cart.status == 'paid' or cart.status == 'partially_dispensed' %}
+                                <th style="width: 10%;"><i class="fas fa-syringe"></i> Qty</th>
                                 {% endif %}
                                 <th style="width: 8%;">Unit Price</th>
                                 <th style="width: 8%;">Patient Pays</th>
@@ -576,7 +577,7 @@
                         <tbody>
                             {% for item in cart.items.all %}
                             <tr id="cart_item_row_{{ item.id }}">
-                                {% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}
+                                {% if cart.status == 'invoiced' or cart.status == 'paid' or cart.status == 'partially_dispensed' %}
                                 <td class="text-center" style="vertical-align: middle;">
                                     <input type="checkbox" 
                                            class="item-selection" 
@@ -660,7 +661,7 @@
                                         {{ item.get_stock_status.message }}
                                     </span>
                                 </td>
-                                {% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}
+                                {% if cart.status == 'invoiced' or cart.status == 'paid' or cart.status == 'partially_dispensed' %}
                                 <td class="quantity-cell">
                                     <div class="cart-qty">
                                         {% with available_to_dispense=item.get_available_to_dispense_now %}
@@ -715,7 +716,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="{% if is_nhia_patient %}{% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}13{% else %}12{% endif %}{% else %}{% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}12{% else %}11{% endif %}{% endif %}" class="empty-state">
+                                <td colspan="{% if is_nhia_patient %}{% if cart.status == 'invoiced' or cart.status == 'paid' or cart.status == 'partially_dispensed' %}13{% else %}12{% endif %}{% else %}{% if cart.status == 'invoiced' or cart.status == 'paid' or cart.status == 'partially_dispensed' %}12{% else %}11{% endif %}{% endif %}" class="empty-state">
                                     <i class="fas fa-shopping-basket"></i>
                                     <p class="mb-0 mt-3">No items in cart</p>
                                 </td>
@@ -726,7 +727,7 @@
                 </div>
             </div>
 
-            {% if cart.status == 'paid' or cart.status == 'partially_dispensed' %}
+            {% if cart.status == 'invoiced' or cart.status == 'paid' or cart.status == 'partially_dispensed' %}
             <!-- Quick Dispensing Actions -->
             <div class="card mb-3">
                 <div class="card-header">
