@@ -292,68 +292,6 @@ def delete_pharmacist_assignment(request, assignment_id):
 
 
 @login_required
-def pharmacist_assignment_list(request):
-    """
-    AJAX endpoint to return assignment list as JSON.
-    Useful for search/filter functionality.
-    """
-    if not (request.user.is_superuser or has_permission(request.user, 'pharmacy.manage_pharmacists')):
-        return JsonResponse({'error': 'Permission denied'}, status=403)
-
-    assignments = PharmacistDispensaryAssignment.objects.select_related(
-        'pharmacist', 'dispensary'
-    ).order_by('-created_at')
-
-    # Filter parameters
-    pharmacist_name = request.GET.get('pharmacist', '')
-    dispensary_id = request.GET.get('dispensary', '')
-    status = request.GET.get('status', '')
-    active_only = request.GET.get('active_only', 'false') == 'true'
-
-    if pharmacist_name:
-        assignments = assignments.filter(
-            Q(pharmacist__username__icontains=pharmacist_name) |
-            Q(pharmacist__first_name__icontains=pharmacist_name) |
-            Q(pharmacist__last_name__icontains=pharmacist_name)
-        )
-
-    if dispensary_id:
-        assignments = assignments.filter(dispensary_id=dispensary_id)
-
-    if status == 'active':
-        assignments = assignments.filter(is_active=True)
-    elif status == 'inactive':
-        assignments = assignments.filter(is_active=False)
-
-    if active_only:
-        assignments = assignments.filter(is_active=True)
-
-    data = []
-    for assignment in assignments:
-        data.append({
-            'id': assignment.id,
-            'pharmacist': {
-                'id': assignment.pharmacist.id,
-                'name': assignment.pharmacist.get_full_name(),
-                'username': assignment.pharmacist.username,
-                'phone': assignment.pharmacist.phone_number or ''
-            },
-            'dispensary': {
-                'id': assignment.dispensary.id,
-                'name': assignment.dispensary.name,
-                'location': assignment.dispensary.location or ''
-            },
-            'start_date': assignment.start_date.strftime('%Y-%m-%d') if assignment.start_date else '',
-            'end_date': assignment.end_date.strftime('%Y-%m-%d') if assignment.end_date else '',
-            'is_active': assignment.is_active,
-            'notes': assignment.notes or '',
-            'created_at': assignment.created_at.strftime('%Y-%m-%d %H:%M:%S') if assignment.created_at else ''
-        })
-
-    return JsonResponse({'data': data, 'count': len(data)})
-
-
-@login_required
 def assignment_reports(request):
     """
     View for assignment reports and analytics.

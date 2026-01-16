@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block title %}Assignment Reports & Analytics{% endblock %}
 
@@ -154,9 +155,8 @@
                         <h6 class="font-weight-bold">Quick Visual Summary:</h6>
                         <div class="progress mb-2" style="height: 20px;">
                             {% for item in assignments_by_dispensary %}
-                                {% widthratio item.active_count assignments_by_dispensary|first.count 100 as width %}
-                                <div class="progress-bar bg-success" style="width: {{ width }}%" 
-                                     title="{{ item.dispensary__name }}: {{ item.active_count }} active ({{ width }}%)">
+                                <div class="progress-bar bg-success" style="width: {% widthratio item.active_count item.count 100 %}%" 
+                                     title="{{ item.dispensary__name }}: {{ item.active_count }} active of {{ item.count }}">
                                 </div>
                             {% endfor %}
                         </div>

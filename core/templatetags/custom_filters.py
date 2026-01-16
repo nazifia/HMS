@@ -584,6 +584,27 @@ def sum_list(values):
     except (ValueError, TypeError):
         return 0
 
+
+@register.filter(is_safe=True)
+def div(value, divisor):
+    """
+    Divide value by divisor.
+
+    Usage: {{ number|div:divisor }}
+
+    Args:
+        value: Numerator (divided by)
+        divisor: Denominator (divide by)
+
+    Returns:
+        Result of division
+    """
+    try:
+        return float(value or 0) / float(divisor or 0)
+    except (ValueError, TypeError, ZeroDivisionError):
+        return 0
+
+
 @register.filter
 def map_attribute(items, attribute_name):
     """

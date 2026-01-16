@@ -22,7 +22,7 @@ urlpatterns = [
     path('assignments/<int:assignment_id>/edit/', assignment_views.edit_pharmacist_assignment, name='edit_pharmacist_assignment'),
     path('assignments/<int:assignment_id>/end/', assignment_views.end_pharmacist_assignment, name='end_pharmacist_assignment'),
     path('assignments/<int:assignment_id>/delete/', assignment_views.delete_pharmacist_assignment, name='delete_pharmacist_assignment'),
-    path('assignments/list/', assignment_views.pharmacist_assignment_list, name='pharmacist_assignment_list'),
+    path('assignments/list/', assignment_views.manage_pharmacist_assignments, name='pharmacist_assignment_list'),
     path('assignments/reports/', assignment_views.assignment_reports, name='assignment_reports'),
     
     path('features/', views.features_showcase, name='features_showcase'),
