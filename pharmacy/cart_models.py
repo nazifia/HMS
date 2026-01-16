@@ -418,12 +418,20 @@ class PrescriptionCartItem(models.Model):
                 try:
                     active_store = dispensary.active_store
                     if active_store:
-                        inventory_items = ActiveStoreInventory.objects.filter(
+                        # Aggregate all inventory items for this medication in the active store
+                        # Use values_list to efficiently sum stock_quantity
+                        from django.db.models import Sum
+                        
+                        inventory_summary = ActiveStoreInventory.objects.filter(
                             medication=medication,
                             active_store=active_store,
                             stock_quantity__gt=0
+                        ).aggregate(
+                            total_stock=Sum('stock_quantity')
                         )
-                        total_stock = sum(item.stock_quantity for item in inventory_items)
+                        
+                        total_stock = inventory_summary['total_stock'] or 0
+                        
                 except Exception as e:
                     # Log the error but continue to check legacy inventory
                     import logging
@@ -438,14 +446,19 @@ class PrescriptionCartItem(models.Model):
         # Check legacy inventory if no stock found
         if total_stock == 0:
             try:
-                legacy_inv = MedicationInventory.objects.filter(
+                # Aggregate all legacy inventory items for this medication in the dispensary
+                from django.db.models import Sum
+                
+                legacy_summary = MedicationInventory.objects.filter(
                     medication=medication,
                     dispensary=dispensary,
                     stock_quantity__gt=0
-                ).first()
-
-                if legacy_inv:
-                    total_stock = legacy_inv.stock_quantity
+                ).aggregate(
+                    total_stock=Sum('stock_quantity')
+                )
+                
+                total_stock = legacy_summary['total_stock'] or 0
+                
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
@@ -534,31 +547,40 @@ class PrescriptionCartItem(models.Model):
         if not self.cart.dispensary:
             return []
 
-        from pharmacy.models import ActiveStoreInventory
+        from pharmacy.models import ActiveStoreInventory, MedicationInventory
 
         medication = self.prescription_item.medication
         dispensary = self.cart.dispensary
-
         alternatives = []
 
         try:
+            # Try ActiveStoreInventory first (new system)
             active_store = getattr(dispensary, 'active_store', None)
             if active_store:
-                # Find medications with same base name but different ID
+                # Find medications with similar generic name or name
                 similar_meds = ActiveStoreInventory.objects.filter(
-                    medication__name__iexact=medication.name,
                     active_store=active_store,
                     stock_quantity__gt=0
                 ).exclude(
                     medication=medication
-                ).select_related('medication').values(
+                )
+
+                # Filter by similar generic name first (more reliable for alternatives)
+                from pharmacy.models import Medication
+                similar_meds = similar_meds.filter(
+                    medication__generic_name=medication.generic_name
+                ) | similar_meds.filter(
+                    medication__name__iexact=medication.name
+                )
+
+                similar_meds = similar_meds.select_related('medication').values(
                     'medication__id',
                     'medication__name',
                     'medication__strength',
                     'medication__dosage_form'
                 ).annotate(
                     total_stock=Sum('stock_quantity')
-                )
+                ).distinct()
 
                 for med in similar_meds:
                     strength = med['medication__strength'] or ''
@@ -567,9 +589,8 @@ class PrescriptionCartItem(models.Model):
                     full_name = ' '.join([p for p in name_parts if p])
 
                     # Get price from the medication
-                    from pharmacy.models import Medication as Med
                     try:
-                        med_obj = Med.objects.get(id=med['medication__id'])
+                        med_obj = Medication.objects.get(id=med['medication__id'])
                         price = float(med_obj.price) if med_obj.price else 0
                     except:
                         price = 0
@@ -582,8 +603,56 @@ class PrescriptionCartItem(models.Model):
                         'stock': med['total_stock'],
                         'price': price
                     })
-        except Exception:
-            pass
+            else:
+                # Fallback to legacy MedicationInventory (older system)
+                similar_meds = MedicationInventory.objects.filter(
+                    dispensary=dispensary,
+                    stock_quantity__gt=0
+                ).exclude(
+                    medication=medication
+                )
+
+                # Filter by similar generic name first (more reliable for alternatives)
+                similar_meds = similar_meds.filter(
+                    medication__generic_name=medication.generic_name
+                ) | similar_meds.filter(
+                    medication__name__iexact=medication.name
+                )
+
+                similar_meds = similar_meds.select_related('medication').values(
+                    'medication__id',
+                    'medication__name',
+                    'medication__strength',
+                    'medication__dosage_form'
+                ).annotate(
+                    total_stock=Sum('stock_quantity')
+                ).distinct()
+
+                for med in similar_meds:
+                    strength = med['medication__strength'] or ''
+                    dosage = med['medication__dosage_form'] or ''
+                    name_parts = [med['medication__name'], strength, dosage]
+                    full_name = ' '.join([p for p in name_parts if p])
+
+                    # Get price from the medication
+                    try:
+                        med_obj = Medication.objects.get(id=med['medication__id'])
+                        price = float(med_obj.price) if med_obj.price else 0
+                    except:
+                        price = 0
+
+                    alternatives.append({
+                        'id': med['medication__id'],
+                        'name': full_name,
+                        'strength': strength,
+                        'dosage_form': dosage,
+                        'stock': med['total_stock'],
+                        'price': price
+                    })
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Error getting alternative medications: {e}")
 
         return alternatives
 
