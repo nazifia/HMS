@@ -30,23 +30,164 @@ from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
 
 
 @login_required
+def select_dispensary(request):
+    """View for pharmacists to select their working dispensary"""
+    # Admins don't need to select dispensary
+    if request.user.is_superuser:
+        return redirect('pharmacy:pharmacy_dashboard')
+    
+    # Get user's assigned dispensaries
+    assigned_dispensaries = []
+    if hasattr(request.user, 'get_all_assigned_dispensaries'):
+        assigned_dispensaries = request.user.get_all_assigned_dispensaries()
+    
+    # If user has no assigned dispensaries, show message and redirect to dashboard
+    if not assigned_dispensaries:
+        messages.error(
+            request,
+            "You have not been assigned to any dispensary yet. "
+            "Please contact an administrator to get assigned to a dispensary."
+        )
+        return redirect('dashboard:dashboard')
+    
+    # If user has only one dispensary assigned, auto-select and redirect
+    if len(assigned_dispensaries) == 1:
+        dispensary = assigned_dispensaries[0]
+        # Check if they already have a selection
+        current_id = request.session.get('selected_dispensary_id')
+        if not current_id:
+            request.session['selected_dispensary_id'] = dispensary.id
+            request.session['selected_dispensary_name'] = dispensary.name
+            messages.success(request, f"Automatically selected {dispensary.name} as your dispensary.")
+            return redirect('pharmacy:pharmacy_dashboard')
+        # If already selected but they wanted to see this page, still show it
+    
+    # Multiple dispensaries - show selection page
+    current_selection = None
+    stored_id = request.session.get('selected_dispensary_id')
+    if stored_id:
+        try:
+            current_selection = Dispensary.objects.get(id=stored_id, is_active=True)
+        except Dispensary.DoesNotExist:
+            current_selection = None
+    
+    context = {
+        'assigned_dispensaries': assigned_dispensaries,
+        'current_selection': current_selection,
+        'page_title': 'Select Dispensary',
+        'active_nav': 'pharmacy',
+    }
+    
+    return render(request, 'pharmacy/select_dispensary.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def set_dispensary(request):
+    """Endpoint to set the selected dispensary"""
+    dispensary_id = request.POST.get('dispensary_id')
+    
+    try:
+        dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
+        
+        # Verify pharmacist has access to this dispensary
+        if not request.user.is_superuser:
+            if not request.user.can_access_dispensary(dispensary):
+                messages.error(
+                    request,
+                    f"You don't have permission to access '{dispensary.name}'."
+                )
+                return redirect('pharmacy:select_dispensary')
+        
+        # Set in session
+        request.session['selected_dispensary_id'] = dispensary.id
+        request.session['selected_dispensary_name'] = dispensary.name
+        messages.success(request, f"Dispensary set to '{dispensary.name}'.")
+        
+        # Redirect to where they were going, or dashboard
+        next_url = request.GET.get('next', 'pharmacy:pharmacy_dashboard')
+        return redirect(next_url)
+        
+    except Dispensary.DoesNotExist:
+        messages.error(request, "Invalid dispensary selected.")
+        return redirect('pharmacy:select_dispensary')
+
+
+@login_required
 def pharmacy_dashboard(request):
     """View for the pharmacy dashboard"""
+    # Check if user needs to select dispensary (pharmacists only)
+    if not request.user.is_superuser:
+        if hasattr(request.user, 'is_pharmacist') and request.user.is_pharmacist():
+            selected_dispensary_id = request.session.get('selected_dispensary_id')
+            if not selected_dispensary_id:
+                # Check if user has assigned dispensaries
+                assigned_dispensaries = []
+                if hasattr(request.user, 'get_all_assigned_dispensaries'):
+                    assigned_dispensaries = request.user.get_all_assigned_dispensaries()
+                
+                if assigned_dispensaries:
+                    # Redirect to selection page
+                    return redirect('pharmacy:select_dispensary')
+                else:
+                    # No assignments - show message but still allow access
+                    messages.warning(
+                        request,
+                        "You are not assigned to any dispensary. Some pharmacy features may be limited."
+                    )
+    
+    # Get selected dispensary for context
+    selected_dispensary = None
+    pharmacist_dispensary = None
+    if not request.user.is_superuser:
+        selected_dispensary_id = request.session.get('selected_dispensary_id')
+        if selected_dispensary_id:
+            try:
+                selected_dispensary = Dispensary.objects.get(id=selected_dispensary_id)
+                pharmacist_dispensary = selected_dispensary
+            except Dispensary.DoesNotExist:
+                selected_dispensary = None
+
     # Get pharmacy statistics
     total_medications = Medication.objects.filter(is_active=True).count()
     total_suppliers = Supplier.objects.filter(is_active=True).count()
     total_dispensaries = Dispensary.objects.filter(is_active=True).count()
 
-    # Get low stock items
+    # Apply dispensary filter for pharmacist statistics
+    pharmacy_filter = Q()
+    if pharmacist_dispensary:
+        pharmacy_filter = Q(dispensary=pharmacist_dispensary)
+
+    # Get low stock items (filtered for pharmacist if assigned)
     low_stock_items = ActiveStoreInventory.objects.filter(
-        stock_quantity__lte=models.F('reorder_level')
+        models.Q(**{key: value for key, value in pharmacy_filter.children if pharmacy_filter}) |
+        models.Q(active_store__dispensary=pharmacist_dispensary) if pharmacist_dispensary else models.Q(stock_quantity__lte=models.F('reorder_level'))
     ).select_related('medication', 'active_store__dispensary')[:5]
+    
+    # If pharmacist has selected dispensary, filter low stock items to their dispensary only
+    if pharmacist_dispensary:
+        low_stock_items = ActiveStoreInventory.objects.filter(
+            stock_quantity__lte=models.F('reorder_level'),
+            active_store__dispensary=pharmacist_dispensary
+        ).select_related('medication', 'active_store__dispensary')[:5]
 
-    # Get recent purchases
-    recent_purchases = Purchase.objects.select_related('supplier').order_by('-purchase_date')[:5]
+    # Get recent purchases (filtered for pharmacist)
+    recent_purchases = Purchase.objects.select_related('supplier')
+    if pharmacist_dispensary:
+        recent_purchases = recent_purchases.filter(dispensary=pharmacist_dispensary)
+    recent_purchases = recent_purchases.order_by('-purchase_date')[:5]
 
-    # Get recent prescriptions
-    recent_prescriptions = Prescription.objects.select_related('patient', 'doctor').order_by('-prescription_date')[:5]
+    # Get recent prescriptions (filtered for pharmacist)
+    recent_prescriptions = Prescription.objects.select_related('patient', 'doctor')
+    # For prescriptions, we filter based on carts created by the pharmacist or with the disputing pharmacist's dispensary
+    if pharmacist_dispensary:
+        # Use carts to filter prescriptions - only show prescriptions that have carts for this dispensary
+        from .cart_models import PrescriptionCart
+        carts_for_dispensary = PrescriptionCart.objects.filter(
+            dispensary=pharmacist_dispensary
+        ).values_list('prescription_id', flat=True)
+        recent_prescriptions = recent_prescriptions.filter(id__in=carts_for_dispensary)
+    recent_prescriptions = recent_prescriptions.order_by('-prescription_date')[:5]
 
     # Get inter-dispensary transfer statistics
     try:
@@ -88,6 +229,7 @@ def pharmacy_dashboard(request):
         'categorized_referrals': categorized_referrals,
         'pending_referrals_count': pending_referrals_count,
         'pending_authorizations': pending_authorizations,
+        'selected_dispensary': selected_dispensary,
         'page_title': 'Pharmacy Dashboard',
         'active_nav': 'pharmacy',
     }

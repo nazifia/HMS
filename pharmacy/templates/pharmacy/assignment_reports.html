@@ -1,0 +1,315 @@
+{% extends 'base.html' %}
+
+{% block title %}Assignment Reports & Analytics{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-chart-bar mr-2"></i>Assignment Reports & Analytics
+        </h1>
+        <div class="d-flex gap-2">
+            <a href="{% url 'pharmacy:manage_pharmacist_assignments' %}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left mr-1"></i>Back to Assignments
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Overview Row -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Assignments
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Active Assignments
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.active }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Ended This Month
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.expired_recently }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-pause-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Utilization Rate
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% if stats.total > 0 %}
+                                    {{ stats.active|div:stats.total|multiply:100|floatformat:1 }}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-percentage fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row">
+        <!-- Assignment Distribution by Dispensary -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-info text-white d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-clinic-medical mr-2"></i>Assignment Distribution
+                    </h6>
+                    <span class="badge bg-light text-dark">{{ assignments_by_dispensary|length }} Dispensaries</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Dispensary</th>
+                                    <th class="text-center">Active</th>
+                                    <th class="text-center">Total</th>
+                                    <th class="text-right">Utilization</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in assignments_by_dispensary %}
+                                <tr>
+                                    <td>{{ item.dispensary__name }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success">{{ item.active_count }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary">{{ item.count }}</span>
+                                    </td>
+                                    <td class="text-right">
+                                        {% if item.count > 0 %}
+                                        <span class="{% if item.active_count|div:item.count > 0.7 %}text-success{% elif item.active_count|div:item.count > 0.4 %}text-warning{% else %}text-danger{% endif %}">
+                                            {% widthratio item.active_count item.count 100 %}%
+                                        </span>
+                                        {% else %}
+                                        0%
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">No data available</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Quick Summary Chart -->
+                    {% if assignments_by_dispensary %}
+                    <div class="mt-4">
+                        <h6 class="font-weight-bold">Quick Visual Summary:</h6>
+                        <div class="progress mb-2" style="height: 20px;">
+                            {% for item in assignments_by_dispensary %}
+                                {% widthratio item.active_count assignments_by_dispensary|first.count 100 as width %}
+                                <div class="progress-bar bg-success" style="width: {{ width }}%" 
+                                     title="{{ item.dispensary__name }}: {{ item.active_count }} active ({{ width }}%)">
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <small class="text-muted">Active assignments per dispensary (relative scale)</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pharmacists with Most Assignments -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-user-md mr-2"></i>Top Pharmacists
+                    </h6>
+                    <span class="badge bg-light text-dark">{{ pharmacists_with_most|length }} Pharmacists</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Pharmacist</th>
+                                    <th class="text-center">Assignments</th>
+                                    <th class="text-center">Active</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pharmacist in pharmacists_with_most %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ pharmacist.pharmacist__first_name|default:pharmacist.pharmacist__username }}</strong>
+                                        <small class="text-muted">{{ pharmacist.pharmacist__last_name|default:"" }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary">{{ pharmacist.assignment_count }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success">{{ pharmacist.active_count }}</span>
+                                    </td>
+                                    <td>
+                                        {% if pharmacist.active_count > 0 %}
+                                            <span class="badge bg-warning text-dark">Active Now</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">No data available</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 p-3 bg-light rounded">
+                        <h6 class="font-weight-bold">Distribution Analysis:</h6>
+                        <p class="mb-0 text-sm text-muted">
+                            Shows pharmacists with the highest number of total assignments. 
+                            Higher numbers may indicate rapid growth or high turnover.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-success text-white d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-history mr-2"></i>Recent Activity (Last 30 Days)
+                    </h6>
+                    <span class="badge bg-light text-dark">{{ recent_activity|length }} Activities</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Pharmacist</th>
+                                    <th>Dispensary</th>
+                                    <th>Type</th>
+                                    <th>Start Date</th>
+                                    <th>Created By</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for activity in recent_activity %}
+                                <tr {% if activity.is_active %}class="table-success"{% endif %}>
+                                    <td>
+                                        <strong>{{ activity.pharmacist.get_full_name|default:activity.pharmacist.username }}</strong>
+                                    </td>
+                                    <td>{{ activity.dispensary.name }}</td>
+                                    <td>
+                                        {% if activity.is_active %}
+                                        <span class="badge bg-primary">New Assignment</span>
+                                        {% elif activity.end_date %}
+                                        <span class="badge bg-info">Assignment Ended</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ activity.start_date|date:"M d, Y" }}</td>
+                                    <td>{{ activity.created_by|default:"System" }}</td>
+                                    <td>
+                                        {% if activity.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Ended</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        <i class="fas fa-calendar-times fa-2x mb-2"></i><br>
+                                        No recent activity in the last 30 days.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {% if recent_activity %}
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            Shows all assignment activity in the last 30 days, including new assignments and ended assignments.
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .progress {
+        background-color: #eaecf4;
+    }
+    
+    .text-success { color: #1cc88a !important; }
+    .text-warning { color: #f6c23e !important; }
+    .text-danger { color: #e74a3b !important; }
+    .text-info { color: #36b9cc !important; }
+</style>
+{% endblock %}

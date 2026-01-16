@@ -305,16 +305,18 @@
         {% endif %}
 
         <!-- Nav Item - Dispensary Management (Available to pharmacists and admins) -->
-        {% if user|has_any_permission:'manage_dispensary,transfer_medication' %}
-        <li class="nav-item {% if '/pharmacy/dispensaries/' in request.path %}active{% endif %}">
-            <a class="nav-link {% if not '/pharmacy/dispensaries/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDispensary" aria-expanded="{% if '/pharmacy/dispensaries/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseDispensary">
+        {% if user|has_any_permission:'manage_dispensary,transfer_medication,manage_pharmacists' %}
+        <li class="nav-item {% if '/pharmacy/dispensaries/' in request.path or '/pharmacy/assignments/' in request.path %}active{% endif %}">
+            <a class="nav-link {% if not '/pharmacy/dispensaries/' in request.path and not '/pharmacy/assignments/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDispensary" aria-expanded="{% if '/pharmacy/dispensaries/' in request.path or '/pharmacy/assignments/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseDispensary">
                 <i class="fas fa-fw fa-store-alt text-white"></i>
                 <span class="text-white">Dispensaries</span>
             </a>
-            <div id="collapseDispensary" class="collapse {% if '/pharmacy/dispensaries/' in request.path %}show{% endif %}" aria-labelledby="headingDispensary" data-parent="#accordionSidebar">
+            <div id="collapseDispensary" class="collapse {% if '/pharmacy/dispensaries/' in request.path or '/pharmacy/assignments/' in request.path %}show{% endif %}" aria-labelledby="headingDispensary" data-parent="#accordionSidebar">
                 <div class="bg-white py-2 collapse-inner rounded">
                     <h6 class="collapse-header">Dispensary Management:</h6>
                     <a class="collapse-item {% if request.path == '/pharmacy/dispensaries/' %}active{% endif %}" href="{% url 'pharmacy:dispensary_list' %}">Manage Dispensaries</a>
+                    <a class="collapse-item {% if '/pharmacy/assignments/' in request.path %}active{% endif %}" href="{% url 'pharmacy:manage_pharmacist_assignments' %}">Pharmacist Assignments</a>
+                    <a class="collapse-item {% if request.path == '/pharmacy/assignments/reports/' %}active{% endif %}" href="{% url 'pharmacy:assignment_reports' %}">Assignment Reports</a>
                     {% comment %} <a class="collapse-item {% if '/pharmacy/dispensaries/inventory/' in request.path %}active{% endif %}" href="{% url 'pharmacy:dispensary_list' %}">Dispensary Inventory</a> {# Link to manage page, then navigate to specific inventory #}
                     <a class="collapse-item {% if '/pharmacy/dispensaries/dispensing-report/' in request.path %}active{% endif %}" href="{% url 'pharmacy:dispensary_list' %}">Dispensary Reports</a> {# Link to manage page, then navigate to specific report #} {% endcomment %}
                 </div>

@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Select Dispensary{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Select Your Pharmacy Dispensary</h1>
+    </div>
+
+    {% if messages %}
+    <div class="row">
+        <div class="col-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Dispensary Selection -->
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-clinic-medical"></i> Choose Your Working Location
+                    </h6>
+                    {% if current_selection %}
+                    <span class="badge badge-info">Current: {{ current_selection.name }}</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        You have been assigned to the following dispensary locations. Please select the one you'll be working at for this session.
+                        {% if assigned_dispensaries|length > 1 %}
+                        You can change your selection anytime by visiting this page.
+                        {% endif %}
+                    </p>
+
+                    {% if assigned_dispensaries %}
+                    <form action="{% url 'pharmacy:set_dispensary' %}" method="post">
+                        {% csrf_token %}
+                        
+                        <div class="list-group">
+                            {% for dispensary in assigned_dispensaries %}
+                            <label class="list-group-item d-flex align-items-center p-3 {% if dispensary == current_selection %}active{% endif %}">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">{{ dispensary.name }}</h6>
+                                            <p class="mb-0 text-muted small">
+                                                <i class="fas fa-map-marker-alt"></i> 
+                                                {{ dispensary.location|default:"No location specified" }}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <input 
+                                                type="radio" 
+                                                name="dispensary_id" 
+                                                value="{{ dispensary.id }}" 
+                                                class="form-check-input" 
+                                                {% if dispensary == current_selection %}checked{% endif %}
+                                                style="cursor: pointer;"
+                                            >
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mt-4 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check"></i> Set Dispensary
+                            </button>
+                            <a href="{% url 'pharmacy:pharmacy_dashboard' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                        <h5 class="text-warning">No Dispensary Assignments Found</h5>
+                        <p class="text-muted">
+                            You have not been assigned to any dispensary yet. 
+                            Please contact an administrator to get assigned to a dispensary location.
+                        </p>
+                        <a href="{% url 'dashboard:dashboard' %}" class="btn btn-secondary mt-3">
+                            <i class="fas fa-arrow-left"></i> Return to Dashboard
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Information -->
+    {% if assigned_dispensaries|length > 1 %}
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-info text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-info-circle"></i> Why Select a Dispensary?
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start mb-3">
+                                <div class="mr-3">
+                                    <i class="fas fa-box text-primary fa-lg"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">Inventory Management</h6>
+                                    <p class="text-muted mb-0 small">View and manage medications specific to each dispensary.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start mb-3">
+                                <div class="mr-3">
+                                    <i class="fas fa-shopping-cart text-success fa-lg"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">Cart Operations</h6>
+                                    <p class="text-muted mb-0 small">Create and process prescription carts for specific locations.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start mb-3">
+                                <div class="mr-3">
+                                    <i class="fas fa-file-invoice-dollar text-info fa-lg"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">Billing Accuracy</h6>
+                                    <p class="text-muted mb-0 small">Ensure proper billing tracked to your dispensary location.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start mb-3">
+                                <div class="mr-3">
+                                    <i class="fas fa-chart-bar text-warning fa-lg"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">Reporting</h6>
+                                    <p class="text-muted mb-0 small">Access sales and inventory reports for your assigned dispensary.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .list-group-item.active {
+        border-color: #4e73df;
+        background-color: #4e73df;
+        color: white;
+    }
+    
+    .list-group-item:hover {
+        background-color: #f8f9fc;
+        cursor: pointer;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Make the entire list group item clickable when clicking the label
+    document.querySelectorAll('.list-group-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            // Don't handle click if clicking on input
+            if (e.target.tagName.toLowerCase() === 'input') {
+                return;
+            }
+            
+            // Find the radio input and check it
+            const radio = this.querySelector('input[type="radio"]');
+            if (radio) {
+                radio.checked = true;
+                
+                // Remove active class from all items
+                document.querySelectorAll('.list-group-item').forEach(i => {
+                    i.classList.remove('active');
+                });
+                
+                // Add active class to selected item
+                this.classList.add('active');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

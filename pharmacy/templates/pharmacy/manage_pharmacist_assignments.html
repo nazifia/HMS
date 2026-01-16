@@ -1,0 +1,327 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Pharmacist Dispensary Assignments{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-user-md mr-2"></i>Pharmacist Dispensary Assignments
+        </h1>
+        <div class="d-flex gap-2">
+            <a href="{% url 'pharmacy:pharmacy_dashboard' %}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left mr-1"></i>Back to Dashboard
+            </a>
+            <a href="{% url 'pharmacy:dispensary_list' %}" class="btn btn-info btn-sm">
+                <i class="fas fa-clinic-medical mr-1"></i>Manage Dispensaries
+            </a>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="row mb-3">
+        <div class="col-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Main Content Row -->
+    <div class="row">
+        <!-- Left Column: Add New Assignment -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-primary text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-user-plus mr-2"></i>Add New Assignment
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'pharmacy:add_pharmacist_assignment' %}">
+                        {% csrf_token %}
+                        
+                        <div class="form-group mb-3">
+                            <label for="pharmacist" class="form-label font-weight-bold">
+                                <i class="fas fa-user mr-1"></i>Pharmacist
+                            </label>
+                            <select name="pharmacist" id="pharmacist" class="form-select" required>
+                                <option value="">Select a pharmacist...</option>
+                                {% for pharmacist in available_pharmacists %}
+                                <option value="{{ pharmacist.id }}">{{ pharmacist.get_full_name }} ({{ pharmacist.username }})</option>
+                                {% empty %}
+                                <option value="">No pharmacists available</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">User must have pharmacist role</small>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="dispensary" class="form-label font-weight-bold">
+                                <i class="fas fa-clinic-medical mr-1"></i>Dispensary
+                            </label>
+                            <select name="dispensary" id="dispensary" class="form-select" required>
+                                <option value="">Select a dispensary...</option>
+                                {% for dispensary in active_dispensaries %}
+                                <option value="{{ dispensary.id }}">{{ dispensary.name }}</option>
+                                {% empty %}
+                                <option value="">No dispensary available</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="start_date" class="form-label font-weight-bold">
+                                <i class="fas fa-calendar mr-1"></i>Start Date
+                            </label>
+                            <input type="date" name="start_date" id="start_date" 
+                                   class="form-control" 
+                                   value="{{ today|date:'Y-m-d' }}"
+                                   required>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="notes" class="form-label font-weight-bold">
+                                <i class="fas fa-sticky-note mr-1"></i>Notes (Optional)
+                            </label>
+                            <textarea name="notes" id="notes" class="form-control" rows="2" 
+                                      placeholder="Reason or notes about this assignment..."></textarea>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="is_active" 
+                                       id="is_active" value="true" checked>
+                                <label class="form-check-label" for="is_active">
+                                    Assignment is active
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block w-100">
+                            <i class="fas fa-plus mr-2"></i>Create Assignment
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Quick Actions Card -->
+            <div class="card shadow">
+                <div class="card-header py-3 bg-info text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-bolt mr-2"></i>Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'pharmacy:pharmacist_assignment_list' %}" class="btn btn-outline-info">
+                            <i class="fas fa-list mr-2"></i>View Assignments List
+                        </a>
+                        <a href="{% url 'pharmacy:manage_pharmacist_assignments' %}?view=active" class="btn btn-outline-success">
+                            <i class="fas fa-check-circle mr-2"></i>Show Active Only
+                        </a>
+                        <a href="{% url 'pharmacy:manage_pharmacist_assignments' %}?view=all" class="btn btn-outline-secondary">
+                            <i class="fas fa-history mr-2"></i>Show All (Including Inactive)
+                        </a>
+                        <a href="{% url 'pharmacy:assignment_reports' %}" class="btn btn-outline-dark">
+                            <i class="fas fa-chart-bar mr-2"></i>Reports & Analytics
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Current Assignments -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-success text-white d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-users mr-2"></i>Current Assignments
+                        <span class="badge bg-light text-dark ml-2">{{ assignments.count }}</span>
+                    </h6>
+                    {% if view_mode == 'active' %}
+                    <span class="badge bg-warning text-dark">Active Only</span>
+                    {% else %}
+                    <span class="badge bg-info text-dark">All Assignments</span>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Pharmacist</th>
+                                    <th>Dispensary</th>
+                                    <th>Start Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in assignments %}
+                                <tr {% if not assignment.is_active %}class="table-secondary"{% endif %}>
+                                    <td>
+                                        <div class="fw-bold">{{ assignment.pharmacist.get_full_name|default:assignment.pharmacist.username }}</div>
+                                        <small class="text-muted">{{ assignment.pharmacist.phone_number|default:"" }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">
+                                            {{ assignment.dispensary.name }}
+                                        </span>
+                                        {% if assignment.dispensary.location %}
+                                        <br><small class="text-muted">{{ assignment.dispensary.location }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ assignment.start_date|date:"M d, Y" }}
+                                        {% if assignment.end_date %}
+                                        <br><small class="text-danger">Ends: {{ assignment.end_date|date:"M d, Y" }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if assignment.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            {% if assignment.is_active %}
+                                            <a href="{% url 'pharmacy:edit_pharmacist_assignment' assignment.id %}" 
+                                               class="btn btn-sm btn-warning" title="Edit assignment">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'pharmacy:end_pharmacist_assignment' assignment.id %}" 
+                                               class="btn btn-sm btn-outline-danger" title="End assignment">
+                                                <i class="fas fa-ban"></i>
+                                            </a>
+                                            {% else %}
+                                            <a href="{% url 'pharmacy:edit_pharmacist_assignment' assignment.id %}" 
+                                               class="btn btn-sm btn-outline-warning" title="View assignment">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% endif %}
+                                            <form method="post" action="{% url 'pharmacy:delete_pharmacist_assignment' assignment.id %}" 
+                                                  style="display: inline;" onsubmit="return confirm('Are you sure you want to permanently delete this assignment? This action cannot be undone.');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete assignment">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="fas fa-user-slash fa-3x mb-3"></i><br>
+                                        No assignments found.
+                                        <br><small>Assign your first pharmacist above to get started.</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="row">
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card border-left-primary shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                        Total Pharmacists Assigned
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        {{ stats.total_unique_pharmacists }}
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-user-md fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card border-left-success shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                        Active Assignments
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        {{ stats.active_assignments }}
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card border-left-info shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                        Dispensaries with Pharmacists
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        {{ stats.dispensaries_with_pharmacists }}
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-clinic-medical fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-group .btn {
+        margin: 0 1px;
+    }
+    
+    .badge.bg-success { background-color: #1cc88a; }
+    .badge.bg-secondary { background-color: #858796; }
+    .badge.bg-warning { background-color: #f6c23e; color: #333; }
+    .badge.bg-info { background-color: #36b9cc; }
+</style>
+
+<script>
+// Update start date to today when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Set today as default for date fields
+    const today = new Date().toISOString().split('T')[0];
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    
+    dateInputs.forEach(input => {
+        if (!input.value) {
+            input.value = today;
+        }
+    });
+});
+</script>
+{% endblock %}

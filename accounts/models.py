@@ -174,6 +174,85 @@ class CustomUser(AbstractUser):
             # Handle case where multiple profiles might exist (data integrity issue)
             return CustomUserProfile.objects.filter(user=self).first()
 
+    def is_pharmacist(self):
+        """Check if user has pharmacist role"""
+        try:
+            if self.is_superuser:
+                return True
+            if hasattr(self, 'profile') and self.profile:
+                return self.profile.role == 'pharmacist'
+            return self.roles.filter(name='pharmacist').exists()
+        except:
+            return False
+
+    def get_assigned_dispensary(self):
+        """Get the dispensary assigned to this pharmacist"""
+        if not self.is_pharmacist():
+            return None
+        
+        try:
+            from pharmacy.models import PharmacistDispensaryAssignment, Dispensary
+            assignment = PharmacistDispensaryAssignment.objects.filter(
+                pharmacist=self,
+                is_active=True,
+                end_date__isnull=True
+            ).select_related('dispensary').first()
+            
+            if assignment:
+                return assignment.dispensary
+            return None
+        except:
+            return None
+
+    def get_all_assigned_dispensaries(self):
+        """Get all assigned dispensaries for this pharmacist (including historical)"""
+        if not self.is_pharmacist():
+            return []
+        
+        try:
+            from pharmacy.models import PharmacistDispensaryAssignment
+            
+            assignments = PharmacistDispensaryAssignment.objects.filter(
+                pharmacist=self
+            ).select_related('dispensary').order_by('-start_date')
+            
+            return [assignment.dispensary for assignment in assignments if assignment.dispensary.is_active]
+        except:
+            return []
+
+    def can_access_dispensary(self, dispensary):
+        """Check if pharmacist can access a specific dispensary"""
+        if self.is_superuser:
+            return True
+            
+        if not self.is_pharmacist():
+            return False
+        
+        try:
+            from pharmacy.models import PharmacistDispensaryAssignment
+            
+            return PharmacistDispensaryAssignment.objects.filter(
+                pharmacist=self,
+                dispensary=dispensary,
+                is_active=True,
+                end_date__isnull=True
+            ).exists()
+        except:
+            return False
+
+    def get_active_dispensary_assignments(self):
+        """Get all active dispensary assignments for this user"""
+        try:
+            from pharmacy.models import PharmacistDispensaryAssignment
+            
+            return PharmacistDispensaryAssignment.objects.filter(
+                pharmacist=self,
+                is_active=True,
+                end_date__isnull=True
+            ).select_related('dispensary')
+        except:
+            return []
+
 
 class CustomUserProfile(models.Model):
     ROLE_CHOICES = (

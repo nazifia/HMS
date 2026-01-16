@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Assignment - {{ assignment.pharmacist.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-edit mr-2"></i>Edit Pharmacist Assignment
+        </h1>
+        <a href="{% url 'pharmacy:manage_pharmacist_assignments' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left mr-1"></i>Back to Assignments
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 offset-lg-3">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-warning text-dark">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-user-md mr-2"></i>Edit Assignment
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'pharmacy:edit_pharmacist_assignment' assignment.id %}">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label font-weight-bold">Pharmacist</label>
+                            <div class="form-control-plaintext">
+                                {{ assignment.pharmacist.get_full_name|default:assignment.pharmacist.username }}
+                                <small class="text-muted">({{ assignment.pharmacist.username }})</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label font-weight-bold">Dispensary</label>
+                            <div class="form-control-plaintext">
+                                {{ assignment.dispensary.name }}
+                                {% if assignment.dispensary.location %}
+                                <br><small class="text-muted">{{ assignment.dispensary.location }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="start_date" class="form-label font-weight-bold">
+                                <i class="fas fa-calendar mr-1"></i>Start Date
+                            </label>
+                            <input type="date" name="start_date" id="start_date" 
+                                   class="form-control" 
+                                   value="{{ assignment.start_date|date:'Y-m-d' }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="end_date" class="form-label font-weight-bold">
+                                <i class="fas fa-calendar-times mr-1"></i>End Date (Optional)
+                            </label>
+                            <input type="date" name="end_date" id="end_date" 
+                                   class="form-control" 
+                                   value="{% if assignment.end_date %}{{ assignment.end_date|date:'Y-m-d' }}{% endif %}"
+                                   placeholder="Leave empty if assignment is ongoing">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label font-weight-bold">
+                                <i class="fas fa-sticky-note mr-1"></i>Notes
+                            </label>
+                            <textarea name="notes" id="notes" class="form-control" rows="3">{{ assignment.notes|default:'' }}</textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="is_active" 
+                                       id="is_active" value="true" {% if assignment.is_active %}checked{% endif %}>
+                                <label class="form-check-label" for="is_active">
+                                    Assignment is currently active
+                                </label>
+                                {% if not assignment.is_active %}
+                                <small class="text-danger d-block mt-1">
+                                    <i class="fas fa-exclamation-circle mr-1"></i>This assignment is marked as inactive
+                                </small>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i class="fas fa-save mr-2"></i>Save Changes
+                            </button>
+                            <a href="{% url 'pharmacy:manage_pharmacist_assignments' %}" class="btn btn-secondary btn-block">
+                                <i class="fas fa-times mr-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Assignment History -->
+            <div class="card shadow">
+                <div class="card-header py-3 bg-info text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-history mr-2"></i>Assignment History
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">Created</small>
+                            <div>{{ assignment.created_at|date:"M d, Y H:i" }}</div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Last Updated</small>
+                            <div>{{ assignment.updated_at|date:"M d, Y H:i" }}</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted">Total Days</small>
+                            <div>
+                                {% if assignment.end_date %}
+                                {{ assignment.end_date|date:"U" }}
+                                days
+                                {% else %}
+                                Unknown
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Status</small>
+                            <div>
+                                {% if assignment.is_active %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control-plaintext {
+        font-weight: 600;
+        padding: 0.5rem 0.75rem;
+        background-color: #f8f9fc;
+        border-radius: 0.35rem;
+    }
+</style>
+{% endblock %}

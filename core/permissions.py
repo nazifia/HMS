@@ -55,6 +55,7 @@ APP_PERMISSIONS = {
         'view_prescriptions': 'Can view prescription history',
         'manage_dispensary': 'Can manage dispensary operations',
         'transfer_medication': 'Can transfer medication between dispensaries',
+        'manage_pharmacists': 'Can manage pharmacist assignments to dispensary',
         'can_approve_purchases': 'Can approve purchase orders',
         'can_process_payments': 'Can process purchase payments',
     },

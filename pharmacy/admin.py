@@ -84,6 +84,39 @@ if DISPENSARY_AVAILABLE:
         search_fields = ('name', 'location')
         date_hierarchy = 'created_at'
 
+
+# Register Pharmacist Dispensary Assignment model
+try:
+    from .models import PharmacistDispensaryAssignment
+    
+    @admin.register(PharmacistDispensaryAssignment)
+    class PharmacistDispensaryAssignmentAdmin(admin.ModelAdmin):
+        list_display = ('pharmacist', 'dispensary', 'start_date', 'end_date', 'is_active', 'created_at')
+        list_filter = ('is_active', 'dispensary', 'start_date')
+        search_fields = ('pharmacist__username', 'pharmacist__first_name', 'pharmacist__last_name', 'dispensary__name')
+        date_hierarchy = 'created_at'
+        readonly_fields = ('created_at', 'updated_at')
+        
+        fieldsets = (
+            ('Assignment Information', {
+                'fields': ('pharmacist', 'dispensary', 'start_date', 'end_date', 'is_active')
+            }),
+            ('Notes', {
+                'fields': ('notes',)
+            }),
+            ('Timestamps', {
+                'fields': ('created_at', 'updated_at',),
+            }),
+        )
+        
+        def get_readonly_fields(self, request, obj=None):
+            if obj:  # editing existing object
+                return self.readonly_fields + ('pharmacist', 'dispensary')
+            return self.readonly_fields
+
+except ImportError:
+    pass
+
 if MEDICATION_INVENTORY_AVAILABLE:
     @admin.register(MedicationInventory)
     class MedicationInventoryAdmin(admin.ModelAdmin):

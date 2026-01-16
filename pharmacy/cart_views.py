@@ -684,6 +684,7 @@ def cancel_cart(request, cart_id):
 def cart_list(request):
     """
     List all prescription carts with filtering options.
+    Pharmacists only see carts for their assigned dispensary.
     """
     from django.core.paginator import Paginator
     from django.db.models import Q
@@ -701,7 +702,17 @@ def cart_list(request):
         'invoice'
     ).order_by('-created_at')
 
-    # Apply filters
+    # Apply dispensary filter based on user role
+    if not request.user.is_superuser:
+        pharmacist_dispensary_id = request.session.get('selected_dispensary_id')
+        if pharmacist_dispensary_id:
+            # Pharmacist: Only show carts for their assigned dispensary
+            carts = carts.filter(dispensary_id=pharmacist_dispensary_id)
+        # If no dispensary selected but user is pharmacist, show empty list
+        elif request.user.is_pharmacist():
+            carts = carts.none()
+
+    # Apply additional filters
     if status_filter:
         carts = carts.filter(status=status_filter)
 
@@ -722,10 +733,21 @@ def cart_list(request):
 
     # Get all dispensaries for filter dropdown
     dispensaries = Dispensary.objects.filter(is_active=True)
+    
+    # Get selected dispensary for display context
+    selected_dispensary = None
+    if not request.user.is_superuser:
+        selected_dispensary_id = request.session.get('selected_dispensary_id')
+        if selected_dispensary_id:
+            try:
+                selected_dispensary = Dispensary.objects.get(id=selected_dispensary_id)
+            except Dispensary.DoesNotExist:
+                selected_dispensary = None
 
     context = {
         'carts': page_obj,
         'dispensaries': dispensaries,
+        'selected_dispensary': selected_dispensary,
         'page_obj': page_obj,
         'is_paginated': page_obj.has_other_pages(),
         'page_title': 'Prescription Carts',

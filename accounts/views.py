@@ -164,6 +164,12 @@ def custom_login_view(request):
 
             if user is not None:
                 if user.is_active:
+                    # Clear any existing pharmacy dispensary session on new login
+                    if 'selected_dispensary_id' in request.session:
+                        del request.session['selected_dispensary_id']
+                    if 'selected_dispensary_name' in request.session:
+                        del request.session['selected_dispensary_name']
+                    
                     login(request, user)
 
                     # Success message based on context
@@ -209,6 +215,12 @@ def custom_logout_view(request):
 
         # Log to application logs instead of print to avoid Windows OSError
         logger.info(f"User {username} (ID: {user_id}) logged out. Reason: {logout_reason}")
+
+    # Clear pharmacy dispensary session before logout
+    if 'selected_dispensary_id' in request.session:
+        del request.session['selected_dispensary_id']
+    if 'selected_dispensary_name' in request.session:
+        del request.session['selected_dispensary_name']
 
     # Perform logout
     logout(request)

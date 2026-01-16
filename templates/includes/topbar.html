@@ -111,6 +111,23 @@
         {% endif %}
             <!-- End Custom: Staff Management -->
 
+        <!-- Pharmacy Dispensary Display -->
+        {% if request.session.selected_dispensary_id and user.is_authenticated and user.is_active %}
+        <li class="nav-item">
+            <span class="nav-link text-warning">
+                <i class="fas fa-clinic-medical fa-sm fa-fw mr-2"></i>
+                <span>
+                    {{ request.session.selected_dispensary_name|default:"Selected Dispensary" }}
+                </span>
+                {% if request.session.selected_dispensary_id %}
+                <a href="{% url 'pharmacy:select_dispensary' %}" class="ml-2 text-danger" title="Change dispensary">
+                    <i class="fas fa-exchange-alt"></i>
+                </a>
+                {% endif %}
+            </span>
+        </li>
+        {% endif %}
+
         <div class="topbar-divider d-none d-sm-block"></div>
 
         <!-- Nav Item - User Information -->

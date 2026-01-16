@@ -275,6 +275,66 @@ class PurchaseItem(models.Model):
             bulk_inventory.stock_quantity = self.quantity
             bulk_inventory.save()
 
+
+class PharmacistDispensaryAssignment(models.Model):
+    """Model to track which pharmacists are assigned to which dispensary"""
+    
+    pharmacist = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='dispensary_assignments',
+        help_text='The pharmacist user'
+    )
+    
+    dispensary = models.ForeignKey(
+        'Dispensary',
+        on_delete=models.CASCADE,
+        related_name='pharmacist_assignments',
+        help_text='The dispensary where the pharmacist is assigned'
+    )
+    
+    start_date = models.DateField(
+        help_text='Date when pharmacist was assigned to this dispensary'
+    )
+    
+    end_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text='Date when assignment ended (if the pharmacist stopped working here)'
+    )
+    
+    is_active = models.BooleanField(
+        default=True,
+        help_text='Whether this assignment is currently active'
+    )
+    
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Any additional notes about this assignment'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Pharmacist Dispensary Assignment'
+        verbose_name_plural = 'Pharmacist Dispensary Assignments'
+        unique_together = ['pharmacist', 'dispensary']
+        ordering = ['-start_date', 'dispensary__name']
+    
+    def __str__(self):
+        if self.end_date:
+            return f"{self.pharmacist.get_full_name()} - {self.dispensary.name} ({self.start_date} to {self.end_date})"
+        return f"{self.pharmacist.get_full_name()} - {self.dispensary.name} (since {self.start_date})"
+    
+    def save(self, *args, **kwargs):
+        # Automatically set is_active based on end_date
+        if self.end_date:
+            self.is_active = False
+        super().save(*args, **kwargs)
+
+
 # Inventory Models
 class Dispensary(models.Model):
     """Model representing a pharmacy dispensary location"""
@@ -285,6 +345,16 @@ class Dispensary(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    # Pharmacists assigned to this dispensary
+    pharmacists = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        through='PharmacistDispensaryAssignment',
+        through_fields=('dispensary', 'pharmacist'),
+        related_name='pharmacist_dispensaries',
+        blank=True,
+        help_text='Pharmacists assigned to this dispensary with their access permissions'
+    )
 
     def __str__(self):
         return self.name
@@ -292,6 +362,49 @@ class Dispensary(models.Model):
     class Meta:
         verbose_name_plural = "Dispensaries"
         ordering = ['name']
+        
+    def has_pharmacist(self, pharmacist):
+        """Check if a pharmacist is assigned to this dispensary"""
+        return self.pharmacists.filter(id=pharmacist.id).exists()
+    
+    def get_active_pharmacists(self):
+        """Get all active pharmacists assigned to this dispensary"""
+        return self.pharmacists.filter(is_active=True)
+    
+    def assign_pharmacist(self, pharmacist, start_date=None):
+        """Assign a pharmacist to this dispensary"""
+        from django.utils import timezone
+        if not start_date:
+            start_date = timezone.now().date()
+        
+        # Check if already assigned
+        if self.has_pharmacist(pharmacist):
+            return False, "Pharmacist already assigned to this dispensary"
+        
+        PharmacistDispensaryAssignment.objects.create(
+            pharmacist=pharmacist,
+            dispensary=self,
+            start_date=start_date
+        )
+        return True, "Pharmacist assigned successfully"
+    
+    def remove_pharmacist(self, pharmacist):
+        """Remove a pharmacist from this dispensary"""
+        if not self.has_pharmacist(pharmacist):
+            return False, "Pharmacist not found in this dispensary"
+        
+        assignment = PharmacistDispensaryAssignment.objects.filter(
+            pharmacist=pharmacist,
+            dispensary=self,
+            end_date__isnull=True
+        ).first()
+        
+        if assignment:
+            assignment.end_date = timezone.now().date()
+            assignment.save()
+            return True, "Pharmacist removed successfully"
+        
+        return False, "Could not find active assignment"
 
 class BulkStore(models.Model):
     """Model representing the central bulk storage facility"""

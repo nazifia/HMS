@@ -4,6 +4,7 @@ from . import views
 from . import cart_views
 from . import inter_dispensary_views
 from . import enhanced_transfer_views
+from . import assignment_views
 from .api import urls as api_urls
 from .api.inventory_views import check_medication_inventory
 
@@ -12,6 +13,18 @@ app_name = 'pharmacy'
 urlpatterns = [
     path('dashboard/', views.pharmacy_dashboard, name='dashboard'),
     path('dashboard/main/', views.pharmacy_dashboard, name='pharmacy_dashboard'),
+    path('select-dispensary/', views.select_dispensary, name='select_dispensary'),
+    path('set-dispensary/', views.set_dispensary, name='set_dispensary'),
+    
+    # Pharmacist-Dispensary Assignment Management
+    path('assignments/', assignment_views.manage_pharmacist_assignments, name='manage_pharmacist_assignments'),
+    path('assignments/add/', assignment_views.add_pharmacist_assignment, name='add_pharmacist_assignment'),
+    path('assignments/<int:assignment_id>/edit/', assignment_views.edit_pharmacist_assignment, name='edit_pharmacist_assignment'),
+    path('assignments/<int:assignment_id>/end/', assignment_views.end_pharmacist_assignment, name='end_pharmacist_assignment'),
+    path('assignments/<int:assignment_id>/delete/', assignment_views.delete_pharmacist_assignment, name='delete_pharmacist_assignment'),
+    path('assignments/list/', assignment_views.pharmacist_assignment_list, name='pharmacist_assignment_list'),
+    path('assignments/reports/', assignment_views.assignment_reports, name='assignment_reports'),
+    
     path('features/', views.features_showcase, name='features_showcase'),
     # Inventory Management
     path('inventory/', views.inventory_list, name='inventory'),
