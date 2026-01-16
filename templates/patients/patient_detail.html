@@ -105,7 +105,10 @@
             <div class="card border-0 shadow-sm mb-4">
                 <!-- Card Header -->
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white">
-                    <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
+                    <div>
+                        <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
+                        <span class="badge bg-primary mt-2">{{ patient.get_patient_type_display }}</span>
+                    </div>
                     {% if user|has_permission:'access_sensitive_data' %}
                         <span class="badge bg-info">Full Access</span>
                     {% endif %}

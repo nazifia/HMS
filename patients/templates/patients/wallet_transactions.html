@@ -40,7 +40,10 @@
         <div class="card shadow">
             <div class="card-body">
                 <h6 class="font-weight-bold text-primary">{{ patient.get_full_name }} ({{ patient.patient_id }})</h6>
-                <p class="mb-0">Wallet transaction history and search</p>
+                <p class="mb-0">
+                    <span class="badge bg-primary">{{ patient.get_patient_type_display }}</span>
+                    <span class="ms-2">Wallet transaction history and search</span>
+                </p>
             </div>
         </div>
     </div>
