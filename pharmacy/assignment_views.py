@@ -22,6 +22,7 @@ def manage_pharmacist_assignments(request):
     """
     Main view for managing pharmacist-dispensary assignments.
     Shows current assignments and form to add new ones.
+    Includes user session tracking for all users.
     """
     # Check if user has permission to manage pharmacist assignments
     if not (request.user.is_superuser or has_permission(request.user, 'pharmacy.manage_pharmacists')):
@@ -68,6 +69,53 @@ def manage_pharmacist_assignments(request):
         'dispensaries_with_pharmacists': PharmacistDispensaryAssignment.objects.values('dispensary').distinct().count(),
     }
 
+    # Get current user session data
+    current_user_session = {}
+    if request.user.is_authenticated:
+        pharmacy_session = request.session.get('pharmacy_session', {})
+        
+        current_user_session = {
+            'selected_dispensary_id': pharmacy_session.get('selected_dispensary_id'),
+            'selected_dispensary_name': pharmacy_session.get('selected_dispensary_name'),
+            'session_start': pharmacy_session.get('session_start'),
+            'last_activity': pharmacy_session.get('last_activity'),
+        }
+
+        # Get dispensary details if selected
+        if current_user_session['selected_dispensary_id']:
+            try:
+                dispensary = Dispensary.objects.get(id=current_user_session['selected_dispensary_id'])
+                current_user_session['selected_dispensary_name'] = dispensary.name
+                current_user_session['selected_dispensary_location'] = dispensary.location
+            except Dispensary.DoesNotExist:
+                current_user_session['selected_dispensary_id'] = None
+                current_user_session['selected_dispensary_name'] = None
+                current_user_session['selected_dispensary_location'] = None
+
+    # Get all active user sessions (for admin viewing)
+    all_user_sessions = []
+    if request.user.is_superuser:
+        # Get all users with active pharmacy sessions
+        from accounts.models import CustomUser
+        active_users = CustomUser.objects.filter(
+            is_active=True
+        ).order_by('-last_login')
+        
+        for user in active_users:
+            user_pharmacy_session = request.session.get('pharmacy_session', {})
+            if user_pharmacy_session.get('selected_dispensary_id'):
+                try:
+                    dispensary = Dispensary.objects.get(id=user_pharmacy_session['selected_dispensary_id'])
+                    all_user_sessions.append({
+                        'user': user,
+                        'dispensary': dispensary,
+                        'session_start': user_pharmacy_session.get('session_start'),
+                        'last_activity': user_pharmacy_session.get('last_activity'),
+                        'is_current_user': user.id == request.user.id,
+                    })
+                except Dispensary.DoesNotExist:
+                    pass
+
     context = {
         'assignments': assignments,
         'view_mode': view_mode,
@@ -77,6 +125,8 @@ def manage_pharmacist_assignments(request):
         'today': timezone.now().date(),
         'page_title': 'Pharmacist Assignment Management',
         'active_nav': 'pharmacy',
+        'current_user_session': current_user_session,
+        'all_user_sessions': all_user_sessions,
     }
 
     return render(request, 'pharmacy/manage_pharmacist_assignments.html', context)

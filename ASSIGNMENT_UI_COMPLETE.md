@@ -146,6 +146,20 @@ The system provides two main UI surfaces:
 5. Redirected to pharmacy dashboard
 6. Top bar now shows: "Main Pharmacy 🔄"
 
+### Example 5: View User Sessions in Assignment Management
+1. Navigate to: **Sidebar → Dispensaries → Pharmacist Assignments**
+2. View **"Your Current Session"** card:
+   - Shows your current dispensary selection
+   - Displays session start time
+   - Shows last activity timestamp
+   - View your active pharmacy session status
+3. As admin, view **"Active User Sessions"** table:
+   - See all users with active pharmacy sessions
+   - Track who is working in which dispensary
+   - Monitor session activity across the system
+   - Identify current user (highlighted in blue)
+   - View session start and last activity times
+
 ## Editing Existing Assignments
 
 ### Access Edit Form
@@ -208,6 +222,123 @@ Changes to:
 1. **Direct URL**: `http://localhost:8000/pharmacy/assignments/`
 2. **Sidebar**: Pharmacist Assignments
 3. **Reports Link**: Assignment Reports
+
+## User Session Management
+
+### Session Data Structure
+The system tracks user sessions in Django's session storage with the following key structure:
+
+**Session Key:** `pharmacy_session`
+
+**Session Data:**
+```python
+{
+    'selected_dispensary_id': 1,           # ID of selected dispensary
+    'selected_dispensary_name': 'Main Pharmacy',  # Name for display
+    'session_start': '2026-01-17 10:30:00',  # When session started
+    'last_activity': '2026-01-17 10:45:00',  # Last activity timestamp
+    'user_id': 123,                         # User ID (optional tracking)
+}
+```
+
+### Session Management Features
+
+#### 1. Current User Session Display
+**Location:** Assignment Management Page - "Your Current Session" card
+
+**Shows:**
+- Current dispensary name and location
+- Session start time
+- Last activity timestamp
+- Session status
+
+**Benefits:**
+- Users can see their active pharmacy session
+- Helps users identify which dispensary they're currently working in
+- Provides session visibility for multi-dispensary workflows
+
+#### 2. Admin Session Monitoring
+**Location:** Assignment Management Page - "Active User Sessions" table (Admin only)
+
+**Shows:**
+- All users with active pharmacy sessions
+- Each user's current dispensary selection
+- Session start times
+- Last activity timestamps
+- Visual indication of current user (highlighted blue)
+
+**Benefits:**
+- Admins can monitor who is working where in real-time
+- Helps with coordination across multiple dispensaries
+- Provides system-wide session visibility
+- Useful for troubleshooting and support
+
+#### 3. Session Tracking Integration
+**Session Updates:**
+- Sessions are updated when users select a dispensary
+- `last_activity` is refreshed on pharmacy page loads
+- Sessions are maintained until logout or timeout
+
+### Session Lifecycle
+
+**1. Session Creation:**
+- User logs into the system
+- Navigates to pharmacy module
+- Selects a dispensary (if required)
+- Session record is created in Django session
+
+**2. Session Maintenance:**
+- `last_activity` timestamp updates on each pharmacy page load
+- Session persists across page navigations
+- Maintained until logout or explicit session clearing
+
+**3. Session Termination:**
+- User logs out (session cleared automatically)
+- User manually changes dispensary selection
+- Admin can clear sessions via user management
+
+### Session vs Assignment Distinction
+
+**Important:** User sessions and pharmacist assignments are separate concepts:
+
+| Aspect | User Session | Pharmacist Assignment |
+|--------|--------------|----------------------|
+| **Purpose** | Tracks current working dispensary for any user | Official assignment of pharmacist to dispensary |
+| **Who can have** | Any authenticated user | Only users with pharmacist role |
+| **Duration** | Per login session | Can span multiple sessions/days |
+| **Admin view** | All active sessions visible to admin | All assignments visible to admin |
+| **Flexibility** | Can change dispensary during session | Requires formal assignment management |
+
+### Benefits of Session Tracking
+
+1. **For Pharmacists:**
+   - Quick visual confirmation of current dispensary
+   - Easy to see if they're properly oriented to a dispensary
+   - Session visibility for multi-dispensary pharmacists
+
+2. **For Admins:**
+   - Real-time tracking of staff locations
+   - Better resource allocation across dispensaries
+   - Support and troubleshooting capabilities
+   - Coordination for shift changes
+
+3. **For System Management:**
+   - Audit trail of user working locations
+   - Improved user experience
+   - Better multi-dispensary workflow support
+
+### Session Management Best Practices
+
+**For Users:**
+- Check your session card regularly
+- Confirm correct dispensary before starting work
+- Understand that sessions change when you select new dispensary
+
+**For Admins:**
+- Monitor sessions to understand workload distribution
+- Use session data to optimize staffing
+- Provide support if users show inappropriate dispensary selection
+- Consider session duration when troubleshooting issues
 
 ## Function Details
 
