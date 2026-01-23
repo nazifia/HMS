@@ -127,9 +127,17 @@ def create_appointment(request):
         # Ensure all patients are available for selection
         form.fields['patient'].queryset = Patient.objects.all()
 
+    # Get all doctors for the template
+    doctors = CustomUser.objects.filter(
+        is_active=True,
+        profile__role='doctor',
+        profile__specialization__isnull=False
+    ).order_by('last_name', 'first_name')
+
     context = {
         'form': form,
-        'title': 'Schedule New Appointment'
+        'title': 'Schedule New Appointment',
+        'doctors': doctors,
     }
 
     return render(request, 'appointments/appointment_form.html', context)
