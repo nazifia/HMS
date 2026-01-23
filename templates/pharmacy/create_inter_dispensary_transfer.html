@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        fetch(`/pharmacy/api/check_inventory/?medication_id=${medicationId}&dispensary_id=${fromDispensaryId}&quantity=${quantity}`)
+        fetch(`/pharmacy/api/check-inventory/?medication_id=${medicationId}&dispensary_id=${fromDispensaryId}&quantity=${quantity}`)
             .then(response => response.json())
             .then(data => {
                 if (data.error) {

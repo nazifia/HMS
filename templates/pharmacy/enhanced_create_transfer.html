@@ -327,13 +327,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const medicationId = medicationSelect.value;
             const fromDispensaryId = fromDispensarySelect.value;
             const quantity = quantityInput.value || 0;
-            
+
             if (!medicationId || !fromDispensaryId || quantity <= 0) {
                 inventoryInfo.innerHTML = '<p class="text-muted">Select medication, source dispensary, and quantity to check availability.</p>';
                 return;
             }
-            
-            fetch(`/pharmacy/api/check_inventory/?medication_id=${medicationId}&dispensary_id=${fromDispensaryId}&quantity=${quantity}`)
+
+            fetch(`/pharmacy/api/check-inventory/?medication_id=${medicationId}&dispensary_id=${fromDispensaryId}&quantity=${quantity}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
@@ -413,8 +413,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 statusDiv.innerHTML = '<span class="badge bg-secondary">Not checked</span>';
                 return;
             }
-            
-            fetch(`/pharmacy/api/check_inventory/?medication_id=${medicationId}&dispensary_id=${fromDispensaryId}&quantity=${quantity}`)
+
+            fetch(`/pharmacy/api/check-inventory/?medication_id=${medicationId}&dispensary_id=${fromDispensaryId}&quantity=${quantity}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {

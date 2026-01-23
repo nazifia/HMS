@@ -14,7 +14,7 @@ urlpatterns = [
 
     # Doctor schedule management
     path('schedules/', views.manage_doctor_schedule, name='manage_doctor_schedule'),
-    path('schedules/doctor/<int:doctor_id>/', views.manage_doctor_schedule, name='manage_doctor_schedule'),
+    path('schedules/doctor/<int:doctor_id>/', views.manage_doctor_schedule, name='manage_doctor_schedule_for_doctor'),
     path('schedules/<int:schedule_id>/delete/', views.delete_doctor_schedule, name='delete_doctor_schedule'),
 
     # Doctor leave management

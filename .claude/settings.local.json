@@ -2,7 +2,20 @@
   "permissions": {
     "allow": [
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(python manage.py show_urls:*)",
+      "Bash(for:*)",
+      "Bash(do if [ -f \"$file/urls.py\" ]:*)",
+      "Bash(then echo \"✓ $file/urls.py exists\")",
+      "Bash(else echo \"✗ $file/urls.py MISSING\")",
+      "Bash(fi:*)",
+      "Bash(done:*)",
+      "Bash(python manage.py check:*)",
+      "Bash(python -c:*)",
+      "Bash(python manage.py makemigrations:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(curl:*)"
     ]
   }
 }

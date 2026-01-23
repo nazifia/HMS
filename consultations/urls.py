@@ -34,7 +34,7 @@ urlpatterns = [
     path('referrals/<int:referral_id>/reject/', views.reject_referral, name='reject_referral'),
     path('referrals/<int:referral_id>/complete/', views.complete_referral, name='complete_referral'),
     path('referrals/create/', views.create_referral, name='create_referral'),
-    path('referrals/create/<int:patient_id>/', views.create_referral, name='create_referral'),
+    path('referrals/create/<int:patient_id>/', views.create_referral, name='create_referral_for_patient'),
     path('department/referrals/', views.department_referral_dashboard, name='department_referral_dashboard'),
 
     # Consulting Room management

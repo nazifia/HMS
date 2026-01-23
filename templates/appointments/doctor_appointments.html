@@ -134,7 +134,7 @@
                     <a href="{% url 'appointments:list' %}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left"></i> Back to Appointments
                     </a>
-                    <a href="{% url 'appointments:manage_doctor_schedule' doctor_id=doctor.id %}" class="btn btn-primary">
+                    <a href="{% url 'appointments:manage_doctor_schedule_for_doctor' doctor_id=doctor.id %}" class="btn btn-primary">
                         <i class="fas fa-calendar-alt"></i> Manage Schedule
                     </a>
                 </div>

@@ -26,7 +26,7 @@
                                             <div class="card-body text-center">
                                                 <h5 class="card-title">Dr. {{ doc.get_full_name }}</h5>
                                                 <p class="card-text text-muted">{{ doc.profile.specialization|default:"General" }}</p>
-                                                <a href="{% url 'appointments:manage_doctor_schedule' doctor_id=doc.id %}" class="btn btn-primary">
+                                                <a href="{% url 'appointments:manage_doctor_schedule_for_doctor' doctor_id=doc.id %}" class="btn btn-primary">
                                                     <i class="fas fa-calendar-alt"></i> Manage Schedule
                                                 </a>
                                             </div>

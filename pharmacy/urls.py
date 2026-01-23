@@ -209,7 +209,7 @@ urlpatterns = [
     path('transfers/reports/', enhanced_transfer_views.transfer_reports, name='transfer_reports'),
 
     # API endpoints for transfers
-    path('api/check_inventory/', enhanced_transfer_views.check_inventory_api, name='check_inventory_api'),
+    path('api/check-inventory/', enhanced_transfer_views.check_inventory_api, name='check_inventory_api'),
     path('api/inventory-check/', enhanced_transfer_views.get_medication_inventory_ajax, name='get_medication_inventory_ajax'),
 
     # Active store and dispensary transfer endpoints

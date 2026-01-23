@@ -26,7 +26,7 @@ Features:
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post" action="{% url 'consultations:create_referral' patient.id %}" id="referralForm">
+            <form method="post" action="{% url 'consultations:create_referral_for_patient' patient.id %}" id="referralForm">
                 {% csrf_token %}
                 <input type="hidden" name="patient" value="{{ patient.id }}">
                 
