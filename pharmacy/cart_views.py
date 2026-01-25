@@ -101,15 +101,37 @@ def view_cart(request, cart_id):
     Allows selecting dispensary and reviewing items before checkout.
     """
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
-    
+
+    # Validate pharmacist access to cart's dispensary
+    if not request.user.is_superuser and cart.dispensary:
+        if hasattr(request.user, 'can_access_dispensary'):
+            if not request.user.can_access_dispensary(cart.dispensary):
+                messages.error(
+                    request,
+                    f"You don't have permission to access this cart. "
+                    f"The cart is assigned to '{cart.dispensary.name}', "
+                    f"which you are not authorized to access."
+                )
+                return redirect('pharmacy:cart_list')
+
     # Auto-update cart status if invoice is paid (handles billing office payments)
     if cart.invoice and cart.invoice.status == 'paid' and cart.status in ['invoiced', 'active']:
         cart.status = 'paid'
         cart.save(update_fields=['status'])
         messages.info(request, '💳 Cart status updated to "Paid" - payment processed via billing office')
-    
-    # Get all dispensaries
-    dispensaries = Dispensary.objects.filter(is_active=True)
+
+    # Get all dispensaries - filter for pharmacists
+    if request.user.is_superuser:
+        dispensaries = Dispensary.objects.filter(is_active=True)
+    else:
+        if hasattr(request.user, 'get_all_assigned_dispensaries'):
+            assigned_dispensaries = request.user.get_all_assigned_dispensaries()
+            dispensaries = Dispensary.objects.filter(
+                id__in=[d.id for d in assigned_dispensaries],
+                is_active=True
+            )
+        else:
+            dispensaries = Dispensary.objects.none()
     
     # Calculate totals
     subtotal = cart.get_subtotal()
@@ -202,13 +224,25 @@ def update_cart_dispensary(request, cart_id):
     This triggers stock availability update for all items.
     """
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
-    
+
     if request.method == 'POST':
         dispensary_id = request.POST.get('dispensary_id')
-        
+
         if dispensary_id:
             try:
                 dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
+
+                # Validate pharmacist access to the selected dispensary
+                if not request.user.is_superuser:
+                    if hasattr(request.user, 'can_access_dispensary'):
+                        if not request.user.can_access_dispensary(dispensary):
+                            messages.error(
+                                request,
+                                f"You don't have permission to access '{dispensary.name}'. "
+                                f"Please select a dispensary you are assigned to."
+                            )
+                            return redirect('pharmacy:view_cart', cart_id=cart.id)
+
                 cart.dispensary = dispensary
                 cart.save()
                 
@@ -309,7 +343,18 @@ def generate_invoice_from_cart(request, cart_id):
     Only generates invoice for items with sufficient stock (selected in UI).
     """
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
-    
+
+    # Validate pharmacist access to cart's dispensary
+    if not request.user.is_superuser and cart.dispensary:
+        if hasattr(request.user, 'can_access_dispensary'):
+            if not request.user.can_access_dispensary(cart.dispensary):
+                messages.error(
+                    request,
+                    f"You don't have permission to generate invoice for '{cart.dispensary.name}'. "
+                    f"This cart is assigned to a dispensary you're not authorized to access."
+                )
+                return redirect('pharmacy:cart_list')
+
     # Check if invoice can be generated
     can_checkout, message = cart.can_generate_invoice()
     if not can_checkout:
@@ -368,6 +413,17 @@ def complete_dispensing_from_cart(request, cart_id):
     Supports partial dispensing - dispenses available items and keeps cart active for pending items.
     """
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
+
+    # Validate pharmacist access to cart's dispensary
+    if not request.user.is_superuser and cart.dispensary:
+        if hasattr(request.user, 'can_access_dispensary'):
+            if not request.user.can_access_dispensary(cart.dispensary):
+                messages.error(
+                    request,
+                    f"You don't have permission to dispense from '{cart.dispensary.name}'. "
+                    f"This cart is assigned to a dispensary you're not authorized to access."
+                )
+                return redirect('pharmacy:cart_list')
 
     # Check if dispensing can be completed
     can_complete, message = cart.can_complete_dispensing()
@@ -670,6 +726,17 @@ def cancel_cart(request, cart_id):
     """Cancel a cart"""
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
 
+    # Validate pharmacist access to cart's dispensary
+    if not request.user.is_superuser and cart.dispensary:
+        if hasattr(request.user, 'can_access_dispensary'):
+            if not request.user.can_access_dispensary(cart.dispensary):
+                messages.error(
+                    request,
+                    f"You don't have permission to cancel this cart. "
+                    f"The cart is assigned to '{cart.dispensary.name}' which you're not authorized to access."
+                )
+                return redirect('pharmacy:cart_list')
+
     if cart.status in ['completed', 'paid']:
         messages.error(request, 'Cannot cancel cart that is paid or completed')
         return redirect('pharmacy:view_cart', cart_id=cart.id)
@@ -764,6 +831,17 @@ def cart_receipt(request, cart_id):
     """
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
 
+    # Validate pharmacist access to cart's dispensary
+    if not request.user.is_superuser and cart.dispensary:
+        if hasattr(request.user, 'can_access_dispensary'):
+            if not request.user.can_access_dispensary(cart.dispensary):
+                messages.error(
+                    request,
+                    f"You don't have permission to view receipt for '{cart.dispensary.name}'. "
+                    f"This cart is assigned to a dispensary you're not authorized to access."
+                )
+                return redirect('pharmacy:cart_list')
+
     # Get hospital information (you may need to adjust this based on your settings)
     from django.conf import settings
 
@@ -787,6 +865,17 @@ def substitute_cart_item(request, item_id):
     """
     cart_item = get_object_or_404(PrescriptionCartItem, id=item_id)
     cart = cart_item.cart
+
+    # Validate pharmacist access to cart's dispensary
+    if not request.user.is_superuser and cart.dispensary:
+        if hasattr(request.user, 'can_access_dispensary'):
+            if not request.user.can_access_dispensary(cart.dispensary):
+                messages.error(
+                    request,
+                    f"You don't have permission to substitute items for '{cart.dispensary.name}'. "
+                    f"This cart is assigned to a dispensary you're not authorized to access."
+                )
+                return redirect('pharmacy:cart_list')
 
     # Check if substitution is allowed
     can_sub, message = cart_item.can_substitute()
@@ -857,6 +946,17 @@ def remove_substitution(request, item_id):
     """
     cart_item = get_object_or_404(PrescriptionCartItem, id=item_id)
     cart = cart_item.cart
+
+    # Validate pharmacist access to cart's dispensary
+    if not request.user.is_superuser and cart.dispensary:
+        if hasattr(request.user, 'can_access_dispensary'):
+            if not request.user.can_access_dispensary(cart.dispensary):
+                messages.error(
+                    request,
+                    f"You don't have permission to remove substitutions for '{cart.dispensary.name}'. "
+                    f"This cart is assigned to a dispensary you're not authorized to access."
+                )
+                return redirect('pharmacy:cart_list')
 
     if not cart_item.is_substituted():
         messages.warning(request, 'This item is not substituted')
