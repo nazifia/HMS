@@ -23,12 +23,15 @@ class Role(models.Model):
         verbose_name=_('permissions'),
         blank=True,
     )
-    users = models.ManyToManyField(
-        'CustomUser',
-        related_name='customuser_roles',
-        blank=True,
-        help_text=_('Users assigned to this role')
-    )
+    # The following field 'users' is redundant because CustomUser already has a 'roles' ManyToMany field.
+    # It also causes a related_name conflict. Removing it in code, but keeping it commented for reference.
+    # users = models.ManyToManyField(
+    #     'CustomUser',
+    #     related_name='role_users_redundant',
+    #     blank=True,
+    #     help_text=_('Users assigned to this role')
+    # )
+
 
     def __str__(self):
         return self.name
@@ -175,13 +178,30 @@ class CustomUser(AbstractUser):
             return CustomUserProfile.objects.filter(user=self).first()
 
     def is_pharmacist(self):
-        """Check if user has pharmacist role"""
+        """Check if user has pharmacist role or permissions"""
         try:
             if self.is_superuser:
                 return True
+            
+            # Check for ANY pharmacy-related view permission
+            pharmacy_perms = [
+                'pharmacy.view_medication',
+                'pharmacy.view_prescription',
+                'pharmacy.view_dispensary',
+                'pharmacy.view_activestore',
+                'pharmacy.add_prescription'
+            ]
+            for perm in pharmacy_perms:
+                if self.has_perm(perm):
+                    return True
+                
+            # Check profile role (legacy)
             if hasattr(self, 'profile') and self.profile:
-                return self.profile.role == 'pharmacist'
-            return self.roles.filter(name='pharmacist').exists()
+                if self.profile.role and self.profile.role.lower() == 'pharmacist':
+                    return True
+            
+            # Check roles (new system) - case insensitive
+            return self.roles.filter(name__iexact='pharmacist').exists()
         except:
             return False
 

@@ -306,7 +306,8 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 AUTHENTICATION_BACKENDS = [
     'accounts.backends.AdminBackend',           # First: Handle admin/username logins
     'accounts.backends.PhoneNumberBackend',     # Second: Handle phone number logins
-    'django.contrib.auth.backends.ModelBackend',  # Third: Django's default backend as fallback
+    'accounts.backends.RolePermissionBackend',  # Third: Role-based permissions
+    'django.contrib.auth.backends.ModelBackend',  # Fourth: Django's default backend as fallback
 ]
 
 # Login URLs - these remain the same for your application

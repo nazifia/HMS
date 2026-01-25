@@ -205,12 +205,14 @@ def get_user_roles(user):
     
     roles = []
     # Many-to-many roles
-    for role_relation in getattr(user, 'roles', []).all():
-        roles.append(role_relation.name)
-        parent = role_relation.parent
-        while parent:
-            roles.append(parent.name)
-            parent = parent.parent
+    user_roles_manager = getattr(user, 'roles', None)
+    if user_roles_manager and hasattr(user_roles_manager, 'all'):
+        for role_relation in user_roles_manager.all():
+            roles.append(role_relation.name)
+            parent = getattr(role_relation, 'parent', None)
+            while parent:
+                roles.append(parent.name)
+                parent = parent.parent
     # Legacy profile role
     profile_role = getattr(getattr(user, 'profile', None), 'role', None)
     if profile_role and profile_role not in roles:
@@ -227,15 +229,23 @@ def user_has_permission(user, permission):
     if user.is_superuser:
         return True
     
-    # Check user's roles for the permission
+    # Check standard Django permissions (which now includes our RolePermissionBackend)
+    # Most permissions in ROLE_PERMISSIONS are like 'patients.view'
+    # Django standard is 'patients.view_patient'
+    # We try both or handle the mapping
+    if user.has_perm(permission):
+        return True
+        
+    # Fallback to check if the permission name is in our hardcoded role system
     user_roles = get_user_roles(user)
     for role_name in user_roles:
         if role_name in ROLE_PERMISSIONS:
             if permission in ROLE_PERMISSIONS[role_name]['permissions']:
                 return True
     
-    # Check direct user permissions
-    if user.user_permissions.filter(codename=permission.split('.')[-1]).exists():
+    # Check direct user permissions by codename (last part of 'app.codename')
+    codename = permission.split('.')[-1]
+    if user.user_permissions.filter(codename=codename).exists():
         return True
     
     return False

@@ -37,24 +37,46 @@ class PharmacyAccessMiddleware:
                 return self.get_response(request)
 
             # Check if user has admin or pharmacist role
-            user_roles = list(request.user.roles.values_list('name', flat=True))
+            # Normalize role names to lowercase for case-insensitive comparison
+            user_roles = [r.lower() for r in request.user.roles.values_list('name', flat=True)]
 
             # Also check profile role for backward compatibility
             if hasattr(request.user, 'profile') and request.user.profile:
                 profile_role = request.user.profile.role
-                if profile_role and profile_role not in user_roles:
-                    user_roles.append(profile_role)
+                if profile_role and profile_role.lower() not in user_roles:
+                    user_roles.append(profile_role.lower())
 
-            # Check if user is an admin (site-wide admin)
-            is_admin = 'admin' in user_roles
+            # Check permissions to determine access level
+            # This allows role-based permissions (assigned via templates) to work even if role name doesn't match exactly
+            # We check for a broad set of permissions that indicate the user belongs in this module
+            has_pharmacy_admin_perm = (
+                request.user.has_perm('pharmacy.change_dispensary') or 
+                request.user.has_perm('pharmacy.delete_medication') or
+                request.user.has_perm('pharmacy.add_medication') or
+                request.user.has_perm('pharmacy.manage_pharmacists')
+            )
+            has_pharmacist_perm = (
+                request.user.has_perm('pharmacy.view_medication') or 
+                request.user.has_perm('pharmacy.add_prescription') or
+                request.user.has_perm('pharmacy.view_prescription') or
+                request.user.has_perm('pharmacy.dispense_medication') or
+                request.user.has_perm('pharmacy.view_dispensary')
+            )
+
+            # Check if user is an admin (site-wide admin or has specific pharmacy admin permissions)
+            is_admin = 'admin' in user_roles or has_pharmacy_admin_perm
             
             # Check if user is a pharmacist
-            # Use the new is_pharmacist() method if available, otherwise check roles
+            # Use the new is_pharmacist() method if available, otherwise check roles/permissions
             is_pharmacist = False
             if hasattr(request.user, 'is_pharmacist'):
-                is_pharmacist = request.user.is_pharmacist()
+                # Note: is_pharmacist() might check hardcoded role names, so we supplement it with permission checks
+                is_pharmacist = request.user.is_pharmacist() or has_pharmacist_perm
             else:
-                is_pharmacist = 'pharmacist' in user_roles
+                is_pharmacist = 'pharmacist' in user_roles or has_pharmacist_perm
+
+            # DEBUG LOGGING
+            # print(f"DEBUG: User={request.user.username}, Roles={user_roles}, is_admin={is_admin}, is_pharmacist={is_pharmacist}, has_pharmacist_perm={has_pharmacist_perm}")
 
             # Allow admins and superusers full access
             if is_admin:

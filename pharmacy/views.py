@@ -4659,13 +4659,21 @@ def process_outstanding_wallet_payment(request, prescription_id):
 
     # Check if user has permission to process wallet payments
     # Only billing staff and pharmacists should be able to process wallet payments
-    user_roles = list(request.user.roles.values_list('name', flat=True))
+    user_roles = [r.lower() for r in request.user.roles.values_list('name', flat=True)]
     profile_role = getattr(getattr(request.user, 'profile', None), 'role', None)
-    if profile_role and profile_role not in user_roles:
-        user_roles.append(profile_role)
-    if not any(role in ['billing_staff', 'pharmacist', 'admin'] for role in user_roles):
+    if profile_role and profile_role.lower() not in user_roles:
+        user_roles.append(profile_role.lower())
+    
+    can_process_wallet = (
+        any(role in ['billing_staff', 'pharmacist', 'admin'] for role in user_roles) or
+        request.user.has_perm('billing.process_payment') or
+        request.user.has_perm('patients.wallet_manage')
+    )
+    
+    if not can_process_wallet:
         messages.error(request, 'You do not have permission to process wallet payments.')
         return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+
 
     if request.method == 'POST':
         try:
@@ -5443,10 +5451,15 @@ def user_has_dispensary_edit_permission(user, dispensary=None):
     if user.is_superuser:
         return True
 
+    # Check for specific permission
+    if user.has_perm('pharmacy.change_dispensary') or user.has_perm('pharmacy.add_dispensary'):
+        return True
+
     # Check if user has admin role
-    user_roles = user.roles.values_list('name', flat=True) if hasattr(user, 'roles') else []
+    user_roles = [r.lower() for r in user.roles.values_list('name', flat=True)] if hasattr(user, 'roles') else []
     if 'admin' in user_roles:
         return True
+
 
     # If checking specific dispensary, check if user is the manager
     if dispensary and dispensary.manager == user:

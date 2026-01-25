@@ -88,20 +88,28 @@ class AdminBackend(ModelBackend):
         return super().has_module_perms(user_obj, app_label)
 
 
-class FallbackModelBackend(ModelBackend):
+class RolePermissionBackend(ModelBackend):
     """
-    Fallback backend that handles any remaining authentication scenarios
+    Backend that adds role-based permissions to the user.
     """
-    def authenticate(self, request, username=None, password=None, **kwargs):
-        if username is None or password is None:
-            return None
+    def get_all_permissions(self, user_obj, obj=None):
+        if not user_obj.is_active or user_obj.is_anonymous or obj is not None:
+            return set()
+        
+        # Use the standard Django _perm_cache if possible, or our own
+        if not hasattr(user_obj, '_role_perm_cache'):
+            perms = set()
+            # Add permissions from roles
+            if hasattr(user_obj, 'roles'):
+                # Use .all() and select_related for efficiency
+                for role in user_obj.roles.all().prefetch_related('permissions', 'permissions__content_type'):
+                    for permission in role.get_all_permissions():
+                        perms.add(f"{permission.content_type.app_label}.{permission.codename}")
+            user_obj._role_perm_cache = perms
+        return user_obj._role_perm_cache
 
-        try:
-            User = get_user_model()
-            user = User.objects.get(username=username)
-            if user.check_password(password) and user.is_active:
-                return user
-        except Exception:
-            return None
+    def has_perm(self, user_obj, perm, obj=None):
+        if not user_obj.is_active:
+            return False
+        return perm in self.get_all_permissions(user_obj, obj)
 
-        return None
