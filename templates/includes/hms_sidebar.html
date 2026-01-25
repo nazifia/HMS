@@ -75,7 +75,7 @@
         </div>
 
         <!-- Nav Item - Consultations -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' or user|has_role:'receptionist' %}
+        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' or user|has_role:'receptionist' or user|has_role:'health_record_officer' %}
         <li class="nav-item {% if '/consultations/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/consultations/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseConsultations" aria-expanded="{% if '/consultations/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseConsultations">
                 <i class="fas fa-fw fa-comments text-white"></i>
@@ -206,7 +206,7 @@
                     {% endif %}
 
                     <!-- Admin and receptionist schedule management -->
-                    {% if user.is_superuser or user|has_role:'admin' or user|has_role:'receptionist' %}
+                    {% if user.is_superuser or user|has_role:'admin' or user|has_role:'receptionist' or user|has_role:'health_record_officer' %}
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Schedule Management:</h6>
                     <a class="collapse-item {% if '/appointments/schedules/' in request.path %}active{% endif %}" href="{% url 'appointments:manage_doctor_schedule' %}">Doctor Schedules</a>
@@ -218,7 +218,7 @@
         {% endif %}
 
         <!-- Nav Item - Consulting Rooms and Waiting List (HMS Custom Permission: access_sensitive_data) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'receptionist' %}
+        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'receptionist' or user|has_role:'health_record_officer' %}
         <li class="nav-item {% if '/consultations/consulting-rooms/' in request.path or '/consultations/waiting-list/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/consultations/consulting-rooms/' in request.path and not '/consultations/waiting-list/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseConsultingRooms" aria-expanded="{% if '/consultations/consulting-rooms/' in request.path or '/consultations/waiting-list/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseConsultingRooms">
                 <i class="fas fa-fw fa-door-open text-white"></i>

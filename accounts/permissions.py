@@ -91,10 +91,11 @@ ROLE_PERMISSIONS = {
     },
     
     'receptionist': {
-        'description': 'Front Desk Receptionist - Patient registration and appointments',
+        'description': 'Front Desk Receptionist & Health Records - Patient registration, appointments, and records',
         'permissions': [
-            'patients.view', 'patients.create', 'patients.edit',
-            'medical.view',
+            'patients.view', 'patients.create', 'patients.edit', 'patients.delete',
+            'medical.view', 'medical.create', 'medical.edit',
+            'vitals.view', 'vitals.create', 'vitals.edit',
             'consultations.view', 'consultations.create',
             'appointments.view', 'appointments.create', 'appointments.edit',
             'reports.view',
@@ -132,11 +133,13 @@ ROLE_PERMISSIONS = {
     },
     
     'health_record_officer': {
-        'description': 'Health Record Officer - Medical records management',
+        'description': 'Health Record Officer & Receptionist - Medical records and front desk operations',
         'permissions': [
             'patients.view', 'patients.create', 'patients.edit', 'patients.delete',
             'medical.view', 'medical.create', 'medical.edit',
             'vitals.view', 'vitals.create', 'vitals.edit',
+            'consultations.view', 'consultations.create',
+            'appointments.view', 'appointments.create', 'appointments.edit',
             'reports.view',
         ]
     },

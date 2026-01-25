@@ -119,7 +119,7 @@ def receptionist_required(view_func):
         def receptionist_only_view(request):
             ...
     """
-    return role_required(['receptionist', 'admin'])(view_func)
+    return role_required(['receptionist', 'health_record_officer', 'admin'])(view_func)
 
 def health_record_officer_required(view_func):
     """
@@ -130,7 +130,7 @@ def health_record_officer_required(view_func):
         def health_record_officer_only_view(request):
             ...
     """
-    return role_required(['health_record_officer', 'admin'])(view_func)
+    return role_required(['health_record_officer', 'receptionist', 'admin'])(view_func)
 
 def api_role_required(allowed_roles):
     """

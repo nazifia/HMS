@@ -22,10 +22,10 @@ def hms_user_roles(request):
             'user_is_admin': 'admin' in user_roles,
             'user_is_superuser': request.user.is_superuser,
             'user_has_medical_roles': any(role in user_roles for role in ['doctor', 'nurse']),
-            'user_has_management_roles': any(role in user_roles for role in ['admin', 'accountant', 'health_record_officer']),
+            'user_has_management_roles': any(role in user_roles for role in ['admin', 'accountant', 'health_record_officer', 'receptionist']),
             'user_can_manage_patients': any(role in user_roles for role in ['admin', 'receptionist', 'health_record_officer']),
             'user_can_manage_pharmacy': any(role in user_roles for role in ['admin', 'pharmacist']),
-            'user_can_manage_billing': any(role in user_roles for role in ['admin', 'accountant']),
+            'user_can_manage_billing': any(role in user_roles for role in ['admin', 'accountant', 'receptionist', 'health_record_officer']),
             'user_can_manage_laboratory': any(role in user_roles for role in ['admin', 'lab_technician']),
         }
     

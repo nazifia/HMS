@@ -39,7 +39,7 @@
                     <a href="{% url 'patients:wallet_dashboard' wallet.patient.id %}" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="View Wallet">
                         <i class="fas fa-eye"></i> View
                     </a>
-                    {% if user.is_superuser or user|has_role:'admin' or user|has_role:'accountant' or user|has_role:'receptionist' %}
+                    {% if user.is_superuser or user|has_role:'admin' or user|has_role:'accountant' or user|has_role:'receptionist' or user|has_role:'health_record_officer' %}
                         <a href="{% url 'patients:add_funds_to_wallet' wallet.patient.id %}" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Add Funds">
                             <i class="fas fa-plus"></i> Add Funds
                         </a>

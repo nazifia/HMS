@@ -279,7 +279,7 @@ class Command(BaseCommand):
                 'is_system': True,
                 'display_order': 40,
                 'permission_codenames': ['view_invoices'],
-                'role_names': ['accountant', 'receptionist', 'admin'],
+                'role_names': ['accountant', 'receptionist', 'health_record_officer', 'admin'],
             },
             {
                 'element_id': 'btn_create_invoice',
@@ -292,7 +292,7 @@ class Command(BaseCommand):
                 'is_system': True,
                 'display_order': 1,
                 'permission_codenames': ['create_invoice'],
-                'role_names': ['accountant', 'receptionist', 'admin'],
+                'role_names': ['accountant', 'receptionist', 'health_record_officer', 'admin'],
             },
             {
                 'element_id': 'btn_process_payment',

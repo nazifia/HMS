@@ -124,12 +124,12 @@ class RoleBasedAccessMiddleware:
 
             # Billing-specific URLs
             ('billing/', ['accountant', 'admin']),
-            ('billing/create/', ['accountant', 'receptionist', 'admin']),
-            ('billing/payments/', ['accountant', 'receptionist', 'admin']),
+            ('billing/create/', ['accountant', 'receptionist', 'health_record_officer', 'admin']),
+            ('billing/payments/', ['accountant', 'receptionist', 'health_record_officer', 'admin']),
 
             # Inpatient-specific URLs
             ('inpatient/', ['nurse', 'doctor', 'admin']),
-            ('inpatient/admission/', ['doctor', 'receptionist', 'admin']),
+            ('inpatient/admission/', ['doctor', 'receptionist', 'health_record_officer', 'admin']),
             ('inpatient/discharge/', ['doctor', 'admin']),
         ]
 
