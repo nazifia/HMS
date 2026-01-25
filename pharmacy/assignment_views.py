@@ -36,27 +36,41 @@ def manage_pharmacist_assignments(request):
     assignments = PharmacistDispensaryAssignment.objects.select_related(
         'pharmacist', 'pharmacist__profile', 'dispensary'
     ).order_by('-created_at')
-
+    
     if view_mode == 'active':
         assignments = assignments.filter(is_active=True)
+    
+    # Get all pharmacists for comprehensive view
+    all_pharmacists = None
+    if view_mode == 'all':
+        all_pharmacists = CustomUser.objects.filter(
+            is_active=True
+        ).filter(
+            Q(roles__name__iexact='pharmacist') |  # New system
+            Q(profile__role__iexact='pharmacist')   # Legacy system
+        ).order_by('first_name', 'last_name').select_related('profile').distinct()
 
     # Get available pharmacists (users with pharmacist role)
     available_pharmacists = CustomUser.objects.filter(
-        is_active=True,
-        profile__role='pharmacist'
+        is_active=True
+    ).filter(
+        Q(roles__name__iexact='pharmacist') |  # New system
+        Q(profile__role__iexact='pharmacist')   # Legacy system
     ).exclude(
         # Exclude users who already have an active assignment
         # (to prevent duplicates)
         dispensary_assignments__is_active=True,
-    ).order_by('first_name', 'last_name')
+    ).order_by('first_name', 'last_name').distinct()
 
     # If there are no available pharmacists, get all pharmacists regardless of assignment
     # (show assignments anyway, but don't filter for duplicates)
     if not available_pharmacists.exists():
         available_pharmacists = CustomUser.objects.filter(
-            is_active=True,
-            profile__role='pharmacist'
-        ).order_by('first_name', 'last_name')
+            is_active=True
+        ).filter(
+            Q(roles__name__iexact='pharmacist') |  # New system
+            Q(profile__role__iexact='pharmacist')   # Legacy system
+        ).order_by('first_name', 'last_name').distinct()
 
     # Get active dispensaries
     active_dispensaries = Dispensary.objects.filter(is_active=True).order_by('name')
@@ -96,7 +110,6 @@ def manage_pharmacist_assignments(request):
     all_user_sessions = []
     if request.user.is_superuser:
         # Get all users with active pharmacy sessions
-        from accounts.models import CustomUser
         active_users = CustomUser.objects.filter(
             is_active=True
         ).order_by('-last_login')
@@ -121,6 +134,7 @@ def manage_pharmacist_assignments(request):
         'view_mode': view_mode,
         'available_pharmacists': available_pharmacists,
         'active_dispensaries': active_dispensaries,
+        'all_pharmacists': all_pharmacists,
         'stats': stats,
         'today': timezone.now().date(),
         'page_title': 'Pharmacist Assignment Management',
@@ -162,8 +176,12 @@ def add_pharmacist_assignment(request):
         pharmacist = get_object_or_404(CustomUser, id=pharmacist_id)
         dispensary = get_object_or_404(Dispensary, id=dispensary_id)
 
-        # Verify pharmacist has required role
-        if pharmacist.profile.role != 'pharmacist':
+        # Verify pharmacist has required role (check both new and legacy role systems)
+        has_pharmacist_role = (
+            pharmacist.roles.filter(name__iexact='pharmacist').exists() or  # New system
+            (pharmacist.profile.role and pharmacist.profile.role.lower() == 'pharmacist')  # Legacy system
+        )
+        if not has_pharmacist_role:
             messages.error(request, f"{pharmacist.get_full_name()} does not have pharmacist role.")
             return redirect('pharmacy:manage_pharmacist_assignments')
 
