@@ -252,7 +252,7 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             {% if user|has_permission:'refer_patient' or user.is_superuser %}
-                                <a href="{% url 'consultations:create_referral' patient.id %}" class="btn btn-danger btn-block">
+                                <a href="{% url 'consultations:create_referral_for_patient' patient.id %}" class="btn btn-danger btn-block">
                                     <i class="fas fa-user-md"></i> Refer Patient
                                 </a>
                             {% else %}

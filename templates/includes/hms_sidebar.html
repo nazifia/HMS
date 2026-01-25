@@ -204,6 +204,14 @@
                     {% if user|has_role:'doctor' %}
                     <a class="collapse-item {% if request.path == '/appointments/doctor/' %}active{% endif %}" href="{% url 'appointments:doctor_appointments' user.id %}">My Appointments</a>
                     {% endif %}
+
+                    <!-- Admin and receptionist schedule management -->
+                    {% if user.is_superuser or user|has_role:'admin' or user|has_role:'receptionist' %}
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Schedule Management:</h6>
+                    <a class="collapse-item {% if '/appointments/schedules/' in request.path %}active{% endif %}" href="{% url 'appointments:manage_doctor_schedule' %}">Doctor Schedules</a>
+                    <a class="collapse-item {% if '/appointments/leaves/' in request.path %}active{% endif %}" href="{% url 'appointments:manage_doctor_leaves' %}">Doctor Leaves</a>
+                    {% endif %}
                 </div>
             </div>
         </li>

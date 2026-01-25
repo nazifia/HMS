@@ -120,13 +120,7 @@
                                                 <td>{{ leave.start_date|date:"M d, Y" }}</td>
                                                 <td>{{ leave.end_date|date:"M d, Y" }}</td>
                                                 <td>
-                                                    {% with days=leave.end_date|timeuntil:leave.start_date %}
-                                                        {% if days %}
-                                                            {{ days }}
-                                                        {% else %}
-                                                            1 day
-                                                        {% endif %}
-                                                    {% endwith %}
+                                                    {{ leave.duration }} day{{ leave.duration|pluralize }}
                                                 </td>
                                                 <td>{{ leave.reason|truncatechars:30 }}</td>
                                                 <td>

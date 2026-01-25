@@ -104,5 +104,10 @@ class DoctorLeave(models.Model):
     def __str__(self):
         return f"{self.doctor.get_full_name()} - {self.start_date} to {self.end_date}"
 
+    @property
+    def duration(self):
+        delta = self.end_date - self.start_date
+        return delta.days + 1
+
     class Meta:
         ordering = ['-start_date']

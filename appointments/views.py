@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from accounts.models import CustomUser
 from django.contrib import messages
@@ -348,6 +349,17 @@ def doctor_appointments(request, doctor_id):
 @login_required
 def manage_doctor_schedule(request, doctor_id=None):
     """View for managing doctor schedules"""
+    edit_schedule_id = request.GET.get('edit_schedule_id')
+    edit_schedule = None
+    
+    if edit_schedule_id:
+        edit_schedule = get_object_or_404(DoctorSchedule, id=edit_schedule_id)
+        # If we're editing, ensure doctor_id matches the schedule's doctor
+        if not doctor_id:
+            doctor_id = edit_schedule.doctor.id
+            url = reverse('appointments:manage_doctor_schedule_for_doctor', kwargs={'doctor_id': doctor_id})
+            return redirect(f'{url}?edit_schedule_id={edit_schedule_id}')
+    
     if doctor_id:
         doctor = get_object_or_404(CustomUser, id=doctor_id)
         schedules = DoctorSchedule.objects.filter(doctor=doctor).order_by('weekday')
@@ -356,29 +368,38 @@ def manage_doctor_schedule(request, doctor_id=None):
         schedules = None
 
     if request.method == 'POST':
-        form = DoctorScheduleForm(request.POST)
+        # If editing, use the instance
+        if edit_schedule:
+            form = DoctorScheduleForm(request.POST, instance=edit_schedule)
+        else:
+            form = DoctorScheduleForm(request.POST)
+            
         if form.is_valid():
-            # Check if schedule already exists for this doctor and weekday
-            doctor = form.cleaned_data['doctor']
-            weekday = form.cleaned_data['weekday']
-            existing_schedule = DoctorSchedule.objects.filter(doctor=doctor, weekday=weekday).first()
+            # Check for duplicates only if creating new or changing weekday
+            if not edit_schedule:
+                doctor_obj = form.cleaned_data['doctor']
+                weekday = form.cleaned_data['weekday']
+                existing_schedule = DoctorSchedule.objects.filter(doctor=doctor_obj, weekday=weekday).first()
+                
+                if existing_schedule:
+                    # Logic to update existing if user didn't click edit but selected same day
+                    existing_schedule.start_time = form.cleaned_data['start_time']
+                    existing_schedule.end_time = form.cleaned_data['end_time']
+                    existing_schedule.is_available = form.cleaned_data['is_available']
+                    existing_schedule.save()
+                    messages.success(request, f'Schedule updated for {doctor_obj.get_full_name()} on {existing_schedule.get_weekday_display()}')
+                    return redirect('appointments:manage_doctor_schedule_for_doctor', doctor_id=doctor_obj.id)
 
-            if existing_schedule:
-                # Update existing schedule
-                existing_schedule.start_time = form.cleaned_data['start_time']
-                existing_schedule.end_time = form.cleaned_data['end_time']
-                existing_schedule.is_available = form.cleaned_data['is_available']
-                existing_schedule.save()
-                messages.success(request, f'Schedule updated for {doctor.get_full_name()} on {existing_schedule.get_weekday_display()}')
-            else:
-                # Create new schedule
-                form.save()
-                messages.success(request, f'Schedule created for {doctor.get_full_name()} on {form.instance.get_weekday_display()}')
-
-            return redirect('appointments:manage_doctor_schedule', doctor_id=doctor.id)
+            form.save()
+            msg_action = "updated" if edit_schedule else "created"
+            messages.success(request, f'Schedule {msg_action} for {form.cleaned_data["doctor"].get_full_name()} on {form.instance.get_weekday_display()}')
+            return redirect('appointments:manage_doctor_schedule_for_doctor', doctor_id=form.cleaned_data['doctor'].id)
     else:
-        initial_data = {'doctor': doctor} if doctor else {}
-        form = DoctorScheduleForm(initial=initial_data)
+        if edit_schedule:
+            form = DoctorScheduleForm(instance=edit_schedule)
+        else:
+            initial_data = {'doctor': doctor} if doctor else {}
+            form = DoctorScheduleForm(initial=initial_data)
 
     # Get all doctors for the dropdown
     doctors = CustomUser.objects.filter(is_active=True, profile__role='doctor').order_by('last_name')
@@ -388,6 +409,7 @@ def manage_doctor_schedule(request, doctor_id=None):
         'doctor': doctor,
         'schedules': schedules,
         'doctors': doctors,
+        'edit_schedule': edit_schedule,
         'title': f'Manage Schedule: {doctor.get_full_name()}' if doctor else 'Manage Doctor Schedules'
     }
 
@@ -402,7 +424,7 @@ def delete_doctor_schedule(request, schedule_id):
     if request.method == 'POST':
         schedule.delete()
         messages.success(request, f'Schedule for {schedule.get_weekday_display()} has been deleted.')
-        return redirect('appointments:manage_doctor_schedule', doctor_id=doctor_id)
+        return redirect('appointments:manage_doctor_schedule_for_doctor', doctor_id=doctor_id)
 
     context = {
         'schedule': schedule
