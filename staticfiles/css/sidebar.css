@@ -835,3 +835,227 @@ body.sidebar-toggled #content-wrapper {
     flex: 1 1 auto;
 }
 
+/* ============================================
+   DROPDOWN TOGGLE STYLES
+   ============================================ */
+
+/* Dropdown arrow rotation icon */
+.sidebar .nav-link .rotate-icon,
+#accordionSidebar .nav-link .rotate-icon {
+    display: inline-block;
+    transition: transform 0.3s ease;
+    margin-left: auto;
+}
+
+/* Arrow rotation when dropdown is open */
+.sidebar .nav-link.expanded .rotate-icon,
+#accordionSidebar .nav-link.expanded .rotate-icon,
+.sidebar .nav-link[aria-expanded="true"] .rotate-icon,
+#accordionSidebar .nav-link[aria-expanded="true"] .rotate-icon {
+    transform: rotate(90deg);
+}
+
+/* Add arrow icon to dropdown nav-links if not using ::after */
+.sidebar .nav-link[data-bs-toggle="collapse"]:not(:has(::after)),
+#accordionSidebar .nav-link[data-bs-toggle="collapse"]:not(:has(::after)) {
+    position: relative;
+}
+
+.sidebar .nav-link[data-bs-toggle="collapse"]:not(:has(span.rotate-icon))::after,
+#accordionSidebar .nav-link[data-bs-toggle="collapse"]:not(:has(span.rotate-icon))::after {
+    display: inline-block;
+    width: 1.25rem;
+    text-align: center;
+    float: right;
+    vertical-align: 0;
+    border: 0;
+    font-weight: 900;
+    content: '\f105';
+    font-family: 'Font Awesome 5 Free';
+    color: rgba(255, 255, 255, 0.6);
+    transition: transform 0.3s ease;
+}
+
+.sidebar .nav-link[data-bs-toggle="collapse"]:not(:has(span.rotate-icon)).collapsed::after,
+#accordionSidebar .nav-link[data-bs-toggle="collapse"]:not(:has(span.rotate-icon)).collapsed::after {
+    content: '\f105';
+}
+
+.sidebar .nav-link[data-bs-toggle="collapse"]:not(:has(span.rotate-icon))[aria-expanded="true"]::after,
+#accordionSidebar .nav-link[data-bs-toggle="has(span.rotate-icon))[aria-expcollapse"]:not(:anded="true"]::after {
+    transform: rotate(90deg);
+}
+
+/* Dropdown collapse styles with smooth animations */
+.sidebar .nav-item .collapse,
+#accordionSidebar .nav-item .collapse {
+    transition: all 0.3s ease;
+}
+
+.sidebar .nav-item .collapsing,
+#accordionSidebar .nav-item .collapsing {
+    transition: height 0.3s ease;
+}
+
+/* Dropdown content styles */
+.sidebar .nav-item .collapse .collapse-inner,
+#accordionSidebar .nav-item .collapse .collapse-inner {
+    border-radius: 0.35rem;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    margin: 0.5rem 0;
+    padding: 0.5rem 0;
+}
+
+.sidebar .nav-item .collapse .collapse-inner .collapse-header,
+#accordionSidebar .nav-item .collapse .collapse-inner .collapse-header {
+    color: #b7b9cc;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 0.5rem 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.sidebar .nav-item .collapse .collapse-inner .collapse-item,
+#accordionSidebar .nav-item .collapse .collapse-inner .collapse-item {
+    display: block;
+    padding: 0.5rem 1rem;
+    color: #3a3b45;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    border-radius: 0.25rem;
+    margin: 0.125rem 0.5rem;
+}
+
+.sidebar .nav-item .collapse .collapse-inner .collapse-item:hover,
+#accordionSidebar .nav-item .collapse .collapse-inner .collapse-item:hover {
+    background-color: #eaecf4;
+    color: #4e73df;
+}
+
+.sidebar .nav-item .collapse .collapse-inner .collapse-item.active,
+#accordionSidebar .nav-item .collapse .collapse-inner .collapse-item.active {
+    background-color: #4e73df;
+    color: #fff;
+}
+
+.sidebar .nav-item .collapse .collapse-inner .collapse-divider,
+#accordionSidebar .nav-item .collapse .collapse-inner .collapse-divider {
+    height: 0;
+    margin: 0.5rem 0;
+    overflow: hidden;
+    border-top: 1px solid #e3e6f0;
+}
+
+/* Active state for nav items with open dropdowns */
+.sidebar .nav-item.active > .nav-link[data-bs-toggle="collapse"],
+#accordionSidebar .nav-item.active > .nav-link[data-bs-toggle="collapse"] {
+    background: rgba(0, 191, 255, 0.1);
+    border-left-color: #00bfff;
+}
+
+/* Hover state improvements */
+.sidebar .nav-link:hover,
+#accordionSidebar .nav-link:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar .nav-link[data-bs-toggle="collapse"]:hover,
+#accordionSidebar .nav-link[data-bs-toggle="collapse"]:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Focus state for accessibility */
+.sidebar .nav-link:focus,
+#accordionSidebar .nav-link:focus {
+    outline: 2px solid #00bfff;
+    outline-offset: 2px;
+}
+
+.sidebar .collapse-item:focus,
+#accordionSidebar .collapse-item:focus {
+    outline: 2px solid #00bfff;
+    outline-offset: 2px;
+    background-color: #eaecf4;
+}
+
+/* Smooth scroll behavior within sidebar */
+#sidebar-container,
+.sidebar {
+    scroll-behavior: smooth;
+}
+
+/* Animation for dropdown opening */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.sidebar .collapse.show,
+#accordionSidebar .collapse.show {
+    animation: slideDown 0.3s ease forwards;
+}
+
+/* Mobile dropdown improvements */
+@media (max-width: 767.98px) {
+    .sidebar .nav-link[data-bs-toggle="collapse"]::after,
+    #accordionSidebar .nav-link[data-bs-toggle="collapse"]::after {
+        font-size: 1rem;
+    }
+    
+    .sidebar .nav-item .collapse .collapse-inner,
+    #accordionSidebar .nav-item .collapse .collapse-inner {
+        box-shadow: none;
+        border-radius: 0;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .sidebar .nav-item .collapse .collapse-item,
+    #accordionSidebar .nav-item .collapse .collapse-item {
+        padding: 0.75rem 1rem 0.75rem 2rem;
+        font-size: 0.95rem;
+    }
+}
+
+/* High contrast mode for dropdowns */
+@media (prefers-contrast: high) {
+    .sidebar .nav-link[data-bs-toggle="collapse"]::after,
+    #accordionSidebar .nav-link[data-bs-toggle="collapse"]::after {
+        color: #fff;
+    }
+    
+    .sidebar .nav-item .collapse .collapse-item,
+    #accordionSidebar .nav-item .collapse .collapse-item {
+        border: 1px solid #fff;
+    }
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    .sidebar .nav-link[data-bs-toggle="collapse"]::after,
+    #accordionSidebar .nav-link[data-bs-toggle="collapse"]::after,
+    .sidebar .nav-link .rotate-icon,
+    #accordionSidebar .nav-link .rotate-icon,
+    .sidebar .nav-item .collapse,
+    #accordionSidebar .nav-item .collapse,
+    .sidebar .nav-item .collapsing,
+    #accordionSidebar .nav-item .collapsing {
+        transition: none;
+    }
+    
+    .sidebar .collapse.show,
+    #accordionSidebar .collapse.show {
+        animation: none;
+    }
+}
+
+ 
+ 

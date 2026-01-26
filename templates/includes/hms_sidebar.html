@@ -278,8 +278,8 @@
                     <!-- Enhanced Transfer System -->
                     <a class="collapse-item {% if '/pharmacy/transfers/' in request.path %}active{% endif %}" href="{% url 'pharmacy:enhanced_transfer_dashboard' %}">Enhanced Transfers</a>
 
-                    <!-- Inventory management for pharmacists and admins -->
-                    {% if user.is_superuser or user|has_role:'admin' or user|has_role:'pharmacist' %}
+                    <!-- Inventory management for pharmacists, admins, and users with inventory permissions -->
+                    {% if user.is_superuser or user|has_role:'admin' or user|has_role:'pharmacist' or user|has_permission:'manage_inventory' %}
                     <a class="collapse-item {% if request.path == '/pharmacy/inventory/' %}active{% endif %}" href="{% url 'pharmacy:inventory' %}">Inventory</a>
                     <a class="collapse-item {% if '/pharmacy/alerts/' in request.path %}active{% endif %}" href="{% url 'pharmacy:alerts' %}">Stock Alerts</a>
 
@@ -312,8 +312,8 @@
         </li>
         {% endif %}
 
-        <!-- Nav Item - Dispensary Management (Available to pharmacists and admins) -->
-        {% if user|has_any_permission:'manage_dispensary,transfer_medication,manage_pharmacists' %}
+        <!-- Nav Item - Dispensary Management (Available to pharmacists, admins, and users with inventory permissions) -->
+        {% if user|has_any_permission:'manage_dispensary,transfer_medication,manage_pharmacists,manage_inventory' %}
         <li class="nav-item {% if '/pharmacy/dispensaries/' in request.path or '/pharmacy/assignments/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/pharmacy/dispensaries/' in request.path and not '/pharmacy/assignments/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDispensary" aria-expanded="{% if '/pharmacy/dispensaries/' in request.path or '/pharmacy/assignments/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseDispensary">
                 <i class="fas fa-fw fa-store-alt text-white"></i>
