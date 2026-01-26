@@ -1757,6 +1757,13 @@ def active_store_detail(request, dispensary_id):
         active_store=active_store
     ).select_related('medication', 'active_store')
 
+    # Handle search query
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        inventory_items = inventory_items.filter(
+            medication__name__icontains=search_query
+        )
+
     # Calculate total stock value
     from decimal import Decimal
     total_stock_value = sum(
@@ -1967,6 +1974,7 @@ def active_store_detail(request, dispensary_id):
         'dispensary_transfer_form': dispensary_transfer_form,
         'pending_dispensary_transfers': pending_dispensary_transfers,
         'pending_medication_transfers': pending_medication_transfers,
+        'search_query': search_query,
         'page_title': f'Active Store - {active_store.name}',
         'active_nav': 'pharmacy',
     }
