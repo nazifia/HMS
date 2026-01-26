@@ -9,7 +9,7 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.urls import reverse_lazy
 
-from .models import InterDispensaryTransfer, MedicationInventory, Dispensary, Medication
+from .models import InterDispensaryTransfer, ActiveStoreInventory, Dispensary, Medication
 from .inter_dispensary_forms import (
     InterDispensaryTransferForm,
     InterDispensaryTransferSearchForm,
@@ -79,21 +79,30 @@ def inter_dispensary_transfer_detail(request, transfer_id):
     )
     
     # Get related inventory information
-    try:
-        source_inventory = MedicationInventory.objects.get(
-            medication=transfer.medication,
-            dispensary=transfer.from_dispensary
-        )
-    except MedicationInventory.DoesNotExist:
-        source_inventory = None
-    
-    try:
-        dest_inventory = MedicationInventory.objects.get(
-            medication=transfer.medication,
-            dispensary=transfer.to_dispensary
-        )
-    except MedicationInventory.DoesNotExist:
-        dest_inventory = None
+    source_inventory = None
+    dest_inventory = None
+
+    # Get source inventory
+    source_active_store = getattr(transfer.from_dispensary, 'active_store', None)
+    if source_active_store:
+        try:
+            source_inventory = ActiveStoreInventory.objects.get(
+                medication=transfer.medication,
+                active_store=source_active_store
+            )
+        except ActiveStoreInventory.DoesNotExist:
+            source_inventory = None
+
+    # Get destination inventory
+    dest_active_store = getattr(transfer.to_dispensary, 'active_store', None)
+    if dest_active_store:
+        try:
+            dest_inventory = ActiveStoreInventory.objects.get(
+                medication=transfer.medication,
+                active_store=dest_active_store
+            )
+        except ActiveStoreInventory.DoesNotExist:
+            dest_inventory = None
     
     context = {
         'transfer': transfer,
@@ -280,29 +289,40 @@ def check_medication_inventory(request):
         medication = Medication.objects.get(id=medication_id)
         dispensary = Dispensary.objects.get(id=dispensary_id)
         quantity = int(quantity)
-        
+
+        # Get the active store associated with the dispensary
+        active_store = getattr(dispensary, 'active_store', None)
+
+        if not active_store:
+            return JsonResponse({
+                'available': 0,
+                'required': quantity,
+                'feasible': False,
+                'message': f'No active store found for {dispensary.name}'
+            })
+
         try:
-            inventory = MedicationInventory.objects.get(
+            inventory = ActiveStoreInventory.objects.get(
                 medication=medication,
-                dispensary=dispensary
+                active_store=active_store
             )
             available = inventory.stock_quantity
             feasible = available >= quantity
-            
+
             return JsonResponse({
                 'available': available,
                 'required': quantity,
                 'feasible': feasible,
                 'message': 'Sufficient stock available' if feasible else f'Insufficient stock. Available: {available}, Required: {quantity}'
             })
-        except MedicationInventory.DoesNotExist:
+        except ActiveStoreInventory.DoesNotExist:
             return JsonResponse({
                 'available': 0,
                 'required': quantity,
                 'feasible': False,
                 'message': f'No inventory found for {medication.name} in {dispensary.name}'
             })
-            
+
     except (Medication.DoesNotExist, Dispensary.DoesNotExist, ValueError):
         return JsonResponse({'error': 'Invalid parameters'}, status=400)
 
@@ -370,30 +390,39 @@ class TransferDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         transfer = self.get_object()
-        
+
         # Get inventory information
-        try:
-            source_inventory = MedicationInventory.objects.get(
-                medication=transfer.medication,
-                dispensary=transfer.from_dispensary
-            )
-        except MedicationInventory.DoesNotExist:
-            source_inventory = None
-        
-        try:
-            dest_inventory = MedicationInventory.objects.get(
-                medication=transfer.medication,
-                dispensary=transfer.to_dispensary
-            )
-        except MedicationInventory.DoesNotExist:
-            dest_inventory = None
-        
+        source_inventory = None
+        dest_inventory = None
+
+        # Get source inventory
+        source_active_store = getattr(transfer.from_dispensary, 'active_store', None)
+        if source_active_store:
+            try:
+                source_inventory = ActiveStoreInventory.objects.get(
+                    medication=transfer.medication,
+                    active_store=source_active_store
+                )
+            except ActiveStoreInventory.DoesNotExist:
+                source_inventory = None
+
+        # Get destination inventory
+        dest_active_store = getattr(transfer.to_dispensary, 'active_store', None)
+        if dest_active_store:
+            try:
+                dest_inventory = ActiveStoreInventory.objects.get(
+                    medication=transfer.medication,
+                    active_store=dest_active_store
+                )
+            except ActiveStoreInventory.DoesNotExist:
+                dest_inventory = None
+
         context.update({
             'source_inventory': source_inventory,
             'dest_inventory': dest_inventory,
             'title': f'Transfer Details - #{transfer.id}'
         })
-        
+
         return context
 
 

@@ -156,7 +156,7 @@ def pharmacy_dashboard(request):
     # Apply dispensary filter for pharmacist statistics
     pharmacy_filter = Q()
     if pharmacist_dispensary:
-        pharmacy_filter = Q(dispensary=pharmacist_dispensary)
+        pharmacy_filter = Q(active_store__dispensary=pharmacist_dispensary)
 
     # Get low stock items (filtered for pharmacist if assigned)
     low_stock_items = ActiveStoreInventory.objects.filter(
@@ -4260,54 +4260,6 @@ def dispense_prescription(request, prescription_id):
         'nhia_percentage': '90%' if pricing_breakdown['is_nhia_patient'] else '0%',
     }
     return render(request, 'pharmacy/dispense_prescription.html', context)
-
-
-@login_required
-def dispense_prescription_original(request, prescription_id):
-    """View for dispensing a prescription (original)"""
-    prescription = get_object_or_404(Prescription, id=prescription_id)
-
-    # Get all dispensaries
-    dispensaries = Dispensary.objects.filter(is_active=True)
-
-    # Check inventory for each dispensary
-    inventory_info = []
-    for dispensary in dispensaries:
-        dispensary_info = {
-            'dispensary': dispensary,
-            'medications': []
-        }
-
-        # Check inventory for each medication in prescription
-        for item in prescription.items.all():
-            try:
-                inventory = MedicationInventory.objects.get(
-                    medication=item.medication,
-                    dispensary=dispensary
-                )
-                dispensary_info['medications'].append({
-                    'medication': item.medication,
-                    'in_inventory': True,
-                    'stock_quantity': inventory.stock_quantity,
-                    'reorder_level': inventory.reorder_level
-                })
-            except MedicationInventory.DoesNotExist:
-                dispensary_info['medications'].append({
-                    'medication': item.medication,
-                    'in_inventory': False,
-                    'stock_quantity': 0,
-                    'reorder_level': 0
-                })
-
-        inventory_info.append(dispensary_info)
-
-    context = {
-        'prescription': prescription,
-        'inventory_info': inventory_info,
-        'page_title': f'Debug Dispense Prescription - #{prescription.id}'
-    }
-
-    return render(request, 'pharmacy/debug_dispense_prescription.html', context)
 
 
 @login_required

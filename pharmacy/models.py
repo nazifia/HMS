@@ -1864,20 +1864,26 @@ class InterDispensaryTransfer(models.Model):
         """Check if sufficient stock exists in source dispensary"""
         if self.is_self_transfer():
             return False, "Cannot transfer to same dispensary"
-        
+
+        # Get the active store associated with the dispensary
+        active_store = getattr(self.from_dispensary, 'active_store', None)
+
+        if not active_store:
+            return False, f"No active store found for {self.from_dispensary.name}"
+
         # Check if medication inventory exists and has sufficient quantity
-        inventory = MedicationInventory.objects.filter(
+        inventory = ActiveStoreInventory.objects.filter(
             medication=self.medication,
-            dispensary=self.from_dispensary,
+            active_store=active_store,
             stock_quantity__gte=self.quantity
         ).first()
-        
+
         if not inventory:
             return False, f"Insufficient stock. Available: 0, Required: {self.quantity}"
-        
+
         if inventory.stock_quantity < self.quantity:
             return False, f"Insufficient stock. Available: {inventory.stock_quantity}, Required: {self.quantity}"
-        
+
         return True, "Transfer can be executed"
 
     def approve_transfer(self, approving_user):
@@ -1990,15 +1996,22 @@ class InterDispensaryTransfer(models.Model):
     @staticmethod
     def check_transfer_feasibility(medication, from_dispensary, quantity):
         """Check if a transfer is feasible"""
-        inventory = MedicationInventory.objects.filter(
+        # Get the active store associated with the dispensary
+        active_store = getattr(from_dispensary, 'active_store', None)
+
+        if not active_store:
+            return False, f"No active store found for {from_dispensary.name}"
+
+        # Check inventory in the active store
+        inventory = ActiveStoreInventory.objects.filter(
             medication=medication,
-            dispensary=from_dispensary
+            active_store=active_store
         ).first()
-        
+
         if not inventory:
             return False, f"No inventory found for {medication.name} in {from_dispensary.name}"
-        
+
         if inventory.stock_quantity < quantity:
             return False, f"Insufficient stock. Available: {inventory.stock_quantity}, Required: {quantity}"
-        
+
         return True, "Transfer is feasible"

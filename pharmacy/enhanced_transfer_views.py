@@ -15,8 +15,8 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 
 from .models import (
-    InterDispensaryTransfer, Medication, Dispensary, 
-    MedicationInventory, DispensaryTransfer, MedicationTransfer
+    InterDispensaryTransfer, Medication, Dispensary,
+    ActiveStoreInventory, DispensaryTransfer, MedicationTransfer
 )
 from .enhanced_transfer_forms import (
     EnhancedMedicationTransferForm,
@@ -47,11 +47,11 @@ def enhanced_transfer_dashboard(request):
     ).order_by('-transferred_at')[:10]
     
     # Get dispensary inventory status
-    dispensary_inventory = MedicationInventory.objects.select_related(
-        'medication', 'dispensary'
+    dispensary_inventory = ActiveStoreInventory.objects.select_related(
+        'medication', 'active_store'
     ).filter(
         stock_quantity__lte=F('reorder_level')
-    ).order_by('dispensary', 'medication')
+    ).order_by('active_store', 'medication')
     
     # Get bulk transfer status
     pending_bulk_transfers = MedicationTransfer.objects.filter(
@@ -244,21 +244,30 @@ def enhanced_transfer_detail(request, transfer_id):
     )
     
     # Get related inventory information
-    try:
-        source_inventory = MedicationInventory.objects.get(
-            medication=transfer.medication,
-            dispensary=transfer.from_dispensary
-        )
-    except MedicationInventory.DoesNotExist:
-        source_inventory = None
-    
-    try:
-        dest_inventory = MedicationInventory.objects.get(
-            medication=transfer.medication,
-            dispensary=transfer.to_dispensary
-        )
-    except MedicationInventory.DoesNotExist:
-        dest_inventory = None
+    source_inventory = None
+    dest_inventory = None
+
+    # Get source inventory
+    source_active_store = getattr(transfer.from_dispensary, 'active_store', None)
+    if source_active_store:
+        try:
+            source_inventory = ActiveStoreInventory.objects.get(
+                medication=transfer.medication,
+                active_store=source_active_store
+            )
+        except ActiveStoreInventory.DoesNotExist:
+            source_inventory = None
+
+    # Get destination inventory
+    dest_active_store = getattr(transfer.to_dispensary, 'active_store', None)
+    if dest_active_store:
+        try:
+            dest_inventory = ActiveStoreInventory.objects.get(
+                medication=transfer.medication,
+                active_store=dest_active_store
+            )
+        except ActiveStoreInventory.DoesNotExist:
+            dest_inventory = None
     
     # Get related transfers (same medication, recent)
     related_transfers = InterDispensaryTransfer.objects.filter(
@@ -396,24 +405,30 @@ def check_inventory_api(request):
     try:
         medication = Medication.objects.get(id=medication_id)
         dispensary = Dispensary.objects.get(id=dispensary_id)
-        
-        inventory, created = MedicationInventory.objects.get_or_create(
+
+        # Get the active store associated with the dispensary
+        active_store = getattr(dispensary, 'active_store', None)
+
+        if not active_store:
+            return JsonResponse({'error': f'No active store found for {dispensary.name}'}, status=400)
+
+        inventory, created = ActiveStoreInventory.objects.get_or_create(
             medication=medication,
-            dispensary=dispensary,
+            active_store=active_store,
             defaults={'stock_quantity': 0, 'reorder_level': 10}
         )
-        
+
         available = inventory.stock_quantity
         required = int(quantity)
         feasible = available >= required
-        
+
         return JsonResponse({
             'available': available,
             'required': required,
             'feasible': feasible,
             'message': f'Available: {available}, Required: {required} - {"✓ Feasible" if feasible else "✗ Insufficient stock"}'
         })
-        
+
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
@@ -430,19 +445,39 @@ def get_medication_inventory_ajax(request):
         return JsonResponse({'error': 'Missing required parameters'}, status=400)
     
     try:
-        inventory = MedicationInventory.objects.select_related('medication').get(
+        dispensary = Dispensary.objects.get(id=dispensary_id)
+
+        # Get the active store associated with the dispensary
+        active_store = getattr(dispensary, 'active_store', None)
+
+        if not active_store:
+            return JsonResponse({
+                'stock_quantity': 0,
+                'reorder_level': 0,
+                'medication_name': 'Unknown',
+                'available': 0
+            })
+
+        inventory = ActiveStoreInventory.objects.select_related('medication').get(
             medication_id=medication_id,
-            dispensary_id=dispensary_id
+            active_store=active_store
         )
-        
+
         return JsonResponse({
             'stock_quantity': inventory.stock_quantity,
             'reorder_level': inventory.reorder_level,
             'medication_name': inventory.medication.name,
             'available': inventory.stock_quantity
         })
-        
-    except MedicationInventory.DoesNotExist:
+
+    except ActiveStoreInventory.DoesNotExist:
+        return JsonResponse({
+            'stock_quantity': 0,
+            'reorder_level': 0,
+            'medication_name': 'Unknown',
+            'available': 0
+        })
+    except Dispensary.DoesNotExist:
         return JsonResponse({
             'stock_quantity': 0,
             'reorder_level': 0,

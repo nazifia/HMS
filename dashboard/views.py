@@ -6,7 +6,7 @@ from datetime import timedelta
 
 from patients.models import Patient
 from appointments.models import Appointment
-from pharmacy.models import Medication, Prescription, MedicationCategory, MedicationInventory
+from pharmacy.models import Medication, Prescription, MedicationCategory, ActiveStoreInventory
 from laboratory.models import TestRequest, TestResult, Test, TestCategory
 from billing.models import Invoice, Payment, Service, ServiceCategory
 from consultations.models import Consultation, ConsultingRoom, Referral, WaitingList
@@ -81,10 +81,10 @@ def dashboard(request):
     ).select_related('patient', 'doctor').order_by('-request_date')[:5]
 
     # Get low stock medications (already optimized with select_related)
-    low_stock_medications = MedicationInventory.objects.filter(
+    low_stock_medications = ActiveStoreInventory.objects.filter(
         stock_quantity__lte=F('reorder_level'),
         stock_quantity__gt=0
-    ).select_related('medication', 'dispensary').order_by('stock_quantity')[:5]
+    ).select_related('medication', 'active_store').order_by('stock_quantity')[:5]
 
     # Optimize: Get recent invoices with select_related
     recent_invoices = Invoice.objects.select_related('patient').order_by('-created_at')[:5]
@@ -249,7 +249,7 @@ def system_overview(request):
         total=CountFunc('id'),
         active=CountFunc('id', filter=Q(is_active=True))
     )
-    inventory_stats = MedicationInventory.objects.aggregate(
+    inventory_stats = ActiveStoreInventory.objects.aggregate(
         low_stock=CountFunc('id', filter=Q(stock_quantity__lte=F('reorder_level'), stock_quantity__gt=0)),
         out_of_stock=CountFunc('id', filter=Q(stock_quantity=0))
     )
