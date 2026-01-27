@@ -1215,6 +1215,32 @@ class DispensaryTransfer(models.Model):
         """Check if transfer can be executed"""
         return self.status in ['pending', 'in_transit'] and self.approved_by is not None
 
+    def can_deliver(self):
+        """Check if transfer can be marked as delivered"""
+        return self.status == 'in_transit'
+
+    def deliver_transfer(self, user):
+        """Mark the transfer as delivered"""
+        if not self.can_deliver():
+            raise ValueError("Transfer cannot be marked as delivered in current status")
+
+        self.status = 'delivered'
+        self.transferred_by = user
+        self.transferred_at = timezone.now()
+        self.save()
+
+        # Create audit log for the delivery
+        try:
+            from core.models import AuditLog
+            AuditLog.objects.create(
+                user=user,
+                action="DISPENSARY_TRANSFER_DELIVERED",
+                details=f"Marked transfer #{self.id} as delivered: {self.quantity} units of {self.medication.name} to {self.to_dispensary.name}"
+            )
+        except ImportError:
+            # AuditLog not available, skip logging
+            pass
+
     def execute_transfer(self, user):
         """Execute the transfer by moving stock from active store to dispensary using FIFO"""
         if not self.can_execute():

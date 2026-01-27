@@ -2198,6 +2198,12 @@ def active_store_dispensary_transfers(request, dispensary_id):
         status='pending'
     ).select_related('medication', 'to_dispensary', 'requested_by').order_by('-created_at')
 
+    # Get in-transit transfers
+    in_transit_transfers = DispensaryTransfer.objects.filter(
+        from_active_store=active_store,
+        status='in_transit'
+    ).select_related('medication', 'to_dispensary', 'requested_by', 'approved_by').order_by('-approved_at')[:10]
+
     # Get completed transfers
     completed_transfers = DispensaryTransfer.objects.filter(
         from_active_store=active_store,
@@ -2215,6 +2221,7 @@ def active_store_dispensary_transfers(request, dispensary_id):
         'dispensary': dispensary,
         'dispensary_transfer_form': dispensary_transfer_form,
         'pending_dispensary_transfers': pending_dispensary_transfers,
+        'in_transit_transfers': in_transit_transfers,
         'completed_transfers': completed_transfers,
         'pending_count': pending_count,
         'in_transit_count': in_transit_count,
@@ -2839,6 +2846,30 @@ def cancel_dispensary_transfer(request, transfer_id):
             messages.error(request, 'Transfer not found.')
         except Exception as e:
             messages.error(request, f'Error cancelling transfer: {str(e)}')
+
+    return redirect('pharmacy:active_store_detail', dispensary_id=DispensaryTransfer.objects.get(id=transfer_id).from_active_store.dispensary.id)
+
+
+@login_required
+def deliver_dispensary_transfer(request, transfer_id):
+    """Mark a dispensary transfer as delivered"""
+    if request.method == 'POST':
+        try:
+            transfer = DispensaryTransfer.objects.get(id=transfer_id)
+
+            if not transfer.can_deliver():
+                messages.error(request, 'This transfer cannot be marked as delivered.')
+                return redirect('pharmacy:active_store_detail', dispensary_id=transfer.from_active_store.dispensary.id)
+
+            # Mark as delivered
+            transfer.deliver_transfer(request.user)
+
+            messages.success(request, f'Dispensary transfer #{transfer.id} marked as delivered successfully.')
+
+        except DispensaryTransfer.DoesNotExist:
+            messages.error(request, 'Transfer not found.')
+        except Exception as e:
+            messages.error(request, f'Error marking transfer as delivered: {str(e)}')
 
     return redirect('pharmacy:active_store_detail', dispensary_id=DispensaryTransfer.objects.get(id=transfer_id).from_active_store.dispensary.id)
 

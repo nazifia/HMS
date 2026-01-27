@@ -355,6 +355,118 @@
                 </div>
             </div>
 
+            <!-- In-Transit Transfers -->
+            <div class="transfer-card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-truck me-2"></i>
+                        In-Transit Transfers ({{ in_transit_transfers.count }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if in_transit_transfers %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Transfer ID</th>
+                                    <th>Medication</th>
+                                    <th>Quantity</th>
+                                    <th>To Dispensary</th>
+                                    <th>Approved By</th>
+                                    <th>Approved At</th>
+                                    <th>Notes</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transfer in in_transit_transfers %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-info">#{{ transfer.id }}</span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ transfer.medication.name }}</strong>
+                                        {% if transfer.medication.generic_name %}
+                                            <br><small class="text-muted">{{ transfer.medication.generic_name }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ transfer.quantity }} units</span>
+                                    </td>
+                                    <td>{{ transfer.to_dispensary.name }}</td>
+                                    <td>{{ transfer.approved_by.get_full_name|default:transfer.approved_by.username }}</td>
+                                    <td>{{ transfer.approved_at|date:"M d, Y H:i" }}</td>
+                                    <td>
+                                        {% if transfer.notes %}
+                                            <small>{{ transfer.notes|truncatewords:10 }}</small>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-success"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deliverTransferModal{{ transfer.id }}">
+                                            <i class="fas fa-check"></i> Mark Delivered
+                                        </button>
+
+                                        <!-- Deliver Transfer Modal -->
+                                        <div class="modal fade" id="deliverTransferModal{{ transfer.id }}" tabindex="-1">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header bg-success text-white">
+                                                        <h5 class="modal-title">
+                                                            <i class="fas fa-check-circle me-2"></i>
+                                                            Mark Transfer #{{ transfer.id }} as Delivered
+                                                        </h5>
+                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <form method="post" action="{% url 'pharmacy:deliver_dispensary_transfer' transfer.id %}" class="deliver-transfer-form">
+                                                        {% csrf_token %}
+                                                        <div class="modal-body">
+                                                            <div class="alert alert-info">
+                                                                <h6><i class="fas fa-info-circle me-1"></i>Transfer Details</h6>
+                                                                <ul class="mb-0">
+                                                                    <li><strong>Medication:</strong> {{ transfer.medication.name }}</li>
+                                                                    <li><strong>Quantity:</strong> {{ transfer.quantity }} units</li>
+                                                                    <li><strong>From:</strong> {{ transfer.from_active_store.name }}</li>
+                                                                    <li><strong>To:</strong> {{ transfer.to_dispensary.name }}</li>
+                                                                    <li><strong>Approved By:</strong> {{ transfer.approved_by.get_full_name|default:transfer.approved_by.username }}</li>
+                                                                </ul>
+                                                            </div>
+
+                                                            <p class="mb-3">Are you sure you want to mark this transfer as delivered?</p>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary"
+                                                                    data-bs-dismiss="modal">
+                                                                <i class="fas fa-times me-1"></i>Cancel
+                                                            </button>
+                                                            <button type="submit" class="btn btn-success">
+                                                                <i class="fas fa-check me-1"></i>Mark as Delivered
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-truck fa-4x mb-3 d-block"></i>
+                        <h5>No In-Transit Transfers</h5>
+                        <p>There are no transfers currently in transit.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
             <!-- Recent Completed Transfers -->
             {% if completed_transfers %}
             <div class="transfer-card">
@@ -526,6 +638,33 @@ $(document).ready(function() {
             error: function(xhr, status, error) {
                 console.error('Error cancelling transfer:', error);
                 alert('Error cancelling transfer. Please try again.');
+            }
+        });
+    });
+
+    // Handle deliver form submission with AJAX
+    $('.deliver-transfer-form').on('submit', function(e) {
+        e.preventDefault();
+        const form = $(this);
+        const formData = new FormData(this);
+
+        $.ajax({
+            url: form.attr('action'),
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                // Close all modals
+                document.querySelectorAll('.modal').forEach(modalEl => {
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                });
+                setTimeout(() => location.reload(), 200);
+            },
+            error: function(xhr, status, error) {
+                console.error('Error marking transfer as delivered:', error);
+                alert('Error marking transfer as delivered. Please try again.');
             }
         });
     });

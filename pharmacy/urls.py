@@ -212,12 +212,14 @@ urlpatterns = [
     path('api/inventory-check/', enhanced_transfer_views.get_medication_inventory_ajax, name='get_medication_inventory_ajax'),
 
     # Active store and dispensary transfer endpoints
-    path('api/active-store-inventory/<int:dispensary_id>/<int:medication_id>/', 
+    path('api/active-store-inventory/<int:dispensary_id>/<int:medication_id>/',
          views.active_store_inventory_detail_ajax, name='active_store_inventory_detail_ajax'),
-    path('dispensary-transfer/<int:transfer_id>/approve/', 
+    path('dispensary-transfer/<int:transfer_id>/approve/',
          views.approve_dispensary_transfer, name='approve_dispensary_transfer'),
-    path('dispensary-transfer/<int:transfer_id>/cancel/', 
+    path('dispensary-transfer/<int:transfer_id>/cancel/',
          views.cancel_dispensary_transfer, name='cancel_dispensary_transfer'),
+    path('dispensary-transfer/<int:transfer_id>/deliver/',
+         views.deliver_dispensary_transfer, name='deliver_dispensary_transfer'),
 
     # Inter-Dispensary Transfer Management (Legacy)
     path('transfers/inter/', inter_dispensary_views.inter_dispensary_transfer_list, name='inter_dispensary_transfer_list'),
