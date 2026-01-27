@@ -1380,6 +1380,32 @@ class PackOrder(models.Model):
         help_text="Authorization code for NHIA patients"
     )
 
+    # Additional fields for approval and dispensing workflow
+    processing_notes = models.TextField(blank=True, null=True, help_text="Notes about order processing")
+    approved_at = models.DateTimeField(null=True, blank=True)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_pack_orders'
+    )
+    dispensed_at = models.DateTimeField(null=True, blank=True)
+    dispensed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='dispensed_pack_orders'
+    )
+    prescription = models.ForeignKey(
+        'Prescription',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pack_order'
+    )
+
     def __str__(self):
         return f"Pack Order #{self.id} - {self.pack.name}"
 
@@ -1415,6 +1441,51 @@ class PackOrder(models.Model):
             return False
 
         return True
+
+    def can_be_approved(self):
+        """Check if pack order can be approved"""
+        if self.status != 'pending':
+            return False
+
+        # Check NHIA authorization requirement
+        if self.requires_authorization() and not self.has_valid_authorization():
+            return False
+
+        return True
+
+    def can_be_dispensed(self):
+        """Check if pack order can be dispensed"""
+        return self.status == 'ready'
+
+    def approve_order(self, user):
+        """Approve the pack order"""
+        if not self.can_be_approved():
+            raise ValueError("Pack order cannot be approved in current status")
+
+        self.status = 'ready'
+        self.approved_by = user
+        self.approved_at = timezone.now()
+        self.save()
+
+        # Update prescription status to approved
+        if self.prescription:
+            self.prescription.status = 'approved'
+            self.prescription.save()
+
+    def dispense_order(self, user):
+        """Mark pack order as dispensed"""
+        if self.status != 'ready':
+            raise ValueError("Pack order must be ready before dispensing")
+
+        self.status = 'completed'
+        self.dispensed_by = user
+        self.dispensed_at = timezone.now()
+        self.save()
+
+        # Update prescription status to dispensed
+        if self.prescription:
+            self.prescription.status = 'dispensed'
+            self.prescription.save()
 
     def process_order(self, user):
         """Process the pack order and create prescription"""
@@ -1614,25 +1685,43 @@ class PackOrder(models.Model):
         except Exception as e:
             # Continue processing even if this check fails
             pass
-        
-        # Create prescription from pack items
-        prescription = self.create_prescription()
-        
+
+        # Get or create prescription from pack items
+        if not self.prescription:
+            # Create prescription if it doesn't exist
+            prescription = self.create_prescription()
+        else:
+            # Use existing prescription
+            prescription = self.prescription
+
+        # Create prescription items from pack items
+        for pack_item in self.pack.items.all():
+            PrescriptionItem.objects.create(
+                prescription=prescription,
+                medication=pack_item.medication,
+                quantity=pack_item.quantity
+            )
+
+        # Update prescription status to approved
+        prescription.status = 'approved'
+        prescription.save()
+
         self.status = 'ready'
         self.processed_by = user
         self.processed_at = timezone.now()
         self.save()
-        
+
         return prescription
 
     def create_prescription(self):
         """Create a prescription from pack items with authorization if required"""
         # Create prescription with authorization code if NHIA patient
+        # Start with 'pending' status - will be updated to 'approved' when pack order is processed
         prescription = Prescription.objects.create(
             patient=self.patient,
             doctor=self.ordered_by,
             prescription_date=timezone.now(),
-            status='approved',
+            status='pending',
             payment_status='unpaid',
             prescription_type='outpatient',
             notes=f"Created from Pack Order #{self.id}",
@@ -1642,12 +1731,12 @@ class PackOrder(models.Model):
         # The prescription's save method will automatically set requires_authorization
         # and authorization_status based on the patient type and authorization_code
 
-        for pack_item in self.pack.items.all():
-            PrescriptionItem.objects.create(
-                prescription=prescription,
-                medication=pack_item.medication,
-                quantity=pack_item.quantity
-            )
+        # Note: Prescription items are NOT created here
+        # They will be created when the pack order is processed
+
+        # Link the prescription to the pack order
+        self.prescription = prescription
+        self.save()
 
         return prescription
 

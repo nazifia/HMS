@@ -16,7 +16,9 @@
       "Bash(netstat:*)",
       "Bash(findstr:*)",
       "Bash(curl:*)",
-      "Bash(python -m py_compile:*)"
+      "Bash(python -m py_compile:*)",
+      "Bash(dir templatespharmacypartials:*)",
+      "Bash(python manage.py shell:*)"
     ]
   }
 }

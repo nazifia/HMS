@@ -6487,28 +6487,16 @@ def create_pack_order(request, pack_id=None):
 
             pack_order.save()
 
-            # Automatically create prescription from pack items
-            try:
-                prescription = pack_order.create_prescription()
+            # Add pack costs to patient billing
+            _add_pack_to_patient_billing(pack_order.patient, pack_order, 'pharmacy')
 
-                # Add pack costs to patient billing
-                _add_pack_to_patient_billing(pack_order.patient, pack_order, 'pharmacy')
-
-                messages.success(
-                    request,
-                    f'Pack order for {pack_order.pack.name} created successfully. Order ID: {pack_order.id}. '
-                    f'Prescription #{prescription.id} has been automatically created with {prescription.items.count()} medications. '
-                    f'Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to patient billing.'
-                )
-                return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
-            except Exception as e:
-                # Pack order was created but prescription failed
-                messages.warning(
-                    request,
-                    f'Pack order for {pack_order.pack.name} created successfully (Order ID: {pack_order.id}), '
-                    f'but prescription creation failed: {str(e)}. Please create the prescription manually if needed.'
-                )
-                return redirect('pharmacy:pack_order_detail', order_id=pack_order.id)
+            messages.success(
+                request,
+                f'Pack order for {pack_order.pack.name} created successfully. Order ID: {pack_order.id}. '
+                f'Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to patient billing. '
+                f'Please process the pack order to create the prescription and prescription items.'
+            )
+            return redirect('pharmacy:pack_order_detail', order_id=pack_order.id)
     else:
         initial_data = {}
         if pack:
@@ -6568,10 +6556,10 @@ def pack_order_list(request):
             orders = orders.filter(pack__pack_type=form.cleaned_data['pack_type'])
 
         if form.cleaned_data.get('date_from'):
-            orders = orders.filter(order_date__date__gte=form.cleaned_data['date_from'])
+            orders = orders.filter(ordered_at__date__gte=form.cleaned_data['date_from'])
 
         if form.cleaned_data.get('date_to'):
-            orders = orders.filter(order_date__date__lte=form.cleaned_data['date_to'])
+            orders = orders.filter(ordered_at__date__lte=form.cleaned_data['date_to'])
 
     # Pagination
     paginator = Paginator(orders, 15)

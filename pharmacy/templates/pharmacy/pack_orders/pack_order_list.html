@@ -216,9 +216,9 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {{ order.order_date|date:"M d, Y" }}
+                                    {{ order.ordered_at|date:"M d, Y" }}
                                     <br>
-                                    <small class="text-muted">{{ order.order_date|date:"H:i" }}</small>
+                                    <small class="text-muted">{{ order.ordered_at|date:"H:i" }}</small>
                                 </td>
                                 <td>
                                     {% if order.scheduled_date %}
