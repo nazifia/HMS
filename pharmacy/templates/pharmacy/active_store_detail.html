@@ -238,7 +238,16 @@
                                class="form-control"
                                placeholder="Search medication..."
                                value="{{ search_query }}"
-                               aria-label="Search medication">
+                               aria-label="Search medication"
+                               hx-get="{% url 'pharmacy:active_store_inventory_ajax' dispensary.id %}"
+                               hx-target="#inventoryTableBody"
+                               hx-trigger="keyup changed delay:300ms"
+                               hx-indicator="#searchIndicator"
+                               hx-include="#medicationSearch"
+                               name="search">
+                        <span id="searchIndicator" class="htmx-indicator input-group-text bg-white">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
                         {% if search_query %}
                             <a href="{% url 'pharmacy:active_store_detail' dispensary.id %}"
                                class="btn btn-outline-light"
@@ -266,50 +275,8 @@
                                 <th>Status</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {% for item in inventory_items %}
-                                <tr class="inventory-row" data-medication-name="{{ item.medication.name|lower }}">
-                                    <td>
-                                        <strong>{{ item.medication.name }}</strong>
-                                        {% if item.medication.category %}
-                                            <br><small class="text-muted">{{ item.medication.category.name }}</small>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ item.batch_number|default:"-" }}</td>
-                                    <td>
-                                        {% if item.expiry_date %}
-                                            <span class="{% if item.is_expired %}text-danger{% elif item.expires_soon %}text-warning{% endif %}">
-                                                {{ item.expiry_date|date:"M d, Y" }}
-                                            </span>
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <span class="fw-bold">{{ item.stock_quantity }}</span>
-                                    </td>
-                                    <td>{{ item.reorder_level }}</td>
-                                    <td>{{ item.unit_cost|currency }}</td>
-                                    <td>
-                                        <strong>{{ item.unit_cost|multiply:item.stock_quantity|currency }}</strong>
-                                    </td>
-                                    <td>
-                                        {% if item.stock_quantity == 0 %}
-                                            <span class="stock-indicator stock-out"></span>
-                                            Out of Stock
-                                        {% elif item.stock_quantity <= item.reorder_level %}
-                                            <span class="stock-indicator stock-low"></span>
-                                            Low Stock
-                                        {% elif item.stock_quantity <= item.reorder_level|mul:"2" %}
-                                            <span class="stock-indicator stock-medium"></span>
-                                            Medium
-                                        {% else %}
-                                            <span class="stock-indicator stock-high"></span>
-                                            High Stock
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% endfor %}
+                        <tbody id="inventoryTableBody">
+                            {% include 'pharmacy/partials/active_store_inventory_rows.html' %}
                         </tbody>
                         <tfoot class="table-light">
                             <tr>
@@ -319,10 +286,6 @@
                             </tr>
                         </tfoot>
                     </table>
-                </div>
-                <!-- Search Results Info -->
-                <div id="searchInfo" class="p-3 bg-light border-top" style="display: none;">
-                    <span id="searchCount"></span>
                 </div>
             {% else %}
                 <div class="text-center py-4">
@@ -431,66 +394,40 @@
 
 {% block extra_js %}
 <script>
-$(document).ready(function() {
-    console.log('Active Store Detail page loaded');
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Active Store Detail page loaded with HTMX');
 
-    // Medication search functionality
-    const searchInput = $('#medicationSearch');
-    const inventoryRows = $('.inventory-row');
-    const searchInfo = $('#searchInfo');
-    const searchCount = $('#searchCount');
+    // HTMX event listeners for search feedback
+    const searchInput = document.getElementById('medicationSearch');
+    const searchIndicator = document.getElementById('searchIndicator');
 
-    // Function to perform search
-    function performSearch(query) {
-        const searchTerm = query.toLowerCase().trim();
-        let visibleCount = 0;
-
-        if (searchTerm === '') {
-            // Show all rows
-            inventoryRows.show();
-            searchInfo.hide();
-            return;
+    // Show/hide search indicator based on HTMX events
+    document.body.addEventListener('htmx:configRequest', function(event) {
+        // Check if the request is from our search input
+        if (event.detail.pathInfo && event.detail.pathInfo.requestPath.includes('active-store-inventory')) {
+            if (searchIndicator) {
+                searchIndicator.style.display = 'inline-flex';
+            }
         }
+    });
 
-        // Filter rows
-        inventoryRows.each(function() {
-            const row = $(this);
-            const medicationName = row.data('medication-name');
+    document.body.addEventListener('htmx:afterRequest', function(event) {
+        // Check if the request is from our search input
+        if (event.detail.pathInfo && event.detail.pathInfo.requestPath.includes('active-store-inventory')) {
+            if (searchIndicator) {
+                searchIndicator.style.display = 'none';
+            }
+        }
+    });
 
-            if (medicationName && medicationName.includes(searchTerm)) {
-                row.show();
-                visibleCount++;
-            } else {
-                row.hide();
+    // Handle Enter key to trigger immediate search
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                // Trigger HTMX search immediately
+                htmx.trigger(this, 'keyup');
             }
         });
-
-        // Update search info
-        if (visibleCount > 0) {
-            searchCount.text(`Showing ${visibleCount} of ${inventoryRows.length} medications matching "${query}"`);
-            searchInfo.show();
-        } else {
-            searchCount.text(`No medications found matching "${query}"`);
-            searchInfo.show();
-        }
-    }
-
-    // Search on input
-    searchInput.on('input', function() {
-        performSearch($(this).val());
-    });
-
-    // Search on keyup (for Enter key)
-    searchInput.on('keyup', function(e) {
-        if (e.key === 'Enter') {
-            performSearch($(this).val());
-        }
-    });
-
-    // If there's already a search query on page load, perform the search
-    const initialQuery = searchInput.val();
-    if (initialQuery && initialQuery.trim() !== '') {
-        performSearch(initialQuery);
     }
 });
 </script>

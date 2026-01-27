@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.db.models import Q, Sum, F, Count, Avg, StdDev, Variance, Min, Max, Case, When, Value
 from django.db import models, transaction, IntegrityError
 from django.core.paginator import Paginator
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from .models import (
@@ -2664,20 +2664,62 @@ def transfer_to_dispensary(request, dispensary_id):
 
 @login_required
 def active_store_inventory_ajax(request, dispensary_id):
-    """AJAX endpoint for getting active store inventory for a dispensary"""
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+    """AJAX endpoint for getting active store inventory for a dispensary - Supports HTMX"""
+    # Check if this is an HTMX request
+    is_htmx = request.headers.get('HX-Request') == 'true'
+
+    # Check if this is a regular AJAX request
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    if is_ajax or is_htmx:
         try:
             dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
             active_store = getattr(dispensary, 'active_store', None)
 
             if not active_store:
+                if is_htmx:
+                    # Return HTML fragment for HTMX
+                    from django.template.loader import render_to_string
+                    html = render_to_string('pharmacy/partials/active_store_inventory_rows.html', {
+                        'error': 'No active store found for this dispensary.',
+                        'inventory_items': [],
+                        'search_query': ''
+                    }, request=request)
+                    return HttpResponse(html)
                 return JsonResponse({'success': False, 'error': 'No active store found for this dispensary.'})
 
             # Get inventory items in the active store
             inventory_items = ActiveStoreInventory.objects.filter(
                 active_store=active_store
-            ).select_related('medication')
+            ).select_related('medication', 'active_store')
 
+            # Handle search query
+            search_query = request.GET.get('search', '').strip()
+            if search_query:
+                inventory_items = inventory_items.filter(
+                    medication__name__icontains=search_query
+                )
+
+            # Calculate total stock value
+            from decimal import Decimal
+            total_stock_value = sum(
+                (item.stock_quantity * item.unit_cost)
+                for item in inventory_items
+                if item.unit_cost is not None
+            ) or Decimal('0.00')
+
+            if is_htmx:
+                # Return HTML fragment for HTMX
+                from django.template.loader import render_to_string
+                html = render_to_string('pharmacy/partials/active_store_inventory_rows.html', {
+                    'inventory_items': inventory_items,
+                    'search_query': search_query,
+                    'total_stock_value': total_stock_value,
+                    'dispensary': dispensary,
+                }, request=request)
+                return HttpResponse(html)
+
+            # Return JSON for regular AJAX
             inventory_data = []
             for item in inventory_items:
                 inventory_data.append({
@@ -2691,6 +2733,15 @@ def active_store_inventory_ajax(request, dispensary_id):
             return JsonResponse({'success': True, 'inventory': inventory_data})
 
         except Exception as e:
+            if is_htmx:
+                # Return HTML fragment for HTMX error
+                from django.template.loader import render_to_string
+                html = render_to_string('pharmacy/partials/active_store_inventory_rows.html', {
+                    'error': str(e),
+                    'inventory_items': [],
+                    'search_query': ''
+                }, request=request)
+                return HttpResponse(html)
             return JsonResponse({'success': False, 'error': str(e)})
 
     # If not AJAX request, redirect to dispensary list

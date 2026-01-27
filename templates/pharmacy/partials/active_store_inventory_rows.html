@@ -1,50 +1,83 @@
+{% load static %}
 {% load custom_filters %}
-{% load pharmacy_tags %}
-{% for item in inventory_items %}
-    {% with category_name=item.medication.category.name|default:"No category" %}
-    <tr class="{% if item.stock_quantity == 0 %}out-of-stock{% elif item.stock_quantity <= item.reorder_level|default:10 %}low-stock{% endif %}"
-        data-medication-name="{{ item.medication.name|lower }}"
-        data-generic-name="{{ item.medication.generic_name|lower }}"
-        data-category="{{ category_name|lower }}"
-        data-stock-status="{% if item.stock_quantity == 0 %}out_of_stock{% elif item.stock_quantity <= item.reorder_level|default:10 %}low_stock{% else %}in_stock{% endif %}">
-        <td>
-            <strong class="searchable">{{ item.medication.name }}</strong>
-            {% if item.medication.generic_name %}
-                <br><small class="text-muted searchable">{{ item.medication.generic_name }}</small>
-            {% endif %}
-        </td>
-        <td>
-            <span class="searchable">{{ category_name }}</span>
-        </td>
-        <td>
-            <span class="badge {% if item.stock_quantity == 0 %}bg-danger{% elif item.stock_quantity <= item.reorder_level|default:10 %}bg-warning{% else %}bg-success{% endif %}">
-                {{ item.stock_quantity }}
-            </span>
-        </td>
-        <td>{{ item.reorder_level|default:10 }}</td>
-        <td>
-            {% if item.stock_quantity == 0 %}
-                <span class="badge bg-danger">Out of Stock</span>
-            {% elif item.stock_quantity <= item.reorder_level|default:10 %}
-                <span class="badge bg-warning">Low Stock</span>
-            {% else %}
-                <span class="badge bg-success">In Stock</span>
-            {% endif %}
-        </td>
-        <td>
-            {% if item.last_restock_date %}
-                {{ item.last_restock_date|date:"M d, Y" }}
-            {% else %}
-                <span class="text-muted">Never</span>
-            {% endif %}
-        </td>
-    </tr>
-    {% endwith %}
-{% empty %}
+
+<!-- Inventory Table Rows - HTMX Partial -->
+{% if error %}
     <tr>
-        <td colspan="6" class="text-center text-muted py-4">
-            <i class="fas fa-box-open fa-3x mb-3 d-block"></i>
-            <p class="mb-0">No inventory items found matching your criteria.</p>
+        <td colspan="8" class="text-center py-4">
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                {{ error }}
+            </div>
         </td>
     </tr>
-{% endfor %}
+{% elif inventory_items %}
+    {% for item in inventory_items %}
+        <tr class="inventory-row" data-medication-name="{{ item.medication.name|lower }}">
+            <td>
+                <strong>{{ item.medication.name }}</strong>
+                {% if item.medication.category %}
+                    <br><small class="text-muted">{{ item.medication.category.name }}</small>
+                {% endif %}
+            </td>
+            <td>{{ item.batch_number|default:"-" }}</td>
+            <td>
+                {% if item.expiry_date %}
+                    <span class="{% if item.is_expired %}text-danger{% elif item.expires_soon %}text-warning{% endif %}">
+                        {{ item.expiry_date|date:"M d, Y" }}
+                    </span>
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td>
+                <span class="fw-bold">{{ item.stock_quantity }}</span>
+            </td>
+            <td>{{ item.reorder_level }}</td>
+            <td>{{ item.unit_cost|currency }}</td>
+            <td>
+                <strong>{{ item.unit_cost|multiply:item.stock_quantity|currency }}</strong>
+            </td>
+            <td>
+                {% if item.stock_quantity == 0 %}
+                    <span class="stock-indicator stock-out"></span>
+                    Out of Stock
+                {% elif item.stock_quantity <= item.reorder_level %}
+                    <span class="stock-indicator stock-low"></span>
+                    Low Stock
+                {% elif item.stock_quantity <= item.reorder_level|mul:"2" %}
+                    <span class="stock-indicator stock-medium"></span>
+                    Medium
+                {% else %}
+                    <span class="stock-indicator stock-high"></span>
+                    High Stock
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+
+    <!-- Search Results Info -->
+    {% if search_query %}
+        <tr>
+            <td colspan="8" class="p-3 bg-light border-top">
+                <span class="text-muted">
+                    <i class="fas fa-search me-2"></i>
+                    Showing {{ inventory_items|length }} medication{{ inventory_items|pluralize }} matching "{{ search_query }}"
+                </span>
+            </td>
+        </tr>
+    {% endif %}
+{% else %}
+    <tr>
+        <td colspan="8" class="text-center py-4">
+            <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+            <p class="text-muted">
+                {% if search_query %}
+                    No medications found matching "{{ search_query }}".
+                {% else %}
+                    No inventory items found in this active store.
+                {% endif %}
+            </p>
+        </td>
+    </tr>
+{% endif %}
