@@ -40,6 +40,21 @@ class AuthorizationCode(models.Model):
     if TYPE_CHECKING:
         def get_service_type_display(self) -> str: ...
 
+    def save(self, *args, **kwargs):
+        if not self.code:
+            # Generate a unique code with retry mechanism
+            max_attempts = 10
+            attempts = 0
+            while attempts < max_attempts:
+                new_code = str(uuid.uuid4())
+                if not AuthorizationCode.objects.filter(code=new_code).exists():
+                    self.code = new_code
+                    break
+                attempts += 1
+            else:
+                raise ValueError(f"Unable to generate unique authorization code after {max_attempts} attempts")
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.patient} - {self.get_service_type_display()} - ₦{self.amount} - {self.status}"
 
