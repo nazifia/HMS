@@ -1241,6 +1241,44 @@ def _add_pack_to_patient_billing(patient, pack_order, source_context='pharmacy')
     return invoice_item
 
 
+def _notify_pharmacy_of_pack_order(pack_order, ordered_by):
+    """Send notification to pharmacy users when a pack order is created"""
+    from core.models import InternalNotification
+    from accounts.models import CustomUser
+
+    # Get all pharmacist users
+    pharmacists = CustomUser.objects.filter(
+        is_active=True
+    ).filter(
+        models.Q(roles__name__iexact='pharmacist') |
+        models.Q(profile__role__iexact='pharmacist')
+    ).distinct()
+
+    # Get prescription info if available
+    prescription_info = ""
+    if pack_order.prescription:
+        prescription_info = f"\nPrescription: #{pack_order.prescription.id}"
+
+    # Create notification for each pharmacist
+    for pharmacist in pharmacists:
+        InternalNotification.objects.create(
+            user=pharmacist,
+            sender=ordered_by,
+            title=f'New Pack Order #{pack_order.id}',
+            message=(
+                f'A new pack order has been created and processed.\n\n'
+                f'Pack: {pack_order.pack.name}\n'
+                f'Patient: {pack_order.patient.get_full_name()}\n'
+                f'Patient ID: {pack_order.patient.patient_id}\n'
+                f'Ordered by: {ordered_by.get_full_name()}\n'
+                f'Ordered at: {pack_order.ordered_at.strftime("%Y-%m-%d %H:%M")}\n'
+                f'Status: {pack_order.get_status_display()}{prescription_info}\n\n'
+                f'Please review and dispense the prescription.'
+            ),
+            notification_type='info'
+        )
+
+
 @login_required
 def simple_revenue_statistics(request):
     """Simple revenue statistics view showing department-wise revenue in a table and chart"""
@@ -6490,12 +6528,27 @@ def create_pack_order(request, pack_id=None):
             # Add pack costs to patient billing
             _add_pack_to_patient_billing(pack_order.patient, pack_order, 'pharmacy')
 
-            messages.success(
-                request,
-                f'Pack order for {pack_order.pack.name} created successfully. Order ID: {pack_order.id}. '
-                f'Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to patient billing. '
-                f'Please process the pack order to create the prescription and prescription items.'
-            )
+            # Automatically process the pack order to create prescription
+            try:
+                prescription = pack_order.process_order(request.user)
+                messages.success(
+                    request,
+                    f'Pack order for {pack_order.pack.name} created and processed successfully. Order ID: {pack_order.id}. '
+                    f'Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to patient billing. '
+                    f'Prescription #{prescription.id} has been created and sent to pharmacy for dispensing.'
+                )
+            except Exception as e:
+                # If processing fails, still create the order but notify user
+                messages.warning(
+                    request,
+                    f'Pack order for {pack_order.pack.name} created successfully. Order ID: {pack_order.id}. '
+                    f'Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to patient billing. '
+                    f'However, there was an issue processing the order: {str(e)}. '
+                    f'Please contact pharmacy staff to complete the processing.'
+                )
+                # Send notification to pharmacy users
+                _notify_pharmacy_of_pack_order(pack_order, request.user)
+
             return redirect('pharmacy:pack_order_detail', order_id=pack_order.id)
     else:
         initial_data = {}

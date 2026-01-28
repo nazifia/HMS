@@ -1329,42 +1329,19 @@ class MedicalPackItemForm(forms.ModelForm):
 
 class PackOrderForm(forms.ModelForm):
     """Form for creating pack orders"""
-    
+
     pack = forms.ModelChoiceField(
         queryset=MedicalPack.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Medical Pack"
     )
-    
+
     patient = forms.ModelChoiceField(
         queryset=Patient.objects.all().order_by('last_name', 'first_name'),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Patient"
     )
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Custom label_from_instance to show patient ID and type for better identification
-        self.fields['patient'].label_from_instance = self._format_patient_label
-        
-    def _format_patient_label(self, obj):
-        """Format patient label with type information"""
-        if not obj:
-            return str(obj)
-        
-        label = f"{obj.get_full_name()} ({obj.patient_id})"
-        patient_type = obj.get_patient_type_display()
-        
-        # Add type-specific information
-        if hasattr(obj, 'nhia_info') and obj.nhia_info and obj.nhia_info.is_active:
-            label += f" [NHIA: {obj.nhia_info.nhia_reg_number}]"
-        elif hasattr(obj, 'retainership_info') and obj.retainership_info and obj.retainership_info.is_active:
-            label += f" [Retainership: {obj.retainership_info.retainership_reg_number}]"
-        elif patient_type != 'regular':
-            label += f" [{patient_type}]"
-            
-        return label
-    
+
     scheduled_date = forms.DateTimeField(
         required=False,
         widget=forms.DateTimeInput(attrs={
@@ -1399,6 +1376,9 @@ class PackOrderForm(forms.ModelForm):
         request = kwargs.pop('request', None)
 
         super().__init__(*args, **kwargs)
+
+        # Custom label_from_instance to show patient ID and type for better identification
+        self.fields['patient'].label_from_instance = self._format_patient_label
 
         # Handle patient pre-selection for surgery context
         if self.surgery and not self.preselected_patient:
@@ -1462,24 +1442,19 @@ class PackOrderForm(forms.ModelForm):
         # Setup authorization_code field
         try:
             from nhia.models import AuthorizationCode
-            # Filter authorization codes based on patient if available
+            # Show all active authorization codes (patient will be validated in clean())
+            # This allows the field to be used even when patient is selected via search
+            self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
+                status='active'
+            ).order_by('-generated_at')
+
+            # Make authorization code required for NHIA patients if patient is known
             patient = self.preselected_patient or self.instance.patient if self.instance.pk else None
-
             if patient:
-                # Show only valid authorization codes for this patient
-                self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
-                    patient=patient,
-                    status='active'
-                ).order_by('-created_at')
-
-                # Make authorization code required for NHIA patients
                 is_nhia = hasattr(patient, 'patient_type') and patient.patient_type == 'nhia'
                 if is_nhia:
                     self.fields['authorization_code'].required = True
                     self.fields['authorization_code'].label = 'Authorization Code (Required for NHIA)'
-            else:
-                # No patient selected yet, show empty queryset
-                self.fields['authorization_code'].queryset = AuthorizationCode.objects.none()
         except ImportError:
             # NHIA module not available, hide the field
             self.fields['authorization_code'].queryset = []
@@ -1507,9 +1482,33 @@ class PackOrderForm(forms.ModelForm):
                 raise ValidationError({
                     'authorization_code': 'Authorization code is required for NHIA patients. Please obtain authorization from desk office.'
                 })
-            
+
+            # Validate that authorization code belongs to the selected patient
+            if authorization_code and authorization_code.patient != patient:
+                raise ValidationError({
+                    'authorization_code': 'The selected authorization code does not belong to this patient. Please select an authorization code for the correct patient.'
+                })
+
         return cleaned_data
-    
+
+    def _format_patient_label(self, obj):
+        """Format patient label with type information"""
+        if not obj:
+            return str(obj)
+
+        label = f"{obj.get_full_name()} ({obj.patient_id})"
+        patient_type = obj.get_patient_type_display()
+
+        # Add type-specific information
+        if hasattr(obj, 'nhia_info') and obj.nhia_info and obj.nhia_info.is_active:
+            label += f" [NHIA: {obj.nhia_info.nhia_reg_number}]"
+        elif hasattr(obj, 'retainership_info') and obj.retainership_info and obj.retainership_info.is_active:
+            label += f" [Retainership: {obj.retainership_info.retainership_reg_number}]"
+        elif patient_type != 'regular':
+            label += f" [{patient_type}]"
+
+        return label
+
     def save(self, commit=True):
         pack_order = super().save(commit=False)
         

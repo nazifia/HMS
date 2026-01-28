@@ -1,0 +1,9 @@
+<option value="">Select Authorization Code</option>
+{% for code in authorization_codes %}
+<option value="{{ code.id }}" data-patient-id="{{ code.patient.id }}">
+    {{ code.code }} - {{ code.patient.get_full_name }} ({{ code.patient.patient_id }}) - {{ code.get_status_display }}
+    {% if code.expiry_date %}
+    (Expires: {{ code.expiry_date|date:"M d, Y" }})
+    {% endif %}
+</option>
+{% endfor %}

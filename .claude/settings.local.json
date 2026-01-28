@@ -18,7 +18,15 @@
       "Bash(curl:*)",
       "Bash(python -m py_compile:*)",
       "Bash(dir templatespharmacypartials:*)",
-      "Bash(python manage.py shell:*)"
+      "Bash(python manage.py shell:*)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_click",
+      "mcp__plugin_playwright_playwright__browser_type",
+      "mcp__plugin_playwright_playwright__browser_wait_for",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "Bash(python manage.py showmigrations:*)",
+      "Bash(python manage.py migrate:*)",
+      "Bash(python manage.py runserver 8000)"
     ]
   }
 }

@@ -144,6 +144,49 @@ def patient_search_ajax(request):
     })
 
 
+def get_authorization_codes_for_patient(request):
+    """
+    HTMX AJAX endpoint to get authorization codes for a selected patient
+    Returns HTML fragment with authorization code options
+    """
+    from patients.models import Patient
+    from nhia.models import AuthorizationCode
+
+    patient_id = request.GET.get('patient_id', '').strip()
+
+    if not patient_id:
+        return render(request, 'pharmacy/pack_orders/partials/authorization_codes.html', {
+            'authorization_codes': [],
+            'is_nhia': False,
+            'patient_id': None
+        })
+
+    try:
+        patient = Patient.objects.get(id=patient_id, is_active=True)
+    except Patient.DoesNotExist:
+        return render(request, 'pharmacy/pack_orders/partials/authorization_codes.html', {
+            'authorization_codes': [],
+            'is_nhia': False,
+            'patient_id': patient_id
+        })
+
+    # Check if patient is NHIA
+    is_nhia = hasattr(patient, 'patient_type') and patient.patient_type == 'nhia'
+
+    # Get valid authorization codes for this patient
+    authorization_codes = AuthorizationCode.objects.filter(
+        patient=patient,
+        status='active'
+    ).order_by('-generated_at')
+
+    return render(request, 'pharmacy/pack_orders/partials/authorization_codes.html', {
+        'authorization_codes': authorization_codes,
+        'is_nhia': is_nhia,
+        'patient_id': patient_id,
+        'patient': patient
+    })
+
+
 def test_url_helpers(request):
     """
     Test URL helpers functionality

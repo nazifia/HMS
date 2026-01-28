@@ -30,6 +30,7 @@ urlpatterns = [
     # Patient search URLs
     path('api/patients/search/', views.search_patients, name='patient_search'),
     path('api/patients/search-ajax/', views.patient_search_ajax, name='patient_search_ajax'),
+    path('api/patients/authorization-codes/', views.get_authorization_codes_for_patient, name='get_authorization_codes_for_patient'),
 
     # Revenue Point Breakdown URLs
     path('revenue/dashboard/', revenue_views.revenue_point_dashboard, name='revenue_point_dashboard'),
