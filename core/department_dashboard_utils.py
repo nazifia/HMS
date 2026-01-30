@@ -88,10 +88,65 @@ def verify_department_access(user, required_department_name):
     return False, user_department
 
 
+def get_referrals_for_department_strict(department):
+    """
+    STRICT filtering for referrals - only returns referrals explicitly meant for this department.
+    
+    This function filters referrals based on:
+    1. Direct department ID match (referred_to_department = department)
+    2. Unit mapping (referred_to_unit maps to this department via referral_mappings)
+    3. Specialty mapping (referred_to_specialty maps to this department via referral_mappings)
+    
+    Unlike the enhanced version, this does NOT use case-insensitive string matching
+    or fuzzy matching - it requires explicit mapping in the referral_mappings.py file.
+    
+    Args:
+        department: Department instance
+        
+    Returns:
+        QuerySet: Strictly filtered referrals for the department
+    """
+    if not department:
+        return Referral.objects.none()
+    
+    from consultations.referral_mappings import (
+        get_all_units_for_department,
+        get_all_specialties_for_department
+    )
+    
+    # Get all units and specialties that EXPLICITLY map to this department
+    units = get_all_units_for_department(department.name)
+    specialties = get_all_specialties_for_department(department.name)
+    
+    # Build STRICT query - only exact matches
+    query = Q()
+    
+    # 1. Direct department ID match (strictest match)
+    query |= Q(referred_to_department=department)
+    
+    # 2. Unit match - only if unit is in the predefined mapping list
+    if units:
+        query |= Q(referred_to_unit__in=units)
+    
+    # 3. Specialty match - only if specialty is in the predefined mapping list
+    if specialties:
+        query |= Q(referred_to_specialty__in=specialties)
+    
+    # 4. Special case: If department name matches exactly (for backward compatibility)
+    # This handles cases where department name is stored as text in unit/specialty fields
+    query |= Q(referred_to_unit__exact=department.name)
+    query |= Q(referred_to_specialty__exact=department.name)
+    
+    return Referral.objects.filter(query).distinct()
+
+
 def get_referrals_for_department_enhanced(department):
     """
     Enhanced filtering for referrals using the mapping system.
     This replaces the iterative approach with a more efficient query.
+    
+    NOTE: This function has been updated to use STRICT filtering by default.
+    Each department will only see referrals explicitly meant for that department.
     
     Args:
         department: Department instance
@@ -99,95 +154,8 @@ def get_referrals_for_department_enhanced(department):
     Returns:
         QuerySet: Filtered referrals for the department
     """
-    if not department:
-        return Referral.objects.none()
-
-    from consultations.referral_mappings import (
-        get_all_units_for_department,
-        get_all_specialties_for_department,
-        get_department_for_unit,
-        get_department_for_specialty
-    )
-    
-    # Get all units and specialties that map to this department
-    units = get_all_units_for_department(department.name)
-    specialties = get_all_specialties_for_department(department.name)
-    
-    # Build the query
-    # 1. Direct department match (by ID)
-    # 2. Unit match (unit takes priority, so we check it first)
-    # 3. Specialty match (only if it maps to this department)
-    # 4. Case-insensitive matches on department name in unit/specialty fields
-    # 5. Department name match (case-insensitive) for referrals where department name is stored as text
-    # 6. REVERSE MAPPING: Check if unit/specialty in referral maps to this department
-    
-    query = Q(referred_to_department=department)
-    
-    if units:
-        query |= Q(referred_to_unit__in=units)
-    
-    if specialties:
-        # If specialty match, we also include it.
-        # The priority logic is usually handled by the person creating the referral,
-        # but here we ensure that if it maps to the department, it's shown.
-        query |= Q(referred_to_specialty__in=specialties)
-
-    # Also check for case-insensitive matches on department name in unit/specialty fields
-    query |= Q(referred_to_unit__iexact=department.name)
-    query |= Q(referred_to_specialty__iexact=department.name)
-    
-    # CRITICAL FIX: Also match referrals where the department name matches (case-insensitive)
-    # This handles cases where referred_to_department might be set but the ID comparison fails
-    # or where department name is stored/referenced differently
-    query |= Q(referred_to_department__name__iexact=department.name)
-    
-    # REVERSE MAPPING FIX: Get all referrals and filter those whose unit/specialty
-    # maps to this department name. This handles cases where the unit/specialty
-    # wasn't in our predefined lists but maps to this department.
-    # We use a subquery approach for efficiency
-    from django.db.models import Case, When, Value, IntegerField
-    
-    # Get all pending referrals that have a unit or specialty set
-    # but no department set, then check if they map to this department
-    referrals_with_units = Referral.objects.exclude(
-        referred_to_unit__isnull=True
-    ).exclude(
-        referred_to_unit=''
-    ).filter(
-        referred_to_department__isnull=True
-    )
-    
-    # Find units that map to this department
-    matching_units = []
-    for referral in referrals_with_units.values('referred_to_unit').distinct():
-        unit_name = referral['referred_to_unit']
-        mapped_dept = get_department_for_unit(unit_name)
-        if mapped_dept and mapped_dept.lower() == department.name.lower():
-            matching_units.append(unit_name)
-    
-    if matching_units:
-        query |= Q(referred_to_unit__in=matching_units, referred_to_department__isnull=True)
-    
-    # Same for specialties
-    referrals_with_specialties = Referral.objects.exclude(
-        referred_to_specialty__isnull=True
-    ).exclude(
-        referred_to_specialty=''
-    ).filter(
-        referred_to_department__isnull=True
-    )
-    
-    matching_specialties = []
-    for referral in referrals_with_specialties.values('referred_to_specialty').distinct():
-        specialty_name = referral['referred_to_specialty']
-        mapped_dept = get_department_for_specialty(specialty_name)
-        if mapped_dept and mapped_dept.lower() == department.name.lower():
-            matching_specialties.append(specialty_name)
-    
-    if matching_specialties:
-        query |= Q(referred_to_specialty__in=matching_specialties, referred_to_department__isnull=True)
-    
-    return Referral.objects.filter(query).distinct()
+    # Use strict filtering to ensure departments only see their own referrals
+    return get_referrals_for_department_strict(department)
 
 
 def get_department_referral_statistics(department):

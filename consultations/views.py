@@ -1829,24 +1829,15 @@ def department_referral_dashboard(request):
         messages.error(request, "You must be assigned to a department to view referrals.")
         return redirect('dashboard:dashboard')
 
-    # Get referrals - all for superusers, department-specific for others
+    # Get referrals using STRICT filtering to prevent cross-department leakage
+    # Only show referrals explicitly meant for this department based on:
+    # 1. Direct department ID match
+    # 2. Unit mappings from referral_mappings.py
+    # 3. Specialty mappings from referral_mappings.py
     if user_department:
-        # Filter referrals that are intended for this department
-        # This includes:
-        # 1. Direct department referrals (referred_to_department matches)
-        # 2. Unit referrals within this department (referred_to_unit matches department name)
-        # 3. Specialty referrals within this department
-        referrals = Referral.objects.filter(
-            Q(referred_to_department=user_department) |
-            Q(
-                referred_to_unit__isnull=False,
-                referred_to_unit__iexact=user_department.name
-            ) |
-            Q(
-                referred_to_specialty__isnull=False,
-                referred_to_specialty__iexact=user_department.name
-            )
-        ).select_related(
+        # Use strict filtering via categorize_referrals
+        from core.department_dashboard_utils import categorize_referrals, get_referrals_for_department_strict
+        referrals = get_referrals_for_department_strict(user_department).select_related(
             'patient', 'referring_doctor', 'referred_to_department',
             'assigned_doctor', 'consultation', 'authorization_code'
         ).order_by('-referral_date')
