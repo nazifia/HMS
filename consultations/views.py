@@ -1351,6 +1351,27 @@ def create_referral(request, patient_id=None):
             # Set referring doctor to current user
             referral.referring_doctor = request.user
 
+            # Auto-detect department using mapping system if not already set by form validation
+            from .referral_mappings import get_department_for_unit, get_department_for_specialty
+            from accounts.models import Department
+            
+            if not referral.referred_to_department and referral.referral_type in ['unit', 'specialty']:
+                if referral.referral_type == 'unit' and referral.referred_to_unit:
+                    dept_name = get_department_for_unit(referral.referred_to_unit)
+                    if dept_name:
+                        try:
+                            referral.referred_to_department = Department.objects.get(name=dept_name)
+                        except Department.DoesNotExist:
+                            pass  # Department should have been caught in form validation
+                
+                elif referral.referral_type == 'specialty' and referral.referred_to_specialty:
+                    dept_name = get_department_for_specialty(referral.referred_to_specialty)
+                    if dept_name:
+                        try:
+                            referral.referred_to_department = Department.objects.get(name=dept_name)
+                        except Department.DoesNotExist:
+                            pass  # Department should have been caught in form validation
+
             # Try to link to an existing consultation from today
             consultation = Consultation.objects.filter(
                 patient=referral.patient,
@@ -1368,8 +1389,6 @@ def create_referral(request, patient_id=None):
                 referring_dept = getattr(referral.referring_doctor.profile, 'department', None) if hasattr(referral.referring_doctor, 'profile') else None
                 
                 # For department/specialty/unit referrals, check the department
-                if referral.referral_type in ['department', 'specialty', 'unit'] and referral.referred_to_department:
-                    referred_dept = referral.referred_to_department
                 if referral.referral_type in ['department', 'specialty', 'unit'] and referral.referred_to_department:
                     referred_dept = referral.referred_to_department
                 else:
@@ -1812,8 +1831,21 @@ def department_referral_dashboard(request):
 
     # Get referrals - all for superusers, department-specific for others
     if user_department:
+        # Filter referrals that are intended for this department
+        # This includes:
+        # 1. Direct department referrals (referred_to_department matches)
+        # 2. Unit referrals within this department (referred_to_unit matches department name)
+        # 3. Specialty referrals within this department
         referrals = Referral.objects.filter(
-            referred_to_department=user_department
+            Q(referred_to_department=user_department) |
+            Q(
+                referred_to_unit__isnull=False,
+                referred_to_unit__iexact=user_department.name
+            ) |
+            Q(
+                referred_to_specialty__isnull=False,
+                referred_to_specialty__iexact=user_department.name
+            )
         ).select_related(
             'patient', 'referring_doctor', 'referred_to_department',
             'assigned_doctor', 'consultation', 'authorization_code'

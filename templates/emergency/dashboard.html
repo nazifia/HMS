@@ -1,0 +1,319 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Emergency Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-ambulance me-2"></i>
+            Emergency Department Dashboard
+        </h1>
+        <div>
+            <a href="{% url 'emergency:create_emergency_record' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> New Emergency Record
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards Row -->
+    <div class="row">
+        <!-- Active Emergencies Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-1">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Active Emergencies
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_emergencies|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-calendar-day"></i> Today: {{ emergencies_today|default:0 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-ambulance fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Critical Cases Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-1">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Critical Cases
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ critical_cases|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-heartbeat"></i> Requiring immediate attention
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-heartbeat fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admissions from ER Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-1">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Admissions Today
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ admissions_today|default:0 }}</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-bed"></i> Transferred to ward
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-procedures fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Average Response Time Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-1">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Avg. Response Time
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ avg_response_time|default:"N/A" }} min</div>
+                            <div class="text-xs text-muted mt-1">
+                                <i class="fas fa-clock"></i> Last 24 hours
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-stopwatch fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <!-- Top Diagnoses Chart -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-pie"></i> Top 5 Emergency Diagnoses
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:300px;">
+                        <canvas id="diagnosisChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Summary -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-bar"></i> Emergency Statistics
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-ambulance text-danger"></i> Active Emergencies</span>
+                            <span class="badge bg-danger rounded-pill">{{ active_emergencies|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-heartbeat text-danger"></i> Critical Cases</span>
+                            <span class="badge bg-danger rounded-pill">{{ critical_cases|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-procedures text-warning"></i> Admissions Today</span>
+                            <span class="badge bg-warning rounded-pill">{{ admissions_today|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-exchange-alt text-info"></i> Referrals</span>
+                            <span class="badge bg-info rounded-pill">{{ referrals_count|default:0 }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-check-circle text-success"></i> Discharged Today</span>
+                            <span class="badge bg-success rounded-pill">{{ discharged_today|default:0 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Referrals Section -->
+    <div class="row">
+        <div class="col-lg-12">
+            {% include 'includes/department_referrals_section.html' with categorized_referrals=categorized_referrals %}
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <!-- Quick Actions -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-bolt"></i> Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <a href="{% url 'emergency:create_emergency_record' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-plus text-primary"></i> New Emergency Record
+                        </a>
+                        <a href="{% url 'emergency:emergency_records_list' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-list text-info"></i> View All Records
+                        </a>
+                        <a href="{% url 'consultations:department_referral_dashboard' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-exchange-alt text-warning"></i> View Referrals
+                        </a>
+                        {% if pending_authorizations > 0 %}
+                        <a href="{% url 'desk_office:authorization_dashboard' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-shield-alt text-danger"></i> Authorization Dashboard
+                            <span class="badge bg-danger float-end">{{ pending_authorizations }}</span>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Records -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-history"></i> Recent Emergency Records
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if recent_records %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Patient</th>
+                                    <th>Doctor</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in recent_records|slice:":10" %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ record.patient.get_full_name }}</strong><br>
+                                        <small class="text-muted">{{ record.patient.patient_id }}</small>
+                                    </td>
+                                    <td>{{ record.doctor.name|default:"N/A" }}</td>
+                                    <td>{{ record.created_at|timesince }} ago</td>
+                                    <td>
+                                        <a href="{% url 'emergency:emergency_record_detail' record.id %}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                        <p class="mb-0">No recent records</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Top Diagnoses Chart
+        const diagnosisLabels = {{ diagnosis_labels|safe }};
+        const diagnosisCounts = {{ diagnosis_counts|safe }};
+
+        if (diagnosisLabels && diagnosisLabels.length > 0) {
+            const ctx = document.getElementById('diagnosisChart');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: diagnosisLabels,
+                        datasets: [{
+                            label: 'Number of Cases',
+                            data: diagnosisCounts,
+                            backgroundColor: [
+                                'rgba(78, 115, 223, 0.8)',
+                                'rgba(28, 200, 138, 0.8)',
+                                'rgba(246, 194, 62, 0.8)',
+                                'rgba(231, 74, 59, 0.8)',
+                                'rgba(133, 135, 150, 0.8)'
+                            ],
+                            borderColor: [
+                                'rgba(78, 115, 223, 1)',
+                                'rgba(28, 200, 138, 1)',
+                                'rgba(246, 194, 62, 1)',
+                                'rgba(231, 74, 59, 1)',
+                                'rgba(133, 135, 150, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            title: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}

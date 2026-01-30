@@ -315,6 +315,13 @@
     </script>
     {% endblock %}
 
+    <!-- Referrals Section -->
+    <div class="row">
+        <div class="col-lg-12">
+            {% include 'includes/department_referrals_section.html' with categorized_referrals=categorized_referrals %}
+        </div>
+    </div>
+
     {% block recent_records_table %}
 <div class="card shadow mb-4">
     <div class="card-header py-3">

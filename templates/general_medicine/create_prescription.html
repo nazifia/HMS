@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}{{ title }} - General Medicine Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">{{ title }}</h4>
+                <a href="{% url 'general_medicine:general_medicine_record_detail' record.id %}" class="btn btn-light">
+                    <i class="fas fa-arrow-left"></i> Back to Record
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5>Patient Information</h5>
+                        <p><strong>Name:</strong> {{ record.patient.get_full_name }}</p>
+                        <p><strong>Patient ID:</strong> {{ record.patient.patient_id }}</p>
+                        <p><strong>Age:</strong> {{ record.patient.age }} years</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Record Information</h5>
+                        <p><strong>Record ID:</strong> {{ record.id }}</p>
+                        <p><strong>Date:</strong> {{ record.visit_date|date:"F d, Y" }}</p>
+                        <p><strong>Doctor:</strong> Dr. {{ record.doctor.get_full_name }}</p>
+                    </div>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Prescription Details</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="{{ prescription_form.diagnosis.id_for_label }}" class="form-label">Diagnosis *</label>
+                                        {{ prescription_form.diagnosis }}
+                                        {% if prescription_form.diagnosis.help_text %}
+                                            <div class="form-text">{{ prescription_form.diagnosis.help_text }}</div>
+                                        {% endif %}
+                                        {% if prescription_form.diagnosis.errors %}
+                                            <div class="text-danger">{{ prescription_form.diagnosis.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="{{ prescription_form.notes.id_for_label }}" class="form-label">Notes</label>
+                                        {{ prescription_form.notes }}
+                                        {% if prescription_form.notes.help_text %}
+                                            <div class="form-text">{{ prescription_form.notes.help_text }}</div>
+                                        {% endif %}
+                                        {% if prescription_form.notes.errors %}
+                                            <div class="text-danger">{{ prescription_form.notes.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="{{ prescription_form.prescription_type.id_for_label }}" class="form-label">Prescription Type</label>
+                                        {{ prescription_form.prescription_type }}
+                                        {% if prescription_form.prescription_type.help_text %}
+                                            <div class="form-text">{{ prescription_form.prescription_type.help_text }}</div>
+                                        {% endif %}
+                                        {% if prescription_form.prescription_type.errors %}
+                                            <div class="text-danger">{{ prescription_form.prescription_type.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">Medications</h5>
+                                    <button type="button" class="btn btn-sm btn-success" id="add-medication">
+                                        <i class="fas fa-plus"></i> Add Medication
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    {{ formset.management_form }}
+                                    
+                                    <div class="table-responsive">
+                                        <table class="table table-striped" id="medications-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Medication</th>
+                                                    <th>Dosage</th>
+                                                    <th>Frequency</th>
+                                                    <th>Duration</th>
+                                                    <th>Quantity</th>
+                                                    <th>Instructions</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="medications-table-body">
+                                                {% for form in formset %}
+                                                    <tr class="medication-row">
+                                                        {% for hidden in form.hidden_fields %}
+                                                            {{ hidden }}
+                                                        {% endfor %}
+                                                        <td>
+                                                            {{ form.medication }}
+                                                            {% if form.medication.errors %}
+                                                                <div class="text-danger">{{ form.medication.errors }}</div>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {{ form.dosage }}
+                                                            {% if form.dosage.errors %}
+                                                                <div class="text-danger">{{ form.dosage.errors }}</div>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {{ form.frequency }}
+                                                            {% if form.frequency.errors %}
+                                                                <div class="text-danger">{{ form.frequency.errors }}</div>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {{ form.duration }}
+                                                            {% if form.duration.errors %}
+                                                                <div class="text-danger">{{ form.duration.errors }}</div>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {{ form.quantity }}
+                                                            {% if form.quantity.errors %}
+                                                                <div class="text-danger">{{ form.quantity.errors }}</div>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {{ form.instructions }}
+                                                            {% if form.instructions.errors %}
+                                                                <div class="text-danger">{{ form.instructions.errors }}</div>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            <button type="button" class="btn btn-sm btn-danger remove-medication">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-prescription"></i> Create Prescription
+                            </button>
+                            <a href="{% url 'general_medicine:general_medicine_record_detail' record.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add medication button
+    document.getElementById('add-medication').addEventListener('click', function() {
+        const formsetBody = document.getElementById('medications-table-body');
+        const totalForms = document.getElementById('id_form-TOTAL_FORMS');
+        const formNum = parseInt(totalForms.value);
+        
+        // Clone the first row as a template (but empty the values)
+        const firstRow = document.querySelector('.medication-row');
+        if (firstRow) {
+            const newRow = firstRow.cloneNode(true);
+            
+            // Clear all input values and update names/ids
+            const inputs = newRow.querySelectorAll('input, select, textarea');
+            inputs.forEach(function(input) {
+                // Update name and id attributes
+                if (input.name) {
+                    input.name = input.name.replace(/form-\d+-/, `form-${formNum}-`);
+                }
+                if (input.id) {
+                    input.id = input.id.replace(/id_form-\d+-/, `id_form-${formNum}-`);
+                }
+                
+                // Clear values
+                if (input.type === 'text' || input.type === 'number' || input.tagName === 'TEXTAREA') {
+                    input.value = '';
+                } else if (input.tagName === 'SELECT') {
+                    input.selectedIndex = 0;
+                }
+            });
+            
+            // Add the new row to the table
+            formsetBody.appendChild(newRow);
+            
+            // Update total forms count
+            totalForms.value = formNum + 1;
+        }
+    });
+    
+    // Remove medication button
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-medication')) {
+            const row = e.target.closest('.medication-row');
+            if (row) {
+                row.remove();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

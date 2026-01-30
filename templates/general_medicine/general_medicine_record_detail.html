@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}General Medicine Record Details - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">General Medicine Record Details</h4>
+                <div>
+                    <a href="{% url 'general_medicine:edit_general_medicine_record' record.id %}" class="btn btn-light">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <a href="{% url 'general_medicine:general_medicine_records_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Patient Information</h5>
+                        <p><strong>Name:</strong> 
+                            <a href="{% url 'patients:detail' record.patient.id %}">
+                                {{ record.patient.get_full_name }}
+                            </a>
+                        </p>
+                        <p><strong>Patient ID:</strong> {{ record.patient.id }}</p>
+                        
+                        <h5 class="mt-4">Doctor Information</h5>
+                        {% if record.doctor %}
+                            <p><strong>Name:</strong> Dr. {{ record.doctor.get_full_name }}</p>
+                        {% else %}
+                            <p><strong>Name:</strong> Not assigned</p>
+                        {% endif %}
+                        
+                        <h5 class="mt-4">Visit Information</h5>
+                        <p><strong>Visit Date:</strong> {{ record.visit_date|date:"M d, Y H:i" }}</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Triage Information</h5>
+                        <p><strong>Triage Level:</strong> 
+                            {% if record.triage_level == 'critical' %}
+                                <span class="badge bg-danger">Critical</span>
+                            {% elif record.triage_level == 'urgent' %}
+                                <span class="badge bg-warning">Urgent</span>
+                            {% elif record.triage_level == 'moderate' %}
+                                <span class="badge bg-info">Moderate</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Minor</span>
+                            {% endif %}
+                        </p>
+                        <p><strong>Chief Complaint:</strong> {{ record.chief_complaint|default:"Not provided" }}</p>
+                        <p><strong>Vital Signs:</strong> {{ record.vital_signs|default:"Not recorded" }}</p>
+                    </div>
+                </div>
+
+                {% if is_nhia_patient %}
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="alert {% if authorization_valid %}alert-success{% elif requires_authorization %}alert-warning{% else %}alert-danger{% endif %}" role="alert">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-shield-alt"></i> NHIA Patient - Authorization Status
+                            </h6>
+                            <p class="mb-0">
+                                <strong>Status:</strong> {{ authorization_message }}
+                            </p>
+                            {% if requires_authorization %}
+                            <hr>
+                            <p class="mb-0">
+                                <small>
+                                    <i class="fas fa-info-circle"></i>
+                                    An authorization code from the NHIA desk office is required before proceeding with treatment or billing.
+                                    Please contact the desk office to obtain the authorization code.
+                                </small>
+                            </p>
+                            <div class="mt-3">
+                                <a href="{% url 'core:request_authorization_form' model_type='general_medicine_record' object_id=record.id %}"
+                                   class="btn btn-primary btn-sm">
+                                    <i class="fas fa-paper-plane"></i> Request Authorization from Desk Office
+                                </a>
+                                <a href="{% url 'desk_office:authorization_dashboard' %}"
+                                   class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-shield-alt"></i> Go to Authorization Dashboard
+                                </a>
+                            </div>
+                            {% elif authorization_valid %}
+                            <hr>
+                            <p class="mb-0">
+                                <small>
+                                    <i class="fas fa-check-circle"></i>
+                                    This General Medicine record has been authorized for NHIA coverage.
+                                    NHIA will cover 90% of approved costs.
+                                </small>
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>Clinical Information</h5>
+                        <p><strong>History of Present Illness:</strong> {{ record.history_of_present_illness|default:"Not provided"|linebreaks }}</p>
+                        <p><strong>Diagnosis:</strong> {{ record.diagnosis|default:"Not provided" }}</p>
+                        <p><strong>Treatment Plan:</strong> {{ record.treatment_plan|default:"Not provided" }}</p>
+                        <p><strong>Disposition:</strong> {{ record.disposition|default:"Not specified" }}</p>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>Additional Information</h5>
+                        <p><strong>Notes:</strong> {{ record.notes|default:"No notes" }}</p>
+                        {% if record.authorization_code %}
+                            <p><strong>Authorization Code:</strong> {{ record.authorization_code }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h5>Follow-up</h5>
+                        <p>
+                            <strong>Follow-up Required:</strong> 
+                            {% if record.follow_up_required %}
+                                <span class="badge bg-warning">Yes</span>
+                            {% else %}
+                                <span class="badge bg-secondary">No</span>
+                            {% endif %}
+                        </p>
+                        {% if record.follow_up_required and record.follow_up_date %}
+                            <p><strong>Follow-up Date:</strong> {{ record.follow_up_date|date:"M d, Y" }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Created At:</strong> {{ record.created_at|date:"M d, Y H:i" }}</p>
+                        <p><strong>Last Updated:</strong> {{ record.updated_at|date:"M d, Y H:i" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

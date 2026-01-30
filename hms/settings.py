@@ -152,6 +152,14 @@ INSTALLED_APPS = [
     'neurology',
     'dermatology',
     'pharmacy_billing.apps.PharmacyBillingConfig',  # Added to resolve RuntimeError
+    
+    # New Specialty Modules
+    'emergency',
+    'general_medicine',
+    'pediatrics',
+    'surgery',
+    'cardiology',
+    'orthopedics',
 
 ]
 

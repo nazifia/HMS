@@ -8,6 +8,12 @@ from datetime import timedelta, datetime
 from django.db.models import Count, Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import TruncDate
 from consultations.models import Referral
+from consultations.referral_mappings import (
+    get_department_for_unit, 
+    get_department_for_specialty,
+    get_all_units_for_department,
+    get_all_specialties_for_department
+)
 import json
 
 
@@ -82,25 +88,128 @@ def verify_department_access(user, required_department_name):
     return False, user_department
 
 
-def get_department_referral_statistics(department):
+def get_referrals_for_department_enhanced(department):
     """
-    Get referral statistics for a department
+    Enhanced filtering for referrals using the mapping system.
+    This replaces the iterative approach with a more efficient query.
     
     Args:
         department: Department instance
         
     Returns:
+        QuerySet: Filtered referrals for the department
+    """
+    if not department:
+        return Referral.objects.none()
+
+    from consultations.referral_mappings import (
+        get_all_units_for_department,
+        get_all_specialties_for_department,
+        get_department_for_unit,
+        get_department_for_specialty
+    )
+    
+    # Get all units and specialties that map to this department
+    units = get_all_units_for_department(department.name)
+    specialties = get_all_specialties_for_department(department.name)
+    
+    # Build the query
+    # 1. Direct department match (by ID)
+    # 2. Unit match (unit takes priority, so we check it first)
+    # 3. Specialty match (only if it maps to this department)
+    # 4. Case-insensitive matches on department name in unit/specialty fields
+    # 5. Department name match (case-insensitive) for referrals where department name is stored as text
+    # 6. REVERSE MAPPING: Check if unit/specialty in referral maps to this department
+    
+    query = Q(referred_to_department=department)
+    
+    if units:
+        query |= Q(referred_to_unit__in=units)
+    
+    if specialties:
+        # If specialty match, we also include it.
+        # The priority logic is usually handled by the person creating the referral,
+        # but here we ensure that if it maps to the department, it's shown.
+        query |= Q(referred_to_specialty__in=specialties)
+
+    # Also check for case-insensitive matches on department name in unit/specialty fields
+    query |= Q(referred_to_unit__iexact=department.name)
+    query |= Q(referred_to_specialty__iexact=department.name)
+    
+    # CRITICAL FIX: Also match referrals where the department name matches (case-insensitive)
+    # This handles cases where referred_to_department might be set but the ID comparison fails
+    # or where department name is stored/referenced differently
+    query |= Q(referred_to_department__name__iexact=department.name)
+    
+    # REVERSE MAPPING FIX: Get all referrals and filter those whose unit/specialty
+    # maps to this department name. This handles cases where the unit/specialty
+    # wasn't in our predefined lists but maps to this department.
+    # We use a subquery approach for efficiency
+    from django.db.models import Case, When, Value, IntegerField
+    
+    # Get all pending referrals that have a unit or specialty set
+    # but no department set, then check if they map to this department
+    referrals_with_units = Referral.objects.exclude(
+        referred_to_unit__isnull=True
+    ).exclude(
+        referred_to_unit=''
+    ).filter(
+        referred_to_department__isnull=True
+    )
+    
+    # Find units that map to this department
+    matching_units = []
+    for referral in referrals_with_units.values('referred_to_unit').distinct():
+        unit_name = referral['referred_to_unit']
+        mapped_dept = get_department_for_unit(unit_name)
+        if mapped_dept and mapped_dept.lower() == department.name.lower():
+            matching_units.append(unit_name)
+    
+    if matching_units:
+        query |= Q(referred_to_unit__in=matching_units, referred_to_department__isnull=True)
+    
+    # Same for specialties
+    referrals_with_specialties = Referral.objects.exclude(
+        referred_to_specialty__isnull=True
+    ).exclude(
+        referred_to_specialty=''
+    ).filter(
+        referred_to_department__isnull=True
+    )
+    
+    matching_specialties = []
+    for referral in referrals_with_specialties.values('referred_to_specialty').distinct():
+        specialty_name = referral['referred_to_specialty']
+        mapped_dept = get_department_for_specialty(specialty_name)
+        if mapped_dept and mapped_dept.lower() == department.name.lower():
+            matching_specialties.append(specialty_name)
+    
+    if matching_specialties:
+        query |= Q(referred_to_specialty__in=matching_specialties, referred_to_department__isnull=True)
+    
+    return Referral.objects.filter(query).distinct()
+
+
+def get_department_referral_statistics(department):
+    """
+    Get referral statistics for a department
+
+    Args:
+        department: Department instance
+
+    Returns:
         dict: Statistics about referrals to this department
     """
-    referrals = Referral.objects.filter(referred_to_department=department)
-    
+    # Use enhanced filtering
+    referrals = get_referrals_for_department_enhanced(department)
+
     stats = {
         'total_referrals': referrals.count(),
         'pending_referrals': referrals.filter(status='pending').count(),
         'accepted_referrals': referrals.filter(status='accepted').count(),
         'completed_referrals': referrals.filter(status='completed').count(),
         'cancelled_referrals': referrals.filter(status='cancelled').count(),
-        
+
         # Authorization statistics
         'requiring_authorization': referrals.filter(
             requires_authorization=True,
@@ -113,36 +222,37 @@ def get_department_referral_statistics(department):
             authorization_status='rejected'
         ).count(),
     }
-    
+
     return stats
 
 
 def get_pending_referrals(department, limit=None):
     """
     Get pending referrals for a department with full related data
-    
+
     Args:
         department: Department instance
         limit: Optional limit on number of referrals to return
-        
+
     Returns:
         QuerySet: Pending referrals with related data
     """
-    referrals = Referral.objects.filter(
-        referred_to_department=department,
+    # Use enhanced filtering and apply pending status
+    referrals = get_referrals_for_department_enhanced(department).filter(
         status='pending'
     ).select_related(
         'patient',
         'referring_doctor',
         'referring_doctor__profile',
         'referring_doctor__profile__department',
+        'referred_to_department',  # Added to ensure department data is loaded
         'assigned_doctor',
         'authorization_code'
     ).order_by('-referral_date')
-    
+
     if limit:
         referrals = referrals[:limit]
-    
+
     return referrals
 
 
@@ -257,55 +367,57 @@ def build_department_dashboard_context(
 def get_authorized_referrals(department, limit=None):
     """
     Get referrals that are authorized and ready to be acted upon
-    
+
     Args:
         department: Department instance
         limit: Optional limit on number of referrals
-        
+
     Returns:
         QuerySet: Authorized pending referrals
     """
-    referrals = Referral.objects.filter(
-        referred_to_department=department,
+    # Use enhanced filtering and apply authorization status
+    referrals = get_referrals_for_department_enhanced(department).filter(
         status='pending',
         authorization_status__in=['authorized', 'not_required']
     ).select_related(
         'patient',
         'referring_doctor',
+        'referred_to_department',  # Added to ensure department data is loaded
         'authorization_code'
     ).order_by('-referral_date')
-    
+
     if limit:
         referrals = referrals[:limit]
-    
+
     return referrals
 
 
 def get_unauthorized_referrals(department, limit=None):
     """
     Get referrals that require authorization but haven't been authorized yet
-    
+
     Args:
         department: Department instance
         limit: Optional limit on number of referrals
-        
+
     Returns:
         QuerySet: Unauthorized pending referrals
     """
-    referrals = Referral.objects.filter(
-        referred_to_department=department,
+    # Use enhanced filtering and apply unauthorized status
+    referrals = get_referrals_for_department_enhanced(department).filter(
         status='pending',
         requires_authorization=True,
         authorization_status__in=['required', 'pending']
     ).select_related(
         'patient',
         'referring_doctor',
+        'referred_to_department',  # Added to ensure department data is loaded
         'authorization_code'
     ).order_by('-referral_date')
-    
+
     if limit:
         referrals = referrals[:limit]
-    
+
     return referrals
 
 
@@ -319,43 +431,35 @@ def categorize_referrals(department):
     Returns:
         dict: Categorized referrals including pending and accepted
     """
-    # Get pending referrals
-    referral_filter = {}
     if department is not None:
-        referral_filter['referred_to_department'] = department
-    
-    pending_referrals = Referral.objects.filter(
-        **referral_filter,
-        status='pending'
-    ).select_related(
+        # Use enhanced filtering for department-specific referrals
+        base_queryset = get_referrals_for_department_enhanced(department)
+    else:
+        # For superusers, get all referrals
+        base_queryset = Referral.objects.all()
+
+    # Pre-fetch related data for all referrals we might need
+    # CRITICAL FIX: Also include 'referred_to_department' in select_related
+    # to ensure proper filtering and data access
+    base_queryset = base_queryset.select_related(
         'patient',
         'patient__nhia_info',
         'referring_doctor',
         'referring_doctor__profile',
         'referring_doctor__profile__department',
+        'referred_to_department',  # Added to ensure department data is loaded
         'authorization_code',
         'assigned_doctor'
     ).order_by('-referral_date')
 
-    # Get accepted referrals (patients under care)
-    accepted_referrals = Referral.objects.filter(
-        **referral_filter,
-        status='accepted'
-    ).select_related(
-        'patient',
-        'patient__nhia_info',
-        'referring_doctor',
-        'referring_doctor__profile',
-        'referring_doctor__profile__department',
-        'authorization_code',
-        'assigned_doctor'
-    ).order_by('-referral_date')
+    pending_referrals = base_queryset.filter(status='pending')
+    accepted_referrals = base_queryset.filter(status='accepted')
 
     categorized = {
         'ready_to_accept': [],  # Authorized or not requiring authorization (pending)
         'awaiting_authorization': [],  # Requires authorization but not yet authorized (pending)
         'rejected_authorization': [],  # Authorization was rejected (pending)
-        'under_care': [],  # Accepted referrals - patients currently under department care
+        'under_care': list(accepted_referrals),  # Accepted referrals - patients currently under department care
     }
 
     # Categorize pending referrals
@@ -369,9 +473,6 @@ def categorize_referrals(department):
         else:
             # Default to ready to accept for any other case
             categorized['ready_to_accept'].append(referral)
-
-    # Add accepted referrals to under_care
-    categorized['under_care'] = list(accepted_referrals)
 
     return categorized
 

@@ -21,7 +21,7 @@
 
     <!-- Statistics Cards Row -->
     <div class="row">
-        <!-- Appointments Today Card -->
+        <!-- Appointments Today -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-primary shadow h-100 py-1">
                 <div class="card-body">
@@ -31,12 +31,9 @@
                                 Appointments Today
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ appointments_today|default:0 }}</div>
-                            <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-calendar-check"></i> Follow-ups Due: {{ followups_due|default:0 }}
-                            </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-user-nurse fa-2x text-gray-300"></i>
+                            <i class="fas fa-calendar-check fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -50,56 +47,48 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                High Risk Cases
+                                High Risk Case
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ high_risk_pregnancies|default:0 }}</div>
-                            <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-exclamation-triangle"></i> Hypertension/Proteinuria
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ high_risk_pregnancies|default:0 }}
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-heartbeat fa-2x text-gray-300"></i>
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Due Soon Card -->
+        <!-- Follow-ups Due -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-warning shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Due Within 4 Weeks
+                                Follow-ups Due
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ due_soon|default:0 }}</div>
-                            <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-baby"></i> Expected Deliveries
-                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ followups_due|default:0 }}</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-calendar-alt fa-2x text-gray-300"></i>
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Total Patients Card -->
+        <!-- Total Unique Patients -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-success shadow h-100 py-1">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Total Patients
+                                Total Patients (ANC)
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_patients|default:0 }}</div>
-                            <div class="text-xs text-muted mt-1">
-                                <i class="fas fa-female"></i> Avg Gravida: {{ avg_gravida|default:"0.0" }}
-                            </div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-users fa-2x text-gray-300"></i>
@@ -110,7 +99,7 @@
         </div>
     </div>
 
-    <!-- Charts Row -->
+    <!-- Charts and Summary Row -->
     <div class="row mb-4">
         <!-- Top Diagnoses Chart -->
         <div class="col-xl-6 col-lg-6">
@@ -133,19 +122,11 @@
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-chart-bar"></i> Maternal Health Statistics
+                        <i class="fas fa-chart-bar"></i> Maternal Health Summary
                     </h6>
                 </div>
                 <div class="card-body">
                     <div class="list-group list-group-flush">
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span><i class="fas fa-calendar-day text-primary"></i> Appointments Today</span>
-                            <span class="badge bg-primary rounded-pill">{{ appointments_today|default:0 }}</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span><i class="fas fa-calendar-week text-success"></i> Follow-ups Due This Week</span>
-                            <span class="badge bg-success rounded-pill">{{ followups_due|default:0 }}</span>
-                        </div>
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <span><i class="fas fa-exclamation-triangle text-danger"></i> High Risk Pregnancies</span>
                             <span class="badge bg-danger rounded-pill">{{ high_risk_pregnancies|default:0 }}</span>
@@ -168,71 +149,14 @@
         </div>
     </div>
 
-<div class="row">
-        <!-- Pending Referrals Section -->
-        <div class="col-lg-6 mb-4">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-exchange-alt"></i> Pending Referrals
-                    </h6>
-                    <a href="{% url 'consultations:department_referral_dashboard' %}" class="btn btn-sm btn-primary">
-                        View All
-                    </a>
-                </div>
-                <div class="card-body">
-                    {% if pending_referrals %}
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Patient</th>
-                                        <th>From</th>
-                                        <th>Auth Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for referral in pending_referrals|slice:":5" %}
-                                    <tr>
-                                        <td>
-                                            <strong>{{ referral.patient.get_full_name }}</strong><br>
-                                            <small class="text-muted">{{ referral.patient.patient_id }}</small>
-                                        </td>
-                                        <td>
-                                            <small>Dr. {{ referral.referring_doctor.get_full_name }}</small>
-                                        </td>
-                                        <td>
-                                            {% if referral.authorization_status == 'authorized' %}
-                                                <span class="badge bg-success">Authorized</span>
-                                            {% elif referral.authorization_status == 'not_required' %}
-                                                <span class="badge bg-secondary">Not Required</span>
-                                            {% elif referral.authorization_status == 'pending' %}
-                                                <span class="badge bg-warning">Pending</span>
-                                            {% elif referral.authorization_status == 'required' %}
-                                                <span class="badge bg-danger">Required</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-sm btn-outline-info">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <div class="text-center text-muted py-3">
-                            <i class="fas fa-inbox fa-2x mb-2"></i>
-                            <p class="mb-0">No pending referrals</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
+    <!-- Referrals Section -->
+    <div class="row">
+        <div class="col-lg-12">
+            {% include 'includes/department_referrals_section.html' with categorized_referrals=categorized_referrals %}
         </div>
+    </div>
 
+    <div class="row mt-4">
         <!-- Quick Actions -->
         <div class="col-lg-6 mb-4">
             <div class="card shadow">
@@ -249,11 +173,13 @@
                         <a href="{% url 'anc:anc_records_list' %}" class="list-group-item list-group-item-action">
                             <i class="fas fa-list text-info"></i> View All Records
                         </a>
-                        <a href="{% url 'consultations:department_referral_dashboard' %}" class="list-group-item list-group-item-action">
+                        <a href="{% url 'consultations:department_referral_dashboard' %}"
+                            class="list-group-item list-group-item-action">
                             <i class="fas fa-exchange-alt text-warning"></i> View Referrals
                         </a>
                         {% if pending_authorizations > 0 %}
-                        <a href="{% url 'desk_office:authorization_dashboard' %}" class="list-group-item list-group-item-action">
+                        <a href="{% url 'desk_office:authorization_dashboard' %}"
+                            class="list-group-item list-group-item-action">
                             <i class="fas fa-shield-alt text-danger"></i> Authorization Dashboard
                             <span class="badge bg-danger float-end">{{ pending_authorizations }}</span>
                         </a>
@@ -262,11 +188,9 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Recent Records -->
-    <div class="row">
-        <div class="col-12 mb-4">
+        <!-- Recent Records -->
+        <div class="col-lg-6 mb-4">
             <div class="card shadow">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
@@ -275,40 +199,41 @@
                 </div>
                 <div class="card-body">
                     {% if recent_records %}
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Patient</th>
-                                        <th>Doctor</th>
-                                        <th>Date</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for record in recent_records|slice:":10" %}
-                                    <tr>
-                                        <td>
-                                            <strong>{{ record.patient.get_full_name }}</strong><br>
-                                            <small class="text-muted">{{ record.patient.patient_id }}</small>
-                                        </td>
-                                        <td>{{ record.doctor.name|default:"N/A" }}</td>
-                                        <td>{{ record.created_at|timesince }} ago</td>
-                                        <td>
-                                            <a href="{% url 'anc:anc_record_detail' record.id %}" class="btn btn-sm btn-primary">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Patient</th>
+                                    <th>Doctor</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in recent_records|slice:":10" %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ record.patient.get_full_name }}</strong><br>
+                                        <small class="text-muted">{{ record.patient.patient_id }}</small>
+                                    </td>
+                                    <td>{{ record.doctor.get_full_name|default:"N/A" }}</td>
+                                    <td>{{ record.created_at|timesince }} ago</td>
+                                    <td>
+                                        <a href="{% url 'anc:anc_record_detail' record.id %}"
+                                            class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                     {% else %}
-                        <div class="text-center text-muted py-3">
-                            <i class="fas fa-inbox fa-2x mb-2"></i>
-                            <p class="mb-0">No recent records</p>
-                        </div>
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                        <p class="mb-0">No recent records</p>
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -322,10 +247,11 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Top Diagnoses Chart
-    const diagnosisLabels = {{ diagnosis_labels|safe }};
-    const diagnosisCounts = {{ diagnosis_counts|safe }};
+    document.addEventListener('DOMContentLoaded', function () {
+        // Top Diagnoses Chart
+        const diagnosisLabels = {{ diagnosis_labels| safe
+    }};
+    const diagnosisCounts = {{ diagnosis_counts| safe }};
 
     if (diagnosisLabels && diagnosisLabels.length > 0) {
         const ctx = document.getElementById('diagnosisChart');

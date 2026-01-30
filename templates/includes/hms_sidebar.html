@@ -434,6 +434,67 @@
             </a>
         </li>
         {% endif %}
+
+        <!-- Emergency Medicine Module (Available to doctors, nurses, and admins) -->
+        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <li class="nav-item {% if '/emergency/' in request.path %}active{% endif %}">
+            <a class="nav-link" href="{% url 'emergency:dashboard' %}">
+                <i class="fas fa-fw fa-ambulance text-white"></i>
+                <span class="text-white">Emergency</span>
+            </a>
+        </li>
+        {% endif %}
+
+        <!-- General Medicine Module (Available to doctors, nurses, and admins) -->
+        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <li class="nav-item {% if '/general-medicine/' in request.path %}active{% endif %}">
+            <a class="nav-link" href="{% url 'general_medicine:dashboard' %}">
+                <i class="fas fa-fw fa-stethoscope text-white"></i>
+                <span class="text-white">General Medicine</span>
+            </a>
+        </li>
+        {% endif %}
+
+        <!-- Pediatrics Module (Available to doctors, nurses, and admins) -->
+        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <li class="nav-item {% if '/pediatrics/' in request.path %}active{% endif %}">
+            <a class="nav-link" href="{% url 'pediatrics:dashboard' %}">
+                <i class="fas fa-fw fa-child text-white"></i>
+                <span class="text-white">Pediatrics</span>
+            </a>
+        </li>
+        {% endif %}
+
+        <!-- Surgery Module (Available to doctors, nurses, and admins) -->
+        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <li class="nav-item {% if '/surgery/' in request.path %}active{% endif %}">
+            <a class="nav-link" href="{% url 'surgery:dashboard' %}">
+                <i class="fas fa-fw fa-procedures text-white"></i>
+                <span class="text-white">Surgery</span>
+            </a>
+        </li>
+        {% endif %}
+
+        <!-- Cardiology Module (Available to doctors, nurses, and admins) -->
+        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <li class="nav-item {% if '/cardiology/' in request.path %}active{% endif %}">
+            <a class="nav-link" href="{% url 'cardiology:dashboard' %}">
+                <i class="fas fa-fw fa-heart text-white"></i>
+                <span class="text-white">Cardiology</span>
+            </a>
+        </li>
+        {% endif %}
+
+        <!-- Orthopedics Module (Available to doctors, nurses, and admins) -->
+        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <li class="nav-item {% if '/orthopedics/' in request.path %}active{% endif %}">
+            <a class="nav-link" href="{% url 'orthopedics:dashboard' %}">
+                <i class="fas fa-fw fa-bone text-white"></i>
+                <span class="text-white">Orthopedics</span>
+            </a>
+        </li>
+        {% endif %}
+
         <!-- Oncology Module (Available to doctors, nurses, and admins) -->
         {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
         <li class="nav-item {% if '/oncology/' in request.path %}active{% endif %}">

@@ -47,6 +47,7 @@
                                 <tr>
                                     <th>Patient</th>
                                     <th>From</th>
+                                    <th>To</th>
                                     <th>Assigned To</th>
                                     <th>Reason</th>
                                     <th>Accepted Date</th>
@@ -83,6 +84,9 @@
                                                 Department N/A
                                             {% endif %}
                                         </small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ referral.get_referral_destination }}</span>
                                     </td>
                                     <td>
                                         {% if referral.assigned_doctor %}
@@ -152,6 +156,7 @@
                                 <tr>
                                     <th>Patient</th>
                                     <th>From</th>
+                                    <th>To</th>
                                     <th>Reason</th>
                                     <th>Date</th>
                                     <th>Status</th>
@@ -192,6 +197,9 @@
                                                 Department N/A
                                             {% endif %}
                                         </small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ referral.get_referral_destination }}</span>
                                     </td>
                                     <td>
                                         <div class="reason-text">
@@ -271,6 +279,7 @@
                                 <tr>
                                     <th>Patient</th>
                                     <th>From</th>
+                                    <th>To</th>
                                     <th>Reason</th>
                                     <th>Date</th>
                                     <th>Auth Status</th>
@@ -309,6 +318,9 @@
                                                 Department N/A
                                             {% endif %}
                                         </small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ referral.get_referral_destination }}</span>
                                     </td>
                                     <td>
                                         <div class="reason-text">
@@ -377,6 +389,7 @@
                                 <tr>
                                     <th>Patient</th>
                                     <th>From</th>
+                                    <th>To</th>
                                     <th>Reason</th>
                                     <th>Date</th>
                                     <th>Actions</th>
@@ -392,6 +405,9 @@
                                     </td>
                                     <td>
                                         <strong>Dr. {{ referral.referring_doctor.get_full_name }}</strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ referral.get_referral_destination }}</span>
                                     </td>
                                     <td>{{ referral.reason|truncatewords:10 }}</td>
                                     <td>

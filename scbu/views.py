@@ -133,6 +133,7 @@ def scbu_dashboard(request):
         'diagnosis_counts': json.dumps(diagnosis_counts),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
+        'pending_authorizations': len(categorized_referrals['awaiting_authorization']),
     })
 
     return render(request, 'scbu/dashboard.html', context)

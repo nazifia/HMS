@@ -59,6 +59,14 @@ urlpatterns = [
     path('gynae-emergency/', include('gynae_emergency.urls')),
     path('neurology/', include('neurology.urls')),
     path('dermatology/', include('dermatology.urls')),
+    
+    # New Specialty Modules
+    path('emergency/', include('emergency.urls')),
+    path('general-medicine/', include('general_medicine.urls')),
+    path('pediatrics/', include('pediatrics.urls')),
+    path('surgery/', include('surgery.urls')),
+    path('cardiology/', include('cardiology.urls')),
+    path('orthopedics/', include('orthopedics.urls')),
 ]
 
 # Serve media files in development
