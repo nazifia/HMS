@@ -784,11 +784,16 @@ def add_soap_note(request, consultation_id):
 
 @login_required
 def referral_list(request):
-    """View for listing all referrals for a doctor"""
+    """View for listing all referrals for a doctor with patient name and phone number search"""
     doctor = request.user
 
-    # Get referrals made by this doctor
-    referrals_made = Referral.objects.filter(referring_doctor=doctor).order_by('-referral_date')
+    # Get referrals made by this doctor with patient details
+    referrals_made = Referral.objects.filter(
+        referring_doctor=doctor
+    ).select_related(
+        'patient', 'referring_doctor', 'assigned_doctor', 
+        'referred_to_department', 'consultation'
+    ).order_by('-referral_date')
 
     # Get referrals received by this doctor (includes assignments)
     referrals_received = Referral.objects.filter(
@@ -796,8 +801,14 @@ def referral_list(request):
         (Q(referral_type='department') & Q(referred_to_department=doctor.profile.department) if hasattr(doctor, 'profile') and doctor.profile and doctor.profile.department else Q(pk=None)) |  # Department referrals
         (Q(referral_type='specialty') & Q(referred_to_department=doctor.profile.department) & Q(referred_to_specialty__icontains=doctor.profile.specialization) if hasattr(doctor, 'profile') and doctor.profile and doctor.profile.department and doctor.profile.specialization else Q(pk=None)) |  # Specialty referrals
         (Q(referral_type='unit') & Q(referred_to_department=doctor.profile.department) if hasattr(doctor, 'profile') and doctor.profile and doctor.profile.department else Q(pk=None))  # Unit referrals
+    ).select_related(
+        'patient', 'referring_doctor', 'assigned_doctor', 
+        'referred_to_department', 'consultation'
     ).distinct().order_by('-referral_date') if hasattr(doctor, 'profile') and doctor.profile else Referral.objects.filter(
         Q(assigned_doctor=doctor)
+    ).select_related(
+        'patient', 'referring_doctor', 'assigned_doctor', 
+        'referred_to_department', 'consultation'
     ).distinct().order_by('-referral_date')
 
     # Filter by status
@@ -806,13 +817,30 @@ def referral_list(request):
         referrals_made = referrals_made.filter(status=status)
         referrals_received = referrals_received.filter(status=status)
 
+    # Patient name and phone number search
+    patient_search = request.GET.get('patient_search', '').strip()
+    if patient_search:
+        # Search by patient name (first name or last name), patient ID, or phone number
+        referrals_made = referrals_made.filter(
+            Q(patient__first_name__icontains=patient_search) |
+            Q(patient__last_name__icontains=patient_search) |
+            Q(patient__patient_id__icontains=patient_search) |
+            Q(patient__phone_number__icontains=patient_search)
+        )
+        referrals_received = referrals_received.filter(
+            Q(patient__first_name__icontains=patient_search) |
+            Q(patient__last_name__icontains=patient_search) |
+            Q(patient__patient_id__icontains=patient_search) |
+            Q(patient__phone_number__icontains=patient_search)
+        )
+
     # Pagination for referrals made
-    made_paginator = Paginator(referrals_made, 5)
+    made_paginator = Paginator(referrals_made, 10)
     made_page = request.GET.get('made_page')
     made_page_obj = made_paginator.get_page(made_page)
 
     # Pagination for referrals received
-    received_paginator = Paginator(referrals_received, 5)
+    received_paginator = Paginator(referrals_received, 10)
     received_page = request.GET.get('received_page')
     received_page_obj = received_paginator.get_page(received_page)
 
@@ -820,6 +848,7 @@ def referral_list(request):
         'made_page_obj': made_page_obj,
         'received_page_obj': received_page_obj,
         'status': status,
+        'patient_search': patient_search,
     }
 
     return render(request, 'consultations/referral_list.html', context)
@@ -1824,29 +1853,43 @@ def department_referral_dashboard(request):
     if hasattr(request.user, 'profile') and request.user.profile and request.user.profile.department:
         user_department = request.user.profile.department
 
-    # Superusers can view all referrals without department assignment
-    if not user_department and not request.user.is_superuser:
+    # Superusers can view all referrals regardless of department assignment
+    is_superuser = request.user.is_superuser
+    
+    # Regular users must be assigned to a department
+    if not user_department and not is_superuser:
         messages.error(request, "You must be assigned to a department to view referrals.")
         return redirect('dashboard:dashboard')
 
     # Get referrals using STRICT filtering to prevent cross-department leakage
-    # Only show referrals explicitly meant for this department based on:
-    # 1. Direct department ID match
-    # 2. Unit mappings from referral_mappings.py
-    # 3. Specialty mappings from referral_mappings.py
-    if user_department:
-        # Use strict filtering via categorize_referrals
-        from core.department_dashboard_utils import categorize_referrals, get_referrals_for_department_strict
-        referrals = get_referrals_for_department_strict(user_department).select_related(
-            'patient', 'referring_doctor', 'referred_to_department',
-            'assigned_doctor', 'consultation', 'authorization_code'
-        ).order_by('-referral_date')
-    else:
+    # Superusers see ALL referrals regardless of department assignment
+    # Regular users only see referrals for their assigned department
+    from core.department_dashboard_utils import categorize_referrals, get_referrals_for_department_strict
+    
+    if is_superuser:
         # Superusers see all referrals
         referrals = Referral.objects.all().select_related(
             'patient', 'referring_doctor', 'referred_to_department',
             'assigned_doctor', 'consultation', 'authorization_code'
         ).order_by('-referral_date')
+        # Pass None to categorize_referrals to show all referrals
+        categorized = categorize_referrals(None)
+    elif user_department:
+        # Regular users: Use strict filtering via categorize_referrals
+        referrals = get_referrals_for_department_strict(user_department).select_related(
+            'patient', 'referring_doctor', 'referred_to_department',
+            'assigned_doctor', 'consultation', 'authorization_code'
+        ).order_by('-referral_date')
+        categorized = categorize_referrals(user_department)
+    else:
+        # Should not reach here due to earlier check, but handle gracefully
+        referrals = Referral.objects.none()
+        categorized = {
+            'ready_to_accept': [],
+            'awaiting_authorization': [],
+            'rejected_authorization': [],
+            'under_care': []
+        }
 
     # Apply status filter
     status_filter = request.GET.get('status', '')
@@ -1858,13 +1901,14 @@ def department_referral_dashboard(request):
     if auth_status_filter:
         referrals = referrals.filter(authorization_status=auth_status_filter)
 
-    # Apply search filter
+    # Apply search filter - includes phone number
     search_query = request.GET.get('search', '')
     if search_query:
         referrals = referrals.filter(
             Q(patient__first_name__icontains=search_query) |
             Q(patient__last_name__icontains=search_query) |
             Q(patient__patient_id__icontains=search_query) |
+            Q(patient__phone_number__icontains=search_query) |
             Q(reason__icontains=search_query)
         )
 
@@ -1872,10 +1916,6 @@ def department_referral_dashboard(request):
     urgency_filter = request.GET.get('urgency', '')
     if urgency_filter:
         referrals = referrals.filter(urgency_level=urgency_filter)
-
-    # Categorize referrals using the utility function
-    from core.department_dashboard_utils import categorize_referrals
-    categorized = categorize_referrals(user_department)
 
     # Get counts for each category
     ready_to_accept_count = len(categorized['ready_to_accept'])
@@ -1909,6 +1949,12 @@ def department_referral_dashboard(request):
         elif auth_status_filter == 'rejected':
             categorized['rejected_authorization'] = [r for r in categorized['rejected_authorization'] if r.authorization_status == 'rejected']
 
+    # Calculate total and filtered statistics
+    total_referrals = len(categorized['ready_to_accept']) + len(categorized['awaiting_authorization']) + len(categorized['rejected_authorization']) + len(categorized['under_care'])
+    authorized_count = ready_to_accept_count
+    pending_auth_count = awaiting_authorization_count
+    pending_acceptance_count = ready_to_accept_count
+    
     context = {
         'user_department': user_department,
         'department_name': user_department.name if user_department else 'All Departments',
@@ -1919,11 +1965,17 @@ def department_referral_dashboard(request):
         'rejected_authorization_referrals': categorized['rejected_authorization'],
         'under_care_referrals': categorized['under_care'],
         
-        # Counts
+        # Counts for categorized sections
         'ready_to_accept_count': ready_to_accept_count,
         'awaiting_authorization_count': awaiting_authorization_count,
         'rejected_authorization_count': rejected_authorization_count,
         'under_care_count': under_care_count,
+        
+        # Statistics for cards (matching template expectations)
+        'total_referrals': total_referrals,
+        'authorized_count': authorized_count,
+        'pending_auth_count': pending_auth_count,
+        'pending_acceptance_count': pending_acceptance_count,
         
         # Filter states
         'status_filter': status_filter,

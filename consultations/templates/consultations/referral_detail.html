@@ -11,7 +11,7 @@
             <a href="{% url 'consultations:referral_tracking' %}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Tracking
             </a>
-            {% if referral.referral_type in 'department,specialty,unit' and referral.can_be_accepted_by == request.user %}
+            {% if referral.referral_type in 'department,specialty,unit' and referral.can_be_accepted_by(request.user) %}
                 {% if referral.status == 'pending' %}
                     {% if referral.authorization_status == 'authorized' or referral.authorization_status == 'not_required' %}
                     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#updateStatusModal">
@@ -260,7 +260,7 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        {% if referral.referral_type in 'department,specialty,unit' and referral.can_be_accepted_by == request.user and referral.status == 'pending' %}
+                        {% if referral.referral_type in 'department,specialty,unit' and referral.can_be_accepted_by(request.user) and referral.status == 'pending' %}
                         <a href="{% url 'consultations:create_consultation' referral.patient.id %}" class="btn btn-success btn-sm">
                             <i class="fas fa-plus"></i> Start Consultation
                         </a>

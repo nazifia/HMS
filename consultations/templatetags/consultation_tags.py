@@ -14,3 +14,14 @@ def priority_color(priority):
         'low': 'success',
     }
     return mapping.get(priority, 'secondary')
+
+
+@register.simple_tag
+def can_accept_referral(referral, user):
+    """
+    Check if a user can accept a referral.
+    Usage: {% can_accept_referral referral request.user as can_accept %}
+    """
+    if referral and hasattr(referral, 'can_be_accepted_by'):
+        return referral.can_be_accepted_by(user)
+    return False

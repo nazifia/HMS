@@ -59,11 +59,10 @@
                             <td>{{ referral.reason }}</td>
                         </tr>
                         <tr>
-                            <th>Priority:</th>
+                            <th>Referral Type:</th>
                             <td>
-                                <span class="badge bg-{% if referral.priority == 'urgent' %}danger{% elif referral.priority == 'routine' %}success{% else %}warning{% endif %}">
-                                    {{ referral.get_priority_display }}
-                                </span>
+                                <span class="badge bg-info">{{ referral.get_referral_type_display }}</span><br>
+                                <small class="text-muted">To: {{ referral.get_referral_destination }}</small>
                             </td>
                         </tr>
                         <tr>

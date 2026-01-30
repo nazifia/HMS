@@ -103,20 +103,37 @@
             </h6>
         </div>
         <div class="card-body">
-            <form method="get" class="form-inline">
-                <div class="form-group mr-3 mb-2">
-                    <label for="status" class="mr-2">Referral Status:</label>
-                    <select name="status" id="status" class="form-control">
-                        <option value="">All</option>
+            <form method="get" class="row g-3">
+                <!-- Patient Search -->
+                <div class="col-md-4">
+                    <label for="search" class="form-label">Patient Search (Name, ID, or Phone):</label>
+                    <div class="input-group">
+                        <input type="text" name="search" id="search" class="form-control" 
+                               placeholder="Enter patient name, patient ID, or phone number..."
+                               value="{{ search_query }}">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted">Search by patient name, patient ID, or phone number</small>
+                </div>
+                
+                <!-- Status Filter -->
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Referral Status:</label>
+                    <select name="status" id="status" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Statuses</option>
                         <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
                         <option value="accepted" {% if status_filter == 'accepted' %}selected{% endif %}>Accepted</option>
                         <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
                         <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
                     </select>
                 </div>
-                <div class="form-group mr-3 mb-2">
-                    <label for="auth_status" class="mr-2">Authorization Status:</label>
-                    <select name="auth_status" id="auth_status" class="form-control">
+                
+                <!-- Authorization Status Filter -->
+                <div class="col-md-3">
+                    <label for="auth_status" class="form-label">Authorization Status:</label>
+                    <select name="auth_status" id="auth_status" class="form-select" onchange="this.form.submit()">
                         <option value="">All</option>
                         <option value="not_required" {% if auth_status_filter == 'not_required' %}selected{% endif %}>Not Required</option>
                         <option value="required" {% if auth_status_filter == 'required' %}selected{% endif %}>Required</option>
@@ -125,50 +142,61 @@
                         <option value="rejected" {% if auth_status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary mb-2">
-                    <i class="fas fa-search"></i> Apply Filters
-                </button>
-                <a href="{% url 'consultations:department_referral_dashboard' %}" class="btn btn-secondary mb-2 ml-2">
-                    <i class="fas fa-redo"></i> Reset
-                </a>
+                
+                <!-- Reset Button -->
+                <div class="col-md-2 d-flex align-items-end">
+                    {% if status_filter or auth_status_filter or search_query %}
+                    <a href="{% url 'consultations:department_referral_dashboard' %}" class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-times"></i> Clear Filters
+                    </a>
+                    {% endif %}
+                </div>
             </form>
         </div>
     </div>
 
-    <!-- Referrals List -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">
-                <i class="fas fa-list"></i> Referrals ({{ page_obj.paginator.count }} total)
+    <!-- Ready to Accept Referrals Section -->
+    {% if ready_to_accept_referrals %}
+    <div class="card shadow mb-4 border-left-success">
+        <div class="card-header py-3 bg-success text-white">
+            <h6 class="m-0 font-weight-bold">
+                <i class="fas fa-check-circle"></i> Ready to Accept ({{ ready_to_accept_count }})
+                <span class="badge bg-white text-success ms-2">Authorized/Not Required</span>
             </h6>
         </div>
         <div class="card-body">
-            {% if page_obj %}
             <div class="table-responsive">
                 <table class="table table-bordered table-hover" width="100%" cellspacing="0">
                     <thead>
                         <tr>
                             <th>Date</th>
                             <th>Patient</th>
+                            <th>Phone Number</th>
                             <th>From</th>
                             <th>Reason</th>
-                            <th>Authorization Status</th>
-                            <th>Referral Status</th>
+                            <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for referral in page_obj %}
+                        {% for referral in ready_to_accept_referrals %}
                         <tr>
                             <td>{{ referral.referral_date|date:"M d, Y" }}</td>
                             <td>
-                                <a href="{% url 'patients:detail' referral.patient.id %}">
+                                <a href="{% url 'patients:patient_detail' referral.patient.id %}">
                                     <strong>{{ referral.patient.get_full_name }}</strong>
                                 </a>
                                 <br>
                                 <small class="text-muted">ID: {{ referral.patient.patient_id }}</small>
                                 {% if referral.patient.patient_type == 'nhia' %}
-                                <br><span class="badge badge-info">NHIA</span>
+                                <br><span class="badge bg-info">NHIA</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if referral.patient.phone_number %}
+                                    <i class="fas fa-phone text-muted"></i> {{ referral.patient.phone_number }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
                                 {% endif %}
                             </td>
                             <td>
@@ -181,68 +209,197 @@
                                 <small>{{ referral.reason|truncatewords:15 }}</small>
                             </td>
                             <td>
-                                {% if referral.authorization_status == 'not_required' %}
-                                    <span class="badge badge-secondary">
-                                        <i class="fas fa-minus-circle"></i> Not Required
-                                    </span>
-                                {% elif referral.authorization_status == 'authorized' %}
-                                    <span class="badge badge-success">
-                                        <i class="fas fa-check-circle"></i> Authorized
-                                    </span>
-                                    {% if referral.authorization_code %}
-                                    <br><small class="text-muted">Code: {{ referral.authorization_code.code }}</small>
-                                    {% endif %}
-                                {% elif referral.authorization_status == 'required' %}
-                                    <span class="badge badge-warning">
-                                        <i class="fas fa-exclamation-circle"></i> Required
-                                    </span>
-                                    <br><small class="text-danger">Awaiting desk office</small>
-                                {% elif referral.authorization_status == 'pending' %}
-                                    <span class="badge badge-warning">
-                                        <i class="fas fa-clock"></i> Pending
-                                    </span>
-                                    <br><small class="text-danger">Awaiting desk office</small>
-                                {% elif referral.authorization_status == 'rejected' %}
-                                    <span class="badge badge-danger">
-                                        <i class="fas fa-times-circle"></i> Rejected
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td>
                                 {% if referral.status == 'pending' %}
-                                    <span class="badge badge-warning">Pending</span>
+                                    <span class="badge bg-warning">Pending</span>
                                 {% elif referral.status == 'accepted' %}
-                                    <span class="badge badge-info">Accepted</span>
+                                    <span class="badge bg-info">Accepted</span>
                                 {% elif referral.status == 'completed' %}
-                                    <span class="badge badge-success">Completed</span>
+                                    <span class="badge bg-success">Completed</span>
                                 {% elif referral.status == 'cancelled' %}
-                                    <span class="badge badge-danger">Cancelled</span>
+                                    <span class="badge bg-danger">Cancelled</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-sm btn-info" title="View Details">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-
-                                {% if referral.authorization_status == 'authorized' or referral.authorization_status == 'not_required' %}
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-outline-info" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
                                     {% if referral.status == 'pending' %}
                                     <a href="{% url 'consultations:update_referral_status_detailed' referral.id %}?status=accepted"
-                                       class="btn btn-sm btn-success"
+                                       class="btn btn-outline-success"
                                        title="Accept Referral"
                                        onclick="return confirm('Accept this referral?')">
                                         <i class="fas fa-check"></i>
                                     </a>
-                                    <button class="btn btn-sm btn-danger"
+                                    <button class="btn btn-outline-danger"
                                             title="Reject Referral"
                                             data-bs-toggle="modal"
                                             data-bs-target="#rejectModal{{ referral.id }}">
                                         <i class="fas fa-times"></i>
                                     </button>
                                     {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Awaiting Authorization Referrals Section -->
+    {% if awaiting_authorization_referrals %}
+    <div class="card shadow mb-4 border-left-warning">
+        <div class="card-header py-3 bg-warning text-dark">
+            <h6 class="m-0 font-weight-bold">
+                <i class="fas fa-clock"></i> Awaiting Authorization ({{ awaiting_authorization_count }})
+                <span class="badge bg-white text-warning ms-2">Requires Desk Office</span>
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Patient</th>
+                            <th>Phone Number</th>
+                            <th>From</th>
+                            <th>Reason</th>
+                            <th>Authorization Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for referral in awaiting_authorization_referrals %}
+                        <tr>
+                            <td>{{ referral.referral_date|date:"M d, Y" }}</td>
+                            <td>
+                                <a href="{% url 'patients:patient_detail' referral.patient.id %}">
+                                    <strong>{{ referral.patient.get_full_name }}</strong>
+                                </a>
+                                <br>
+                                <small class="text-muted">ID: {{ referral.patient.patient_id }}</small>
+                                {% if referral.patient.patient_type == 'nhia' %}
+                                <br><span class="badge bg-info">NHIA</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if referral.patient.phone_number %}
+                                    <i class="fas fa-phone text-muted"></i> {{ referral.patient.phone_number }}
                                 {% else %}
-                                    <button class="btn btn-sm btn-secondary" disabled title="Authorization required before accepting">
-                                        <i class="fas fa-lock"></i>
-                                    </button>
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>Dr. {{ referral.referring_doctor.get_full_name }}</strong>
+                                {% if referral.referring_doctor.profile and referral.referring_doctor.profile.department %}
+                                <br><small class="text-muted">{{ referral.referring_doctor.profile.department.name }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ referral.reason|truncatewords:15 }}</small>
+                            </td>
+                            <td>
+                                {% if referral.authorization_status == 'required' %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-exclamation-circle"></i> Required
+                                    </span>
+                                    <br><small class="text-danger">Awaiting desk office</small>
+                                {% elif referral.authorization_status == 'pending' %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-clock"></i> Pending
+                                    </span>
+                                    <br><small class="text-danger">Awaiting desk office</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-sm btn-outline-info" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <button class="btn btn-sm btn-outline-secondary" disabled title="Authorization required">
+                                    <i class="fas fa-lock"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Under Care Referrals Section -->
+    {% if under_care_referrals %}
+    <div class="card shadow mb-4 border-left-info">
+        <div class="card-header py-3 bg-info text-white">
+            <h6 class="m-0 font-weight-bold">
+                <i class="fas fa-user-md"></i> Under Care ({{ under_care_count }})
+                <span class="badge bg-white text-info ms-2">Accepted/Completed</span>
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Patient</th>
+                            <th>Phone Number</th>
+                            <th>From</th>
+                            <th>Reason</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for referral in under_care_referrals %}
+                        <tr>
+                            <td>{{ referral.referral_date|date:"M d, Y" }}</td>
+                            <td>
+                                <a href="{% url 'patients:patient_detail' referral.patient.id %}">
+                                    <strong>{{ referral.patient.get_full_name }}</strong>
+                                </a>
+                                <br>
+                                <small class="text-muted">ID: {{ referral.patient.patient_id }}</small>
+                                {% if referral.patient.patient_type == 'nhia' %}
+                                <br><span class="badge bg-info">NHIA</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if referral.patient.phone_number %}
+                                    <i class="fas fa-phone text-muted"></i> {{ referral.patient.phone_number }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>Dr. {{ referral.referring_doctor.get_full_name }}</strong>
+                                {% if referral.referring_doctor.profile and referral.referring_doctor.profile.department %}
+                                <br><small class="text-muted">{{ referral.referring_doctor.profile.department.name }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ referral.reason|truncatewords:15 }}</small>
+                            </td>
+                            <td>
+                                {% if referral.status == 'accepted' %}
+                                    <span class="badge bg-info">Accepted</span>
+                                {% elif referral.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-sm btn-outline-info" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if referral.status == 'accepted' %}
+                                <a href="{% url 'consultations:create_consultation' referral.patient.id %}" class="btn btn-sm btn-outline-success" title="Start Consultation">
+                                    <i class="fas fa-stethoscope"></i>
+                                </a>
                                 {% endif %}
                             </td>
                         </tr>
@@ -250,96 +407,145 @@
                     </tbody>
                 </table>
             </div>
-
-            <!-- Rejection Modals -->
-            {% for referral in page_obj %}
-            <div class="modal fade" id="rejectModal{{ referral.id }}" tabindex="-1" aria-labelledby="rejectModalLabel{{ referral.id }}" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header bg-danger text-white">
-                            <h5 class="modal-title" id="rejectModalLabel{{ referral.id }}">
-                                <i class="fas fa-times-circle"></i> Reject Referral
-                            </h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form method="post" action="{% url 'consultations:reject_referral' referral.id %}">
-                            {% csrf_token %}
-                            <div class="modal-body">
-                                <div class="alert alert-warning">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                    <strong>Warning:</strong> You are about to reject this referral. The referring doctor will be notified.
-                                </div>
-
-                                <div class="mb-3">
-                                    <p><strong>Patient:</strong> {{ referral.patient.get_full_name }} ({{ referral.patient.patient_id }})</p>
-                                    <p><strong>Referring Doctor:</strong> Dr. {{ referral.referring_doctor.get_full_name }}</p>
-                                    <p><strong>Reason for Referral:</strong> {{ referral.reason|truncatewords:30 }}</p>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="rejection_reason{{ referral.id }}" class="form-label">
-                                        <strong>Reason for Rejection:</strong> <span class="text-danger">*</span>
-                                    </label>
-                                    <textarea class="form-control"
-                                              id="rejection_reason{{ referral.id }}"
-                                              name="rejection_reason"
-                                              rows="4"
-                                              required
-                                              placeholder="Please provide a detailed reason for rejecting this referral..."></textarea>
-                                    <small class="text-muted">This reason will be sent to the referring doctor.</small>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                    <i class="fas fa-times"></i> Cancel
-                                </button>
-                                <button type="submit" class="btn btn-danger">
-                                    <i class="fas fa-times-circle"></i> Reject Referral
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-
-            <!-- Pagination -->
-            {% if page_obj.has_other_pages %}
-            <nav aria-label="Page navigation">
-                <ul class="pagination justify-content-center">
-                    {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if auth_status_filter %}&auth_status={{ auth_status_filter }}{% endif %}">First</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if auth_status_filter %}&auth_status={{ auth_status_filter }}{% endif %}">Previous</a>
-                    </li>
-                    {% endif %}
-
-                    <li class="page-item active">
-                        <span class="page-link">
-                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-                        </span>
-                    </li>
-
-                    {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if auth_status_filter %}&auth_status={{ auth_status_filter }}{% endif %}">Next</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if auth_status_filter %}&auth_status={{ auth_status_filter }}{% endif %}">Last</a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-            {% endif %}
-            {% else %}
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> No referrals found for {{ user_department.name }}.
-            </div>
-            {% endif %}
         </div>
     </div>
+    {% endif %}
+
+    <!-- Rejected Authorization Referrals Section -->
+    {% if rejected_authorization_referrals %}
+    <div class="card shadow mb-4 border-left-danger">
+        <div class="card-header py-3 bg-danger text-white">
+            <h6 class="m-0 font-weight-bold">
+                <i class="fas fa-times-circle"></i> Rejected Authorization ({{ rejected_authorization_count }})
+                <span class="badge bg-white text-danger ms-2">Contact Desk Office</span>
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Patient</th>
+                            <th>Phone Number</th>
+                            <th>From</th>
+                            <th>Reason</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for referral in rejected_authorization_referrals %}
+                        <tr>
+                            <td>{{ referral.referral_date|date:"M d, Y" }}</td>
+                            <td>
+                                <a href="{% url 'patients:patient_detail' referral.patient.id %}">
+                                    <strong>{{ referral.patient.get_full_name }}</strong>
+                                </a>
+                                <br>
+                                <small class="text-muted">ID: {{ referral.patient.patient_id }}</small>
+                                {% if referral.patient.patient_type == 'nhia' %}
+                                <br><span class="badge bg-info">NHIA</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if referral.patient.phone_number %}
+                                    <i class="fas fa-phone text-muted"></i> {{ referral.patient.phone_number }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>Dr. {{ referral.referring_doctor.get_full_name }}</strong>
+                                {% if referral.referring_doctor.profile and referral.referring_doctor.profile.department %}
+                                <br><small class="text-muted">{{ referral.referring_doctor.profile.department.name }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ referral.reason|truncatewords:15 }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-times-circle"></i> Rejected
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{% url 'consultations:referral_detail' referral.id %}" class="btn btn-sm btn-outline-info" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- No Referrals Message -->
+    {% if not ready_to_accept_referrals and not awaiting_authorization_referrals and not under_care_referrals and not rejected_authorization_referrals %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> No referrals found for {{ user_department.name }}.
+        {% if search_query or status_filter or auth_status_filter %}
+            <br><small>Try clearing the filters to see all referrals.</small>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Rejection Modals (for all referrals) -->
+    {% for referral in ready_to_accept_referrals %}
+    {% if referral.status == 'pending' %}
+    <div class="modal fade" id="rejectModal{{ referral.id }}" tabindex="-1" aria-labelledby="rejectModalLabel{{ referral.id }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="rejectModalLabel{{ referral.id }}">
+                        <i class="fas fa-times-circle"></i> Reject Referral
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="{% url 'consultations:reject_referral' referral.id %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Warning:</strong> You are about to reject this referral. The referring doctor will be notified.
+                        </div>
+
+                        <div class="mb-3">
+                            <p><strong>Patient:</strong> {{ referral.patient.get_full_name }} ({{ referral.patient.patient_id }})</p>
+                            <p><strong>Referring Doctor:</strong> Dr. {{ referral.referring_doctor.get_full_name }}</p>
+                            <p><strong>Reason for Referral:</strong> {{ referral.reason|truncatewords:30 }}</p>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="rejection_reason{{ referral.id }}" class="form-label">
+                                <strong>Reason for Rejection:</strong> <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control"
+                                      id="rejection_reason{{ referral.id }}"
+                                      name="rejection_reason"
+                                      rows="4"
+                                      required
+                                      placeholder="Please provide a detailed reason for rejecting this referral..."></textarea>
+                            <small class="text-muted">This reason will be sent to the referring doctor.</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-times-circle"></i> Reject Referral
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
 
     <!-- Help Section -->
     <div class="card shadow mb-4">

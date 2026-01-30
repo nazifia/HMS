@@ -128,12 +128,18 @@ class ReferralForm(forms.ModelForm):
         self.fields['referred_to_department'].empty_label = "Select Department"
         self.fields['referred_to_doctor'].empty_label = "Select Doctor"
 
-        # Set field labels
+        # Set field labels with explicit messaging
         self.fields['referral_type'].label = "Refer To"
-        self.fields['referred_to_department'].label = "Department"
-        self.fields['referred_to_specialty'].label = "Specialty"
-        self.fields['referred_to_unit'].label = "Unit"
-        self.fields['referred_to_doctor'].label = "Doctor"
+        self.fields['referred_to_department'].label = "Target Department *"
+        self.fields['referred_to_specialty'].label = "Target Specialty"
+        self.fields['referred_to_unit'].label = "Target Unit"
+        self.fields['referred_to_doctor'].label = "Specific Doctor (Optional)"
+        
+        # Add help text for explicit targeting
+        self.fields['referred_to_department'].help_text = "Select the department that will receive this referral. This is REQUIRED."
+        self.fields['referral_type'].help_text = "Choose the type of destination. Department is the most common and explicit option."
+        self.fields['referred_to_specialty'].help_text = "Optional: Specify a specialty within the department."
+        self.fields['referred_to_unit'].help_text = "Optional: Specify a specific unit within the department."
 
         # Make all referral destination fields not required (validation in clean method)
         self.fields['referred_to_department'].required = False
@@ -155,6 +161,48 @@ class ReferralForm(forms.ModelForm):
 
         # Import mapping functions
         from .referral_mappings import get_department_for_unit, get_department_for_specialty
+
+        # ENFORCE EXPLICIT DEPARTMENT TARGETING
+        # Department is ALWAYS required for all referral types to ensure explicit routing
+        if not referred_to_department:
+            # Try to auto-detect from specialty or unit if provided
+            detected_dept = None
+            
+            if referral_type == 'specialty' and referred_to_specialty:
+                detected_dept = get_department_for_specialty(referred_to_specialty)
+                if detected_dept:
+                    from accounts.models import Department
+                    try:
+                        dept = Department.objects.get(name=detected_dept)
+                        cleaned_data['referred_to_department'] = dept
+                        detected_dept = dept
+                    except Department.DoesNotExist:
+                        raise forms.ValidationError(
+                            f"Department '{detected_dept}' detected for specialty '{referred_to_specialty}' not found. "
+                            f"Please select the target department explicitly."
+                        )
+            
+            elif referral_type == 'unit' and referred_to_unit:
+                detected_dept = get_department_for_unit(referred_to_unit)
+                if detected_dept:
+                    from accounts.models import Department
+                    try:
+                        dept = Department.objects.get(name=detected_dept)
+                        cleaned_data['referred_to_department'] = dept
+                        detected_dept = dept
+                    except Department.DoesNotExist:
+                        raise forms.ValidationError(
+                            f"Department '{detected_dept}' detected for unit '{referred_to_unit}' not found. "
+                            f"Please select the target department explicitly."
+                        )
+            
+            # If still no department, raise validation error
+            if not cleaned_data.get('referred_to_department'):
+                raise forms.ValidationError(
+                    "Target Department is REQUIRED. Please explicitly select the department "
+                    "that should receive this referral. This ensures the referral is routed "
+                    "to the correct clinical area."
+                )
 
         # Validate based on referral type
         if referral_type == 'department':

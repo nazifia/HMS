@@ -133,9 +133,10 @@
                                 <thead>
                                     <tr>
                                         <th>Patient</th>
-                                        <th>Referring Doctor</th>
+                                        <th>From</th>
+                                        <th>To (Destination)</th>
                                         <th>Date</th>
-                                        <th>Authorization</th>
+                                        <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -154,26 +155,52 @@
                                                 {% endif %}
                                             </small>
                                         </td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ referral.get_referral_destination }}</span><br>
+                                            <small class="text-muted">
+                                                {% if referral.referred_to_specialty %}
+                                                    Specialty: {{ referral.referred_to_specialty }}
+                                                {% endif %}
+                                                {% if referral.referred_to_unit %}
+                                                    {% if referral.referred_to_specialty %}<br>{% endif %}
+                                                    Unit: {{ referral.referred_to_unit }}
+                                                {% endif %}
+                                            </small>
+                                        </td>
                                         <td>{{ referral.referral_date|date:"M d, Y" }}</td>
                                         <td>
                                             {% if referral.authorization_status == 'authorized' %}
-                                                <span class="badge bg-success">Authorized</span>
+                                                <span class="badge bg-success">Ready to Accept</span>
                                             {% elif referral.authorization_status == 'not_required' %}
-                                                <span class="badge bg-secondary">Not Required</span>
+                                                <span class="badge bg-success">Ready to Accept</span>
                                             {% elif referral.authorization_status == 'pending' %}
                                                 <span class="badge bg-warning">Pending Auth</span>
                                             {% elif referral.authorization_status == 'required' %}
-                                                <span class="badge bg-danger">Required</span>
+                                                <span class="badge bg-danger">Auth Required</span>
                                             {% elif referral.authorization_status == 'rejected' %}
-                                                <span class="badge bg-dark">Rejected</span>
+                                                <span class="badge bg-dark">Auth Rejected</span>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{% url 'consultations:referral_detail' referral.id %}" 
-                                               class="btn btn-sm btn-info" 
-                                               title="View Details">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{% url 'consultations:referral_detail' referral.id %}" 
+                                                   class="btn btn-sm btn-info" 
+                                                   title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                {% if referral.can_be_accepted_by(request.user) and referral.status == 'pending' %}
+                                                    {% if referral.authorization_status == 'authorized' or referral.authorization_status == 'not_required' %}
+                                                        <form method="post" action="{% url 'consultations:update_referral_status_detailed' referral.id %}" 
+                                                              onsubmit="return confirm('Accept this referral for {{ referral.patient.get_full_name }}?')" class="d-inline">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="status" value="accepted">
+                                                            <button type="submit" class="btn btn-sm btn-success" title="Accept Referral">
+                                                                <i class="fas fa-check"></i>
+                                                            </button>
+                                                        </form>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}

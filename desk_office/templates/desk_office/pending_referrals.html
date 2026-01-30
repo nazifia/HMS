@@ -35,10 +35,9 @@
                                 <th>Patient</th>
                                 <th>Patient ID</th>
                                 <th>From Doctor</th>
-                                <th>To Doctor</th>
+                                <th>To (Destination)</th>
                                 <th>Date</th>
                                 <th>Reason</th>
-                                <th>Priority</th>
                                 <th>Status</th>
                                 <th>Action</th>
                             </tr>
@@ -50,14 +49,12 @@
                                 <td>{{ referral.patient.get_full_name }}</td>
                                 <td>{{ referral.patient.patient_id }}</td>
                                 <td>Dr. {{ referral.referring_doctor.get_full_name }}</td>
-                                <td>{% if referral.referred_to_doctor %}Dr. {{ referral.referred_to_doctor.get_full_name }}{% else %}{{ referral.get_referral_destination }}{% endif %}</td>
+                                <td>
+                                    <span class="badge bg-primary">{{ referral.get_referral_destination }}</span><br>
+                                    <small class="text-muted">{{ referral.get_referral_type_display }}</small>
+                                </td>
                                 <td>{{ referral.referral_date|date:"M d, Y H:i" }}</td>
                                 <td>{{ referral.reason|truncatewords:10 }}</td>
-                                <td>
-                                    <span class="badge bg-{% if referral.priority == 'urgent' %}danger{% elif referral.priority == 'routine' %}success{% else %}warning{% endif %}">
-                                        {{ referral.get_priority_display }}
-                                    </span>
-                                </td>
                                 <td>
                                     <span class="badge bg-warning">
                                         {{ referral.get_authorization_status_display }}

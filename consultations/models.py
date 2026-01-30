@@ -277,22 +277,47 @@ class Referral(models.Model):
         return "Unspecified Destination"
 
     def can_be_accepted_by(self, user):
-        """Check if a user can accept this referral"""
+        """
+        Check if a user can accept this referral.
+        
+        This method ensures that referrals are ONLY accepted by users from the
+        explicitly targeted department/unit/specialty, enforcing strict routing
+        of referrals to the correct clinical areas.
+        """
         if self.status != 'pending':
             return False
             
-        # For department/specialty/unit referrals, check if user works in that area
+        # Superusers can accept any referral for administrative purposes
+        if user.is_superuser:
+            return True
+            
+        # For department/specialty/unit referrals, strictly check if user works in that area
         if hasattr(user, 'profile') and user.profile:
             profile = user.profile
             
-            # Check department match
-            if self.referred_to_department and profile.department:
-                if profile.department != self.referred_to_department:
+            # STRICT CHECK: Must have a department assignment to accept referrals
+            if not profile.department:
+                return False
+            
+            # STRICT CHECK: Department must match the referral's target department
+            if self.referred_to_department:
+                if profile.department.id != self.referred_to_department.id:
                     return False
+            else:
+                # If no department is set on the referral, cannot accept
+                return False
                     
-            # Check specialty match (if specified)
+            # STRICT CHECK: If specialty is specified, user's specialization must match
             if self.referred_to_specialty and profile.specialization:
+                # Case-insensitive check if the referral specialty is in user's specialization
                 if self.referred_to_specialty.lower() not in profile.specialization.lower():
+                    # Check exact match as fallback
+                    if self.referred_to_specialty.lower() != profile.specialization.lower():
+                        return False
+            
+            # STRICT CHECK: If unit is specified, user must have unit information matching
+            if self.referred_to_unit and hasattr(profile, 'unit') and profile.unit:
+                if self.referred_to_unit.lower() != profile.unit.lower():
                     return False
                     
             return True

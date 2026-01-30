@@ -90,6 +90,9 @@
                     {% if user|has_role:'doctor' %}
                     <a class="collapse-item {% if '/consultations/doctor/' in request.path %}active{% endif %}" href="{% url 'consultations:doctor_dashboard' %}">Doctor Dashboard</a>
                     {% endif %}
+                    {% if user.profile and user.profile.department %}
+                    <a class="collapse-item {% if '/consultations/department/' in request.path %}active{% endif %}" href="{% url 'consultations:department_referral_dashboard' %}">Department Referrals</a>
+                    {% endif %}
                 </div>
             </div>
         </li>
