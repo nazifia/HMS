@@ -893,12 +893,20 @@ def update_referral_status(request, referral_id):
 @login_required
 def referral_tracking(request):
     """Comprehensive referral tracking dashboard"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     user_roles = list(request.user.roles.values_list('name', flat=True))
-
+    
+    # Debug logging
+    logger.error(f'[REFERRAL_TRACKING] User: {request.user.username}, Superuser: {request.user.is_superuser}, Roles: {user_roles}')
+    
     # Base queryset
     referrals = Referral.objects.select_related(
         'patient', 'referring_doctor', 'referred_to_department', 'assigned_doctor', 'consultation'
     ).order_by('-referral_date')
+    
+    logger.error(f'[REFERRAL_TRACKING] Initial queryset count: {referrals.count()}')
 
     # Filter based on user role and permissions
     if 'admin' not in user_roles and not request.user.is_superuser:
@@ -921,7 +929,8 @@ def referral_tracking(request):
         referrals = referrals.filter(
             Q(patient__first_name__icontains=patient_search) |
             Q(patient__last_name__icontains=patient_search) |
-            Q(patient__patient_id__icontains=patient_search)
+            Q(patient__patient_id__icontains=patient_search) |
+            Q(patient__phone_number__icontains=patient_search)
         )
 
     doctor_filter = request.GET.get('doctor', '')
@@ -943,6 +952,8 @@ def referral_tracking(request):
     total_referrals = referrals.count()
     pending_referrals = referrals.filter(status='pending').count()
     completed_referrals = referrals.filter(status='completed').count()
+    
+    logger.error(f'[REFERRAL_TRACKING] Stats - Total: {total_referrals}, Pending: {pending_referrals}, Completed: {completed_referrals}')
 
     # Pagination
     paginator = Paginator(referrals, 20)
