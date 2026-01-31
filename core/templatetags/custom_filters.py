@@ -623,3 +623,23 @@ def map_attribute(items, attribute_name):
         return [getattr(item, attribute_name) for item in items]
     except (AttributeError, TypeError):
         return []
+
+
+@register.filter
+def total_count(items):
+    """
+    Sum the 'count' values from a list of dictionaries.
+    Useful for aggregating query results like surgeries_by_status.
+
+    Usage: {{ surgeries_by_status|total_count }}
+
+    Args:
+        items: List of dictionaries containing 'count' key
+
+    Returns:
+        Total count (sum of all count values)
+    """
+    try:
+        return sum(int(item.get('count', 0)) for item in items)
+    except (ValueError, TypeError, AttributeError):
+        return 0

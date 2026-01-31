@@ -128,6 +128,33 @@ class SurgeryForm(forms.ModelForm):
             profile__specialization__icontains='anesthetist'
         )
         
+        # Enhance theatre dropdown with detailed labels
+        self.fields['theatre'].queryset = OperationTheatre.objects.all()
+        def get_theatre_label(obj):
+            status = "✓ Available" if obj.is_available else "✗ Occupied"
+            equipment = obj.equipment_list[:30] + "..." if obj.equipment_list and len(obj.equipment_list) > 30 else obj.equipment_list or "No equipment listed"
+            last_clean = obj.last_sanitized.strftime("%d/%m/%Y %H:%M") if obj.last_sanitized else "Not recorded"
+            return (
+                f"🏥 {obj.name} | Room {obj.theatre_number} | Floor {obj.floor} | "
+                f"{status} | Capacity: {obj.capacity} | "
+                f"🧼 Last sanitized: {last_clean}"
+            )
+        self.fields['theatre'].label_from_instance = get_theatre_label
+        
+        # Enhance surgery type dropdown with detailed labels
+        self.fields['surgery_type'].queryset = SurgeryType.objects.all()
+        def get_surgery_type_label(obj):
+            prep_time = obj.preparation_time
+            recovery_time = obj.recovery_time
+            desc = obj.description[:40] + "..." if obj.description and len(obj.description) > 40 else obj.description or "No description"
+            risk_emoji = {"low": "🟢", "medium": "🟡", "high": "🟠", "critical": "🔴"}.get(obj.risk_level, "⚪")
+            return (
+                f"{obj.name} | {risk_emoji} Risk: {obj.get_risk_level_display()} | "
+                f"⏱️ Surgery: {obj.average_duration} | 📝 Prep: {prep_time} | 🏥 Recovery: {recovery_time} | "
+                f"💰 ₦{obj.fee:,.2f}"
+            )
+        self.fields['surgery_type'].label_from_instance = get_surgery_type_label
+        
         # Make all key fields optional for flexible editing
         self.fields['primary_surgeon'].required = False
         self.fields['anesthetist'].required = False

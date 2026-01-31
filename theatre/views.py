@@ -141,6 +141,29 @@ class SurgeryListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['filter_form'] = self.filter_form
+        
+        # Get patients booked for surgery (unique patients with scheduled/in_progress surgeries)
+        booked_patients = Surgery.objects.filter(
+            status__in=['scheduled', 'in_progress']
+        ).select_related('patient').values(
+            'patient__id', 'patient__first_name', 'patient__last_name', 'patient__patient_id'
+        ).distinct()
+        
+        context['total_patients_booked'] = booked_patients.count()
+        context['scheduled_patients_count'] = Surgery.objects.filter(
+            status='scheduled'
+        ).values('patient').distinct().count()
+        context['in_progress_patients_count'] = Surgery.objects.filter(
+            status='in_progress'
+        ).values('patient').distinct().count()
+        
+        # Today's booked patients
+        from datetime import date
+        context['todays_booked_patients'] = Surgery.objects.filter(
+            scheduled_date__date=date.today(),
+            status__in=['scheduled', 'in_progress']
+        ).select_related('patient').order_by('scheduled_date')
+        
         return context
 
 class SurgeryDetailView(LoginRequiredMixin, DetailView):
@@ -650,6 +673,29 @@ class TheatreDashboardView(LoginRequiredMixin, TemplateView):
         context['scheduled_surgeries'] = Surgery.objects.filter(status='scheduled').count()
         context['cancelled_surgeries'] = Surgery.objects.filter(status='cancelled').count()
         context['in_progress_surgeries'] = Surgery.objects.filter(status='in_progress').count()
+
+        # Patients booked for surgery statistics
+        context['total_patients_booked'] = Surgery.objects.filter(
+            status__in=['scheduled', 'in_progress']
+        ).values('patient').distinct().count()
+        
+        context['todays_patients_count'] = Surgery.objects.filter(
+            scheduled_date__date=today,
+            status__in=['scheduled', 'in_progress']
+        ).values('patient').distinct().count()
+        
+        # Today's booked patients with details
+        context['todays_booked_patients'] = Surgery.objects.filter(
+            scheduled_date__date=today,
+            status__in=['scheduled', 'in_progress']
+        ).select_related('patient', 'surgery_type', 'theatre', 'primary_surgeon').order_by('scheduled_date')
+        
+        # Upcoming booked patients (next 7 days)
+        context['upcoming_booked_patients'] = Surgery.objects.filter(
+            scheduled_date__date__gt=today,
+            scheduled_date__date__lte=week_end,
+            status='scheduled'
+        ).select_related('patient', 'surgery_type', 'theatre', 'primary_surgeon').order_by('scheduled_date')
 
         # Surgery type distribution (top 5)
         surgery_type_data = Surgery.objects.values('surgery_type__name').annotate(

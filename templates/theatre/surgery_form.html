@@ -94,6 +94,73 @@
     box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 
+/* Enhanced dropdown styling for surgery types and theatres */
+select.form-select {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    height: auto;
+    min-height: 45px;
+    white-space: normal;
+}
+
+select.form-select option {
+    padding: 10px 12px;
+    white-space: normal;
+    line-height: 1.5;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+select.form-select option:hover {
+    background-color: #e3f2fd;
+}
+
+/* Risk level badges in surgery type dropdown */
+.surgery-type-option .risk-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+.surgery-type-option .risk-low { background-color: #d4edda; color: #155724; }
+.surgery-type-option .risk-medium { background-color: #fff3cd; color: #856404; }
+.surgery-type-option .risk-high { background-color: #f8d7da; color: #721c24; }
+.surgery-type-option .risk-critical { background-color: #f5c6cb; color: #721c24; }
+
+/* Theatre availability indicator */
+.theatre-option .availability-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+
+.theatre-option .available { background-color: #28a745; }
+.theatre-option .occupied { background-color: #dc3545; }
+
+/* Dropdown info cards */
+.dropdown-info-card {
+    background-color: #f8f9fa;
+    border-left: 3px solid #007bff;
+    padding: 10px 15px;
+    margin-top: 8px;
+    border-radius: 0 4px 4px 0;
+}
+
+.dropdown-info-card ul {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.dropdown-info-card li {
+    margin-bottom: 4px;
+}
+
 /* Validation error styles */
 .form-error {
     border-color: #dc3545 !important;
@@ -132,6 +199,130 @@
     border-color: #dc3545;
     background-color: #fff5f5;
 }
+
+/* Progress indicator */
+.form-progress {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.form-progress::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #e9ecef;
+    z-index: 0;
+}
+
+.progress-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+}
+
+.progress-step .step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+
+.progress-step.active .step-number {
+    background: #007bff;
+    border-color: #007bff;
+    color: white;
+}
+
+.progress-step.completed .step-number {
+    background: #28a745;
+    border-color: #28a745;
+    color: white;
+}
+
+.progress-step .step-label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    text-align: center;
+}
+
+.progress-step.active .step-label {
+    color: #007bff;
+    font-weight: 600;
+}
+
+/* Section cards */
+.section-card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    margin-bottom: 1.5rem;
+}
+
+.section-card .card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-bottom: none;
+    padding: 1rem 1.5rem;
+}
+
+.section-card .card-header h5 {
+    margin: 0;
+    font-weight: 600;
+}
+
+/* Required field indicator */
+.required-field::after {
+    content: ' *';
+    color: #dc3545;
+}
+
+/* Form section badges */
+.section-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: #e9ecef;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+
+.section-badge i {
+    margin-right: 0.5rem;
+}
+
+/* Patient info card */
+.patient-info-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.patient-info-card h6 {
+    margin-bottom: 0.5rem;
+    opacity: 0.9;
+}
+
+.patient-info-card .patient-details {
+    font-size: 0.9rem;
+    opacity: 0.85;
+}
 </style>
 {% endblock %}
 
@@ -139,245 +330,466 @@
 {% if form.instance.pk %}
 Edit Surgery
 {% else %}
-Create Surgery
+Schedule New Surgery
 {% endif %}
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">{% if form.instance.pk %}Edit Surgery{% else %}Create Surgery{% endif %}</h2>
-        </div>
+<div class="container-fluid mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'theatre:dashboard' %}">Theatre</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'theatre:surgery_list' %}">Surgeries</a></li>
+            <li class="breadcrumb-item active" aria-current="page">
+                {% if form.instance.pk %}Edit Surgery{% else %}Schedule New Surgery{% endif %}
+            </li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-procedures text-primary mr-2"></i>
+            {% if form.instance.pk %}
+                Edit Surgery
+            {% else %}
+                Schedule New Surgery
+            {% endif %}
+        </h1>
+        <a href="{% url 'theatre:surgery_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left mr-1"></i> Back to List
+        </a>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div class="card mb-4">
         <div class="card-body">
-            <form method="post" id="surgery-form">
-                {% csrf_token %}
-                
-                <!-- Add error messages display -->
-                {% if form.errors or team_formset.errors or equipment_formset.errors %}
-                <div class="alert alert-danger">
-                    <h6>Please correct the following errors:</h6>
-                    {% if form.errors %}
-                        {% for field, errors in form.errors.items %}
-                            <div><strong>{{ field|title }}:</strong> {{ errors|join:", " }}</div>
-                        {% endfor %}
-                    {% endif %}
-                    {% if team_formset.errors %}
-                        <div><strong>Surgical Team:</strong> Please check the team member information.</div>
-                    {% endif %}
-                    {% if equipment_formset.errors %}
-                        <div><strong>Equipment:</strong> Please check the equipment information.</div>
-                    {% endif %}
+            <div class="form-progress">
+                <div class="progress-step active">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Patient Selection</div>
                 </div>
+                <div class="progress-step">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Surgery Details</div>
+                </div>
+                <div class="progress-step">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Medical Team</div>
+                </div>
+                <div class="progress-step">
+                    <div class="step-number">4</div>
+                    <div class="step-label">Equipment</div>
+                </div>
+                <div class="progress-step">
+                    <div class="step-number">5</div>
+                    <div class="step-label">Review & Save</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" id="surgery-form">
+        {% csrf_token %}
+        
+        <!-- Error Summary -->
+        {% if form.errors or team_formset.errors or equipment_formset.errors %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <h5 class="alert-heading"><i class="fas fa-exclamation-circle mr-2"></i>Please correct the following errors:</h5>
+            <ul class="mb-0">
+                {% if form.errors %}
+                    {% for field, errors in form.errors.items %}
+                        <li><strong>{{ field|title }}:</strong> {{ errors|join:", " }}</li>
+                    {% endfor %}
                 {% endif %}
-                
+                {% if team_formset.errors %}
+                    <li><strong>Surgical Team:</strong> Please check the team member information.</li>
+                {% endif %}
+                {% if equipment_formset.errors %}
+                    <li><strong>Equipment:</strong> Please check the equipment information.</li>
+                {% endif %}
+            </ul>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        {% endif %}
+
+        <!-- Section 1: Patient Selection -->
+        <div class="card section-card">
+            <div class="card-header">
+                <h5><i class="fas fa-user-injured mr-2"></i>Step 1: Patient Selection</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <strong>Required:</strong> Search and select a patient to schedule surgery. You can search by name or patient ID.
+                </div>
+
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-lg-8">
                         <div class="mb-3">
-                            <label for="id_patient_search">Search Patient <span class="text-danger">*</span></label>
+                            <label for="id_patient_search" class="required-field font-weight-bold">
+                                Search Patient
+                            </label>
                             <div class="position-relative">
                                 {{ form.patient_search }}
                                 <div id="patient-search-results" class="autocomplete-results" style="display: none;"></div>
                             </div>
-                            <div id="selected-patient-info" class="mt-2" style="display: none;">
-                                <div class="alert alert-info">
-                                    <strong>Selected Patient:</strong>
-                                    <span id="patient-name"></span> (<span id="patient-id"></span>)
-                                    <br><small>Age: <span id="patient-age"></span> | Gender: <span id="patient-gender"></span> | Phone: <span id="patient-phone"></span></small>
+                            <small class="form-text text-muted">
+                                Type at least 3 characters to search by patient name or ID
+                            </small>
+                        </div>
+
+                        <!-- Selected Patient Info -->
+                        <div id="selected-patient-info" class="patient-info-card" style="display: none;">
+                            <h6><i class="fas fa-check-circle mr-2"></i>Selected Patient</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong id="patient-name"></strong>
+                                    <div class="patient-details">
+                                        ID: <span id="patient-id"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="patient-details">
+                                        Age: <span id="patient-age"></span> | 
+                                        Gender: <span id="patient-gender"></span>
+                                    </div>
+                                    <div class="patient-details">
+                                        Phone: <span id="patient-phone"></span>
+                                    </div>
                                 </div>
                             </div>
-                            <div id="patient-required-warning" class="alert alert-warning" style="display: none;">
-                                <small><i class="fas fa-exclamation-triangle"></i> Please search and select a patient to continue.</small>
-                            </div>
-                            
-                            <!-- Alternative: Direct Patient Selection Dropdown -->
-                            <div class="mt-3 patient-dropdown-section">
-                                <label for="id_patient_dropdown" class="form-label">
-                                    <i class="fas fa-list"></i> Or select directly from list:
-                                </label>
-                                <select id="id_patient_dropdown" class="form-select select2" data-placeholder="Select a patient...">
-                                    <option value="">Choose a patient...</option>
-                                    {% for patient in all_patients %}
-                                        <option value="{{ patient.id }}" 
-                                                data-patient-name="{{ patient.get_full_name }}"
-                                                data-patient-pid="{{ patient.patient_id }}"
-                                                data-patient-age="{{ patient.get_age }}"
-                                                data-patient-gender="{{ patient.get_gender_display }}"
-                                                data-patient-phone="{{ patient.phone_number|default:'N/A' }}">
-                                            {{ patient.get_full_name }} ({{ patient.patient_id }}) - {{ patient.get_gender_display }}, {{ patient.get_age }} years
-                                        </option>
-                                    {% empty %}
-                                        <option value="" disabled>No patients registered</option>
-                                    {% endfor %}
-                                </select>
-                                <small class="form-text text-muted">
-                                    <i class="fas fa-info-circle"></i> You can either search above or select from this dropdown
-                                </small>
-                            </div>
                         </div>
-                        {{ form.patient }}
+
+                        <div id="patient-required-warning" class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            <strong>Patient Required:</strong> Please search and select a patient to continue.
+                        </div>
                     </div>
-                    <div class="col-md-6">
+
+                    <div class="col-lg-4">
+                        <!-- Alternative Patient Selection -->
+                        <div class="patient-dropdown-section">
+                            <label for="id_patient_dropdown" class="form-label">
+                                <i class="fas fa-list mr-1"></i>Or Select from List
+                            </label>
+                            <select id="id_patient_dropdown" class="form-select select2" data-placeholder="Choose a patient...">
+                                <option value="">Select patient...</option>
+                                {% for patient in all_patients %}
+                                    <option value="{{ patient.id }}" 
+                                            data-patient-name="{{ patient.get_full_name }}"
+                                            data-patient-pid="{{ patient.patient_id }}"
+                                            data-patient-age="{{ patient.get_age }}"
+                                            data-patient-gender="{{ patient.get_gender_display }}"
+                                            data-patient-phone="{{ patient.phone_number|default:'N/A' }}">
+                                        {{ patient.get_full_name }} ({{ patient.patient_id }})
+                                    </option>
+                                {% empty %}
+                                    <option value="" disabled>No patients registered</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted mt-2">
+                                Browse all registered patients
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                {{ form.patient }}
+            </div>
+        </div>
+
+        <!-- Section 2: Surgery Details -->
+        <div class="card section-card">
+            <div class="card-header">
+                <h5><i class="fas fa-notes-medical mr-2"></i>Step 2: Surgery Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12">
                         <div class="mb-3">
-                            <label for="{{ form.surgery_type.id_for_label }}">
-                                Surgery Type <small class="text-muted">(Optional - can be specified later)</small>
+                            <label for="{{ form.surgery_type.id_for_label }}" class="font-weight-bold">
+                                Surgery Type
                             </label>
                             {{ form.surgery_type.as_widget }}
-                            {% if form.surgery_type.help_text %}
-                                <small class="form-text text-muted">{{ form.surgery_type.help_text }}</small>
-                            {% endif %}
-                            {% if form.surgery_type.errors %}
-                                <div class="invalid-feedback d-block">{{ form.surgery_type.errors.0 }}</div>
-                            {% endif %}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle mr-1"></i>Select procedure type. Each option shows: Name | Risk Level (🟢🟡🟠🔴) | Surgery Duration | Preparation Time | Recovery Time | Fee (₦)
+                            </small>
+                            <div class="dropdown-info-card">
+                                <ul>
+                                    <li><strong>🟢 Low Risk</strong> - Routine procedures with minimal complications</li>
+                                    <li><strong>🟡 Medium Risk</strong> - Standard surgical procedures</li>
+                                    <li><strong>🟠 High Risk</strong> - Complex procedures requiring special attention</li>
+                                    <li><strong>🔴 Critical Risk</strong> - Life-threatening or highly complex surgeries</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
+
                 <div class="row">
                     <div class="col-md-6">
                         <div class="mb-3">
-                            <label for="{{ form.primary_surgeon.id_for_label }}">
-                                Primary Surgeon <small class="text-muted">(Optional - can be assigned later)</small>
-                            </label>
-                            {{ form.primary_surgeon.as_widget }}
-                            {% if form.primary_surgeon.help_text %}
-                                <small class="form-text text-muted">{{ form.primary_surgeon.help_text }}</small>
-                            {% endif %}
-                            {% if form.primary_surgeon.errors %}
-                                <div class="invalid-feedback d-block">{{ form.primary_surgeon.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="{{ form.anesthetist.id_for_label }}">
-                                Anesthetist <small class="text-muted">(Optional - can be assigned later)</small>
-                            </label>
-                            {{ form.anesthetist.as_widget }}
-                            {% if form.anesthetist.help_text %}
-                                <small class="form-text text-muted">{{ form.anesthetist.help_text }}</small>
-                            {% endif %}
-                            {% if form.anesthetist.errors %}
-                                <div class="invalid-feedback d-block">{{ form.anesthetist.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="{{ form.theatre.id_for_label }}">
-                                Operation Theatre <small class="text-muted">(Optional - can be assigned later)</small>
-                            </label>
-                            {{ form.theatre.as_widget }}
-                            {% if form.theatre.help_text %}
-                                <small class="form-text text-muted">{{ form.theatre.help_text }}</small>
-                            {% endif %}
-                            {% if form.theatre.errors %}
-                                <div class="invalid-feedback d-block">{{ form.theatre.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        {{ form.status|as_crispy_field }}
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="{{ form.scheduled_date.id_for_label }}">
-                                Scheduled Date/Time <small class="text-muted">(Optional - can be scheduled later)</small>
+                            <label for="{{ form.scheduled_date.id_for_label }}" class="font-weight-bold">
+                                Scheduled Date & Time
                             </label>
                             {{ form.scheduled_date.as_widget }}
-                            {% if form.scheduled_date.help_text %}
-                                <small class="form-text text-muted">{{ form.scheduled_date.help_text }}</small>
-                            {% endif %}
-                            {% if form.scheduled_date.errors %}
-                                <div class="invalid-feedback d-block">{{ form.scheduled_date.errors.0 }}</div>
-                            {% endif %}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-calendar-alt mr-1"></i>When is the surgery scheduled?
+                            </small>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="mb-3">
-                            <label for="{{ form.expected_duration.id_for_label }}">
-                                Expected Duration <small class="text-muted">(Optional - can be estimated later)</small>
+                            <label for="{{ form.expected_duration.id_for_label }}" class="font-weight-bold">
+                                Expected Duration
                             </label>
                             {{ form.expected_duration.as_widget }}
-                            {% if form.expected_duration.help_text %}
-                                <small class="form-text text-muted">{{ form.expected_duration.help_text }}</small>
-                            {% endif %}
-                            {% if form.expected_duration.errors %}
-                                <div class="invalid-feedback d-block">{{ form.expected_duration.errors.0 }}</div>
-                            {% endif %}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-clock mr-1"></i>Estimated time in hours (format: HH:MM:SS)
+                            </small>
                         </div>
                     </div>
                 </div>
-                {{ form.pre_surgery_notes|as_crispy_field }}
-                
-                <!-- Flexible Editing Controls -->
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="mb-3">
+                            <label for="{{ form.theatre.id_for_label }}" class="font-weight-bold">
+                                Operation Theatre
+                            </label>
+                            {{ form.theatre.as_widget }}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-hospital mr-1"></i>Select theatre room. Each option shows: Name | Room Number | Floor | Availability Status (✓ Available / ✗ Occupied) | Capacity | Last Sanitized Date
+                            </small>
+                            <div class="dropdown-info-card">
+                                <ul>
+                                    <li><strong>✓ Available</strong> - Theatre is ready for surgery</li>
+                                    <li><strong>✗ Occupied</strong> - Theatre currently in use</li>
+                                    <li><strong>🧼 Last Sanitized</strong> - Date of last cleaning/sanitization</li>
+                                    <li><strong>Capacity</strong> - Number of people the theatre can accommodate</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.status.id_for_label }}" class="font-weight-bold">
+                                Status
+                            </label>
+                            {{ form.status.as_widget }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.pre_surgery_notes.id_for_label }}" class="font-weight-bold">
+                        Pre-Surgery Notes
+                    </label>
+                    {{ form.pre_surgery_notes.as_widget }}
+                    <small class="form-text text-muted">
+                        <i class="fas fa-sticky-note mr-1"></i>Add any special instructions or preparation notes
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Medical Team -->
+        <div class="card section-card">
+            <div class="card-header">
+                <h5><i class="fas fa-user-md mr-2"></i>Step 3: Medical Team</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-lightbulb mr-2"></i>
+                    <strong>Tip:</strong> Based on patient history, we'll suggest surgeons and anesthetists who have operated on this patient before.
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.primary_surgeon.id_for_label }}" class="font-weight-bold">
+                                Primary Surgeon
+                            </label>
+                            {{ form.primary_surgeon.as_widget }}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-user-md mr-1"></i>Lead surgeon performing the procedure
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.anesthetist.id_for_label }}" class="font-weight-bold">
+                                Anesthetist
+                            </label>
+                            {{ form.anesthetist.as_widget }}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-heartbeat mr-1"></i>Anesthesia specialist
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
                 <hr>
-                <div class="card border-info mb-3">
-                    <div class="card-header bg-info text-white">
-                        <h6 class="mb-0">
-                            <i class="fas fa-cog"></i> Flexible Editing Options
-                        </h6>
-                    </div>
-                    <div class="card-body">
+
+                <h6 class="section-badge">
+                    <i class="fas fa-users"></i>Additional Surgical Team Members
+                </h6>
+
+                {{ team_formset.management_form }}
+                <div id="team-form-list">
+                    {% for form in team_formset %}
+                        <div class="team-form">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong class="text-muted">Team Member {{ forloop.counter }}</strong>
+                                {% if form.instance.pk %}
+                                    <div class="form-check">
+                                        {{ form.DELETE }}
+                                        <label class="form-check-label text-danger">Remove</label>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">{{ form.staff|as_crispy_field }}</div>
+                                <div class="col-md-6">{{ form.role|as_crispy_field }}</div>
+                            </div>
+                            {{ form.usage_notes|as_crispy_field }}
+                        </div>
+                    {% endfor %}
+                </div>
+                <button type="button" id="add-team-form" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-plus mr-1"></i>Add Team Member
+                </button>
+                <div id="empty-team-form" style="display:none;">
+                    <div class="team-form">
                         <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    {{ form.skip_conflict_validation }}
-                                    <label class="form-check-label" for="{{ form.skip_conflict_validation.id_for_label }}">
-                                        {{ form.skip_conflict_validation.label }}
-                                    </label>
-                                    <div class="form-text text-muted">
-                                        {{ form.skip_conflict_validation.help_text }}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    {{ form.allow_flexible_scheduling }}
-                                    <label class="form-check-label" for="{{ form.allow_flexible_scheduling.id_for_label }}">
-                                        {{ form.allow_flexible_scheduling.label }}
-                                    </label>
-                                    <div class="form-text text-muted">
-                                        {{ form.allow_flexible_scheduling.help_text }}
-                                    </div>
-                                </div>
-                            </div>
+                            <div class="col-md-6">{{ team_formset.empty_form.staff|as_crispy_field }}</div>
+                            <div class="col-md-6">{{ team_formset.empty_form.role|as_crispy_field }}</div>
                         </div>
-                        
-                        <div class="alert alert-warning mt-3">
-                            <h6 class="alert-heading">
-                                <i class="fas fa-info-circle"></i> Flexible Mode Information
-                            </h6>
-                            <ul class="mb-0">
-                                <li><strong>Normal Mode:</strong> All fields (except Patient) are optional, but conflicts will block saving.</li>
-                                <li><strong>Skip Conflicts:</strong> Allows overlapping theatre/staff bookings with warning messages.</li>
-                                <li><strong>Flexible Scheduling:</strong> Shows warnings instead of errors for conflicts - surgery can still be saved.</li>
-                            </ul>
-                        </div>
-                        
-                        <!-- Display validation warnings if any -->
-                        {% if form.get_warnings %}
-                        <div class="alert alert-warning mt-3">
-                            <h6 class="alert-heading">
-                                <i class="fas fa-exclamation-triangle"></i> Scheduling Warnings
-                            </h6>
-                            <ul class="mb-0">
-                                {% for warning in form.get_warnings %}
-                                <li>{{ warning }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                        {% endif %}
+                        {{ team_formset.empty_form.usage_notes|as_crispy_field }}
                     </div>
                 </div>
-                
-                <!-- Authorization Code Field (only for NHIA patients) -->
-                <div class="mb-3" id="authorization-code-section" style="display: none;">
+            </div>
+        </div>
+
+        <!-- Section 4: Equipment -->
+        <div class="card section-card">
+            <div class="card-header">
+                <h5><i class="fas fa-tools mr-2"></i>Step 4: Surgical Equipment</h5>
+            </div>
+            <div class="card-body">
+                <h6 class="section-badge">
+                    <i class="fas fa-toolbox"></i>Equipment Required
+                </h6>
+
+                {{ equipment_formset.management_form }}
+                <div id="equipment-form-list">
+                    {% for form in equipment_formset %}
+                        <div class="equipment-form">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong class="text-muted">Equipment Item {{ forloop.counter }}</strong>
+                                {% if form.instance.pk %}
+                                    <div class="form-check">
+                                        {{ form.DELETE }}
+                                        <label class="form-check-label text-danger">Remove</label>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">{{ form.equipment|as_crispy_field }}</div>
+                                <div class="col-md-6">{{ form.quantity_used|as_crispy_field }}</div>
+                            </div>
+                            {{ form.notes|as_crispy_field }}
+                        </div>
+                    {% endfor %}
+                </div>
+                <button type="button" id="add-equipment-form" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-plus mr-1"></i>Add Equipment
+                </button>
+                <div id="empty-equipment-form" style="display:none;">
+                    <div class="equipment-form">
+                        <div class="row">
+                            <div class="col-md-6">{{ equipment_formset.empty_form.equipment|as_crispy_field }}</div>
+                            <div class="col-md-6">{{ equipment_formset.empty_form.quantity_used|as_crispy_field }}</div>
+                        </div>
+                        {{ equipment_formset.empty_form.notes|as_crispy_field }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 5: Scheduling Options -->
+        <div class="card section-card">
+            <div class="card-header">
+                <h5><i class="fas fa-cog mr-2"></i>Step 5: Scheduling Options</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-check mb-3">
+                            {{ form.skip_conflict_validation }}
+                            <label class="form-check-label font-weight-bold" for="{{ form.skip_conflict_validation.id_for_label }}">
+                                {{ form.skip_conflict_validation.label }}
+                            </label>
+                            <div class="form-text text-muted">
+                                {{ form.skip_conflict_validation.help_text }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check mb-3">
+                            {{ form.allow_flexible_scheduling }}
+                            <label class="form-check-label font-weight-bold" for="{{ form.allow_flexible_scheduling.id_for_label }}">
+                                {{ form.allow_flexible_scheduling.label }}
+                            </label>
+                            <div class="form-text text-muted">
+                                {{ form.allow_flexible_scheduling.help_text }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning">
+                    <h6 class="alert-heading">
+                        <i class="fas fa-info-circle mr-2"></i>Scheduling Mode Guide
+                    </h6>
+                    <ul class="mb-0">
+                        <li><strong>Standard Mode:</strong> Conflicts will prevent saving (recommended)</li>
+                        <li><strong>Skip Conflicts:</strong> Allows overlapping bookings with warnings</li>
+                        <li><strong>Flexible Mode:</strong> Shows warnings but allows saving</li>
+                    </ul>
+                </div>
+
+                <!-- Display validation warnings if any -->
+                {% if form.get_warnings %}
+                <div class="alert alert-warning">
+                    <h6 class="alert-heading">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Scheduling Warnings
+                    </h6>
+                    <ul class="mb-0">
+                        {% for warning in form.get_warnings %}
+                        <li>{{ warning }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Authorization Code (for NHIA patients) -->
+        <div class="mb-4" id="authorization-code-section" style="display: none;">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0"><i class="fas fa-shield-alt mr-2"></i>NHIA Authorization</h6>
+                </div>
+                <div class="card-body">
                     <label for="id_authorization_code">
-                        NHIA Authorization Code <small class="text-muted">(Optional - for NHIA patients)</small>
+                        Authorization Code
                     </label>
                     {% if form.authorization_code %}
                         {{ form.authorization_code.as_widget }}
@@ -389,76 +801,28 @@ Create Surgery
                         Select an authorization code if this surgery is covered by NHIA.
                     </small>
                 </div>
-
-                <hr>
-
-                <h3>Surgical Team</h3>
-                {{ team_formset.management_form }}
-                <div id="team-form-list">
-                    {% for form in team_formset %}
-                        <div class="team-form">
-                            <div class="row">
-                                <div class="col-md-5">{{ form.staff|as_crispy_field }}</div>
-                                <div class="col-md-5">{{ form.role|as_crispy_field }}</div>
-                                <div class="col-md-2 d-flex align-items-center">
-                                    {% if form.instance.pk %}
-                                        {{ form.DELETE }}
-                                    {% endif %}
-                                </div>
-                            </div>
-                            {{ form.usage_notes|as_crispy_field }}
-                        </div>
-                    {% endfor %}
-                </div>
-                <button type="button" id="add-team-form" class="btn btn-info btn-sm">Add Team Member</button>
-                <div id="empty-team-form" style="display:none;">
-                    <div class="team-form">
-                        <div class="row">
-                            <div class="col-md-5">{{ team_formset.empty_form.staff|as_crispy_field }}</div>
-                            <div class="col-md-5">{{ team_formset.empty_form.role|as_crispy_field }}</div>
-                        </div>
-                        {{ team_formset.empty_form.usage_notes|as_crispy_field }}
-                    </div>
-                </div>
-
-                <hr>
-
-                <h3>Surgical Equipment</h3>
-                {{ equipment_formset.management_form }}
-                <div id="equipment-form-list">
-                    {% for form in equipment_formset %}
-                        <div class="equipment-form">
-                            <div class="row">
-                                <div class="col-md-5">{{ form.equipment|as_crispy_field }}</div>
-                                <div class="col-md-5">{{ form.quantity_used|as_crispy_field }}</div>
-                                <div class="col-md-2 d-flex align-items-center">
-                                    {% if form.instance.pk %}
-                                        {{ form.DELETE }}
-                                    {% endif %}
-                                </div>
-                            </div>
-                            {{ form.notes|as_crispy_field }}
-                        </div>
-                    {% endfor %}
-                </div>
-                <button type="button" id="add-equipment-form" class="btn btn-info btn-sm">Add Equipment</button>
-                <div id="empty-equipment-form" style="display:none;">
-                    <div class="equipment-form">
-                        <div class="row">
-                            <div class="col-md-5">{{ equipment_formset.empty_form.equipment|as_crispy_field }}</div>
-                            <div class="col-md-5">{{ equipment_formset.empty_form.quantity_used|as_crispy_field }}</div>
-                        </div>
-                        {{ equipment_formset.empty_form.notes|as_crispy_field }}
-                    </div>
-                </div>
-
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-primary">Save</button>
-                    <a href="{% url 'theatre:surgery_list' %}" class="btn btn-secondary">Cancel</a>
-                </div>
-            </form>
+            </div>
         </div>
-    </div>
+
+        <!-- Action Buttons -->
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <a href="{% url 'theatre:surgery_list' %}" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-times mr-2"></i>Cancel
+                        </a>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save mr-2"></i>
+                            {% if form.instance.pk %}Update Surgery{% else %}Schedule Surgery{% endif %}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
 </div>
 {% endblock %}
 
