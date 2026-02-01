@@ -1,4 +1,5 @@
 from django import forms
+from django.db import models
 from django.forms import inlineformset_factory, BaseInlineFormSet
 from .models import (
     OperationTheatre, 
@@ -98,13 +99,39 @@ class SurgeryForm(forms.ModelForm):
         if 'surgery_type' in self.fields:
             self.fields['surgery_type'].queryset = SurgeryType.objects.all().order_by('name')
         
+        # Set surgeon and anesthetist querysets
+        # Try to filter by specialization, but fallback to all users if no matches
+        if 'primary_surgeon' in self.fields:
+            surgeon_qs = CustomUser.objects.filter(
+                models.Q(profile__specialization__icontains='surgeon') |
+                models.Q(profile__specialization__icontains='doctor') |
+                models.Q(profile__role='doctor')
+            ).order_by('first_name', 'last_name')
+            # If no users match, show all users so the field isn't empty
+            if not surgeon_qs.exists():
+                surgeon_qs = CustomUser.objects.filter(is_active=True).order_by('first_name', 'last_name')
+            self.fields['primary_surgeon'].queryset = surgeon_qs
+            self.fields['primary_surgeon'].empty_label = "Select Surgeon (Optional)"
+        
+        if 'anesthetist' in self.fields:
+            anesthetist_qs = CustomUser.objects.filter(
+                models.Q(profile__specialization__icontains='anesthetist') |
+                models.Q(profile__specialization__icontains='anesthesia') |
+                models.Q(profile__role='anesthetist')
+            ).order_by('first_name', 'last_name')
+            # If no users match, show all users so the field isn't empty
+            if not anesthetist_qs.exists():
+                anesthetist_qs = CustomUser.objects.filter(is_active=True).order_by('first_name', 'last_name')
+            self.fields['anesthetist'].queryset = anesthetist_qs
+            self.fields['anesthetist'].empty_label = "Select Anesthetist (Optional)"
+        
         # Handle authorization code field
         if 'authorization_code' in self.fields:
             try:
                 from nhia.models import AuthorizationCode
                 self.fields['authorization_code'].queryset = AuthorizationCode.objects.filter(
-                    is_used=False
-                ).order_by('-created_at')
+                    status='active'
+                ).order_by('-generated_at')
             except ImportError:
                 # If nhia app is not available, remove the field
                 del self.fields['authorization_code']

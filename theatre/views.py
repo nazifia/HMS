@@ -44,9 +44,9 @@ from .forms import (
     OperationTheatreForm, 
     SurgeryTypeForm, 
     SurgeryForm, 
-    SurgicalTeamFormSet,
+    SurgicalTeamInlineFormSet,
     SurgicalEquipmentForm,
-    EquipmentUsageFormSet,
+    EquipmentUsageInlineFormSet,
     SurgeryScheduleForm,
     PostOperativeNoteForm,
     SurgeryFilterForm,
@@ -271,21 +271,21 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
         
         if 'team_formset' not in kwargs:
             if self.request.POST:
-                data['team_formset'] = SurgicalTeamFormSet(self.request.POST)
+                data['team_formset'] = SurgicalTeamInlineFormSet(self.request.POST)
             else:
-                data['team_formset'] = SurgicalTeamFormSet()
+                data['team_formset'] = SurgicalTeamInlineFormSet()
         if 'equipment_formset' not in kwargs:
             if self.request.POST:
-                data['equipment_formset'] = EquipmentUsageFormSet(self.request.POST)
+                data['equipment_formset'] = EquipmentUsageInlineFormSet(self.request.POST)
             else:
-                data['equipment_formset'] = EquipmentUsageFormSet()
+                data['equipment_formset'] = EquipmentUsageInlineFormSet()
         return data
 
     def post(self, request, *args, **kwargs):
         self.object = None
         form = self.get_form()
-        team_formset = SurgicalTeamFormSet(self.request.POST)
-        equipment_formset = EquipmentUsageFormSet(self.request.POST)
+        team_formset = SurgicalTeamInlineFormSet(self.request.POST)
+        equipment_formset = EquipmentUsageInlineFormSet(self.request.POST)
         
         # Debug: Print form validation status
         print(f"Form valid: {form.is_valid()}")
@@ -456,21 +456,21 @@ class SurgeryUpdateView(LoginRequiredMixin, UpdateView):
         # Add formsets for team and equipment (same as CreateView)
         if 'team_formset' not in kwargs:
             if self.request.POST:
-                context['team_formset'] = SurgicalTeamFormSet(self.request.POST, instance=self.object)
+                context['team_formset'] = SurgicalTeamInlineFormSet(self.request.POST, instance=self.object)
             else:
-                context['team_formset'] = SurgicalTeamFormSet(instance=self.object)
+                context['team_formset'] = SurgicalTeamInlineFormSet(instance=self.object)
         if 'equipment_formset' not in kwargs:
             if self.request.POST:
-                context['equipment_formset'] = EquipmentUsageFormSet(self.request.POST, instance=self.object)
+                context['equipment_formset'] = EquipmentUsageInlineFormSet(self.request.POST, instance=self.object)
             else:
-                context['equipment_formset'] = EquipmentUsageFormSet(instance=self.object)
+                context['equipment_formset'] = EquipmentUsageInlineFormSet(instance=self.object)
         return context
     
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         form = self.get_form()
-        team_formset = SurgicalTeamFormSet(self.request.POST, instance=self.object)
-        equipment_formset = EquipmentUsageFormSet(self.request.POST, instance=self.object)
+        team_formset = SurgicalTeamInlineFormSet(self.request.POST, instance=self.object)
+        equipment_formset = EquipmentUsageInlineFormSet(self.request.POST, instance=self.object)
         
         if form.is_valid() and team_formset.is_valid() and equipment_formset.is_valid():
             return self.form_valid(form, team_formset, equipment_formset)
