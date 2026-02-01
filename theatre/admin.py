@@ -1,13 +1,15 @@
 from django.contrib import admin
 from .models import (
-    OperationTheatre, 
-    SurgeryType, 
-    Surgery, 
-    SurgicalTeam, 
+    OperationTheatre,
+    SurgeryType,
+    Surgery,
+    SurgicalTeam,
     SurgicalEquipment,
     EquipmentUsage,
     SurgerySchedule,
-    PostOperativeNote
+    PostOperativeNote,
+    SurgeryTypeEquipment,
+    EquipmentMaintenanceLog
 )
 
 @admin.register(OperationTheatre)
@@ -69,3 +71,40 @@ class PostOperativeNoteAdmin(admin.ModelAdmin):
     search_fields = ('surgery__patient__first_name', 'surgery__patient__last_name', 'notes')
     date_hierarchy = 'created_at'
     raw_id_fields = ('surgery', 'created_by')
+
+
+@admin.register(SurgeryTypeEquipment)
+class SurgeryTypeEquipmentAdmin(admin.ModelAdmin):
+    list_display = ('surgery_type', 'equipment', 'quantity_required', 'is_mandatory')
+    list_filter = ('surgery_type', 'is_mandatory')
+    search_fields = ('surgery_type__name', 'equipment__name')
+    raw_id_fields = ('surgery_type', 'equipment')
+
+
+@admin.register(EquipmentMaintenanceLog)
+class EquipmentMaintenanceLogAdmin(admin.ModelAdmin):
+    list_display = ('equipment', 'maintenance_type', 'scheduled_date', 'completed_date', 'status', 'cost')
+    list_filter = ('maintenance_type', 'status', 'scheduled_date')
+    search_fields = ('equipment__name', 'description', 'certificate_number')
+    date_hierarchy = 'scheduled_date'
+    raw_id_fields = ('equipment', 'performed_by', 'created_by')
+    fieldsets = (
+        ('Equipment Information', {
+            'fields': ('equipment', 'maintenance_type')
+        }),
+        ('Schedule', {
+            'fields': ('scheduled_date', 'completed_date', 'next_due_date', 'status')
+        }),
+        ('Work Details', {
+            'fields': ('description', 'findings', 'parts_replaced')
+        }),
+        ('Cost & Provider', {
+            'fields': ('cost', 'external_provider', 'external_technician')
+        }),
+        ('Documentation', {
+            'fields': ('certificate_number', 'document_file')
+        }),
+        ('Personnel', {
+            'fields': ('performed_by', 'created_by')
+        }),
+    )

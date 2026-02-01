@@ -36,7 +36,8 @@ from .models import (
     SurgerySchedule,
     PostOperativeNote,
     PreOperativeChecklist,
-    SurgeryLog
+    SurgeryLog,
+    SurgeryTypeEquipment
 )
 from accounts.models import CustomUser
 from .forms import (
@@ -97,6 +98,22 @@ class SurgeryTypeListView(LoginRequiredMixin, ListView):
 class SurgeryTypeDetailView(LoginRequiredMixin, DetailView):
     model = SurgeryType
     template_name = 'theatre/surgery_type_detail.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Prefetch required equipment with their availability status
+        context['required_equipment'] = self.object.required_equipment.all().select_related('equipment')
+        
+        # Calculate statistics
+        equipment_list = list(context['required_equipment'])
+        context['total_required'] = len(equipment_list)
+        context['mandatory_count'] = sum(1 for e in equipment_list if e.is_mandatory)
+        context['available_count'] = sum(
+            1 for e in equipment_list 
+            if e.equipment.is_available and e.equipment.quantity_available >= e.quantity_required
+        )
+        
+        return context
 
 class SurgeryTypeCreateView(LoginRequiredMixin, CreateView):
     model = SurgeryType
@@ -513,6 +530,48 @@ class SurgicalEquipmentListView(LoginRequiredMixin, ListView):
 class SurgicalEquipmentDetailView(LoginRequiredMixin, DetailView):
     model = SurgicalEquipment
     template_name = 'theatre/equipment_detail.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        equipment = self.object
+
+        # Get recent usage history
+        from django.utils import timezone
+        from datetime import timedelta
+
+        context['recent_usage'] = equipment.usage_records.select_related(
+            'surgery', 'surgery__patient', 'surgery__surgery_type'
+        ).order_by('-surgery__scheduled_date')[:10]
+
+        # Get surgery types that require this equipment
+        context['required_surgery_types'] = equipment.surgery_types_required.select_related(
+            'surgery_type'
+        ).order_by('surgery_type__name')
+
+        # Get recent maintenance logs
+        context['maintenance_logs'] = equipment.maintenance_logs.select_related(
+            'performed_by'
+        ).order_by('-scheduled_date')[:10]
+
+        # Calculate statistics
+        context['total_surgeries_used'] = equipment.usage_records.count()
+        context['usage_last_30_days'] = equipment.usage_records.filter(
+            surgery__scheduled_date__gte=timezone.now() - timedelta(days=30)
+        ).count()
+        context['surgery_types_count'] = equipment.surgery_types_required.count()
+        
+        # Maintenance statistics
+        context['total_maintenance_count'] = equipment.maintenance_logs.count()
+        context['completed_maintenance_count'] = equipment.maintenance_logs.filter(
+            status='completed'
+        ).count()
+        context['scheduled_maintenance_count'] = equipment.maintenance_logs.filter(
+            status='scheduled'
+        ).count()
+        
+        context['today'] = timezone.now().date()
+
+        return context
 
 class SurgicalEquipmentCreateView(LoginRequiredMixin, CreateView):
     model = SurgicalEquipment
@@ -1355,3 +1414,50 @@ def request_surgery_authorization(request, surgery_id):
     )
 
     return redirect('theatre:surgery_detail', pk=surgery.id)
+
+
+@login_required
+def get_surgery_type_equipment(request):
+    """
+    AJAX view to get required equipment for a surgery type.
+    Returns equipment list with quantities and availability status.
+    """
+    surgery_type_id = request.GET.get('surgery_type_id')
+
+    if not surgery_type_id:
+        return JsonResponse({'error': 'Surgery type ID is required'}, status=400)
+
+    try:
+        surgery_type = SurgeryType.objects.get(id=surgery_type_id)
+
+        # Get required equipment for this surgery type
+        required_equipment = SurgeryTypeEquipment.objects.filter(
+            surgery_type=surgery_type
+        ).select_related('equipment')
+
+        equipment_list = []
+        for req in required_equipment:
+            equipment_list.append({
+                'id': req.equipment.id,
+                'name': req.equipment.name,
+                'equipment_type': req.equipment.equipment_type,
+                'quantity_required': req.quantity_required,
+                'is_mandatory': req.is_mandatory,
+                'notes': req.notes,
+                'is_available': req.equipment.is_available and req.equipment.quantity_available >= req.quantity_required,
+                'quantity_available': req.equipment.quantity_available,
+            })
+
+        return JsonResponse({
+            'surgery_type': surgery_type.name,
+            'equipment': equipment_list,
+            'total_required': len(equipment_list),
+            'mandatory_count': sum(1 for e in equipment_list if e['is_mandatory']),
+            'available_count': sum(1 for e in equipment_list if e['is_available']),
+        })
+
+    except SurgeryType.DoesNotExist:
+        return JsonResponse({'error': 'Surgery type not found'}, status=404)
+    except Exception as e:
+        logger.error(f'Error fetching surgery type equipment: {str(e)}', exc_info=True)
+        return JsonResponse({'error': 'An unexpected error occurred'}, status=500)

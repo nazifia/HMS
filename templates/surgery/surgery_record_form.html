@@ -17,6 +17,9 @@
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
+                    
+                    <!-- Patient and Doctor Information -->
+                    <h5 class="text-primary mb-3"><i class="fas fa-user-injured"></i> Patient Information</h5>
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.patient|as_crispy_field }}
@@ -35,55 +38,139 @@
                         </div>
                     </div>
                     
+                    <hr class="my-4">
+                    
+                    <!-- Surgery Details -->
+                    <h5 class="text-primary mb-3"><i class="fas fa-procedures"></i> Surgery Details</h5>
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.chief_complaint|as_crispy_field }}
+                            {{ form.surgery_type|as_crispy_field }}
                         </div>
                         <div class="col-md-6">
-                            {{ form.history_of_present_illness|as_crispy_field }}
+                            {{ form.surgery_date|as_crispy_field }}
                         </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.triage_level|as_crispy_field }}
+                            {{ form.procedure_code|as_crispy_field }}
                         </div>
                         <div class="col-md-6">
-                            {{ form.vital_signs|as_crispy_field }}
+                            {{ form.anesthesia_type|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <!-- Pre-operative Assessment -->
+                    <h5 class="text-primary mb-3"><i class="fas fa-clipboard-check"></i> Pre-operative Assessment</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.preop_diagnosis|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.preop_assessment|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <!-- Surgical Team -->
+                    <h5 class="text-primary mb-3"><i class="fas fa-user-md"></i> Surgical Team</h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            {{ form.surgeon|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.assistant_surgeon|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.anesthesiologist|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <!-- Operative Findings -->
+                    <h5 class="text-primary mb-3"><i class="fas fa-stethoscope"></i> Operative Findings</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.operative_findings|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.procedure_performed|as_crispy_field }}
                         </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.diagnosis|as_crispy_field }}
+                            {{ form.implants_used|as_crispy_field }}
                         </div>
                         <div class="col-md-6">
-                            {{ form.treatment_plan|as_crispy_field }}
+                            {{ form.estimated_blood_loss|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            {{ form.complications|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <!-- Post-operative -->
+                    <h5 class="text-primary mb-3"><i class="fas fa-hospital"></i> Post-operative Information</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.postop_diagnosis|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.postop_instructions|as_crispy_field }}
                         </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.disposition|as_crispy_field }}
+                            {{ form.discharge_summary|as_crispy_field }}
                         </div>
+                        <div class="col-md-6">
+                            {{ form.postop_day|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            {{ form.wound_status|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.pain_level|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.mobility_status|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <!-- Follow-up -->
+                    <h5 class="text-primary mb-3"><i class="fas fa-calendar-check"></i> Follow-up</h5>
+                    <div class="row">
                         <div class="col-md-6">
                             {{ form.follow_up_required|as_crispy_field }}
                         </div>
-                    </div>
-                    
-                    <div class="row">
                         <div class="col-md-6">
                             {{ form.follow_up_date|as_crispy_field }}
                         </div>
                     </div>
                     
-                    <div class="row mt-4">
+                    <div class="row mt-3">
                         <div class="col-md-12">
                             {{ form.notes|as_crispy_field }}
                         </div>
                     </div>
                     
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between mt-4">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save Record
                         </button>

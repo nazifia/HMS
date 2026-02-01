@@ -342,6 +342,26 @@ class PreOperativeChecklist(models.Model):
         verbose_name = "Pre-Operative Checklist"
         verbose_name_plural = "Pre-Operative Checklists"
 
+class SurgeryTypeEquipment(models.Model):
+    """Model representing equipment required for a specific surgery type."""
+    surgery_type = models.ForeignKey(SurgeryType, on_delete=models.CASCADE, related_name='required_equipment')
+    equipment = models.ForeignKey(SurgicalEquipment, on_delete=models.CASCADE, related_name='surgery_types_required')
+    quantity_required = models.PositiveIntegerField(default=1, help_text="Quantity of this equipment needed for the surgery")
+    is_mandatory = models.BooleanField(default=True, help_text="If true, this equipment must be available for the surgery to proceed")
+    notes = models.TextField(blank=True, null=True, help_text="Special instructions for using this equipment")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.equipment.name} for {self.surgery_type.name} (x{self.quantity_required})"
+
+    class Meta:
+        verbose_name = "Surgery Type Equipment Requirement"
+        verbose_name_plural = "Surgery Type Equipment Requirements"
+        unique_together = ('surgery_type', 'equipment')
+        ordering = ['surgery_type', 'equipment__name']
+
+
 class SurgeryLog(models.Model):
     surgery = models.ForeignKey(Surgery, on_delete=models.CASCADE, related_name='logs')
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -356,3 +376,95 @@ class SurgeryLog(models.Model):
         verbose_name = "Surgery Log Entry"
         verbose_name_plural = "Surgery Log Entries"
         ordering = ['timestamp']
+
+
+class EquipmentMaintenanceLog(models.Model):
+    """Model for tracking equipment maintenance and calibration history."""
+    
+    MAINTENANCE_TYPE_CHOICES = [
+        ('maintenance', 'Routine Maintenance'),
+        ('calibration', 'Calibration'),
+        ('repair', 'Repair'),
+        ('inspection', 'Inspection'),
+        ('replacement', 'Part Replacement'),
+        ('upgrade', 'Upgrade/Modification'),
+        ('cleaning', 'Deep Cleaning'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('scheduled', 'Scheduled'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('overdue', 'Overdue'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    equipment = models.ForeignKey(SurgicalEquipment, on_delete=models.CASCADE, related_name='maintenance_logs')
+    maintenance_type = models.CharField(max_length=20, choices=MAINTENANCE_TYPE_CHOICES, default='maintenance')
+    
+    # Dates
+    scheduled_date = models.DateField(help_text="When maintenance is scheduled")
+    completed_date = models.DateField(blank=True, null=True, help_text="When maintenance was actually completed")
+    next_due_date = models.DateField(blank=True, null=True, help_text="When next maintenance is due")
+    
+    # Details
+    description = models.TextField(help_text="Description of work performed or to be performed")
+    findings = models.TextField(blank=True, null=True, help_text="Findings during maintenance")
+    parts_replaced = models.TextField(blank=True, null=True, help_text="Parts that were replaced")
+    
+    # Status and costs
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='scheduled')
+    cost = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text="Cost of maintenance (₦)")
+    
+    # Personnel
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='performed_maintenance'
+    )
+    
+    # External service provider
+    external_provider = models.CharField(max_length=200, blank=True, null=True, help_text="External service company")
+    external_technician = models.CharField(max_length=200, blank=True, null=True, help_text="Technician name")
+    
+    # Documents
+    certificate_number = models.CharField(max_length=100, blank=True, null=True, help_text="Calibration certificate number")
+    document_file = models.FileField(upload_to='maintenance_docs/%Y/%m/', blank=True, null=True)
+    
+    # Metadata
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        related_name='created_maintenance_logs'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.get_maintenance_type_display()} - {self.equipment.name} ({self.scheduled_date})"
+    
+    class Meta:
+        verbose_name = "Equipment Maintenance Log"
+        verbose_name_plural = "Equipment Maintenance Logs"
+        ordering = ['-scheduled_date', '-created_at']
+    
+    def is_overdue(self):
+        """Check if maintenance is overdue."""
+        from django.utils import timezone
+        if self.status == 'scheduled' and self.scheduled_date < timezone.now().date():
+            return True
+        return False
+    
+    def get_status_badge(self):
+        """Return status badge class for templates."""
+        badge_classes = {
+            'scheduled': 'bg-info',
+            'in_progress': 'bg-warning text-dark',
+            'completed': 'bg-success',
+            'overdue': 'bg-danger',
+            'cancelled': 'bg-secondary',
+        }
+        return badge_classes.get(self.status, 'bg-secondary')

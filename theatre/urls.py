@@ -2,6 +2,8 @@ from django.urls import path
 from . import views
 from . import views_post_op
 from . import payment_views
+from . import views_equipment_management
+from . import views_equipment_maintenance
 
 app_name = 'theatre'
 
@@ -19,6 +21,7 @@ urlpatterns = [
     path('surgery-types/<int:pk>/', views.SurgeryTypeDetailView.as_view(), name='surgery_type_detail'),
     path('surgery-types/<int:pk>/edit/', views.SurgeryTypeUpdateView.as_view(), name='surgery_type_update'),
     path('surgery-types/<int:pk>/delete/', views.SurgeryTypeDeleteView.as_view(), name='surgery_type_delete'),
+    path('surgery-types/<int:surgery_type_id>/equipment/', views_equipment_management.manage_surgery_type_equipment, name='manage_surgery_type_equipment'),
     
     # Surgery URLs
     path('surgeries/', views.SurgeryListView.as_view(), name='surgery_list'),
@@ -29,6 +32,9 @@ urlpatterns = [
     
     # Patient surgery history for auto-population
     path('patient-surgery-history/', views.get_patient_surgery_history, name='patient_surgery_history'),
+    
+    # Surgery type equipment for auto-population
+    path('surgery-type-equipment/', views.get_surgery_type_equipment, name='surgery_type_equipment'),
 
     # Pre-Operative Checklist URLs
     path('surgeries/<int:surgery_id>/pre-op-checklist/add/', views.PreOperativeChecklistCreateView.as_view(), name='pre_op_checklist_create'),
@@ -46,6 +52,10 @@ urlpatterns = [
     path('equipment/<int:pk>/edit/', views.SurgicalEquipmentUpdateView.as_view(), name='equipment_update'),
     path('equipment/<int:pk>/delete/', views.SurgicalEquipmentDeleteView.as_view(), name='equipment_delete'),
     path('equipment/maintenance/', views.EquipmentMaintenanceView.as_view(), name='equipment_maintenance'),
+    path('equipment/<int:equipment_id>/maintenance-logs/', views_equipment_maintenance.EquipmentMaintenanceLogListView.as_view(), name='equipment_maintenance_log_list'),
+    path('equipment/<int:equipment_id>/maintenance-logs/add/', views_equipment_maintenance.EquipmentMaintenanceLogCreateView.as_view(), name='equipment_maintenance_log_create'),
+    path('equipment/<int:equipment_id>/maintenance-logs/<int:log_id>/edit/', views_equipment_maintenance.EquipmentMaintenanceLogUpdateView.as_view(), name='equipment_maintenance_log_update'),
+    path('equipment/<int:equipment_id>/maintenance-calendar/', views_equipment_maintenance.equipment_maintenance_calendar, name='equipment_maintenance_calendar'),
 
     # Surgical Team URLs
     path('teams/', views.SurgicalTeamListView.as_view(), name='team_list'),
