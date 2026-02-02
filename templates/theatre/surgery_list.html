@@ -88,23 +88,23 @@
         <div class="card-body">
             <form method="get" class="form-inline">
                 <div class="form-group mb-2 mr-2">
-                    <label for="{{ filter_form.start_date.id_for_label }}" class="sr-only">From Date</label>
+                    <label for="{{ filter_form.start_date.id_for_label }}">From Date</label>
                     {% render_field filter_form.start_date class="form-control" placeholder="From Date" %}
                 </div>
                 <div class="form-group mb-2 mr-2">
-                    <label for="{{ filter_form.end_date.id_for_label }}" class="sr-only">To Date</label>
+                    <label for="{{ filter_form.end_date.id_for_label }}">To Date</label>
                     {% render_field filter_form.end_date class="form-control" placeholder="To Date" %}
                 </div>
                 <div class="form-group mb-2 mr-2">
-                    <label for="{{ filter_form.status.id_for_label }}" class="sr-only">Status</label>
+                    <label for="{{ filter_form.status.id_for_label }}">Status</label>
                     {% render_field filter_form.status class="form-control" %}
                 </div>
                 <div class="form-group mb-2 mr-2">
-                    <label for="{{ filter_form.surgeon.id_for_label }}" class="sr-only">Surgeon</label>
+                    <label for="{{ filter_form.surgeon.id_for_label }}">Surgeon</label>
                     {% render_field filter_form.surgeon class="form-control" %}
                 </div>
                 <div class="form-group mb-2 mr-2">
-                    <label for="{{ filter_form.theatre.id_for_label }}" class="sr-only">Theatre</label>
+                    <label for="{{ filter_form.theatre.id_for_label }}">Theatre</label>
                     {% render_field filter_form.theatre class="form-control" %}
                 </div>
                 <button type="submit" class="btn btn-primary mb-2">Apply Filters</button>

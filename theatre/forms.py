@@ -443,9 +443,14 @@ class SurgeryFilterForm(forms.Form):
         label="Status"
     )
     surgeon = forms.ModelChoiceField(
-        queryset=CustomUser.objects.filter(profile__specialization__icontains='surgeon'),
+        queryset=CustomUser.objects.filter(
+            models.Q(profile__role='doctor') |
+            models.Q(profile__specialization__icontains='surgeon') |
+            models.Q(profile__specialization__icontains='doctor')
+        ).distinct().order_by('first_name', 'last_name'),
         required=False,
-        label="Surgeon"
+        label="Surgeon",
+        empty_label="All Surgeons"
     )
     theatre = forms.ModelChoiceField(
         queryset=OperationTheatre.objects.all(),
