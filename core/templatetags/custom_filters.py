@@ -18,11 +18,11 @@ def count_child_roles(roles):
 def count_active_roles(roles):
     """
     Count the number of roles that are assigned to users.
-    
+
     Usage: {% count_active_roles roles %}
     """
     try:
-        return roles.filter(users__isnull=False).distinct().count()
+        return roles.filter(customuser_roles__isnull=False).distinct().count()
     except AttributeError:
         return 0
 
