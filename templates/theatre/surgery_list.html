@@ -130,6 +130,7 @@
                             <th>Patient</th>
                             <th>Patient ID</th>
                             <th>Surgery Type</th>
+                            <th>Fee</th>
                             <th>Theatre</th>
                             <th>Surgeon</th>
                             <th>Status</th>
@@ -146,6 +147,13 @@
                             </td>
                             <td><code>{{ surgery.patient.patient_id }}</code></td>
                             <td>{{ surgery.surgery_type }}</td>
+                            <td>
+                                {% if surgery.patient.patient_type == 'nhia' %}
+                                    <span class="badge badge-success">NHIA</span>
+                                {% else %}
+                                    {{ surgery.surgery_type.get_fee_display }}
+                                {% endif %}
+                            </td>
                             <td>{{ surgery.theatre }}</td>
                             <td>{{ surgery.primary_surgeon }}</td>
                             <td>
@@ -183,6 +191,7 @@
                             <th>Date & Time</th>
                             <th>Patient</th>
                             <th>Surgery Type</th>
+                            <th>Fee</th>
                             <th>Theatre</th>
                             <th>Primary Surgeon</th>
                             <th>Status</th>
@@ -195,6 +204,13 @@
                             <td>{{ surgery.scheduled_date|date:"d/m/Y H:i" }}</td>
                             <td>{{ surgery.patient }}</td>
                             <td>{{ surgery.surgery_type }}</td>
+                            <td>
+                                {% if surgery.patient.patient_type == 'nhia' %}
+                                    <span class="badge badge-success">NHIA Covered</span>
+                                {% else %}
+                                    {{ surgery.surgery_type.get_fee_display }}
+                                {% endif %}
+                            </td>
                             <td>{{ surgery.theatre }}</td>
                             <td>{{ surgery.primary_surgeon }}</td>
                             <td>

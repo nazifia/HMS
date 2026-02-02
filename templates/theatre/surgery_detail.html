@@ -55,6 +55,49 @@
                         </div>
                     </div>
                     
+                    <!-- Surgery Fee Information -->
+                    <hr>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6 class="font-weight-bold text-primary"><i class="fas fa-money-bill-wave mr-2"></i>Surgery Fee</h6>
+                            {% if object.patient.patient_type == 'nhia' %}
+                            <div class="alert alert-success">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>Base Surgery Fee:</strong> {{ object.surgery_type.get_fee_display }}</p>
+                                        <p class="mb-0"><strong>Patient Type:</strong> <span class="badge badge-success">NHIA</span></p>
+                                    </div>
+                                    <div class="col-md-6 text-md-right">
+                                        <h5 class="text-success mb-0"><strong>Patient Pays: ₦0.00</strong></h5>
+                                        <small class="text-muted">Covered by NHIA authorization</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>Surgery Fee:</strong> {{ object.surgery_type.get_fee_display }}</p>
+                                        <p class="mb-0"><strong>Patient Type:</strong> <span class="badge badge-info">Regular</span></p>
+                                    </div>
+                                    <div class="col-md-6 text-md-right">
+                                        <h5 class="text-primary mb-0"><strong>Total: {{ object.surgery_type.get_fee_display }}</strong></h5>
+                                        <small class="text-muted">To be paid by patient</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if object.invoice %}
+                            <p class="mb-0 mt-2">
+                                <strong>Invoice:</strong> 
+                                <a href="{% url 'billing:invoice_detail' object.invoice.id %}" class="btn btn-sm btn-outline-primary">
+                                    {{ object.invoice.invoice_number }} - {{ object.invoice.get_status_display }}
+                                </a>
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
                     <hr>
 
                     <!-- NHIA Authorization Status -->
