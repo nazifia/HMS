@@ -22,7 +22,7 @@ def count_active_roles(roles):
     Usage: {% count_active_roles roles %}
     """
     try:
-        return roles.filter(customuser_roles__isnull=False).distinct().count()
+        return roles.filter(customuser_role__isnull=False).distinct().count()
     except AttributeError:
         return 0
 
