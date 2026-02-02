@@ -41,6 +41,8 @@
                                 <span class="badge badge-primary">{{ object.get_status_display }}</span>
                                 {% elif object.status == 'in_progress' %}
                                 <span class="badge badge-warning">{{ object.get_status_display }}</span>
+                                {% elif object.status == 'pending' %}
+                                <span class="badge badge-info">{{ object.get_status_display }}</span>
                                 {% elif object.status == 'completed' %}
                                 <span class="badge badge-success">{{ object.get_status_display }}</span>
                                 {% elif object.status == 'cancelled' %}
@@ -89,8 +91,8 @@
                             {% endif %}
                             {% if object.invoice %}
                             <p class="mb-0 mt-2">
-                                <strong>Invoice:</strong> 
-                                <a href="{% url 'billing:invoice_detail' object.invoice.id %}" class="btn btn-sm btn-outline-primary">
+                                <strong>Invoice:</strong>
+                                <a href="{% url 'billing:detail' object.invoice.id %}" class="btn btn-sm btn-outline-primary">
                                     {{ object.invoice.invoice_number }} - {{ object.invoice.get_status_display }}
                                 </a>
                             </p>
