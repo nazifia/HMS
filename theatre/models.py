@@ -67,6 +67,7 @@ class Surgery(models.Model):
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
         ('postponed', 'Postponed'),
+        ('pending', 'Pending'),
     )
 
     AUTHORIZATION_STATUS_CHOICES = (
@@ -133,6 +134,7 @@ class Surgery(models.Model):
             'completed': 'Completed',
             'cancelled': 'Cancelled',
             'postponed': 'Postponed',
+            'pending': 'Pending',
         }
         status_display = status_display_map.get(self.status, self.status)
         return f"Surgery for {self.patient} - {self.surgery_type} ({status_display})"

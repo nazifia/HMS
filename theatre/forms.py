@@ -422,6 +422,7 @@ class SurgeryFilterForm(forms.Form):
         ('', 'All'),
         ('scheduled', 'Scheduled'),
         ('in_progress', 'In Progress'),
+        ('pending', 'Pending'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
         ('postponed', 'Postponed'),

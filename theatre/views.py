@@ -159,13 +159,13 @@ class SurgeryListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['filter_form'] = self.filter_form
         
-        # Get patients booked for surgery (unique patients with scheduled/in_progress surgeries)
+        # Get patients booked for surgery (unique patients with scheduled/in_progress/pending surgeries)
         booked_patients = Surgery.objects.filter(
-            status__in=['scheduled', 'in_progress']
+            status__in=['scheduled', 'in_progress', 'pending']
         ).select_related('patient').values(
             'patient__id', 'patient__first_name', 'patient__last_name', 'patient__patient_id'
         ).distinct()
-        
+
         context['total_patients_booked'] = booked_patients.count()
         context['scheduled_patients_count'] = Surgery.objects.filter(
             status='scheduled'
@@ -173,12 +173,15 @@ class SurgeryListView(LoginRequiredMixin, ListView):
         context['in_progress_patients_count'] = Surgery.objects.filter(
             status='in_progress'
         ).values('patient').distinct().count()
-        
+        context['pending_patients_count'] = Surgery.objects.filter(
+            status='pending'
+        ).values('patient').distinct().count()
+
         # Today's booked patients
         from datetime import date
         context['todays_booked_patients'] = Surgery.objects.filter(
             scheduled_date__date=date.today(),
-            status__in=['scheduled', 'in_progress']
+            status__in=['scheduled', 'in_progress', 'pending']
         ).select_related('patient').order_by('scheduled_date')
         
         return context

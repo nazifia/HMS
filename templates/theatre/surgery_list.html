@@ -161,6 +161,8 @@
                                 <span class="badge badge-primary">{{ surgery.get_status_display }}</span>
                                 {% elif surgery.status == 'in_progress' %}
                                 <span class="badge badge-warning">{{ surgery.get_status_display }}</span>
+                                {% elif surgery.status == 'pending' %}
+                                <span class="badge badge-info">{{ surgery.get_status_display }}</span>
                                 {% endif %}
                             </td>
                             <td>
@@ -218,6 +220,8 @@
                                 <span class="badge badge-primary">{{ surgery.get_status_display }}</span>
                                 {% elif surgery.status == 'in_progress' %}
                                 <span class="badge badge-warning">{{ surgery.get_status_display }}</span>
+                                {% elif surgery.status == 'pending' %}
+                                <span class="badge badge-info">{{ surgery.get_status_display }}</span>
                                 {% elif surgery.status == 'completed' %}
                                 <span class="badge badge-success">{{ surgery.get_status_display }}</span>
                                 {% elif surgery.status == 'cancelled' %}
