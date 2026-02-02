@@ -304,13 +304,41 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
         if form.is_valid() and team_formset.is_valid() and equipment_formset.is_valid():
             return self.form_valid(form, team_formset, equipment_formset)
         else:
-            # Add error messages for the user
+            # Check for specific form errors and display them
             if not form.is_valid():
-                messages.error(request, 'There are errors in the surgery form. Please check the required fields.')
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        if field == '__all__':
+                            messages.error(request, f'{error}')
+                        else:
+                            messages.error(request, f'{field.replace("_", " ").title()}: {error}')
+            
             if not team_formset.is_valid():
-                messages.error(request, 'There are errors in the surgical team information.')
+                # Only show error if there are actual errors, not just empty forms
+                has_real_errors = False
+                for error_dict in team_formset.errors:
+                    if error_dict and not all(k == 'surgery' for k in error_dict.keys()):
+                        has_real_errors = True
+                        for field, errors in error_dict.items():
+                            for error in errors:
+                                messages.error(request, f'Team Member - {field.replace("_", " ").title()}: {error}')
+                if not has_real_errors and team_formset.non_form_errors():
+                    for error in team_formset.non_form_errors():
+                        messages.error(request, f'Surgical Team: {error}')
+            
             if not equipment_formset.is_valid():
-                messages.error(request, 'There are errors in the equipment information.')
+                # Only show error if there are actual errors, not just empty forms
+                has_real_errors = False
+                for error_dict in equipment_formset.errors:
+                    if error_dict and not all(k == 'surgery' for k in error_dict.keys()):
+                        has_real_errors = True
+                        for field, errors in error_dict.items():
+                            for error in errors:
+                                messages.error(request, f'Equipment - {field.replace("_", " ").title()}: {error}')
+                if not has_real_errors and equipment_formset.non_form_errors():
+                    for error in equipment_formset.non_form_errors():
+                        messages.error(request, f'Equipment: {error}')
+            
             return self.form_invalid(form, team_formset, equipment_formset)
 
     def form_valid(self, form, team_formset, equipment_formset):
@@ -417,23 +445,8 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
         return redirect(self.get_success_url())
 
     def form_invalid(self, form, team_formset, equipment_formset):
-        # Add specific error messages for formsets
-        if team_formset.errors or team_formset.non_form_errors():
-            for i, form_errors in enumerate(team_formset.errors):
-                if form_errors:
-                    messages.error(self.request, f"Surgical Team: Please check the team member information in form {i+1}.")
-            if team_formset.non_form_errors():
-                for error in team_formset.non_form_errors():
-                    messages.error(self.request, f"Surgical Team: {error}")
-        
-        if equipment_formset.errors or equipment_formset.non_form_errors():
-            for i, form_errors in enumerate(equipment_formset.errors):
-                if form_errors:
-                    messages.error(self.request, f"Equipment: Please check the equipment information in form {i+1}.")
-            if equipment_formset.non_form_errors():
-                for error in equipment_formset.non_form_errors():
-                    messages.error(self.request, f"Equipment: {error}")
-        
+        # Form error messages are already added in post() method
+        # This method just renders the template with the invalid forms
         return self.render_to_response(
             self.get_context_data(
                 form=form,

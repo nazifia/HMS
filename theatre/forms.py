@@ -100,30 +100,44 @@ class SurgeryForm(forms.ModelForm):
             self.fields['surgery_type'].queryset = SurgeryType.objects.all().order_by('name')
         
         # Set surgeon and anesthetist querysets
-        # Try to filter by specialization, but fallback to all users if no matches
+        # Only show active users to avoid validation errors with deleted users
         if 'primary_surgeon' in self.fields:
-            surgeon_qs = CustomUser.objects.filter(
+            # Get base queryset of active users only
+            base_surgeon_qs = CustomUser.objects.filter(is_active=True)
+            
+            # Try to filter by specialization, but only if users exist
+            surgeon_qs = base_surgeon_qs.filter(
                 models.Q(profile__specialization__icontains='surgeon') |
                 models.Q(profile__specialization__icontains='doctor') |
                 models.Q(profile__role='doctor')
             ).order_by('first_name', 'last_name')
-            # If no users match, show all users so the field isn't empty
+            
+            # If no specialized users found, use all active users
             if not surgeon_qs.exists():
-                surgeon_qs = CustomUser.objects.filter(is_active=True).order_by('first_name', 'last_name')
+                surgeon_qs = base_surgeon_qs.order_by('first_name', 'last_name')
+            
             self.fields['primary_surgeon'].queryset = surgeon_qs
             self.fields['primary_surgeon'].empty_label = "Select Surgeon (Optional)"
+            self.fields['primary_surgeon'].required = False
         
         if 'anesthetist' in self.fields:
-            anesthetist_qs = CustomUser.objects.filter(
+            # Get base queryset of active users only
+            base_anesthetist_qs = CustomUser.objects.filter(is_active=True)
+            
+            # Try to filter by specialization, but only if users exist
+            anesthetist_qs = base_anesthetist_qs.filter(
                 models.Q(profile__specialization__icontains='anesthetist') |
                 models.Q(profile__specialization__icontains='anesthesia') |
                 models.Q(profile__role='anesthetist')
             ).order_by('first_name', 'last_name')
-            # If no users match, show all users so the field isn't empty
+            
+            # If no specialized users found, use all active users
             if not anesthetist_qs.exists():
-                anesthetist_qs = CustomUser.objects.filter(is_active=True).order_by('first_name', 'last_name')
+                anesthetist_qs = base_anesthetist_qs.order_by('first_name', 'last_name')
+            
             self.fields['anesthetist'].queryset = anesthetist_qs
             self.fields['anesthetist'].empty_label = "Select Anesthetist (Optional)"
+            self.fields['anesthetist'].required = False
         
         # Handle authorization code field
         if 'authorization_code' in self.fields:
@@ -135,6 +149,30 @@ class SurgeryForm(forms.ModelForm):
             except ImportError:
                 # If nhia app is not available, remove the field
                 del self.fields['authorization_code']
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        # Handle missing surgeon/anesthetist users gracefully
+        primary_surgeon = cleaned_data.get('primary_surgeon')
+        anesthetist = cleaned_data.get('anesthetist')
+        
+        # If a user was selected but doesn't exist, clear it and add a warning
+        if primary_surgeon:
+            try:
+                CustomUser.objects.get(pk=primary_surgeon.pk)
+            except CustomUser.DoesNotExist:
+                cleaned_data['primary_surgeon'] = None
+                self.add_error('primary_surgeon', 'Selected surgeon no longer exists. Please select a different surgeon.')
+        
+        if anesthetist:
+            try:
+                CustomUser.objects.get(pk=anesthetist.pk)
+            except CustomUser.DoesNotExist:
+                cleaned_data['anesthetist'] = None
+                self.add_error('anesthetist', 'Selected anesthetist no longer exists. Please select a different anesthetist.')
+        
+        return cleaned_data
 
 
 class SurgicalTeamForm(forms.ModelForm):
