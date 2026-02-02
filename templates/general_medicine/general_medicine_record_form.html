@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load custom_filters %}
+{% load static %}
 {% load crispy_forms_tags %}
 
 {% block title %}{{ title }} - Hospital Management System{% endblock %}
@@ -17,6 +17,8 @@
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
+
+                    <!-- Patient & Doctor Info -->
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.patient|as_crispy_field }}
@@ -25,7 +27,8 @@
                             {{ form.doctor|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <!-- Visit Details -->
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.visit_date|as_crispy_field }}
@@ -34,7 +37,8 @@
                             {{ form.authorization_code|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <!-- Chief Complaint & History -->
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.chief_complaint|as_crispy_field }}
@@ -43,16 +47,112 @@
                             {{ form.history_of_present_illness|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <!-- Past, Family & Social History -->
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.triage_level|as_crispy_field }}
+                            {{ form.past_medical_history|as_crispy_field }}
                         </div>
                         <div class="col-md-6">
-                            {{ form.vital_signs|as_crispy_field }}
+                            {{ form.family_history|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            {{ form.social_history|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h6 class="text-primary mb-3">Vital Signs & Physical Measurements</h6>
+
+                    <!-- Vital Signs Grid -->
+                    <div class="row">
+                        <div class="col-md-3">
+                            {{ form.temperature|as_crispy_field }}
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="id_blood_pressure_systolic" class="col-form-label">Blood Pressure (Systolic)</label>
+                                {{ form.blood_pressure_systolic }}
+                                {% if form.blood_pressure_systolic.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.blood_pressure_systolic.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="id_blood_pressure_diastolic" class="col-form-label">Blood Pressure (Diastolic)</label>
+                                {{ form.blood_pressure_diastolic }}
+                                {% if form.blood_pressure_diastolic.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.blood_pressure_diastolic.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.pulse_rate|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-3">
+                            {{ form.respiratory_rate|as_crispy_field }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.oxygen_saturation|as_crispy_field }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.weight|as_crispy_field }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.height|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            {% if form.bmi %}
+                                <div class="form-group">
+                                    <label class="col-form-label">BMI</label>
+                                    <p class="form-control-plaintext">{{ form.instance.get_bmi_display|default:"--" }}</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h6 class="text-primary mb-3">Physical Examination</h6>
+
+                    <!-- Physical Exam Fields -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            {{ form.general_appearance|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.cardiovascular_exam|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.respiratory_exam|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.gastrointestinal_exam|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.neurological_exam|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h6 class="text-primary mb-3">Assessment & Plan</h6>
+
+                    <!-- Diagnosis & Treatment -->
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.diagnosis|as_crispy_field }}
@@ -61,29 +161,26 @@
                             {{ form.treatment_plan|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <!-- Follow-up -->
                     <div class="row">
-                        <div class="col-md-6">
-                            {{ form.disposition|as_crispy_field }}
-                        </div>
                         <div class="col-md-6">
                             {{ form.follow_up_required|as_crispy_field }}
                         </div>
-                    </div>
-                    
-                    <div class="row">
                         <div class="col-md-6">
                             {{ form.follow_up_date|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <!-- Notes -->
                     <div class="row mt-4">
                         <div class="col-md-12">
                             {{ form.notes|as_crispy_field }}
                         </div>
                     </div>
-                    
-                    <div class="d-flex justify-content-between">
+
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-between mt-4">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save Record
                         </button>
@@ -96,4 +193,5 @@
         </div>
     </div>
 </div>
+
 {% endblock %}
