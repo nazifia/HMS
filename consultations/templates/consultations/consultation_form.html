@@ -131,9 +131,14 @@
                         <!-- Authorization Code (for NHIA patients) -->
                         {% if patient and patient.patient_type == 'nhia' %}
                         <div class="mb-3">
-                            <div class="alert alert-warning">
+                            <div class="alert alert-info">
                                 <i class="fas fa-shield-alt me-2"></i>
-                                <strong>NHIA Patient:</strong> Authorization code may be required for non-NHIA consulting rooms.
+                                <strong>NHIA Patient:</strong> 
+                                {% if form.authorization_code_input.initial %}
+                                    Authorization code auto-fetched from desk office.
+                                {% else %}
+                                    Authorization code may be required for non-NHIA consulting rooms.
+                                {% endif %}
                             </div>
                             <label for="{{ form.authorization_code_input.id_for_label }}" class="form-label">Authorization Code</label>
                             {{ form.authorization_code_input }}

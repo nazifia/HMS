@@ -333,18 +333,60 @@ class ConsultationForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        # Extract current user from initial data if provided
+        current_user = kwargs.get('initial', {}).get('doctor') if 'initial' in kwargs else None
+        
         super().__init__(*args, **kwargs)
         # Set querysets for dropdowns
         self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
-        self.fields['doctor'].queryset = CustomUser.objects.filter(
-            is_active=True,
-            profile__role='doctor'
+        
+        # Build doctor queryset - include current user even if not in standard doctor filter
+        base_qs = CustomUser.objects.filter(is_active=True)
+        doctor_qs = base_qs.filter(
+            models.Q(profile__role='doctor') |
+            models.Q(profile__specialization__isnull=False)
         ).order_by('first_name', 'last_name')
+        
+        # If no doctors found with role filter, use all active users
+        if not doctor_qs.exists():
+            doctor_qs = base_qs.order_by('first_name', 'last_name')
+        
+        # Add current user to queryset if not already included
+        if current_user and current_user.id:
+            if not doctor_qs.filter(id=current_user.id).exists():
+                doctor_qs = (doctor_qs | base_qs.filter(id=current_user.id)).distinct()
+        
+        self.fields['doctor'].queryset = doctor_qs
         self.fields['vitals'].queryset = Vitals.objects.all().order_by('-date_time')
 
         # Set empty labels
         self.fields['doctor'].empty_label = "Select Doctor (Optional)"
         self.fields['vitals'].empty_label = "Select Vitals (Optional)"
+        
+        # Auto-fetch authorization code for NHIA patients
+        patient = self.initial.get('patient') if hasattr(self, 'initial') else None
+        if patient and hasattr(patient, 'patient_type') and patient.patient_type == 'nhia':
+            self._auto_fetch_authorization_code(patient)
+
+    def _auto_fetch_authorization_code(self, patient):
+        """Auto-fetch active authorization code for NHIA patient"""
+        try:
+            from nhia.models import AuthorizationCode
+            # Get the most recent active authorization code for this patient
+            auth_code = AuthorizationCode.objects.filter(
+                patient=patient,
+                status='active'
+            ).order_by('-generated_at').first()
+            
+            if auth_code:
+                # Pre-populate the field with the authorization code string
+                self.fields['authorization_code_input'].initial = auth_code.code
+        except ImportError:
+            # NHIA app not available, skip auto-fetch
+            pass
+        except Exception:
+            # Silently ignore any errors during auto-fetch
+            pass
 
     def clean_authorization_code_input(self):
         """Validate authorization code if provided"""
