@@ -143,7 +143,9 @@
                         </div>
 
                         <!-- Hidden Fields -->
-                        {{ form.surgery }}
+                        {% if form.patient_hidden %}
+                            {{ form.patient_hidden }}
+                        {% endif %}
                         {{ form.patient }}
 
                         <!-- Submit Button -->

@@ -1405,7 +1405,7 @@ class PackOrderForm(forms.ModelForm):
                 queryset=Patient.objects.filter(id=self.preselected_patient.id),
                 initial=self.preselected_patient,
                 widget=forms.HiddenInput(),
-                required=True
+                required=False  # Not required here, validation done in clean()
             )
 
         # Filter packs based on context

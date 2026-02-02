@@ -68,9 +68,35 @@ class SurgeryForm(forms.ModelForm):
         ('cancelled', 'Cancelled'),
         ('postponed', 'Postponed'),
     ]
-    
+
     status = forms.ChoiceField(choices=STATUS_CHOICES, initial='scheduled')
-    
+
+    # Patient search field for enhanced UX
+    patient_search = forms.CharField(
+        required=False,
+        label="Search Patient",
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Search by name or patient ID',
+            'class': 'form-control',
+            'id': 'id_patient_search'
+        })
+    )
+
+    # Scheduling options
+    skip_conflict_validation = forms.BooleanField(
+        required=False,
+        label='Skip Conflict Validation',
+        help_text='Allow scheduling even if there are conflicts (not recommended)',
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+
+    allow_flexible_scheduling = forms.BooleanField(
+        required=False,
+        label='Allow Flexible Scheduling',
+        help_text='Show warnings but allow saving with conflicts',
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+
     class Meta:
         model = Surgery
         fields = [
@@ -86,7 +112,13 @@ class SurgeryForm(forms.ModelForm):
         }
     
     def __init__(self, *args, **kwargs):
+        self._warnings = []
         super().__init__(*args, **kwargs)
+
+        # If editing an existing surgery, populate the patient search field
+        if self.instance and self.instance.pk and self.instance.patient:
+            self.fields['patient_search'].initial = str(self.instance.patient)
+
         # Set patient queryset
         if 'patient' in self.fields:
             self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
@@ -183,14 +215,18 @@ class SurgeryForm(forms.ModelForm):
             except ImportError:
                 # If nhia app is not available, remove the field
                 del self.fields['authorization_code']
-    
+
+    def get_warnings(self):
+        """Return list of validation warnings (not errors)"""
+        return self._warnings
+
     def clean(self):
         cleaned_data = super().clean()
-        
+
         # Handle missing surgeon/anesthetist users gracefully
         primary_surgeon = cleaned_data.get('primary_surgeon')
         anesthetist = cleaned_data.get('anesthetist')
-        
+
         # If a user was selected but doesn't exist, clear it and add a warning
         if primary_surgeon:
             try:
@@ -198,15 +234,71 @@ class SurgeryForm(forms.ModelForm):
             except CustomUser.DoesNotExist:
                 cleaned_data['primary_surgeon'] = None
                 self.add_error('primary_surgeon', 'Selected surgeon no longer exists. Please select a different surgeon.')
-        
+
         if anesthetist:
             try:
                 CustomUser.objects.get(pk=anesthetist.pk)
             except CustomUser.DoesNotExist:
                 cleaned_data['anesthetist'] = None
                 self.add_error('anesthetist', 'Selected anesthetist no longer exists. Please select a different anesthetist.')
-        
+
+        # Check for scheduling conflicts
+        theatre = cleaned_data.get('theatre')
+        scheduled_date = cleaned_data.get('scheduled_date')
+        expected_duration = cleaned_data.get('expected_duration')
+        skip_conflict = cleaned_data.get('skip_conflict_validation', False)
+        allow_flexible = cleaned_data.get('allow_flexible_scheduling', False)
+
+        if theatre and scheduled_date and expected_duration:
+            conflicts = self._check_scheduling_conflicts(
+                theatre, scheduled_date, expected_duration
+            )
+
+            if conflicts:
+                if skip_conflict:
+                    # Just add warnings but don't prevent saving
+                    for conflict in conflicts:
+                        self._warnings.append(f"CONFLICT: {conflict}")
+                elif allow_flexible:
+                    # Add warnings but allow saving
+                    for conflict in conflicts:
+                        self._warnings.append(f"WARNING: {conflict}")
+                else:
+                    # Standard mode: prevent saving
+                    for conflict in conflicts:
+                        self.add_error('scheduled_date', f"Scheduling conflict: {conflict}")
+
         return cleaned_data
+
+    def _check_scheduling_conflicts(self, theatre, scheduled_date, expected_duration):
+        """Check for scheduling conflicts with other surgeries"""
+        from django.db.models import Q
+        from datetime import timedelta
+
+        conflicts = []
+
+        # Calculate end time
+        end_time = scheduled_date + expected_duration
+
+        # Find overlapping surgeries in the same theatre
+        overlapping = Surgery.objects.filter(
+            theatre=theatre,
+            status__in=['scheduled', 'in_progress'],
+            scheduled_date__lt=end_time
+        ).exclude(
+            pk=self.instance.pk if self.instance else None
+        )
+
+        for surgery in overlapping:
+            surgery_end = surgery.scheduled_date + surgery.expected_duration
+            if surgery_end > scheduled_date:
+                conflicts.append(
+                    f"{surgery.surgery_type.name} for {surgery.patient} "
+                    f"({surgery.scheduled_date.strftime('%Y-%m-%d %H:%M')} - "
+                    f"{surgery_end.strftime('%H:%M')})"
+                )
+
+        return conflicts
 
 
 class SurgicalTeamForm(forms.ModelForm):
