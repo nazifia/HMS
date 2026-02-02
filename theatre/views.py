@@ -1295,6 +1295,11 @@ def order_medical_pack_for_surgery(request, surgery_id):
             'scheduled_date': surgery.scheduled_date,
             'order_notes': f'Pack order for surgery: {surgery.surgery_type.name}'
         }
+        
+        # Pre-select authorization code if surgery already has one
+        if surgery.authorization_code:
+            initial_data['authorization_code'] = surgery.authorization_code.id
+        
         form = PackOrderForm(initial=initial_data, surgery=surgery, preselected_patient=surgery.patient)
 
         # Filter pack choices to surgery-specific packs
