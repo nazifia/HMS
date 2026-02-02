@@ -1723,6 +1723,7 @@ def superuser_user_profiles(request):
         users = users.filter(
             Q(username__icontains=query) |
             Q(email__icontains=query) |
+            Q(phone_number__icontains=query) |
             Q(first_name__icontains=query) |
             Q(last_name__icontains=query) |
             Q(profile__phone_number__icontains=query)
