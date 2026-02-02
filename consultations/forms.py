@@ -1,6 +1,7 @@
 from django import forms
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q
 from .models import ConsultationOrder, ConsultingRoom, WaitingList, Referral, Consultation
 from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
@@ -343,8 +344,8 @@ class ConsultationForm(forms.ModelForm):
         # Build doctor queryset - include current user even if not in standard doctor filter
         base_qs = CustomUser.objects.filter(is_active=True)
         doctor_qs = base_qs.filter(
-            models.Q(profile__role='doctor') |
-            models.Q(profile__specialization__isnull=False)
+            Q(profile__role='doctor') |
+            Q(profile__specialization__isnull=False)
         ).order_by('first_name', 'last_name')
         
         # If no doctors found with role filter, use all active users
