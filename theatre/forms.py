@@ -100,40 +100,74 @@ class SurgeryForm(forms.ModelForm):
             self.fields['surgery_type'].queryset = SurgeryType.objects.all().order_by('name')
         
         # Set surgeon and anesthetist querysets
-        # Only show active users to avoid validation errors with deleted users
+        # Include currently selected users to avoid validation errors
         if 'primary_surgeon' in self.fields:
-            # Get base queryset of active users only
-            base_surgeon_qs = CustomUser.objects.filter(is_active=True)
+            # Get currently selected surgeon ID from POST data or instance
+            selected_surgeon_id = None
+            raw_value = self.data.get('primary_surgeon')
+            if raw_value:
+                # Handle both single values and lists
+                if isinstance(raw_value, list):
+                    raw_value = raw_value[0] if raw_value else None
+                if raw_value:
+                    try:
+                        selected_surgeon_id = int(raw_value)
+                    except (ValueError, TypeError):
+                        pass
+            elif self.instance and self.instance.pk and self.instance.primary_surgeon_id:
+                selected_surgeon_id = self.instance.primary_surgeon_id
             
-            # Try to filter by specialization, but only if users exist
-            surgeon_qs = base_surgeon_qs.filter(
+            # Build base queryset of appropriate users
+            base_qs = CustomUser.objects.filter(is_active=True)
+            surgeon_qs = base_qs.filter(
                 models.Q(profile__specialization__icontains='surgeon') |
                 models.Q(profile__specialization__icontains='doctor') |
                 models.Q(profile__role='doctor')
             ).order_by('first_name', 'last_name')
             
-            # If no specialized users found, use all active users
             if not surgeon_qs.exists():
-                surgeon_qs = base_surgeon_qs.order_by('first_name', 'last_name')
+                surgeon_qs = base_qs.order_by('first_name', 'last_name')
+            
+            # Union with selected surgeon if not already in queryset
+            if selected_surgeon_id:
+                selected_qs = CustomUser.objects.filter(pk=selected_surgeon_id)
+                surgeon_qs = (surgeon_qs | selected_qs).distinct().order_by('first_name', 'last_name')
             
             self.fields['primary_surgeon'].queryset = surgeon_qs
             self.fields['primary_surgeon'].empty_label = "Select Surgeon (Optional)"
             self.fields['primary_surgeon'].required = False
         
         if 'anesthetist' in self.fields:
-            # Get base queryset of active users only
-            base_anesthetist_qs = CustomUser.objects.filter(is_active=True)
+            # Get currently selected anesthetist ID from POST data or instance
+            selected_anesthetist_id = None
+            raw_value = self.data.get('anesthetist')
+            if raw_value:
+                # Handle both single values and lists
+                if isinstance(raw_value, list):
+                    raw_value = raw_value[0] if raw_value else None
+                if raw_value:
+                    try:
+                        selected_anesthetist_id = int(raw_value)
+                    except (ValueError, TypeError):
+                        pass
+            elif self.instance and self.instance.pk and self.instance.anesthetist_id:
+                selected_anesthetist_id = self.instance.anesthetist_id
             
-            # Try to filter by specialization, but only if users exist
-            anesthetist_qs = base_anesthetist_qs.filter(
+            # Build base queryset of appropriate users
+            base_qs = CustomUser.objects.filter(is_active=True)
+            anesthetist_qs = base_qs.filter(
                 models.Q(profile__specialization__icontains='anesthetist') |
                 models.Q(profile__specialization__icontains='anesthesia') |
                 models.Q(profile__role='anesthetist')
             ).order_by('first_name', 'last_name')
             
-            # If no specialized users found, use all active users
             if not anesthetist_qs.exists():
-                anesthetist_qs = base_anesthetist_qs.order_by('first_name', 'last_name')
+                anesthetist_qs = base_qs.order_by('first_name', 'last_name')
+            
+            # Union with selected anesthetist if not already in queryset
+            if selected_anesthetist_id:
+                selected_qs = CustomUser.objects.filter(pk=selected_anesthetist_id)
+                anesthetist_qs = (anesthetist_qs | selected_qs).distinct().order_by('first_name', 'last_name')
             
             self.fields['anesthetist'].queryset = anesthetist_qs
             self.fields['anesthetist'].empty_label = "Select Anesthetist (Optional)"
