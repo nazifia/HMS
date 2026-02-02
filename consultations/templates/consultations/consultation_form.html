@@ -33,6 +33,27 @@
                     <form method="post">
                         {% csrf_token %}
                         
+                        <!-- Display Non-Field Errors -->
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Display General Form Errors -->
+                        {% if form.errors %}
+                        <div class="alert alert-warning">
+                            <strong>Form Errors:</strong>
+                            <ul class="mb-0">
+                                {% for field, errors in form.errors.items %}
+                                    <li><strong>{{ field|title }}:</strong> {{ errors|join:", " }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -106,6 +127,24 @@
                                 <div class="text-danger">{{ form.consultation_notes.errors }}</div>
                             {% endif %}
                         </div>
+
+                        <!-- Authorization Code (for NHIA patients) -->
+                        {% if patient and patient.patient_type == 'nhia' %}
+                        <div class="mb-3">
+                            <div class="alert alert-warning">
+                                <i class="fas fa-shield-alt me-2"></i>
+                                <strong>NHIA Patient:</strong> Authorization code may be required for non-NHIA consulting rooms.
+                            </div>
+                            <label for="{{ form.authorization_code_input.id_for_label }}" class="form-label">Authorization Code</label>
+                            {{ form.authorization_code_input }}
+                            {% if form.authorization_code_input.errors %}
+                                <div class="text-danger">{{ form.authorization_code_input.errors }}</div>
+                            {% endif %}
+                            {% if form.authorization_code_input.help_text %}
+                                <small class="form-text text-muted">{{ form.authorization_code_input.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        {% endif %}
 
                         <!-- Vitals Selection -->
                         {% if vitals_form %}

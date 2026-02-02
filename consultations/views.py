@@ -725,7 +725,28 @@ def create_consultation(request, patient_id):
             messages.success(request, f"Consultation for {patient.get_full_name()} created successfully.")
             return redirect('patients:detail', patient_id=patient.id)
         else:
-            messages.error(request, "Please correct the form errors.")
+            # Collect all form errors for display
+            error_messages = []
+            
+            # Main form errors
+            for field, errors in form.errors.items():
+                if field == '__all__':
+                    error_messages.append(f"Error: {', '.join(errors)}")
+                else:
+                    field_label = form.fields.get(field, None)
+                    label = field_label.label if field_label else field
+                    error_messages.append(f"{label}: {', '.join(errors)}")
+            
+            # Vitals form errors
+            for field, errors in vitals_form.errors.items():
+                field_label = vitals_form.fields.get(field, None)
+                label = field_label.label if field_label else field
+                error_messages.append(f"{label}: {', '.join(errors)}")
+            
+            if error_messages:
+                messages.error(request, "Please correct the following errors: " + "; ".join(error_messages))
+            else:
+                messages.error(request, "Please correct the form errors.")
     else:
         initial_data = {
             'patient': patient,
