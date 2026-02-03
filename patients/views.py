@@ -26,12 +26,7 @@ def patient_list(request):
     """View for listing all patients with search and pagination"""
     from core.patient_search_forms import EnhancedPatientSearchForm
 
-    # Build cache key from query parameters
-    cache_key = f'patient_list_{hash(request.GET.urlencode())}' if request.GET else 'patient_list_all'
-    cached_context = cache.get(cache_key)
-
-    if cached_context:
-        return render(request, 'patients/patient_list.html', cached_context)
+    search_form = EnhancedPatientSearchForm(request.GET if request.GET else None)
 
     # Get all active patients with optimized query using select_related and prefetch_related
     patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name').select_related(
@@ -39,9 +34,6 @@ def patient_list(request):
     ).prefetch_related(
         'consultations', 'medical_histories', 'physiotherapy_requests'
     )
-
-    # Initialize search form with GET data if present
-    search_form = EnhancedPatientSearchForm(request.GET if request.GET else None)
 
     # Apply search filters - check if any GET parameters exist
     if request.GET:
@@ -102,8 +94,21 @@ def patient_list(request):
             except ValueError:
                 pass
 
-    # Get total count for display
-    total_patients = patients.count()
+    # Build cache key for computed data only
+    cache_key = f'patient_list_data_{hash(request.GET.urlencode())}' if request.GET else 'patient_list_data_all'
+    cached_data = cache.get(cache_key)
+
+    if cached_data:
+        # Reconstruct queryset from cached IDs with optimized select_related/prefetch_related
+        patient_ids = cached_data['patient_ids']
+        patients = Patient.objects.filter(id__in=patient_ids).select_related(
+            'nhia_info', 'retainership_info'
+        ).prefetch_related(
+            'consultations', 'medical_histories', 'physiotherapy_requests'
+        ).order_by('first_name', 'last_name')
+        total_patients = cached_data['total_patients']
+    else:
+        total_patients = patients.count()
 
     # Pagination
     paginator = Paginator(patients, 15)  # Show 15 patients per page
@@ -118,13 +123,17 @@ def patient_list(request):
         'active_nav': 'patients',
     }
 
-    # Cache the context for 60 seconds (exclude HTMX partials from caching)
-    if not request.headers.get('HX-Request'):
-        cache.set(cache_key, context, 60)
-
-    # If this is an HTMX request, return only the table partial
+    # If this is an HTMX request, return only the table partial (no caching)
     if request.headers.get('HX-Request'):
         return render(request, 'patients/patient_table.html', context)
+
+    # Cache computed data (excluding page_obj) for non-HTMX requests
+    if not cached_data:
+        cache_data = {
+            'patient_ids': list(patients.values_list('id', flat=True)),
+            'total_patients': total_patients,
+        }
+        cache.set(cache_key, cache_data, 60)
 
     return render(request, 'patients/patient_list.html', context)
     

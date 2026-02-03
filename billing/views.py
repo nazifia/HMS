@@ -23,13 +23,6 @@ from core.billing_office_integration import BillingOfficePaymentProcessor
 @login_required
 def invoice_list(request):
     """View for listing all invoices with search and filter functionality - Optimized"""
-    # Build cache key
-    cache_key = f'invoice_list_{hash(request.GET.urlencode())}' if request.GET else 'invoice_list_all'
-    cached_context = cache.get(cache_key)
-
-    if cached_context:
-        return render(request, 'billing/invoice_list.html', cached_context)
-
     search_form = InvoiceSearchForm(request.GET)
     invoices = Invoice.objects.select_related('patient').all().order_by('-created_at')
 
@@ -56,6 +49,34 @@ def invoice_list(request):
 
         if date_to:
             invoices = invoices.filter(created_at__date__lte=date_to)
+
+    # Build cache key for computed data only (excluding page_obj which is not picklable)
+    cache_key = f'invoice_list_data_{hash(request.GET.urlencode())}' if request.GET else 'invoice_list_data_all'
+    cached_data = cache.get(cache_key)
+
+    if cached_data:
+        # Reconstruct paginator from cached IDs
+        invoice_ids = cached_data['invoice_ids']
+        invoices = Invoice.objects.filter(id__in=invoice_ids).select_related('patient').order_by('-created_at')
+        paginator = Paginator(invoices, 10)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
+        context = {
+            'page_obj': page_obj,
+            'search_form': search_form,
+            'total_invoices': cached_data['total_invoices'],
+            'pending_count': cached_data['pending_count'],
+            'paid_count': cached_data['paid_count'],
+            'partially_paid_count': cached_data['partially_paid_count'],
+            'overdue_count': cached_data['overdue_count'],
+            'cancelled_count': cached_data['cancelled_count'],
+            'total_amount': cached_data['total_amount'],
+            'paid_amount': cached_data['paid_amount'],
+            'pending_amount': cached_data['pending_amount'],
+            'overdue_amount': cached_data['overdue_amount'],
+        }
+        return render(request, 'billing/invoice_list.html', context)
 
     # Pagination
     paginator = Paginator(invoices, 10)  # Show 10 invoices per page
@@ -85,6 +106,22 @@ def invoice_list(request):
     pending_amount = total_stats['pending_sum'] or 0
     overdue_amount = total_stats['overdue_sum'] or 0
 
+    # Cache computed data (excluding page_obj)
+    cache_data = {
+        'invoice_ids': list(invoices.values_list('id', flat=True)),
+        'total_invoices': invoices.count(),
+        'pending_count': pending_count,
+        'paid_count': paid_count,
+        'partially_paid_count': partially_paid_count,
+        'overdue_count': overdue_count,
+        'cancelled_count': cancelled_count,
+        'total_amount': total_amount,
+        'paid_amount': paid_amount,
+        'pending_amount': pending_amount,
+        'overdue_amount': overdue_amount,
+    }
+    cache.set(cache_key, cache_data, 60)
+
     context = {
         'page_obj': page_obj,
         'search_form': search_form,
@@ -99,9 +136,6 @@ def invoice_list(request):
         'pending_amount': pending_amount,
         'overdue_amount': overdue_amount,
     }
-
-    # Cache the context for 60 seconds
-    cache.set(cache_key, context, 60)
 
     return render(request, 'billing/invoice_list.html', context)
 

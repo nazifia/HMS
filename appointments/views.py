@@ -18,13 +18,6 @@ from core.utils import send_notification_email, send_sms_notification
 @login_required
 def appointment_list(request):
     """View for listing all appointments with search and filter functionality"""
-    # Build cache key
-    cache_key = f'appointment_list_{hash(request.GET.urlencode())}' if request.GET else 'appointment_list_all'
-    cached_context = cache.get(cache_key)
-
-    if cached_context:
-        return render(request, 'appointments/appointment_list.html', cached_context)
-
     search_form = AppointmentSearchForm(request.GET)
     appointments = Appointment.objects.select_related('patient', 'doctor').all().order_by('-appointment_date', '-appointment_time')
 
@@ -59,6 +52,21 @@ def appointment_list(request):
         if date_to:
             appointments = appointments.filter(appointment_date__lte=date_to)
 
+    # Build cache key for computed data only
+    cache_key = f'appointment_list_data_{hash(request.GET.urlencode())}' if request.GET else 'appointment_list_data_all'
+    cached_data = cache.get(cache_key)
+
+    if cached_data:
+        # Reconstruct queryset from cached IDs
+        appointment_ids = cached_data['appointment_ids']
+        appointments = Appointment.objects.filter(id__in=appointment_ids).select_related('patient', 'doctor').order_by('-appointment_date', '-appointment_time')
+    else:
+        # Cache the data for future use
+        cache_data = {
+            'appointment_ids': list(appointments.values_list('id', flat=True)),
+        }
+        cache.set(cache_key, cache_data, 60)
+
     # Pagination
     paginator = Paginator(appointments, 10)  # Show 10 appointments per page
     page_number = request.GET.get('page')
@@ -86,9 +94,6 @@ def appointment_list(request):
         'cancelled_count': cancelled_count,
         'no_show_count': no_show_count,
     }
-
-    # Cache the context for 60 seconds
-    cache.set(cache_key, context, 60)
 
     return render(request, 'appointments/appointment_list.html', context)
 
