@@ -3,10 +3,11 @@ from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from accounts.models import CustomUser
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.http import JsonResponse
+from django.core.cache import cache
 from datetime import datetime, timedelta, time
 from calendar import monthrange
 from .models import Appointment, AppointmentFollowUp, DoctorSchedule, DoctorLeave
@@ -17,8 +18,15 @@ from core.utils import send_notification_email, send_sms_notification
 @login_required
 def appointment_list(request):
     """View for listing all appointments with search and filter functionality"""
+    # Build cache key
+    cache_key = f'appointment_list_{hash(request.GET.urlencode())}' if request.GET else 'appointment_list_all'
+    cached_context = cache.get(cache_key)
+
+    if cached_context:
+        return render(request, 'appointments/appointment_list.html', cached_context)
+
     search_form = AppointmentSearchForm(request.GET)
-    appointments = Appointment.objects.all().order_by('-appointment_date', '-appointment_time')
+    appointments = Appointment.objects.select_related('patient', 'doctor').all().order_by('-appointment_date', '-appointment_time')
 
     # Apply filters if the form is valid
     if search_form.is_valid():
@@ -56,16 +64,18 @@ def appointment_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Get counts for different statuses
+    # Get counts for different statuses using a single aggregate query
     today = timezone.now().date()
-    upcoming_count = Appointment.objects.filter(
-        appointment_date__gte=today,
-        status__in=['scheduled', 'confirmed']
-    ).count()
-
-    completed_count = Appointment.objects.filter(status='completed').count()
-    cancelled_count = Appointment.objects.filter(status='cancelled').count()
-    no_show_count = Appointment.objects.filter(status='no_show').count()
+    status_counts = Appointment.objects.aggregate(
+        upcoming_count=Count('id', filter=Q(appointment_date__gte=today, status__in=['scheduled', 'confirmed'])),
+        completed_count=Count('id', filter=Q(status='completed')),
+        cancelled_count=Count('id', filter=Q(status='cancelled')),
+        no_show_count=Count('id', filter=Q(status='no_show'))
+    )
+    upcoming_count = status_counts['upcoming_count']
+    completed_count = status_counts['completed_count']
+    cancelled_count = status_counts['cancelled_count']
+    no_show_count = status_counts['no_show_count']
 
     context = {
         'page_obj': page_obj,
@@ -76,6 +86,9 @@ def appointment_list(request):
         'cancelled_count': cancelled_count,
         'no_show_count': no_show_count,
     }
+
+    # Cache the context for 60 seconds
+    cache.set(cache_key, context, 60)
 
     return render(request, 'appointments/appointment_list.html', context)
 

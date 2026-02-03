@@ -199,6 +199,8 @@ class Invoice(models.Model):
             models.Index(fields=['patient']),
             models.Index(fields=['status']),
             models.Index(fields=['invoice_date']),
+            models.Index(fields=['status', 'invoice_date']),
+            models.Index(fields=['patient', 'status']),
         ]
         ordering = ['-invoice_date']
 

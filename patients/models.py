@@ -386,6 +386,8 @@ class Patient(models.Model):
             models.Index(fields=['patient_type'], name='idx_patient_type'),
             models.Index(fields=['is_active'], name='idx_patient_active'),
             models.Index(fields=['created_at'], name='idx_patient_created'),
+            models.Index(fields=['is_active', 'patient_type'], name='idx_patient_active_type'),
+            models.Index(fields=['patient_type', 'created_at'], name='idx_patient_type_created'),
         ]
 
 class MedicalHistory(models.Model):
@@ -1456,6 +1458,14 @@ class WalletTransaction(models.Model):
         verbose_name = "Wallet Transaction"
         verbose_name_plural = "Wallet Transactions"
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['patient_wallet', '-created_at']),
+            models.Index(fields=['shared_wallet', '-created_at']),
+            models.Index(fields=['patient', 'transaction_type']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['status']),
+            models.Index(fields=['transaction_type']),
+        ]
 
 
 class NHIAPatientManager(models.Manager):

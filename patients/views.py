@@ -7,7 +7,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
+from django.core.cache import cache
 from .models import Patient, MedicalHistory, Vitals, PatientWallet, WalletTransaction, ClinicalNote, PhysiotherapyRequest, SharedWallet, WalletMembership
 from .forms import PatientForm, MedicalHistoryForm, VitalsForm, AddFundsForm, WalletWithdrawalForm, WalletTransferForm, WalletRefundForm, WalletAdjustmentForm, ClinicalNoteForm, PhysiotherapyRequestForm
 from .utils import get_safe_vitals_for_patient
@@ -25,6 +25,13 @@ from datetime import datetime, timedelta
 def patient_list(request):
     """View for listing all patients with search and pagination"""
     from core.patient_search_forms import EnhancedPatientSearchForm
+
+    # Build cache key from query parameters
+    cache_key = f'patient_list_{hash(request.GET.urlencode())}' if request.GET else 'patient_list_all'
+    cached_context = cache.get(cache_key)
+
+    if cached_context:
+        return render(request, 'patients/patient_list.html', cached_context)
 
     # Get all active patients with optimized query using select_related and prefetch_related
     patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name').select_related(
@@ -110,6 +117,10 @@ def patient_list(request):
         'page_title': 'Patient List',
         'active_nav': 'patients',
     }
+
+    # Cache the context for 60 seconds (exclude HTMX partials from caching)
+    if not request.headers.get('HX-Request'):
+        cache.set(cache_key, context, 60)
 
     # If this is an HTMX request, return only the table partial
     if request.headers.get('HX-Request'):
@@ -554,14 +565,13 @@ def wallet_dashboard(request, patient_id):
     monthly_transactions = wallet.transactions.filter(
         created_at__gte=thirty_days_ago
     )
-    
-    monthly_credits = monthly_transactions.filter(
-        transaction_type__in=['credit', 'deposit', 'refund', 'transfer_in', 'adjustment']
-    ).aggregate(total=Sum('amount'))['total'] or 0
-    
-    monthly_debits = monthly_transactions.filter(
-        transaction_type__in=['debit', 'payment', 'withdrawal', 'transfer_out']
-    ).aggregate(total=Sum('amount'))['total'] or 0
+
+    monthly_stats = monthly_transactions.aggregate(
+        credits=Sum('amount', filter=Q(transaction_type__in=['credit', 'deposit', 'refund', 'transfer_in', 'adjustment'])),
+        debits=Sum('amount', filter=Q(transaction_type__in=['debit', 'payment', 'withdrawal', 'transfer_out']))
+    )
+    monthly_credits = monthly_stats['credits'] or 0
+    monthly_debits = monthly_stats['debits'] or 0
     
     # Get recent transactions (last 10)
     recent_transactions = wallet.get_transaction_history(limit=10)
@@ -1089,11 +1099,18 @@ def wallet_list(request):
         elif balance_filter == 'negative':
             wallets = wallets.filter(balance__lt=0)
 
-    # Calculate statistics for filtered results
-    total_balance = sum(wallet.balance for wallet in wallets)
-    positive_wallets = sum(1 for wallet in wallets if wallet.balance > 0)
-    zero_wallets = sum(1 for wallet in wallets if wallet.balance == 0)
-    negative_wallets = sum(1 for wallet in wallets if wallet.balance < 0)
+    # Calculate statistics for filtered results using database aggregation
+    from django.db.models import Sum, Count, Q
+    wallet_stats = wallets.aggregate(
+        total_balance=Sum('balance'),
+        positive_wallets=Count('id', filter=Q(balance__gt=0)),
+        zero_wallets=Count('id', filter=Q(balance=0)),
+        negative_wallets=Count('id', filter=Q(balance__lt=0))
+    )
+    total_balance = wallet_stats['total_balance'] or 0
+    positive_wallets = wallet_stats['positive_wallets']
+    zero_wallets = wallet_stats['zero_wallets']
+    negative_wallets = wallet_stats['negative_wallets']
 
     context = {
         'wallets': wallets,
@@ -1511,29 +1528,29 @@ def patient_dashboard(request, patient_id):
     ).order_by('-appointment_date')
     
     # Get upcoming appointments
-    upcoming_appointments = Appointment.objects.filter(
+    upcoming_appointments = Appointment.objects.select_related('doctor').filter(
         patient=patient,
         appointment_date__gte=today,
         status__in=['scheduled', 'confirmed']
     ).order_by('appointment_date')
-    
+
     # Get recent consultations
-    recent_consultations = Consultation.objects.filter(
+    recent_consultations = Consultation.objects.select_related('doctor', 'consulting_room').filter(
         patient=patient
     ).order_by('-consultation_date')[:5]
-    
+
     # Get recent prescriptions
-    recent_prescriptions = Prescription.objects.filter(
+    recent_prescriptions = Prescription.objects.select_related('doctor').filter(
         patient=patient
     ).order_by('-prescription_date')[:5]
-    
+
     # Get recent lab tests
-    recent_lab_tests = TestRequest.objects.filter(
+    recent_lab_tests = TestRequest.objects.select_related('test', 'requesting_doctor').filter(
         patient=patient
     ).order_by('-request_date')[:5]
-    
+
     # Get recent radiology orders
-    recent_radiology_orders = RadiologyOrder.objects.filter(
+    recent_radiology_orders = RadiologyOrder.objects.select_related('radiology_test', 'requesting_doctor').filter(
         patient=patient
     ).order_by('-order_date')[:5]
     

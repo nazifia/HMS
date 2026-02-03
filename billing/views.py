@@ -6,6 +6,7 @@ from django.core.paginator import Paginator
 from django.utils import timezone
 from django.http import HttpResponse
 from django.template.loader import render_to_string
+from django.core.cache import cache
 from decimal import Decimal
 import csv
 from .models import Invoice, InvoiceItem, Payment, Service
@@ -22,6 +23,13 @@ from core.billing_office_integration import BillingOfficePaymentProcessor
 @login_required
 def invoice_list(request):
     """View for listing all invoices with search and filter functionality - Optimized"""
+    # Build cache key
+    cache_key = f'invoice_list_{hash(request.GET.urlencode())}' if request.GET else 'invoice_list_all'
+    cached_context = cache.get(cache_key)
+
+    if cached_context:
+        return render(request, 'billing/invoice_list.html', cached_context)
+
     search_form = InvoiceSearchForm(request.GET)
     invoices = Invoice.objects.select_related('patient').all().order_by('-created_at')
 
@@ -92,6 +100,9 @@ def invoice_list(request):
         'overdue_amount': overdue_amount,
     }
 
+    # Cache the context for 60 seconds
+    cache.set(cache_key, context, 60)
+
     return render(request, 'billing/invoice_list.html', context)
 
 @login_required
@@ -144,8 +155,8 @@ def create_invoice(request):
 @login_required
 def invoice_detail(request, invoice_id):
     """View for displaying invoice details"""
-    invoice = get_object_or_404(Invoice, id=invoice_id)
-    invoice_items = invoice.items.all()
+    invoice = get_object_or_404(Invoice, id=invoice_id).select_related('patient')
+    invoice_items = invoice.items.select_related('service').all()
     payments = invoice.payments.all().order_by('-payment_date')
 
     # Handle adding new invoice item
@@ -402,7 +413,7 @@ def delete_service(request, service_id):
 def patient_invoices(request, patient_id):
     """View for displaying invoices for a specific patient"""
     patient = get_object_or_404(Patient, id=patient_id)
-    invoices = Invoice.objects.filter(patient=patient).order_by('-created_at')
+    invoices = Invoice.objects.select_related('patient').filter(patient=patient).order_by('-created_at')
 
     # Get total amounts
     total_amount = invoices.aggregate(total=Sum('total_amount'))['total'] or 0
