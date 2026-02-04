@@ -2,430 +2,1152 @@
 {% load custom_filters %}
 {% load core_form_tags %}
 
-{% block title %}{{ title|default:"Radiology Result Entry" }} - Hospital Management System{% endblock %}
+{% block title %}{{ title|default:"Enhanced Result Entry" }} - Hospital Management System{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    body {
+        background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
+    }
+
+    .user-panel {
+        position: sticky;
+        top: 20px;
+    }
+
+    .main-content {
+        position: relative;
+    }
+
+    .fixed-info-panel {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 320px;
+        max-height: 80vh;
+        overflow-y: auto;
+        z-index: 1030;
+        border: none;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        border-radius: 12px;
+    }
+
+    .nav-tabs .nav-link {
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: #6c757d;
+        font-weight: 500;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s;
+    }
+
+    .nav-tabs .nav-link:hover {
+        border-bottom-color: #0d6efd;
+        color: #0d6efd;
+    }
+
+    .nav-tabs .nav-link.active {
+        background: transparent;
+        border-bottom-color: #0d6efd;
+        color: #0d6efd;
+        font-weight: 600;
+    }
+
+    .order-summary-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+    }
+
+    .order-summary-card .card-body {
+        padding: 1.5rem;
+    }
+
+    .order-summary-card .label {
+        opacity: 0.8;
+        font-size: 0.875rem;
+    }
+
+    .order-summary-card .value {
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .template-card {
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 2px solid transparent;
+    }
+
+    .template-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--hover-shadow);
+        border-color: #0d6efd;
+    }
+
+    .template-card .bi {
+        font-size: 2rem;
+        opacity: 0.7;
+    }
+
+    .study-detail-item {
+        border-bottom: 1px solid #e9ecef;
+        padding-bottom: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .study-detail-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .study-detail-label {
+        font-size: 0.875rem;
+        color: #6c757d;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .study-detail-value {
+        font-size: 1rem;
+        color: #212529;
+        margin-top: 0.25rem;
+    }
+
+    .previous-study-item {
+        border-left: 3px solid #0d6efd;
+        padding-left: 1rem;
+        margin-bottom: 1rem;
+        transition: all 0.2s;
+    }
+
+    .previous-study-item:hover {
+        border-left-color: #764ba2;
+        background: rgba(102, 126, 234, 0.05);
+    }
+
+    .status-badge {
+        font-size: 0.875rem;
+        padding: 0.5em 1em;
+        font-weight: 500;
+    }
+
+    .form-section {
+        display: none;
+    }
+
+    .form-section.active {
+        display: block;
+        animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-label .required {
+        color: #dc3545;
+        margin-left: 2px;
+    }
+
+    .card-header-icon {
+        margin-right: 0.5rem;
+        opacity: 0.7;
+    }
+
+    .btn-action {
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .btn-action:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .autosave-indicator {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2000;
+        min-width: 250px;
+    }
+
+    .validation-feedback {
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .image-preview-container {
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        padding: 2rem;
+        text-align: center;
+        background: #f8f9fa;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .image-preview-container:hover {
+        border-color: #0d6efd;
+        background: #e7f1ff;
+    }
+
+    .image-preview {
+        max-width: 100%;
+        max-height: 200px;
+        margin: 1rem auto;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .timer-display {
+        font-family: 'Courier New', monospace;
+        font-size: 2rem;
+        color: #0d6efd;
+        text-align: center;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .compare-button {
+        position: relative;
+    }
+
+    .tooltip-custom {
+        max-width: 300px;
+    }
+
+    @media (max-width: 992px) {
+        .fixed-info-panel {
+            position: static;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .main-content {
+            margin-bottom: 2rem;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
+    <!-- Page Header -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">{{ title|default:"Radiology Result Entry" }}</h1>
         <div>
-            <a href="{% url 'radiology:order_detail' radiology_order.id %}" class="btn btn-secondary">
+            <h1 class="h3 mb-0 text-gray-800">
+                <i class="fas fa-x-ray text-primary me-2"></i>Enhanced Result Entry
+            </h1>
+            <small class="text-muted">Comprehensive radiology reporting with quality assurance</small>
+        </div>
+        <div>
+            <a href="{% url 'radiology:order_detail' radiology_order.id %}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Order
             </a>
         </div>
     </div>
 
-    <div class="row">
-        <!-- User Information Header -->
-        <div class="col-12 mb-3">
-            <div class="card shadow">
-                <div class="card-header py-2 bg-gradient-primary text-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-0">
-                                <i class="fas fa-user-md"></i> Current User: {{ current_user.get_full_name }}
-                            </h6>
-                        </div>
-                        <div class="text-end">
-                            {% if user_department %}
-                                <span class="badge bg-light text-dark">
-                                    <i class="fas fa-hospital"></i> {{ user_department.name }}
-                                </span>
-                            {% endif %}
-                            {% if user_role %}
-                                <span class="badge bg-light text-dark">
-                                    <i class="fas fa-user-tag"></i> {{ user_role }}
-                                </span>
-                            {% endif %}
-                        </div>
-                    </div>
+    <!-- Auto-save Indicator -->
+    <div id="autosaveIndicator" class="autosave-indicator" style="display: none;">
+        <div class="alert alert-success alert-dismissible fade show shadow" role="alert">
+            <i class="fas fa-check-circle"></i> <strong>Autosaved!</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    </div>
+
+    <!-- Dictation Timer -->
+    <div id="dictationTimer" class="card shadow mb-4" style="display: none;">
+        <div class="card-body py-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-microphone me-2 text-danger"></i>
+                    <strong>Dictation Mode</strong>
                 </div>
+                <div class="timer-display mb-0" style="padding: 0.25rem 1rem; font-size: 1.25rem; background: transparent;">
+                    <span id="timerDisplay">00:00:00</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="stopDictation()">
+                    <i class="fas fa-stop"></i> Stop
+                </button>
             </div>
         </div>
-        
-        <!-- Order Information -->
-        <div class="col-12 mb-4">
-            <div class="card shadow">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-info-circle"></i> Radiology Order Information
-                    </h6>
+    </div>
+
+    <!-- User Info Panel (Fixed) -->
+    <div class="fixed-info-panel">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h6 class="m-0 font-weight-bold">
+                    <i class="fas fa-user-md"></i> Your Session
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <small class="text-muted text-uppercase">User</small><br>
+                    <strong>{{ current_user.get_full_name }}</strong>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <strong>Order ID:</strong><br>
-                            RAD-{{ radiology_order.id|stringformat:"03d" }}
-                        </div>
-                        <div class="col-md-3">
-                            <strong>Patient:</strong><br>
-                            {{ radiology_order.patient.get_full_name }}<br>
-                            <small class="text-muted">ID: {{ radiology_order.patient.patient_id }}</small>
-                        </div>
-                        <div class="col-md-3">
-                            <strong>Referring Doctor:</strong><br>
-                            {{ radiology_order.referring_doctor.get_full_name }}
-                        </div>
-                        <div class="col-md-3">
-                            <strong>Order Date:</strong><br>
-                            {{ radiology_order.created_at|date:"M d, Y" }}
-                        </div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col-md-6">
-                            <strong>Test/Procedure:</strong><br>
-                            <span class="badge bg-info">{{ radiology_order.test.name }}</span><br>
-                            <small class="text-muted">{{ radiology_order.test.category.name }}</small>
-                        </div>
-                        <div class="col-md-6">
-                            <strong>Priority:</strong>
-                            <span class="badge bg-{% if radiology_order.priority == 'emergency' %}danger{% elif radiology_order.priority == 'urgent' %}warning{% else %}success{% endif %}">
-                                {{ radiology_order.get_priority_display }}
-                            </span>
-                        </div>
-                    </div>
-                    {% if radiology_order.clinical_information %}
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <strong>Clinical Information:</strong><br>
-                            <div class="alert alert-light">{{ radiology_order.clinical_information }}</div>
-                        </div>
-                    </div>
+                {% if user_department %}
+                <div class="mb-3">
+                    <small class="text-muted text-uppercase">Department</small><br>
+                    {{ user_department.name }}
+                </div>
+                {% endif %}
+                {% if user_role %}
+                <div class="mb-3">
+                    <small class="text-muted text-uppercase">Role</small><br>
+                    <span class="badge bg-light text-dark">{{ user_role }}</span>
+                </div>
+                {% endif %}
+                <div class="mb-3">
+                    <small class="text-muted text-uppercase">Permissions</small><br>
+                    {% if can_verify %}
+                        <span class="badge bg-success">Can Verify</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">Cannot Verify</span>
                     {% endif %}
                 </div>
+                <hr>
+                <div class="small text-muted">
+                    <i class="fas fa-shield-alt me-1"></i>All actions are logged
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Order Summary Card -->
+        <div class="card order-summary-card shadow mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center">
+                        <div class="label mb-1">Order ID</div>
+                        <div class="value">#{{ radiology_order.id|stringformat:"03d" }}</div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="label mb-1">Patient</div>
+                        <div class="value text-truncate">{{ radiology_order.patient.get_full_name|truncatechars:20 }}</div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="label mb-1">Test</div>
+                        <div class="value text-truncate">{{ radiology_order.test.name|truncatechars:15 }}</div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="label mb-1">Priority</div>
+                        <div class="value">
+                            <span class="badge bg-light text-dark">{{ radiology_order.get_priority_display }}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Result Entry Form -->
-        <div class="col-lg-8">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-x-ray"></i> Radiology Result Entry
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <form method="post" enctype="multipart/form-data" id="result-form">
-                        {% csrf_token %}
-                        
-                        {% if form.errors %}
-                            <div class="alert alert-danger">
-                                <ul class="mb-0">
-                                    {% for field in form %}
-                                        {% for error in field.errors %}
-                                            <li>{{ error }}</li>
-                                        {% endfor %}
-                                    {% endfor %}
-                                    {% for error in form.non_field_errors %}
-                                        <li>{{ error }}</li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        {% endif %}
+        <div class="row">
+            <!-- Left Column: Forms -->
+            <div class="col-lg-8">
+                <div class="card shadow">
+                    <div class="card-body p-0">
+                        <!-- Tabs -->
+                        <ul class="nav nav-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="section-study-tab" data-bs-toggle="tab"
+                                        data-bs-target="#section-study" type="button" role="tab">
+                                    <i class="fas fa-calendar-alt me-1"></i> Study Info
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="section-findings-tab" data-bs-toggle="tab"
+                                        data-bs-target="#section-findings" type="button" role="tab">
+                                    <i class="fas fa-search me-1"></i> Findings
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="section-tech-tab" data-bs-toggle="tab"
+                                        data-bs-target="#section-tech" type="button" role="tab">
+                                    <i class="fas fa-cogs me-1"></i> Technical
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="section-images-tab" data-bs-toggle="tab"
+                                        data-bs-target="#section-images" type="button" role="tab">
+                                    <i class="fas fa-images me-1"></i> Images
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="section-qa-tab" data-bs-toggle="tab"
+                                        data-bs-target="#section-qa" type="button" role="tab">
+                                    <i class="fas fa-clipboard-check me-1"></i> QA
+                                </button>
+                            </li>
+                        </ul>
 
-                        <!-- Study Information -->
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.study_date.id_for_label }}" class="form-label">Study Date <span class="text-danger">*</span></label>
-                                {{ form.study_date|add_class:"form-control" }}
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.study_time.id_for_label }}" class="form-label">Study Time</label>
-                                {{ form.study_time|add_class:"form-control" }}
-                            </div>
-                        </div>
+                        <!-- Tab Content -->
+                        <div class="tab-content p-4">
+                            <form method="post" enctype="multipart/form-data" id="enhancedResultForm" novalidate>
+                                {% csrf_token %}
 
-                        <!-- Technologist Information -->
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.performed_by.id_for_label }}" class="form-label">Performed By <span class="text-danger">*</span></label>
-                                {{ form.performed_by|add_class:"form-select" }}
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.radiologist.id_for_label }}" class="form-label">Reporting Radiologist</label>
-                                {{ form.radiologist|add_class:"form-select" }}
-                            </div>
-                        </div>
+                                {% if form.errors %}
+                                    <div class="alert alert-danger">
+                                        <strong>Form Errors:</strong>
+                                        <ul class="mb-0">
+                                            {% for field in form %}
+                                                {% for error in field.errors %}
+                                                    <li>{{ field.label }}: {{ error }}</li>
+                                                {% endfor %}
+                                            {% endfor %}
+                                            {% for error in form.non_field_errors %}
+                                                <li>{{ error }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endif %}
 
-                        <!-- Technical Parameters -->
-                        <div class="card border-info mb-3">
-                            <div class="card-header bg-info text-white">
-                                <h6 class="mb-0">
-                                    <i class="fas fa-cogs"></i> Technical Parameters
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-4 mb-3">
-                                        <label for="{{ form.technique.id_for_label }}" class="form-label">Technique</label>
+                                <!-- Section: Study Information -->
+                                <div class="form-section active" id="section-study" role="tabpanel">
+                                    <h5 class="mb-4">
+                                        <i class="fas fa-calendar-check text-primary me-2"></i>Study Information
+                                    </h5>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.study_date.id_for_label }}" class="form-label fw-bold">
+                                                Study Date <span class="text-danger">*</span>
+                                            </label>
+                                            {{ form.study_date|add_class:"form-control" }}
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.study_time.id_for_label }}" class="form-label">
+                                                Study Time
+                                            </label>
+                                            {{ form.study_time|add_class:"form-control" }}
+                                            <small class="form-text text-muted">Default: current time</small>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.performed_by.id_for_label }}" class="form-label fw-bold">
+                                                Performed By <span class="text-danger">*</span>
+                                            </label>
+                                            {{ form.performed_by|add_class:"form-select" }}
+                                            <small class="form-text text-muted">Technologist who performed the study</small>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.radiologist.id_for_label }}" class="form-label">
+                                                Reporting Radiologist
+                                            </label>
+                                            {{ form.radiologist|add_class:"form-select" }}
+                                            <small class="form-text text-muted">Optional: Different from performer</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Section: Findings -->
+                                <div class="form-section" id="section-findings" role="tabpanel">
+                                    <h5 class="mb-4">
+                                        <i class="fas fa-search text-success me-2"></i>Clinical Findings
+                                    </h5>
+                                    <div class="mb-3">
+                                        <label for="{{ form.findings.id_for_label }}" class="form-label fw-bold">
+                                            Findings <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.findings|add_class:"form-control" }}
+                                        <div class="form-text">Detailed description of anatomical and pathological findings</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="{{ form.impression.id_for_label }}" class="form-label fw-bold">
+                                            Impression/Diagnosis <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.impression|add_class:"form-control" }}
+                                        <div class="form-text">Final diagnosis and clinical interpretation</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="{{ form.recommendations.id_for_label }}" class="form-label">
+                                            Recommendations
+                                        </label>
+                                        {{ form.recommendations|add_class:"form-control" }}
+                                        <div class="form-text">Follow-up imaging, clinical correlation, or additional studies</div>
+                                    </div>
+                                </div>
+
+                                <!-- Section: Technical -->
+                                <div class="form-section" id="section-tech" role="tabpanel">
+                                    <h5 class="mb-4">
+                                        <i class="fas fa-cogs text-warning me-2"></i>Technical Parameters
+                                    </h5>
+                                    <div class="mb-3">
+                                        <label for="{{ form.technique.id_for_label }}" class="form-label">
+                                            Technique
+                                        </label>
                                         {{ form.technique|add_class:"form-control" }}
-                                        <div class="form-text">e.g., kVp, mAs, slice thickness</div>
+                                        <div class="form-text">e.g., kVp, mAs, slice thickness, pulse sequence, coils used</div>
                                     </div>
-                                    <div class="col-md-4 mb-3">
-                                        <label for="{{ form.contrast_used.id_for_label }}" class="form-label">Contrast Used</label>
-                                        {{ form.contrast_used|add_class:"form-select" }}
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.contrast_used.id_for_label }}" class="form-label">
+                                                Contrast Used
+                                            </label>
+                                            {{ form.contrast_used|add_class:"form-select" }}
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.contrast_amount.id_for_label }}" class="form-label">
+                                                Contrast Amount (ml)
+                                            </label>
+                                            {{ form.contrast_amount|add_class:"form-control" }}
+                                            <div class="form-text">Visible when contrast is selected</div>
+                                        </div>
                                     </div>
-                                    <div class="col-md-4 mb-3">
-                                        <label for="{{ form.contrast_amount.id_for_label }}" class="form-label">Contrast Amount (ml)</label>
-                                        {{ form.contrast_amount|add_class:"form-control" }}
+                                    <div class="mb-3">
+                                        <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                            Technical Notes
+                                        </label>
+                                        {{ form.notes|add_class:"form-control" }}
+                                        <div class="form-text">Patient cooperation, motion artifacts, limitations, etc.</div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- Clinical Findings -->
-                        <div class="card border-success mb-3">
-                            <div class="card-header bg-success text-white">
-                                <h6 class="mb-0">
-                                    <i class="fas fa-search"></i> Clinical Findings
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label for="{{ form.findings.id_for_label }}" class="form-label">Findings <span class="text-danger">*</span></label>
-                                    {{ form.findings|add_class:"form-control" }}
-                                    <div class="form-text">Detailed description of radiological findings</div>
+                                <!-- Section: Images -->
+                                <div class="form-section" id="section-images" role="tabpanel">
+                                    <h5 class="mb-4">
+                                        <i class="fas fa-images text-info me-2"></i>Images & Documents
+                                    </h5>
+                                    <div class="mb-4">
+                                        <label for="{{ form.images.id_for_label }}" class="form-label">
+                                            Study Images
+                                        </label>
+                                        <div class="image-preview-container" onclick="document.getElementById('id_images').click()">
+                                            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                            <p class="mb-1">
+                                                <strong>Click to upload</strong> or drag and drop
+                                            </p>
+                                            <p class="small text-muted mb-0">DICOM files, JPG, PNG, or PDF</p>
+                                            <small class="text-muted">Multiple files allowed</small>
+                                        </div>
+                                        {{ form.images }}
+                                        <div id="imagePreview" class="mt-3"></div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="{{ form.report_file.id_for_label }}" class="form-label">
+                                            Report Document
+                                        </label>
+                                        {{ form.report_file|add_class:"form-control" }}
+                                        <div class="form-text">Final report document (PDF, DOC, DOCX)</div>
+                                    </div>
                                 </div>
-                                
-                                <div class="mb-3">
-                                    <label for="{{ form.impression.id_for_label }}" class="form-label">Impression/Conclusion <span class="text-danger">*</span></label>
-                                    {{ form.impression|add_class:"form-control" }}
-                                    <div class="form-text">Clinical interpretation and diagnosis</div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="{{ form.recommendations.id_for_label }}" class="form-label">Recommendations</label>
-                                    {{ form.recommendations|add_class:"form-control" }}
-                                    <div class="form-text">Follow-up recommendations or additional studies</div>
-                                </div>
-                            </div>
-                        </div>
 
-                        <!-- Image Upload -->
-                        <div class="card border-warning mb-3">
-                            <div class="card-header bg-warning text-dark">
-                                <h6 class="mb-0">
-                                    <i class="fas fa-images"></i> Images & Documents
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label for="{{ form.images.id_for_label }}" class="form-label">Study Images</label>
-                                    {{ form.images|add_class:"form-control" }}
-                                    <div class="form-text">Upload DICOM files, images, or scanned films (multiple files allowed)</div>
+                                <!-- Section: QA -->
+                                <div class="form-section" id="section-qa" role="tabpanel">
+                                    <h5 class="mb-4">
+                                        <i class="fas fa-clipboard-check text-warning me-2"></i>Quality Assurance
+                                    </h5>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.image_quality.id_for_label }}" class="form-label fw-bold">
+                                                Image Quality
+                                            </label>
+                                            {{ form.image_quality|add_class:"form-select" }}
+                                            <div class="form-text">Assess diagnostic quality of acquired images</div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.study_status.id_for_label }}" class="form-label fw-bold">
+                                                Study Status
+                                            </label>
+                                            {{ form.study_status|add_class:"form-select" }}
+                                            <div class="form-text">Completeness of the study</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>Quality Check:</strong> Ensure all required images are acquired and meet diagnostic standards before finalizing.
+                                    </div>
                                 </div>
-                                
-                                <div class="mb-3">
-                                    <label for="{{ form.report_file.id_for_label }}" class="form-label">Report Document</label>
-                                    {{ form.report_file|add_class:"form-control" }}
-                                    <div class="form-text">Upload final report document (PDF preferred)</div>
+
+                                <!-- Completion Check List -->
+                                <div class="mt-4 p-3 bg-light border rounded">
+                                    <h6><i class="fas fa-list-check me-2"></i>Completion Checklist</h6>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="checkFindings">
+                                        <label class="form-check-label" for="checkFindings">Findings documented</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="checkImpression">
+                                        <label class="form-check-label" for="checkImpression">Impression/conclusion provided</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="checkDictation">
+                                        <label class="form-check-label" for="checkDictation">Report reviewed for accuracy</label>
+                                    </div>
                                 </div>
-                            </div>
+                            </form>
                         </div>
+                    </div>
 
-                        <!-- Quality Assurance -->
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.image_quality.id_for_label }}" class="form-label">Image Quality</label>
-                                {{ form.image_quality|add_class:"form-select" }}
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.study_status.id_for_label }}" class="form-label">Study Status</label>
-                                {{ form.study_status|add_class:"form-select" }}
-                            </div>
-                        </div>
-
-                        <!-- Additional Notes -->
-                        <div class="mb-3">
-                            <label for="{{ form.notes.id_for_label }}" class="form-label">Additional Notes</label>
-                            {{ form.notes|add_class:"form-control" }}
-                            <div class="form-text">Technical notes, patient cooperation, limitations, etc.</div>
-                        </div>
-
-                        <div class="d-flex justify-content-between mt-4">
-                            <a href="{% url 'radiology:order_detail' radiology_order.id %}" class="btn btn-secondary">
-                                <i class="fas fa-times"></i> Cancel
-                            </a>
+                    <!-- Action Buttons -->
+                    <div class="card-footer bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <button type="submit" name="save_draft" class="btn btn-outline-primary me-2">
+                                <button type="button" class="btn btn-outline-secondary me-2" onclick="toggleDictation()">
+                                    <i class="fas fa-microphone"></i> Dictate
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="saveDraft()">
                                     <i class="fas fa-save"></i> Save Draft
                                 </button>
-                                <button type="submit" name="submit_result" class="btn btn-primary">
-                                    <i class="fas fa-check"></i> Submit Result
+                            </div>
+                            <div>
+                                {% if can_verify %}
+                                    <button type="submit" name="submit_and_verify" form="enhancedResultForm"
+                                            class="btn btn-success btn-action me-2">
+                                        <i class="fas fa-check-double"></i> Submit & Verify
+                                    </button>
+                                {% endif %}
+                                <button type="submit" name="submit_result" form="enhancedResultForm"
+                                        class="btn btn-primary btn-action me-2">
+                                    <i class="fas fa-paper-plane"></i> Submit Result
                                 </button>
-                                <button type="submit" name="submit_and_verify" class="btn btn-success">
-                                    <i class="fas fa-check-double"></i> Submit & Verify
+                                <button type="submit" name="save_draft" form="enhancedResultForm"
+                                        class="btn btn-outline-primary btn-action">
+                                    <i class="fas fa-save"></i> Draft
                                 </button>
                             </div>
                         </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Study Information Panel -->
-        <div class="col-lg-4">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-x-ray"></i> Study Information
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="mb-2">
-                        <strong>Procedure:</strong><br>
-                        {{ radiology_order.test.name }}
+                        <div class="text-muted small mt-2 text-center">
+                            <i class="fas fa-keyboard"></i> <strong>Shortcuts:</strong> Ctrl+S (Save) | Ctrl+Enter (Submit) | Ctrl+D (Dictate)
+                        </div>
                     </div>
-                    <div class="mb-2">
-                        <strong>Category:</strong><br>
-                        {{ radiology_order.test.category.name }}
-                    </div>
-                    <div class="mb-2">
-                        <strong>Duration:</strong><br>
-                        {{ radiology_order.test.duration_minutes }} minutes
-                    </div>
-                    {% if radiology_order.test.preparation_instructions %}
-                    <div class="mb-2">
-                        <strong>Preparation:</strong><br>
-                        <small class="text-muted">{{ radiology_order.test.preparation_instructions }}</small>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
 
-            <!-- Previous Studies -->
-            {% if previous_studies %}
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-warning">
-                        <i class="fas fa-history"></i> Previous Studies
-                    </h6>
-                </div>
-                <div class="card-body">
-                    {% for study in previous_studies %}
-                    <div class="mb-2">
-                        <strong>{{ study.test.name }}</strong><br>
-                        <small class="text-muted">{{ study.study_date|date:"M d, Y" }}</small>
-                        {% if study.impression %}
-                            <div class="mt-1">
-                                <small class="text-dark">{{ study.impression|truncatechars:100 }}</small>
+            <!-- Right Column: Sidebar -->
+            <div class="col-lg-4">
+                <!-- Order Information -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-info-circle"></i> Order Details
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="study-detail-item">
+                            <div class="study-detail-label">Order ID</div>
+                            <div class="study-detail-value">#{{ radiology_order.id|stringformat:"03d" }}</div>
+                        </div>
+                        <div class="study-detail-item">
+                            <div class="study-detail-label">Patient</div>
+                            <div class="study-detail-value">
+                                <a href="{% url 'patients:detail' radiology_order.patient.id %}" class="text-decoration-none">
+                                    {{ radiology_order.patient.get_full_name }}
+                                </a>
                             </div>
+                        </div>
+                        <div class="study-detail-item">
+                            <div class="study-detail-label">Patient ID</div>
+                            <div class="study-detail-value">{{ radiology_order.patient.patient_id }}</span></div>
+                        </div>
+                        <div class="study-detail-item">
+                            <div class="study-detail-label">Test/Procedure</div>
+                            <div class="study-detail-value">
+                                <span class="badge bg-info text-dark">{{ radiology_order.test.name }}</span>
+                            </div>
+                        </div>
+                        <div class="study-detail-item">
+                            <div class="study-detail-label">Category</div>
+                            <div class="study-detail-value">{{ radiology_order.test.category.name }}</div>
+                        </div>
+                        <div class="study-detail-item">
+                            <div class="study-detail-label">Order Date</div>
+                            <div class="study-detail-value">{{ radiology_order.created_at|date:"M d, Y H:i" }}</div>
+                        </div>
+                        {% if radiology_order.clinical_information %}
+                        <div class="study-detail-item">
+                            <div class="study-detail-label">Clinical Info</div>
+                            <div class="study-detail-value small">{{ radiology_order.clinical_information|truncatechars:150 }}</div>
+                        </div>
                         {% endif %}
                     </div>
-                    {% if not forloop.last %}<hr>{% endif %}
-                    {% endfor %}
                 </div>
-            </div>
-            {% endif %}
 
-            <!-- Quick Templates -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-info">
-                        <i class="fas fa-clipboard-list"></i> Quick Templates
-                    </h6>
+                <!-- Previous Studies -->
+                {% if previous_studies %}
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-warning">
+                            <i class="fas fa-history"></i> Previous Studies
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% for study in previous_studies %}
+                        <div class="previous-study-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>{{ study.test.name }}</strong><br>
+                                    <small class="text-muted">{{ study.study_date|date:"M d, Y" }}</small>
+                                </div>
+                                <span class="badge bg-{% if study.result_status == 'finalized' %}success{% elif study.result_status == 'verified' %}primary{% else %}secondary{% endif %}">
+                                    {{ study.get_result_status_display }}
+                                </span>
+                            </div>
+                            {% if study.impression %}
+                            <div class="mt-2 small">{{ study.impression|truncatechars:120 }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        <div class="text-center mt-3">
+                            <a href="{% url 'radiology:patient_radiology_results' radiology_order.patient.id %}"
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-eye"></i> View All Studies
+                            </a>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <button type="button" class="btn btn-outline-info btn-sm" onclick="insertTemplate('normal')">
-                            Normal Study
-                        </button>
-                        <button type="button" class="btn btn-outline-info btn-sm" onclick="insertTemplate('limited')">
-                            Limited Study
-                        </button>
-                        <button type="button" class="btn btn-outline-info btn-sm" onclick="insertTemplate('followup')">
-                            Follow-up Required
-                        </button>
+                {% endif %}
+
+                <!-- Quick Templates -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-info">
+                            <i class="fas fa-clipboard-list"></i> Quick Templates
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-success btn-sm template-card w-100"
+                                        onclick="insertTemplate('normal')">
+                                    <i class="fas fa-check-circle"></i><br>
+                                    Normal
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-danger btn-sm template-card w-100"
+                                        onclick="insertTemplate('abnormal')">
+                                    <i class="fas fa-exclamation-circle"></i><br>
+                                    Abnormal
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-warning btn-sm template-card w-100"
+                                        onclick="insertTemplate('urgent')">
+                                    <i class="fas fa-exclamation-triangle"></i><br>
+                                    Urgent
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-info btn-sm template-card w-100"
+                                        onclick="insertTemplate('followup')">
+                                    <i class="fas fa-calendar-alt"></i><br>
+                                    Follow-up
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-secondary btn-sm template-card w-100"
+                                        onclick="insertTemplate('limited')">
+                                    <i class="fas fa-exclamation-square"></i><br>
+                                    Limited
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-primary btn-sm template-card w-100"
+                                        onclick="insertTemplate('comparison')">
+                                    <i class="fas fa-code-branch"></i><br>
+                                    Comparison
+                                </button>
+                            </div>
+                        </div>
+
+                        <hr class="my-3">
+
+                        <div class="small text-muted">
+                            <i class="fas fa-lightbulb me-1"></i>
+                            <strong>Tip:</strong> Click a template to auto-fill findings and impression sections.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Keyboard Shortcuts -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold">
+                            <i class="fas fa-keyboard"></i> Shortcuts
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="small">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Save Draft</span>
+                                <kbd>Ctrl + S</kbd>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Submit</span>
+                                <kbd>Ctrl + Enter</kbd>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Dictate</span>
+                                <kbd>Ctrl + D</kbd>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Next Tab</span>
+                                <kbd>Ctrl + →</kbd>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Previous Tab</span>
+                                <kbd>Ctrl + ←</kbd>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Help Card -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold">
+                            <i class="fas fa-question-circle text-info"></i> Help
+                        </h6>
+                    </div>
+                    <div class="card-body small">
+                        <ul class="mb-0 ps-3">
+                            <li class="mb-2">Use tabs to navigate between sections</li>
+                            <li class="mb-2">Quick templates speed up common reports</li>
+                            <li class="mb-2">Autosave runs every 2 minutes</li>
+                            <li class="mb-2">Required fields marked with <span class="text-danger">*</span></li>
+                            <li class="mb-2">Submit & Verify requires special permissions</li>
+                            <li>Compare with previous studies for accuracy</li>
+                        </ul>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
+// Tab navigation with keyboard
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+        // Ctrl+Number for direct tab access
+        if (e.key >= '1' && e.key <= '5') {
+            e.preventDefault();
+            const tabLinks = document.querySelectorAll('.nav-link');
+            const index = parseInt(e.key) - 1;
+            if (tabLinks[index]) {
+                new bootstrap.Tab(tabLinks[index]).show();
+            }
+        }
+        // Ctrl+Arrow for tab navigation
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            e.preventDefault();
+            const activeTab = document.querySelector('.nav-link.active');
+            const tabs = Array.from(document.querySelectorAll('.nav-link'));
+            const currentIndex = tabs.indexOf(activeTab);
+            let nextIndex;
+            if (e.key === 'ArrowRight') {
+                nextIndex = (currentIndex + 1) % tabs.length;
+            } else {
+                nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+            }
+            new bootstrap.Tab(tabs[nextIndex]).show();
+        }
+        // Ctrl+S - Save Draft
+        if (e.key === 's' || e.key === 'S') {
+            e.preventDefault();
+            saveDraft();
+        }
+        // Ctrl+Enter - Submit
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const currentTab = document.querySelector('.form-section.active form');
+            if (currentTab) {
+                // Find appropriate submit button
+                const canVerify = {{ can_verify|lower }};
+                if (canVerify) {
+                    currentTab.querySelector('[name="submit_and_verify"]').click();
+                } else {
+                    currentTab.querySelector('[name="submit_result"]').click();
+                }
+            }
+        }
+        // Ctrl+D - Dictation
+        if (e.key === 'd' || e.key === 'D') {
+            e.preventDefault();
+            toggleDictation();
+        }
+    }
+});
+
+// Auto-resize textareas
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-resize textareas
     const textareas = document.querySelectorAll('textarea');
     textareas.forEach(textarea => {
         textarea.style.height = 'auto';
         textarea.style.height = textarea.scrollHeight + 'px';
-        
         textarea.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = this.scrollHeight + 'px';
         });
     });
+
+    // Set default dates/times
+    const studyDateField = document.getElementById('id_study_date');
+    if (studyDateField && !studyDateField.value) {
+        const now = new Date();
+        studyDateField.value = now.toISOString().split('T')[0];
+    }
+
+    const studyTimeField = document.getElementById('id_study_time');
+    if (studyTimeField && !studyTimeField.value) {
+        const now = new Date();
+        studyTimeField.value = now.toTimeString().slice(0, 5);
+    }
+
+    // File preview
+    const fileInput = document.getElementById('id_images');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = '';
+            if (this.files) {
+                Array.from(this.files).forEach(file => {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.className = 'image-preview img-thumbnail mb-2';
+                            preview.appendChild(img);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+        });
+    }
+
+    // Contrast amount visibility
+    const contrastSelect = document.getElementById('id_contrast_used');
+    const contrastAmount = document.getElementById('id_contrast_amount');
+    if (contrastSelect && contrastAmount) {
+        function toggleContrastAmount() {
+            if (contrastSelect.value !== 'none' && contrastSelect.value !== '') {
+                contrastAmount.parentElement.style.display = 'block';
+            } else {
+                contrastAmount.parentElement.style.display = 'none';
+                contrastAmount.value = '';
+            }
+        }
+        contrastSelect.addEventListener('change', toggleContrastAmount);
+        toggleContrastAmount(); // Initial state
+
+        // Auto-save every 2 minutes
+        setInterval(saveDraft, 120000);
+    }
 });
 
+// Enhanced templates with more variety
 function insertTemplate(type) {
     const findingsField = document.getElementById('id_findings');
     const impressionField = document.getElementById('id_impression');
-    
+
     const templates = {
         normal: {
-            findings: 'No acute abnormalities identified. Normal anatomical structures visualized.',
-            impression: 'Normal study. No acute pathology.'
+            findings: 'No acute abnormalities identified. All anatomical structures visualised within normal limits. No evidence of fracture, dislocation, mass, or pathological enhancement. Normal soft tissue and bony landmarks.',
+            impression: 'Normal study. No acute or significant abnormality identified.'
         },
-        limited: {
-            findings: 'Study limited by [specify limitation - patient motion, technical factors, etc.].',
-            impression: 'Limited study. Clinical correlation recommended.'
+        abnormal: {
+            findings: '[Describe abnormal finding in detail: location, size, shape, margins, density/signal characteristics, enhancement pattern, relationship to adjacent structures, and extent of abnormality]. These findings are suggestive of [likely diagnosis/differential diagnosis].',
+            impression: 'Abnormal finding identified. Findings are most consistent with [diagnosis]. Recommend correlation with clinical history and laboratory results. Further imaging [specify type] may be warranted for further characterisation.'
+        },
+        urgent: {
+            findings: 'URGENT FINDING: [Describe urgent/serious finding in detail including measurements, laterality, and severity]. This finding requires IMMEDIATE clinical correlation and intervention.',
+            impression: '<strong>URGENT:</strong> Findings are highly suspicious for [serious condition]. Immediate clinical consultation and appropriate management are recommended. Notify referring physician immediately.'
         },
         followup: {
-            findings: '[Describe findings requiring follow-up]',
-            impression: '[Specify diagnosis/findings]. Recommend follow-up imaging in [timeframe].'
+            findings: 'Findings that warrant follow-up imaging identified. [Describe specific findings and why follow-up is needed].',
+            impression: 'Recommend follow-up imaging in [specify timeframe: days/weeks/months] to assess for [specific change - interval growth, resolution, progression]. Clinical correlation advised.'
+        },
+        limited: {
+            findings: 'Study limited by [specify - patient motion, technical factors, body habitus, patient inability to cooperate, suboptimal contrast timing, beam hardening artifact, etc.]. Consequently, portions of [specify anatomy] may be suboptimally or incompletely visualised.',
+            impression: 'Limited examination due to [reason]. Imaging findings cannot be fully excluded. Consider repeat study or alternative imaging modality for complete evaluation.'
+        },
+        comparison: {
+            findings: 'Comparison with prior study dated [date] shows: [Describe changes - stable/improved/worsened/new/resolved]. Current study demonstrates [describe current findings].',
+            impression: 'Interval [change] compared to prior examination. [Summarise current clinical significance].'
+        },
+        trauma: {
+            findings: 'Survey of [region] demonstrates: [No/No acute] evidence of fracture, dislocation, or subluxation. Soft tissues appear [normal/unremarkable]. [If abnormal: describe injuries in systematic approach - bone, soft tissue, joint spaces, neurovascular structures].',
+            impression: '[No acute traumatic abnormality identified / Describe traumatic findings].'
+        },
+        infection: {
+            findings: 'Findings consistent with [infection/inflammation] are demonstrated in [location]. These include [specific signs - fluid collection, soft tissue edema, bone erosion, etc.]. No definite [abscess/drainable collection] identified.',
+            impression: 'Imaging features are suggestive of [specific infectious/inflammatory process]. Recommend correlation with clinical signs/symptoms and laboratory inflammatory markers.'
         }
     };
-    
+
     if (templates[type]) {
         findingsField.value = templates[type].findings;
         impressionField.value = templates[type].impression;
-        
-        // Trigger resize
-        findingsField.style.height = 'auto';
-        findingsField.style.height = findingsField.scrollHeight + 'px';
-        impressionField.style.height = 'auto';
-        impressionField.style.height = impressionField.scrollHeight + 'px';
+
+        // Trigger resize and autosave
+        findingsField.dispatchEvent(new Event('input'));
+        impressionField.dispatchEvent(new Event('input'));
+
+        showAutosaveIndicator();
     }
 }
+
+function saveDraft() {
+    const form = document.getElementById('enhancedResultForm');
+    const formData = new FormData(form);
+    formData.append('save_draft', '1');
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    }).then(response => {
+        if (response.ok) {
+            showAutosaveIndicator();
+        } else {
+            console.error('Autosave failed:', response.status);
+        }
+    }).catch(error => {
+        console.error('Autosave error:', error);
+    });
+}
+
+function showAutosaveIndicator() {
+    const indicator = document.getElementById('autosaveIndicator');
+    if (indicator) {
+        indicator.style.display = 'block';
+        setTimeout(() => {
+            indicator.style.display = 'none';
+        }, 2000);
+    }
+}
+
+// Dictation timer
+let dictationInterval;
+let dictationSeconds = 0;
+
+function toggleDictation() {
+    const timerCard = document.getElementById('dictationTimer');
+    const findingsField = document.getElementById('id_findings');
+    const impressionField = document.getElementById('id_impression');
+
+    if (dictationInterval) {
+        stopDictation();
+    } else {
+        timerCard.style.display = 'block';
+        dictationSeconds = 0;
+        updateTimerDisplay();
+
+        dictationInterval = setInterval(() => {
+            dictationSeconds++;
+            updateTimerDisplay();
+
+            // Push focus to findings field
+            if (document.activeElement !== findingsField && document.activeElement !== impressionField) {
+                findingsField.focus();
+            }
+        }, 1000);
+
+        // Visual feedback
+        document.body.style.cursor = 'none'; // Could add custom cursor instead
+
+        // Speech recognition (if browser supports)
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            startSpeechRecognition(findingsField, impressionField);
+        }
+    }
+}
+
+function stopDictation() {
+    if (dictationInterval) {
+        clearInterval(dictationInterval);
+        dictationInterval = null;
+    }
+    document.getElementById('dictationTimer').style.display = 'none';
+    dictationSeconds = 0;
+}
+
+function updateTimerDisplay() {
+    const hours = Math.floor(dictationSeconds / 3600);
+    const minutes = Math.floor((dictationSeconds % 3600) / 60);
+    const seconds = dictationSeconds % 60;
+
+    const display = [hours, minutes, seconds]
+        .map(v => v.toString().padStart(2, '0'))
+        .join(':');
+
+    document.getElementById('timerDisplay').textContent = display;
+}
+
+// Web Speech API for dictation (optional enhancement)
+function startSpeechRecognition(targetField, fallbackField) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert('Speech recognition not supported in this browser.');
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = function(event) {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
+            } else {
+                interimTranscript += event.results[i][0].transcript;
+            }
+        }
+
+        if (finalTranscript) {
+            // Append to current field
+            const activeElement = document.activeElement;
+            if (activeElement && (activeElement.id === 'id_findings' || activeElement.id === 'id_impression')) {
+                const start = activeElement.selectionStart;
+                const end = activeElement.selectionEnd;
+                const text = activeElement.value;
+                activeElement.value = text.substring(0, start) + finalTranscript + ' ' + text.substring(end);
+                activeElement.selectionStart = activeElement.selectionEnd = start + finalTranscript.length + 1;
+                activeElement.dispatchEvent(new Event('input'));
+            }
+        }
+    };
+
+    recognition.start();
+    console.log('Speech recognition started');
+}
+
+// Compare with previous studies
+function compareWithPrevious(studyId) {
+    // Could open modal or navigate to comparison view
+    alert('Compare feature would open detailed side-by-side comparison (not implemented)');
+}
 </script>
-
-<!-- User Information Panel - Added to enhance user context -->
-<div class="card shadow mb-4" style="position: fixed; bottom: 20px; right: 20px; width: 300px; z-index: 1000;">
-    <div class="card-header py-2 bg-primary text-white">
-        <h6 class="m-0 font-weight-bold">
-            <i class="fas fa-user-md"></i> Your Session Info
-        </h6>
-    </div>
-    <div class="card-body py-2">
-        <div class="mb-2">
-            <strong><i class="fas fa-user"></i> User:</strong><br>
-            <span class="text-primary">{{ current_user.get_full_name }}</span>
-        </div>
-        {% if user_department %}
-        <div class="mb-2">
-            <strong><i class="fas fa-hospital"></i> Department:</strong><br>
-            <span class="text-dark">{{ user_department.name }}</span>
-        </div>
-        {% endif %}
-        {% if user_role %}
-        <div class="mb-2">
-            <strong><i class="fas fa-user-tag"></i> Role:</strong><br>
-            <span class="text-dark">{{ user_role }}</span>
-        </div>
-        {% endif %}
-        <div class="mb-2">
-            <strong><i class="fas fa-cog"></i> Permissions:</strong><br>
-            {% if can_verify %}
-                <span class="badge bg-success">Can Verify</span>
-            {% else %}
-                <span class="badge bg-warning text-dark">Cannot Verify</span>
-            {% endif %}
-        </div>
-        <div class="text-center mt-2">
-            <small class="text-muted">All actions are logged</small>
-        </div>
-    </div>
-</div>
-
 {% endblock %}

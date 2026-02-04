@@ -189,7 +189,7 @@ def create_invoice(request):
 @login_required
 def invoice_detail(request, invoice_id):
     """View for displaying invoice details"""
-    invoice = get_object_or_404(Invoice, id=invoice_id).select_related('patient')
+    invoice = get_object_or_404(Invoice.objects.select_related('patient'), id=invoice_id)
     invoice_items = invoice.items.select_related('service').all()
     payments = invoice.payments.all().order_by('-payment_date')
 

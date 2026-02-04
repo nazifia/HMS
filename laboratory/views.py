@@ -1020,14 +1020,36 @@ def create_test_result(request, request_id):
             test_result.test_request = test_request
             test_result.save()
 
-            # Create empty result parameters for each parameter in the test
-            for parameter in test_result.test.parameters.all():
-                TestResultParameter.objects.create(
-                    test_result=test_result,
-                    parameter=parameter,
-                    value='',
-                    is_normal=True
-                )
+            # Check if parameters were submitted via AJAX (dynamically loaded)
+            parameter_ids = request.POST.getlist('parameter_ids[]')
+            if parameter_ids:
+                # Process dynamically submitted parameters
+                for param_id in parameter_ids:
+                    try:
+                        parameter = TestParameter.objects.get(id=param_id, test=test_result.test)
+                        value = request.POST.get(f'parameter_values[{param_id}]', '').strip()
+                        is_normal = request.POST.get(f'parameter_normal[{param_id}]', '') == 'true'
+                        notes = request.POST.get(f'parameter_notes[{param_id}]', '').strip()
+
+                        if value:
+                            TestResultParameter.objects.create(
+                                test_result=test_result,
+                                parameter=parameter,
+                                value=value,
+                                is_normal=is_normal,
+                                notes=notes
+                            )
+                    except TestParameter.DoesNotExist:
+                        continue
+            else:
+                # Create empty result parameters for each parameter in the test (legacy behavior)
+                for parameter in test_result.test.parameters.all():
+                    TestResultParameter.objects.create(
+                        test_result=test_result,
+                        parameter=parameter,
+                        value='',
+                        is_normal=True
+                    )
 
             # Update test request status if it was 'payment_confirmed' or 'sample_collected'
             if test_request.status in ['payment_confirmed', 'sample_collected']:
@@ -1358,14 +1380,26 @@ def manual_test_result_entry(request, request_id):
             test_result.test_request = test_request
             test_result.save()
 
-            # Create empty result parameters for each parameter in the test
-            for parameter in test_result.test.parameters.all():
-                TestResultParameter.objects.create(
-                    test_result=test_result,
-                    parameter=parameter,
-                    value='',
-                    is_normal=True
-                )
+            # Process dynamically added parameters from the form
+            parameter_ids = request.POST.getlist('parameter_ids[]')
+            for param_id in parameter_ids:
+                try:
+                    parameter = TestParameter.objects.get(id=param_id, test=test_result.test)
+                    value = request.POST.get(f'parameter_values[{param_id}]', '').strip()
+                    is_normal = request.POST.get(f'parameter_normal[{param_id}]', '') == 'true'
+                    notes = request.POST.get(f'parameter_notes[{param_id}]', '').strip()
+
+                    # Only create parameter if value is provided
+                    if value:
+                        TestResultParameter.objects.create(
+                            test_result=test_result,
+                            parameter=parameter,
+                            value=value,
+                            is_normal=is_normal,
+                            notes=notes
+                        )
+                except TestParameter.DoesNotExist:
+                    continue
 
             # Update test request status if it's still pending payment
             if test_request.status in ['pending', 'awaiting_payment']:

@@ -23,6 +23,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 {% endif %}
+
 <div class="row">
     <div class="col-md-12 mb-4">
         <div class="card">
@@ -33,157 +34,260 @@
                 <!-- Test Request Information -->
                 <div class="card mb-4">
                     <div class="card-header bg-light">
-                        <h5 class="mb-0">Test Request Information</h5>
+                        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Test Request Information</h5>
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="row mb-3">
-                                    <div class="col-md-4 text-muted">Request ID:</div>
-                                    <div class="col-md-8">{{ test_request.id }}</div>
-                                </div>
-                                <div class="row mb-3">
-                                    <div class="col-md-4 text-muted">Request Date:</div>
-                                    <div class="col-md-8">{{ test_request.request_date|date:"F d, Y" }}</div>
-                                </div>
-                                <div class="row mb-3">
-                                    <div class="col-md-4 text-muted">Status:</div>
-                                    <div class="col-md-8">
-                                        {% if test_request.status == 'pending' %}
-                                            <span class="badge bg-warning">Pending</span>
-                                        {% elif test_request.status == 'collected' %}
-                                            <span class="badge bg-info">Sample Collected</span>
-                                        {% elif test_request.status == 'processing' %}
-                                            <span class="badge bg-secondary">Processing</span>
-                                        {% elif test_request.status == 'completed' %}
-                                            <span class="badge bg-success">Completed</span>
-                                        {% elif test_request.status == 'cancelled' %}
-                                            <span class="badge bg-danger">Cancelled</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <strong>Request ID:</strong><br>
+                                {{ test_request.id }}
                             </div>
-                            <div class="col-md-6">
-                                <div class="row mb-3">
-                                    <div class="col-md-4 text-muted">Patient:</div>
-                                    <div class="col-md-8">
-                                        <a href="{% url 'patients:detail' test_request.patient.id %}">
-                                            {{ test_request.patient.get_full_name }}
-                                        </a>
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <div class="col-md-4 text-muted">Patient ID:</div>
-                                    <div class="col-md-8">{{ test_request.patient.patient_id }}</div>
-                                </div>
-                                <div class="row mb-3">
-                                    <div class="col-md-4 text-muted">Doctor:</div>
-                                    <div class="col-md-8">Dr. {{ test_request.doctor.get_full_name }}</div>
-                                </div>
+                            <div class="col-md-3">
+                                <strong>Patient:</strong><br>
+                                <a href="{% url 'patients:detail' test_request.patient.id %}">
+                                    {{ test_request.patient.get_full_name }}
+                                </a>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Patient ID:</strong><br>
+                                {{ test_request.patient.patient_id }}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Doctor:</strong><br>
+                                Dr. {{ test_request.doctor.get_full_name }}
+                            </div>
+                            <div class="col-md-3 mt-2">
+                                <strong>Request Date:</strong><br>
+                                {{ test_request.request_date|date:"F d, Y" }}
+                            </div>
+                            <div class="col-md-3 mt-2">
+                                <strong>Priority:</strong><br>
+                                {% if test_request.priority == 'emergency' %}
+                                    <span class="badge bg-danger">Emergency</span>
+                                {% elif test_request.priority == 'urgent' %}
+                                    <span class="badge bg-warning">Urgent</span>
+                                {% else %}
+                                    <span class="badge bg-success">Normal</span>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3 mt-2">
+                                <strong>Status:</strong><br>
+                                {% if test_request.status == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% elif test_request.status == 'awaiting_payment' %}
+                                    <span class="badge bg-warning">Awaiting Payment</span>
+                                {% elif test_request.status == 'payment_confirmed' %}
+                                    <span class="badge bg-info">Payment Confirmed</span>
+                                {% elif test_request.status == 'sample_collected' %}
+                                    <span class="badge bg-info">Sample Collected</span>
+                                {% elif test_request.status == 'processing' %}
+                                    <span class="badge bg-secondary">Processing</span>
+                                {% elif test_request.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% elif test_request.status == 'cancelled' %}
+                                    <span class="badge bg-danger">Cancelled</span>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Test Result Form -->
-                <form method="post" enctype="multipart/form-data">
+                <form method="post" enctype="multipart/form-data" id="testResultForm" novalidate>
                     {% csrf_token %}
-                    
-                    {% if form.non_field_errors %}
-                        <div class="alert alert-danger">
-                            {{ form.non_field_errors }}
-                        </div>
-                    {% endif %}
-                    
+
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.test.id_for_label }}" class="form-label">Test</label>
+                        <!-- Test Selection -->
+                        <div class="col-md-12 mb-3">
+                            <label for="{{ form.test.id_for_label }}" class="form-label fw-bold">
+                                Select Test <span class="text-danger">*</span>
+                            </label>
                             {{ form.test|add_class:"form-select select2" }}
                             {% if form.test.errors %}
-                                <div class="text-danger">
+                                <div class="invalid-feedback d-block">
                                     {{ form.test.errors }}
                                 </div>
                             {% endif %}
+                            <small class="form-text text-muted">
+                                Choose the test for which you are entering results
+                            </small>
                         </div>
-                        
+
+                        <!-- Result Date -->
                         <div class="col-md-6 mb-3">
-                            <label for="{{ form.result_date.id_for_label }}" class="form-label">Result Date</label>
+                            <label for="{{ form.result_date.id_for_label }}" class="form-label fw-bold">
+                                Result Date <span class="text-danger">*</span>
+                            </label>
                             {{ form.result_date|add_class:"form-control" }}
                             {% if form.result_date.errors %}
-                                <div class="text-danger">
+                                <div class="invalid-feedback d-block">
                                     {{ form.result_date.errors }}
                                 </div>
                             {% endif %}
                         </div>
-                        
+
+                        <!-- Sample Collection Date -->
                         <div class="col-md-6 mb-3">
-                            <label for="{{ form.sample_collection_date.id_for_label }}" class="form-label">Sample Collection Date & Time</label>
+                            <label for="{{ form.sample_collection_date.id_for_label }}" class="form-label fw-bold">
+                                Sample Collection Date & Time <span class="text-danger">*</span>
+                            </label>
                             {{ form.sample_collection_date|add_class:"form-control" }}
                             {% if form.sample_collection_date.errors %}
-                                <div class="text-danger">
+                                <div class="invalid-feedback d-block">
                                     {{ form.sample_collection_date.errors }}
                                 </div>
                             {% endif %}
                         </div>
-                        
+
+                        <!-- Performed By -->
                         <div class="col-md-6 mb-3">
-                            <label for="{{ form.sample_collected_by.id_for_label }}" class="form-label">Sample Collected By</label>
-                            {{ form.sample_collected_by|add_class:"form-select select2" }}
-                            {% if form.sample_collected_by.errors %}
-                                <div class="text-danger">
-                                    {{ form.sample_collected_by.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.performed_by.id_for_label }}" class="form-label">Performed By</label>
+                            <label for="{{ form.performed_by.id_for_label }}" class="form-label fw-bold">
+                                Performed By <span class="text-danger">*</span>
+                            </label>
                             {{ form.performed_by|add_class:"form-select select2" }}
                             {% if form.performed_by.errors %}
-                                <div class="text-danger">
+                                <div class="invalid-feedback d-block">
                                     {{ form.performed_by.errors }}
                                 </div>
                             {% endif %}
                         </div>
-                        
+
+                        <!-- Verified By -->
                         <div class="col-md-6 mb-3">
-                            <label for="{{ form.verified_by.id_for_label }}" class="form-label">Verified By</label>
+                            <label for="{{ form.verified_by.id_for_label }}" class="form-label fw-bold">
+                                Verified By
+                            </label>
                             {{ form.verified_by|add_class:"form-select select2" }}
                             {% if form.verified_by.errors %}
-                                <div class="text-danger">
+                                <div class="invalid-feedback d-block">
                                     {{ form.verified_by.errors }}
                                 </div>
                             {% endif %}
+                            <small class="form-text text-muted">Leave blank if not yet verified</small>
                         </div>
-                        
-                        <div class="col-md-12 mb-3">
-                            <label for="{{ form.result_file.id_for_label }}" class="form-label">Result File (Optional)</label>
-                            {{ form.result_file|add_class:"form-control" }}
-                            {% if form.result_file.errors %}
-                                <div class="text-danger">
-                                    {{ form.result_file.errors }}
+
+                        <!-- Sample Collected By -->
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.sample_collected_by.id_for_label }}" class="form-label fw-bold">
+                                Sample Collected By
+                            </label>
+                            {{ form.sample_collected_by|add_class:"form-select select2" }}
+                            {% if form.sample_collected_by.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.sample_collected_by.errors }}
                                 </div>
                             {% endif %}
                         </div>
-                        
+
+                        <!-- Simple Result Fields (for tests without parameters) -->
+                        <div class="col-md-6 mb-3" id="result_value_section" style="display: none;">
+                            <label for="{{ form.result_value.id_for_label }}" class="form-label fw-bold">
+                                Result Value
+                            </label>
+                            {{ form.result_value|add_class:"form-control" }}
+                            {% if form.result_value.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.result_value.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3" id="reference_range_section" style="display: none;">
+                            <label for="{{ form.reference_range.id_for_label }}" class="form-label fw-bold">
+                                Reference Range
+                            </label>
+                            {{ form.reference_range|add_class:"form-control" }}
+                            {% if form.reference_range.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.reference_range.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3" id="unit_section" style="display: none;">
+                            <label for="{{ form.unit.id_for_label }}" class="form-label fw-bold">
+                                Unit
+                            </label>
+                            {{ form.unit|add_class:"form-control" }}
+                            {% if form.unit.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.unit.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Interpretation -->
                         <div class="col-md-12 mb-3">
-                            <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                            <label for="{{ form.interpretation.id_for_label }}" class="form-label fw-bold">
+                                Interpretation
+                            </label>
+                            {{ form.interpretation|add_class:"form-control" }}
+                            {% if form.interpretation.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.interpretation.errors }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Clinical interpretation of the result</small>
+                        </div>
+
+                        <!-- Dynamic Parameters Section -->
+                        <div class="col-md-12 mb-3" id="parameters_section" style="display: none;">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0"><i class="fas fa-list-check me-2"></i>Test Parameters</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div id="parameters_container">
+                                        <!-- Parameters will be dynamically loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Result File -->
+                        <div class="col-md-12 mb-3">
+                            <label for="{{ form.result_file.id_for_label }}" class="form-label fw-bold">
+                                Result File
+                            </label>
+                            {{ form.result_file|add_class:"form-control" }}
+                            {% if form.result_file.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.result_file.errors }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Upload test result images, PDFs, or documents</small>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="col-md-12 mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label fw-bold">
+                                Notes
+                            </label>
                             {{ form.notes|add_class:"form-control" }}
                             {% if form.notes.errors %}
-                                <div class="text-danger">
+                                <div class="invalid-feedback d-block">
                                     {{ form.notes.errors }}
                                 </div>
                             {% endif %}
                         </div>
                     </div>
-                    
-                    <div class="d-flex justify-content-between mt-4">
-                        <a href="{% url 'laboratory:test_request_detail' test_request.id %}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Back to Test Request
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Save Test Result
-                        </button>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <a href="{% url 'laboratory:test_request_detail' test_request.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Request
+                            </a>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="reset" class="btn btn-outline-danger">
+                                <i class="fas fa-undo me-2"></i>Clear
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <i class="fas fa-save me-2"></i>Save Result
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -193,13 +297,275 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Select2 CSS & JS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
+<style>
+/* Parameter styling */
+.parameter-row {
+    border: 1px solid #e9ecef;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: #f8f9fa;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.parameter-row:hover {
+    border-color: #86b7fe;
+    background-color: #e7f1ff;
+}
+
+.parameter-label {
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.parameter-input {
+    width: 100%;
+}
+
+.normal-checkbox {
+    font-size: 0.875rem;
+}
+
+/* Validation states */
+#testResultForm .is-invalid {
+    border-color: #dc3545;
+    padding-right: calc(1.5em + 0.75rem);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23dc3545' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-miterlimit='10' d='M6 3.5v3M6 7.5h.01'/%3e%3c/path%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+#testResultForm .invalid-feedback {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: #dc3545;
+}
+
+/* Select2 customization */
+.select2-container--bootstrap-5 .select2-selection {
+    min-height: 38px;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+}
+
+.select2-container--bootstrap-5.select2-container--focus .select2-selection {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Loading indicator */
+.loading-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    color: #6c757d;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .parameter-row {
+        padding: 0.75rem;
+    }
+}
+</style>
+
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize select2 for dropdowns
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Select2
+    if (typeof $ !== 'undefined' && $.fn.select2) {
         $('.select2').select2({
             theme: 'bootstrap-5',
             width: '100%'
         });
+    }
+
+    const testSelect = $('#id_test');
+    const parametersSection = $('#parameters_section');
+    const parametersContainer = $('#parameters_container');
+    const resultValueSection = $('#result_value_section');
+    const referenceRangeSection = $('#reference_range_section');
+    const unitSection = $('#unit_section');
+
+    // Test selection change handler
+    testSelect.on('change', function() {
+        const testId = $(this).val();
+
+        if (testId) {
+            // Show loading
+            parametersSection.show();
+            parametersContainer.html(`
+                <div class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span class="ms-2">Loading test parameters...</span>
+                </div>
+            `);
+            resultValueSection.hide();
+            referenceRangeSection.hide();
+            unitSection.hide();
+
+            // Fetch parameters via AJAX
+            fetch('/laboratory/api/tests/' + testId + '/parameters/')
+                .then(response => response.json())
+                .then(data => {
+                    renderParameters(data.parameters, data.test_info);
+                })
+                .catch(error => {
+                    console.error('Error fetching parameters:', error);
+                    parametersContainer.html(`
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Failed to load parameters. Please try again.
+                        </div>
+                    `);
+                });
+        } else {
+            // No test selected
+            parametersSection.hide();
+            resultValueSection.hide();
+            referenceRangeSection.hide();
+            unitSection.hide();
+        }
     });
+
+    function renderParameters(parameters, testInfo) {
+        if (!parameters || parameters.length === 0) {
+            // No parameters - use simple fields
+            parametersContainer.html(`
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    This test has no predefined parameters. Use the basic result fields below.
+                </div>
+            `);
+            resultValueSection.show();
+            if (testInfo && testInfo.normal_range) {
+                $('#id_reference_range').val(testInfo.normal_range);
+                referenceRangeSection.show();
+            }
+            if (testInfo && testInfo.unit) {
+                $('#id_unit').val(testInfo.unit);
+                unitSection.show();
+            }
+            return;
+        }
+
+        // Build parameters HTML
+        let html = '<div class="row g-3">';
+
+        parameters.forEach(function(param) {
+            html += `
+                <div class="col-md-6 parameter-row" data-parameter-id="${param.id}">
+                    <div class="parameter-label">
+                        ${param.name}
+                        ${param.normal_range ? '<small class="text-muted">(' + param.normal_range + ')</small>' : ''}
+                        ${param.unit ? '<small class="text-muted"> - ' + param.unit + '</small>' : ''}
+                    </div>
+                    <input type="hidden" name="parameter_ids[]" value="${param.id}">
+                    <div class="mb-2">
+                        <input type="text"
+                               class="form-control parameter-input"
+                               name="parameter_values[${param.id}]"
+                               placeholder="Enter value for ${param.name}"
+                               data-parameter-name="${param.name}"
+                               required>
+                    </div>
+                    <div class="mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   name="parameter_normal[${param.id}]"
+                                   id="normal_${param.id}"
+                                   checked
+                                   value="true">
+                            <label class="form-check-label" for="normal_${param.id}">
+                                Within normal range
+                            </label>
+                        </div>
+                    </div>
+                    <textarea class="form-control"
+                              name="parameter_notes[${param.id}]"
+                              rows="2"
+                              placeholder="Add notes for this parameter..."></textarea>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+
+        html += `
+            <div class="alert alert-light border">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Note:</strong> Please enter values for all parameters. Values are required.
+            </div>
+        `;
+
+        parametersContainer.html(html);
+    }
+
+    // Form validation on submit
+    $('#testResultForm').on('submit', function(e) {
+        let isValid = true;
+
+        // Validate required fields
+        $(this).find('[required]').each(function() {
+            if (!$(this).val()) {
+                $(this).addClass('is-invalid');
+                isValid = false;
+            } else {
+                $(this).removeClass('is-invalid');
+            }
+        });
+
+        // Validate parameter inputs if they exist
+        const parameterInputs = parametersContainer.find('input[name^="parameter_values["]');
+        if (parameterInputs.length > 0) {
+            let allFilled = true;
+            parameterInputs.each(function() {
+                if (!$(this).val()) {
+                    $(this).addClass('is-invalid');
+                    allFilled = false;
+                    isValid = false;
+                } else {
+                    $(this).removeClass('is-invalid');
+                }
+            });
+
+            if (!allFilled) {
+                e.preventDefault();
+                alert('Please fill in all parameter values.');
+                return false;
+            }
+        }
+
+        // Show loading state
+        if (isValid) {
+            $('#submitBtn').prop('disabled', true).html(
+                '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...'
+            );
+        } else {
+            e.preventDefault();
+        }
+    });
+
+    // Clear invalid state on input
+    $('#testResultForm').on('input change', 'input, select, textarea', function() {
+        $(this).removeClass('is-invalid');
+    });
+
+    // Trigger change if test is pre-selected
+    if (testSelect.val()) {
+        testSelect.trigger('change');
+    }
+});
 </script>
 {% endblock %}

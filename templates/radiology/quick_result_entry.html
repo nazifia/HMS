@@ -4,100 +4,480 @@
 
 {% block title %}{{ title|default:"Quick Result Entry" }} - Hospital Management System{% endblock %}
 
+{% block extra_css %}
+<style>
+    .order-info-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-left: 4px solid #0ea5e9;
+    }
+    .priority-badge {
+        font-size: 0.85rem;
+        padding: 0.35em 0.65em;
+    }
+    .status-option {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .status-option:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .template-btn {
+        transition: all 0.2s;
+    }
+    .template-btn:hover {
+        transform: translateX(4px);
+    }
+    .char-count {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-align: right;
+        margin-top: 0.25rem;
+    }
+    .save-indicator {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+    }
+    @media (max-width: 768px) {
+        .order-info-card .row {
+            margin-bottom: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">{{ title|default:"Quick Result Entry" }}</h1>
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-bolt text-warning me-2"></i>{{ title|default:"Quick Result Entry" }}
+        </h1>
         <div>
-            <a href="{% url 'radiology:order_detail' order.id %}" class="btn btn-secondary">
+            <a href="{% url 'radiology:order_detail' order.id %}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Order
             </a>
         </div>
     </div>
 
+    <!-- Auto-save indicator (hidden by default) -->
+    <div id="saveIndicator" class="save-indicator" style="display: none;">
+        <div class="alert alert-success alert-dismissible fade show shadow" role="alert">
+            <i class="fas fa-check-circle"></i> <strong>Draft Saved!</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    </div>
+
     <div class="row justify-content-center">
-        <div class="col-lg-8">
+        <div class="col-lg-10">
+            <!-- Order Information Card -->
+            <div class="card shadow mb-4 order-info-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-3 text-center mb-2 mb-md-0">
+                            <div class="bg-light rounded p-3">
+                                <i class="fas fa-user fa-2x text-primary mb-2"></i>
+                                <div class="fw-bold">{{ order.patient.get_full_name|truncatechars:25 }}</div>
+                                <small class="text-muted">ID: {{ order.patient.patient_id }}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 text-center mb-2 mb-md-0">
+                            <div class="bg-light rounded p-3">
+                                <i class="fas fa-x-ray fa-2x text-info mb-2"></i>
+                                <div class="fw-bold">{{ order.test.name|truncatechars:30 }}</div>
+                                <small class="text-muted">{{ order.test.category.name }}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 text-center mb-2 mb-md-0">
+                            <div class="bg-light rounded p-3">
+                                <i class="fas fa-calendar-alt fa-2x text-success mb-2"></i>
+                                <div class="fw-bold">{{ order.order_date|date:"M d, Y" }}</div>
+                                <small class="text-muted">{{ order.order_date|date:"H:i" }}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="bg-light rounded p-3">
+                                <i class="fas fa-flag fa-2x {% if order.priority == 'emergency' %}text-danger{% elif order.priority == 'urgent' %}text-warning{% else %}text-success{% endif %} mb-2"></i>
+                                <div>
+                                    <span class="badge bg-{% if order.priority == 'emergency' %}danger{% elif order.priority == 'urgent' %}warning{% else %}success{% endif %} priority-badge">
+                                        {{ order.get_priority_display }}
+                                    </span>
+                                </div>
+                                {% if order.patient.is_nhia_patient %}
+                                <small class="text-muted d-block mt-1">NHIA Exempt</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Entry Form -->
             <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-bolt"></i> Quick Radiology Result Entry
+                <div class="card-header py-3 bg-gradient-warning text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-pen-falt"></i> Rapid Result Entry
                     </h6>
                 </div>
                 <div class="card-body">
-                    <form method="post">
+                    <form method="post" id="quickResultForm" novalidate>
                         {% csrf_token %}
-                        
+
                         {% if form.errors %}
-                            <div class="alert alert-danger">
-                                <ul class="mb-0">
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Form Errors:</strong> Please correct the issues below.
+                                <ul class="mb-0 mt-2">
                                     {% for field in form %}
                                         {% for error in field.errors %}
-                                            <li>{{ error }}</li>
+                                            <li>{{ field.label }}: {{ error }}</li>
                                         {% endfor %}
                                     {% endfor %}
                                     {% for error in form.non_field_errors %}
                                         <li>{{ error }}</li>
                                     {% endfor %}
                                 </ul>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             </div>
                         {% endif %}
-                        
-                        <!-- Order Information -->
-                        <div class="card border-info mb-3">
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <strong>Patient:</strong><br>
-                                        {{ order.patient.get_full_name }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <strong>Test:</strong><br>
-                                        {{ order.test.name }}
+
+                        <!-- Findings -->
+                        <div class="mb-4">
+                            <label for="{{ form.findings.id_for_label }}" class="form-label fw-bold">
+                                Findings <span class="text-danger">*</span>
+                                <span class="char-count" id="findingsCount">0 / 5000</span>
+                            </label>
+                            {{ form.findings|add_class:"form-control" }}
+                            <div class="form-text">Describe the radiological findings in detail.</div>
+                        </div>
+
+                        <!-- Impression -->
+                        <div class="mb-4">
+                            <label for="{{ form.impression.id_for_label }}" class="form-label fw-bold">
+                                Impression/Conclusion <span class="text-danger">*</span>
+                                <span class="char-count" id="impressionCount">0 / 2000</span>
+                            </label>
+                            {{ form.impression|add_class:"form-control" }}
+                            <div class="form-text">Clinical interpretation and final diagnosis.</div>
+                        </div>
+
+                        <!-- Status Selection -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Result Status <span class="text-danger">*</span></label>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="form-check status-option card p-3 border-success {% if form.status.value == 'normal' %}bg-light{% endif %}"
+                                         data-status="normal" onclick="selectStatus('normal')">
+                                        <input type="radio" name="status" value="normal" class="form-check-input"
+                                               id="statusNormal" {% if form.status.value == 'normal' %}checked{% endif %}>
+                                        <label class="form-check-label w-100 cursor-pointer" for="statusNormal">
+                                            <i class="fas fa-check-circle text-success fa-2x mb-2"></i>
+                                            <div class="fw-bold text-success">Normal</div>
+                                            <small class="text-muted">No abnormalities detected</small>
+                                        </label>
                                     </div>
                                 </div>
-                                <div class="row mt-2">
-                                    <div class="col-md-6">
-                                        <strong>Order Date:</strong><br>
-                                        {{ order.order_date|date:"M d, Y H:i" }}
+                                <div class="col-md-4">
+                                    <div class="form-check status-option card p-3 border-danger {% if form.status.value == 'abnormal' %}bg-light{% endif %}"
+                                         data-status="abnormal" onclick="selectStatus('abnormal')">
+                                        <input type="radio" name="status" value="abnormal" class="form-check-input"
+                                               id="statusAbnormal" {% if form.status.value == 'abnormal' %}checked{% endif %}>
+                                        <label class="form-check-label w-100 cursor-pointer" for="statusAbnormal">
+                                            <i class="fas fa-exclamation-circle text-danger fa-2x mb-2"></i>
+                                            <div class="fw-bold text-danger">Abnormal</div>
+                                            <small class="text-muted">Pathology identified</small>
+                                        </label>
                                     </div>
-                                    <div class="col-md-6">
-                                        <strong>Priority:</strong><br>
-                                        <span class="badge bg-{% if order.priority == 'emergency' %}danger{% elif order.priority == 'urgent' %}warning{% else %}success{% endif %}">
-                                            {{ order.get_priority_display }}
-                                        </span>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check status-option card p-3 border-warning {% if form.status.value == 'urgent' %}bg-light{% endif %}"
+                                         data-status="urgent" onclick="selectStatus('urgent')">
+                                        <input type="radio" name="status" value="urgent" class="form-check-input"
+                                               id="statusUrgent" {% if form.status.value == 'urgent' %}checked{% endif %}>
+                                        <label class="form-check-label w-100 cursor-pointer" for="statusUrgent">
+                                            <i class="fas fa-exclamation-triangle text-warning fa-2x mb-2"></i>
+                                            <div class="fw-bold text-warning">Urgent</div>
+                                            <small class="text-muted">Requires immediate attention</small>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
+                            {% if form.status.errors %}
+                                <div class="invalid-feedback d-block mt-2">
+                                    {{ form.status.errors }}
+                                </div>
+                            {% endif %}
                         </div>
-                        
-                        <!-- Quick Entry Form -->
-                        <div class="mb-3">
-                            <label for="{{ form.findings.id_for_label }}" class="form-label">Findings <span class="text-danger">*</span></label>
-                            {{ form.findings|add_class:"form-control" }}
+
+                        <!-- Quick Templates -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-clipboard-list me-1"></i> Quick Templates
+                            </label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm template-btn" onclick="insertTemplate('normal')">
+                                    Normal Study
+                                </button>
+                                <button type="button" class="btn btn-outline-success btn-sm template-btn" onclick="insertTemplate('abnormal')">
+                                    Abnormal Finding
+                                </button>
+                                <button type="button" class="btn btn-outline-warning btn-sm template-btn" onclick="insertTemplate('urgent')">
+                                    Urgent Alert
+                                </button>
+                                <button type="button" class="btn btn-outline-info btn-sm template-btn" onclick="insertTemplate('followup')">
+                                    Follow-up Required
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm template-btn" onclick="insertTemplate('limited')">
+                                    Limited Study
+                                </button>
+                            </div>
+                            <div class="form-text">Click to insert common result text templates.</div>
                         </div>
-                        
-                        <div class="mb-3">
-                            <label for="{{ form.impression.id_for_label }}" class="form-label">Impression <span class="text-danger">*</span></label>
-                            {{ form.impression|add_class:"form-control" }}
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="{{ form.status.id_for_label }}" class="form-label">Status <span class="text-danger">*</span></label>
-                            {{ form.status|add_class:"form-select" }}
-                        </div>
-                        
-                        <div class="d-flex justify-content-between mt-4">
-                            <a href="{% url 'radiology:order_detail' order.id %}" class="btn btn-secondary">
-                                <i class="fas fa-times"></i> Cancel
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Save Result
-                            </button>
+
+                        <!-- Actions -->
+                        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                            <div>
+                                <button type="button" class="btn btn-outline-secondary" onclick="saveDraft()">
+                                    <i class="fas fa-save"></i> Save Draft
+                                </button>
+                                <small class="text-muted ms-2 d-none d-sm-inline">Auto-saves every 30 seconds</small>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-outline-secondary me-2" onclick="resetForm()">
+                                    <i class="fas fa-redo"></i> Reset
+                                </button>
+                                <button type="submit" class="btn btn-primary btn-lg px-4">
+                                    <i class="fas fa-check-circle"></i> Submit Result
+                                </button>
+                            </div>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <!-- Keyboard Shortcuts Help -->
+            <div class="text-center mt-3">
+                <button class="btn btn-link btn-sm text-muted" type="button" data-bs-toggle="collapse" data-bs-target="#shortcuts">
+                    <i class="fas fa-keyboard"></i> Keyboard Shortcuts
+                </button>
+                <div class="collapse mt-2" id="shortcuts">
+                    <div class="card card-body">
+                        <div class="row text-start small">
+                            <div class="col-md-4">
+                                <kbd>Ctrl</kbd> + <kbd>S</kbd> - Save Draft<br>
+                                <kbd>Ctrl</kbd> + <kbd>Enter</kbd> - Submit Result
+                            </div>
+                            <div class="col-md-4">
+                                <kbd>Esc</kbd> - Cancel / Go Back<br>
+                                <kbd>Tab</kbd> - Navigate fields
+                            </div>
+                            <div class="col-md-4">
+                                <kbd>1</kbd>-<kbd>5</kbd> - Quick templates<br>
+                                <kbd>Alt</kbd> + <kbd>N</kbd> - Normal status
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Character counters
+    const findingsField = document.getElementById('id_findings');
+    const impressionField = document.getElementById('id_impression');
+    const findingsCount = document.getElementById('findingsCount');
+    const impressionCount = document.getElementById('impressionCount');
+
+    function updateCharCount(field, counter) {
+        const current = field.value.length;
+        const max = 5000; // Adjust as needed
+        counter.textContent = current + ' / ' + max;
+        if (current > max * 0.9) {
+            counter.classList.add('text-danger');
+        } else {
+            counter.classList.remove('text-danger');
+        }
+    }
+
+    if (findingsField && findingsCount) {
+        findingsField.addEventListener('input', () => updateCharCount(findingsField, findingsCount));
+        updateCharCount(findingsField, findingsCount);
+    }
+
+    if (impressionField && impressionCount) {
+        impressionField.addEventListener('input', () => updateCharCount(impressionField, impressionCount));
+        updateCharCount(impressionField, impressionCount);
+    }
+
+    // Auto-resize textareas
+    [findingsField, impressionField].forEach(field => {
+        if (field) {
+            field.style.height = 'auto';
+            field.style.height = field.scrollHeight + 'px';
+            field.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+            });
+        }
+    });
+
+    // Auto-save draft every 30 seconds
+    let autoSaveTimer;
+    function scheduleAutoSave() {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(saveDraft, 30000);
+    }
+
+    [findingsField, impressionField].forEach(field => {
+        if (field) field.addEventListener('input', scheduleAutoSave);
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+S or Cmd+S - Save Draft
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            saveDraft();
+        }
+        // Ctrl+Enter - Submit
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('quickResultForm').submit();
+        }
+        // Escape - Go back
+        if (e.key === 'Escape') {
+            window.history.back();
+        }
+        // Number keys 1-5 for templates
+        if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key >= '1' && e.key <= '5') {
+            const templates = ['normal', 'abnormal', 'urgent', 'followup', 'limited'];
+            const index = parseInt(e.key) - 1;
+            if (templates[index]) {
+                e.preventDefault();
+                insertTemplate(templates[index]);
+            }
+        }
+    });
+});
+
+function selectStatus(status) {
+    // Remove active class from all options
+    document.querySelectorAll('.status-option').forEach(opt => {
+        opt.classList.remove('bg-light', 'border-primary');
+        opt.classList.add('border-' + (opt.dataset.status === 'normal' ? 'success' :
+                                          opt.dataset.status === 'abnormal' ? 'danger' : 'warning'));
+    });
+
+    // Highlight selected
+    const selected = document.querySelector(`[data-status="${status}"]`);
+    if (selected) {
+        selected.classList.remove('border-' + (status === 'normal' ? 'success' :
+                                                status === 'abnormal' ? 'danger' : 'warning'));
+        selected.classList.add('bg-light', 'border-primary');
+    }
+
+    // Update radio
+    const radio = document.getElementById('status' + status.charAt(0).toUpperCase() + status.slice(1));
+    if (radio) radio.checked = true;
+}
+
+function insertTemplate(type) {
+    const findingsField = document.getElementById('id_findings');
+    const impressionField = document.getElementById('id_impression');
+
+    const templates = {
+        normal: {
+            findings: 'No acute abnormalities identified. All anatomical structures visualised normally. No evidence of fracture, dislocation, or pathological lesion.',
+            impression: 'Normal study. No acute or significant abnormality.'
+        },
+        abnormal: {
+            findings: '[Describe abnormal finding in detail including location, size, characteristics, and extent of abnormality]',
+            impression: 'Abnormal finding identified. Recommend correlation with clinical presentation and further imaging as clinically indicated.'
+        },
+        urgent: {
+            findings: '[Urgent finding requiring immediate attention. Describe in detail]',
+            impression: 'URGENT: Immediate clinical correlation and intervention recommended.'
+        },
+        followup: {
+            findings: ' Findings warranting follow-up imaging identified. [Specify findings]',
+            impression: 'Recommend follow-up imaging in [specify timeframe, e.g., 6-8 weeks] to assess for interval change.'
+        },
+        limited: {
+            findings: 'Study limited by [specify reason - patient motion, technical factors, body habitus, etc.]. Portions of anatomy may be suboptimally visualized.',
+            impression: 'Limited study. Recommend repeat imaging or alternative imaging modality for better evaluation.'
+        }
+    };
+
+    if (templates[type]) {
+        findingsField.value = templates[type].findings;
+        impressionField.value = templates[type].impression;
+
+        // Trigger resize and char count updates
+        ['id_findings', 'id_impression'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.height = 'auto';
+                el.style.height = el.scrollHeight + 'px';
+                el.dispatchEvent(new Event('input'));
+            }
+        });
+
+        // Show save indicator
+        showSaveIndicator();
+    }
+}
+
+function saveDraft() {
+    const form = document.getElementById('quickResultForm');
+    const formData = new FormData(form);
+
+    // Add draft flag
+    formData.append('save_draft', '1');
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    }).then(response => {
+        if (response.ok) {
+            showSaveIndicator();
+            scheduleAutoSave();
+        }
+    }).catch(error => {
+        console.error('Auto-save failed:', error);
+    });
+}
+
+function showSaveIndicator() {
+    const indicator = document.getElementById('saveIndicator');
+    if (indicator) {
+        indicator.style.display = 'block';
+        setTimeout(() => {
+            indicator.style.display = 'none';
+        }, 3000);
+    }
+}
+
+function resetForm() {
+    if (confirm('Clear all entered data?')) {
+        document.getElementById('quickResultForm').reset();
+        ['id_findings', 'id_impression'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.height = 'auto';
+            }
+        });
+        document.getElementById('findingsCount').textContent = '0 / 5000';
+        document.getElementById('impressionCount').textContent = '0 / 2000';
+    }
+}
+</script>
 {% endblock %}
