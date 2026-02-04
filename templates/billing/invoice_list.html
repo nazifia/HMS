@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
+{% load billing_tags %}
 {% load widget_tweaks %}
 
 {% block title %}Invoices - Hospital Management System{% endblock %}
@@ -283,30 +284,48 @@
                                 <input type="checkbox" class="form-check-input" id="selectAll" onchange="toggleSelectAll()">
                             </th>
                             <th>
-                                <a href="?sort=invoice_number&{% if request.GET.sort|slice:":1" == '-' %}order=asc{% else %}order=desc{% endif %}" class="text-decoration-none text-dark">
+                                <a href="?sort=invoice_number&{% if request.GET.sort == 'invoice_number' or request.GET.sort == '-invoice_number' %}order=desc{% else %}order=asc{% endif %}" class="text-decoration-none text-dark">
                                     Invoice #
-                                    {% if request.GET.sort == 'invoice_number' or request.GET.sort|slice:":1" != '-' and request.GET.sort|slice:":1" %}
-                                        <i class="fas fa-sort-{{ 'up' if request.GET.sort == 'invoice_number' else 'down' if request.GET.sort == '-invoice_number' else 'up' }}"></i>
-                                    {% endif %}
+                                    {% with current_sort=request.GET.sort %}
+                                        {% if current_sort == 'invoice_number' %}
+                                            <i class="fas fa-sort-up"></i>
+                                        {% elif current_sort == '-invoice_number' %}
+                                            <i class="fas fa-sort-down"></i>
+                                        {% else %}
+                                            <i class="fas fa-sort"></i>
+                                        {% endif %}
+                                    {% endwith %}
                                 </a>
                             </th>
                             <th>Patient</th>
                             <th>Patient ID</th>
                             <th>
-                                <a href="?sort=created_at&{% if request.GET.sort|slice:":1" == '-' %}order=asc{% else %}order=desc{% endif %}" class="text-decoration-none text-dark">
+                                <a href="?sort=created_at&{% if request.GET.sort == 'created_at' or request.GET.sort == '-created_at' %}order=desc{% else %}order=asc{% endif %}" class="text-decoration-none text-dark">
                                     Date
-                                    {% if request.GET.sort == 'created_at' or request.GET.sort|slice:":1" != '-' and request.GET.sort|slice:":1" %}
-                                        <i class="fas fa-sort-{{ 'up' if request.GET.sort == 'created_at' else 'down' if request.GET.sort == '-created_at' else 'up' }}"></i>
-                                    {% endif %}
+                                    {% with current_sort=request.GET.sort %}
+                                        {% if current_sort == 'created_at' %}
+                                            <i class="fas fa-sort-up"></i>
+                                        {% elif current_sort == '-created_at' %}
+                                            <i class="fas fa-sort-down"></i>
+                                        {% else %}
+                                            <i class="fas fa-sort"></i>
+                                        {% endif %}
+                                    {% endwith %}
                                 </a>
                             </th>
                             <th>Source</th>
                             <th>
-                                <a href="?sort=status&{% if request.GET.sort|slice:":1" == '-' %}order=asc{% else %}order=desc{% endif %}" class="text-decoration-none text-dark">
+                                <a href="?sort=status&{% if request.GET.sort == 'status' or request.GET.sort == '-status' %}order=desc{% else %}order=asc{% endif %}" class="text-decoration-none text-dark">
                                     Status
-                                    {% if request.GET.sort == 'status' or request.GET.sort|slice:":1" != '-' and request.GET.sort|slice:":1" %}
-                                        <i class="fas fa-sort-{{ 'up' if request.GET.sort == 'status' else 'down' if request.GET.sort == '-status' else 'up' }}"></i>
-                                    {% endif %}
+                                    {% with current_sort=request.GET.sort %}
+                                        {% if current_sort == 'status' %}
+                                            <i class="fas fa-sort-up"></i>
+                                        {% elif current_sort == '-status' %}
+                                            <i class="fas fa-sort-down"></i>
+                                        {% else %}
+                                            <i class="fas fa-sort"></i>
+                                        {% endif %}
+                                    {% endwith %}
                                 </a>
                             </th>
                             <th class="text-end">Total</th>
