@@ -4,107 +4,613 @@
 
 {% block title %}Invoices - Hospital Management System{% endblock %}
 
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: none;
+        border-radius: 12px;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    .stat-card .card-body {
+        padding: 1.5rem;
+    }
+    .stat-card .stat-icon {
+        font-size: 2.5rem;
+        opacity: 0.7;
+        margin-bottom: 0.5rem;
+    }
+    .stat-card .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+    }
+    .stat-card .stat-label {
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.8;
+    }
+    .filter-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .filter-section .form-label {
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+    .action-buttons .btn {
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .status-badge {
+        font-size: 0.85rem;
+        padding: 0.35em 0.65em;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .table-hover tbody tr:hover {
+        background-color: rgba(0,123,255,0.05);
+        cursor: pointer;
+    }
+    .table-actions {
+        white-space: nowrap;
+    }
+    .export-buttons {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .quick-stats {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .section-header h2 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    @media (max-width: 768px) {
+        .stat-card {
+            margin-bottom: 1rem;
+        }
+        .filter-section .row > * {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .section-header .btn-group {
+        width: 100%;
+    }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container">
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <h2><i class="fas fa-file-invoice-dollar me-2"></i>Invoice List</h2>
-        </div>
-        <div class="col-md-4 text-end">
-            <a href="{% url 'billing:medication_billing_dashboard' %}" class="btn btn-success me-2">
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="section-header mb-4">
+        <h2>
+            <i class="fas fa-file-invoice-dollar text-primary"></i>
+            Invoice Management
+        </h2>
+        <div class="btn-group" role="group">
+            <a href="{% url 'billing:medication_billing_dashboard' %}" class="btn btn-success">
                 <i class="fas fa-pills me-1"></i> Medication Billing
             </a>
             <a href="{% url 'billing:create' %}" class="btn btn-primary">
-                <i class="fas fa-plus-circle me-1"></i> Create New Invoice
+                <i class="fas fa-plus-circle me-1"></i> New Invoice
             </a>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-download me-1"></i> Export
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="?export=csv"><i class="fas fa-file-csv me-2"></i>Export CSV</a></li>
+                    <li><a class="dropdown-item" href="?export=pdf"><i class="fas fa-file-pdf me-2"></i>Export PDF</a></li>
+                    <li><a class="dropdown-item" onclick="window.print()"><i class="fas fa-print me-2"></i>Print View</a></li>
+                </ul>
+            </div>
+            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#bulkActionsModal" id="bulkActionsBtn" disabled>
+                <i class="fas fa-check-square me-1"></i> Bulk Actions
+            </button>
         </div>
     </div>
 
-    <div class="card mb-4">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">Search & Filter</h5>
-        </div>
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-4">
-                    <label for="{{ search_form.search.id_for_label }}" class="form-label">Search</label>
-                    {{ search_form.search|add_class:"form-control" }}
-                    <div class="form-text">Search by invoice number, patient name or patient ID</div>
+    <!-- Quick Stats Cards -->
+    <div class="row mb-4" id="quickStats">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stat-card bg-primary text-white h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-file-invoice stat-icon"></i>
+                    <div class="stat-value">{{ page_obj.paginator.count }}</div>
+                    <div class="stat-label">Total Invoices</div>
                 </div>
-                <div class="col-md-3">
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stat-card bg-warning text-dark h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock stat-icon"></i>
+                    <div class="stat-value">{{ total_pending|default:"0" }}</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stat-card bg-success text-white h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle stat-icon"></i>
+                    <div class="stat-value">{{ total_paid|default:"0" }}</div>
+                    <div class="stat-label">Paid</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stat-card bg-danger text-white h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle stat-icon"></i>
+                    <div class="stat-value">{{ total_overdue|default:"0" }}</div>
+                    <div class="stat-label">Overdue</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Summary -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-light h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between alignitems-center">
+                        <div>
+                            <div class="text-muted small">Total Revenue</div>
+                            <div class="h4 mb-0 text-success">{{ total_revenue|currency }}</div>
+                        </div>
+                        <i class="fas fa-chart-line fa-2x text-success opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-light h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small">Outstanding Balance</div>
+                            <div class="h4 mb-0 text-warning">{{ total_balance|currency }}</div>
+                        </div>
+                        <i class="fas fa-balance-scale fa-2x text-warning opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-light h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small">Collection Rate</div>
+                            <div class="h4 mb-0 text-info">{{ collection_rate|floatformat:1 }}%</div>
+                        </div>
+                        <i class="fas fa-percentage fa-2x text-info opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search & Filter Card -->
+    <div class="card filter-section mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3" id="searchForm">
+                <div class="col-md-4">
+                    <label for="{{ search_form.search.id_for_label }}" class="form-label">
+                        <i class="fas fa-search me-1"></i> Search Invoices
+                    </label>
+                    {{ search_form.search|add_class:"form-control" }}
+                    <div class="form-text">Invoice number, patient name, or patient ID</div>
+                </div>
+                <div class="col-md-2">
                     <label for="{{ search_form.status.id_for_label }}" class="form-label">Status</label>
                     {{ search_form.status|add_class:"form-select" }}
                 </div>
                 <div class="col-md-2">
-                    <label for="{{ search_form.date_from.id_for_label }}" class="form-label">From Date</label>
+                    <label for="{{ search_form.date_from.id_for_label }}" class="form-label">Date From</label>
                     {{ search_form.date_from|add_class:"form-control" }}
                 </div>
                 <div class="col-md-2">
-                    <label for="{{ search_form.date_to.id_for_label }}" class="form-label">To Date</label>
+                    <label for="{{ search_form.date_to.id_for_label }}" class="form-label">Date To</label>
                     {{ search_form.date_to|add_class:"form-control" }}
                 </div>
-                <div class="col-md-1 d-flex align-items-end">
-                    <button type="submit" class="btn btn-outline-primary w-100">
-                        <i class="fas fa-search"></i>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter me-1"></i> Apply Filters
                     </button>
+                    <a href="{% url 'billing:list' %}" class="btn btn-outline-secondary" title="Clear Filters">
+                        <i class="fas fa-times"></i>
+                    </a>
                 </div>
             </form>
         </div>
     </div>
 
-    <div class="table-responsive">
-        <table class="table table-hover">
-            <thead class="table-light">
-                <tr>
-                    <th>Invoice #</th>
-                    <th>Patient</th>
-                    <th>Patient ID</th>
-                    <th>Date</th>
-                    <th>Source</th>
-                    <th>Status</th>
-                    <th>Total</th>
-                    <th>Paid</th>
-                    <th>Balance</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for invoice in page_obj %}
-                <tr>
-                    <td>{{ invoice.invoice_number }}</td>
-                    <td><a href="{% url 'patients:detail' invoice.patient.id %}">{{ invoice.patient.get_full_name }}</a></td>
-                    <td>{{ invoice.patient.patient_id }}</td>
-                    <td>{{ invoice.created_at|date:"M d, Y" }}</td>
-                    <td>{{ invoice.get_source_app_display|default:"N/A" }}</td>
-                    <td>{{ invoice.status|capfirst }}</td>
-                    <td>{{ invoice.total_amount|currency }}</td>
-                    <td>{{ invoice.amount_paid|currency }}</td>
-                    <td>{{ invoice.get_balance|currency }}</td>
-                    <td>
-                        <a href="{% url 'billing:detail' invoice.id %}" class="btn btn-sm btn-primary">View</a>
-                        {% if invoice.status != 'paid' and invoice.status != 'cancelled' and invoice.get_balance > 0 %}
-                        <a href="{% url 'billing:payment' invoice.id %}" class="btn btn-sm btn-success">Record Payment</a>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="10" class="text-center">No invoices found.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- Results Info -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="quick-stats">
+            Showing {{ page_obj.start_index|default:0 }} to {{ page_obj.end_index|default:0 }} of {{ page_obj.paginator.count }} invoices
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <label for="pageSize" class="form-label mb-0 small">Show:</label>
+            <select id="pageSize" class="form-select form-select-sm" style="width: auto;" onchange="changePageSize(this.value)">
+                <option value="10" {% if page_obj.paginator.per_page == 10 %}selected{% endif %}>10</option>
+                <option value="25" {% if page_obj.paginator.per_page == 25 %}selected{% endif %}>25</option>
+                <option value="50" {% if page_obj.paginator.per_page == 50 %}selected{% endif %}>50</option>
+                <option value="100" {% if page_obj.paginator.per_page == 100 %}selected{% endif %}>100</option>
+            </select>
+            <span class="small text-muted">per page</span>
+        </div>
     </div>
+
+    <!-- Invoice Table -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="invoiceTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="40">
+                                <input type="checkbox" class="form-check-input" id="selectAll" onchange="toggleSelectAll()">
+                            </th>
+                            <th>
+                                <a href="?sort=invoice_number&{% if request.GET.sort|slice:":1" == '-' %}order=asc{% else %}order=desc{% endif %}" class="text-decoration-none text-dark">
+                                    Invoice #
+                                    {% if request.GET.sort == 'invoice_number' or request.GET.sort|slice:":1" != '-' and request.GET.sort|slice:":1" %}
+                                        <i class="fas fa-sort-{{ 'up' if request.GET.sort == 'invoice_number' else 'down' if request.GET.sort == '-invoice_number' else 'up' }}"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>Patient</th>
+                            <th>Patient ID</th>
+                            <th>
+                                <a href="?sort=created_at&{% if request.GET.sort|slice:":1" == '-' %}order=asc{% else %}order=desc{% endif %}" class="text-decoration-none text-dark">
+                                    Date
+                                    {% if request.GET.sort == 'created_at' or request.GET.sort|slice:":1" != '-' and request.GET.sort|slice:":1" %}
+                                        <i class="fas fa-sort-{{ 'up' if request.GET.sort == 'created_at' else 'down' if request.GET.sort == '-created_at' else 'up' }}"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>Source</th>
+                            <th>
+                                <a href="?sort=status&{% if request.GET.sort|slice:":1" == '-' %}order=asc{% else %}order=desc{% endif %}" class="text-decoration-none text-dark">
+                                    Status
+                                    {% if request.GET.sort == 'status' or request.GET.sort|slice:":1" != '-' and request.GET.sort|slice:":1" %}
+                                        <i class="fas fa-sort-{{ 'up' if request.GET.sort == 'status' else 'down' if request.GET.sort == '-status' else 'up' }}"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th class="text-end">Total</th>
+                            <th class="text-end">Paid</th>
+                            <th class="text-end">Balance</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for invoice in page_obj %}
+                        <tr class="{% if invoice.status == 'overdue' %}table-danger{% elif invoice.status == 'paid' %}table-success{% elif invoice.status == 'pending' %}table-warning{% endif %}"
+                            data-invoice-id="{{ invoice.id }}">
+                            <td>
+                                <input type="checkbox" class="form-check-input invoice-select" value="{{ invoice.id }}" onchange="updateBulkActionButton()">
+                            </td>
+                            <td class="fw-bold">{{ invoice.invoice_number }}</td>
+                            <td>
+                                <a href="{% url 'patients:detail' invoice.patient.id %}" class="text-decoration-none">
+                                    {{ invoice.patient.get_full_name|truncatechars:30 }}
+                                </a>
+                            </td>
+                            <td><span class="badge bg-light text-dark">{{ invoice.patient.patient_id }}</span></td>
+                            <td>{{ invoice.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                <span class="badge bg-info text-dark">
+                                    {{ invoice.get_source_app_display|default:"N/A" }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge status-badge {{ invoice.status|payment_status_badge|cut:'<'|cut:'>'|cut:'span' }}">
+                                    {{ invoice.status|capfirst }}
+                                </span>
+                            </td>
+                            <td class="text-end fw-bold">{{ invoice.total_amount|currency }}</td>
+                            <td class="text-end">{{ invoice.amount_paid|currency }}</td>
+                            <td class="text-end {% if invoice.get_balance > 0 %}text-danger fw-bold{% else %}text-success{% endif %}">
+                                {{ invoice.get_balance|currency }}
+                            </td>
+                            <td class="text-center table-actions">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'billing:detail' invoice.id %}" class="btn btn-outline-primary" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if invoice.status != 'paid' and invoice.status != 'cancelled' and invoice.get_balance > 0 %}
+                                    <a href="{% url 'billing:payment' invoice.id %}" class="btn btn-outline-success" title="Record Payment">
+                                        <i class="fas fa-money-bill-wave"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% if invoice.status != 'paid' and invoice.status != 'cancelled' %}
+                                    <a href="{% url 'billing:edit' invoice.id %}" class="btn btn-outline-warning" title="Edit Invoice">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="11" class="text-center py-5">
+                                <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
+                                <p class="lead text-muted">No invoices found</p>
+                                <p class="text-muted">Try adjusting your search filters</p>
+                                <a href="{% url 'billing:create' %}" class="btn btn-primary">
+                                    <i class="fas fa-plus-circle me-1"></i> Create New Invoice
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
     {% if page_obj.has_other_pages %}
-    <nav>
+    <nav aria-label="Invoice pagination">
         <ul class="pagination justify-content-center">
             {% if page_obj.has_previous %}
-            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
             {% endif %}
-            <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
             {% if page_obj.has_next %}
-            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
             {% endif %}
         </ul>
     </nav>
     {% endif %}
+
+    <!-- Loading Indicator -->
+    <div class="text-center mt-3" id="loadingIndicator" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
 </div>
+
+<!-- Bulk Actions Modal -->
+<div class="modal fade" id="bulkActionsModal" tabindex="-1" aria-labelledby="bulkActionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkActionsModalLabel">
+                    <i class="fas fa-check-square me-2"></i>Bulk Actions
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Selected <span id="selectedCount">0</span> invoices.</p>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-primary" onclick="bulkUpdateStatus('pending')">
+                        <i class="fas fa-hourglass-start me-2"></i>Mark as Pending
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="bulkUpdateStatus('paid')">
+                        <i class="fas fa-check-circle me-2"></i>Mark as Paid
+                    </button>
+                    <button type="button" class="btn btn-info" onclick="bulkPrintInvoices()">
+                        <i class="fas fa-print me-2"></i>Print Selected
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="bulkExportCSV()">
+                        <i class="fas fa-file-csv me-2"></i>Export as CSV
+                    </button>
+                </div>
+                <div class="alert alert-warning mt-3 mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Caution:</strong> Bulk actions affect all selected invoices. Please verify before proceeding.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-select row on click (except on action buttons)
+    const tableRows = document.querySelectorAll('#invoiceTable tbody tr[data-invoice-id]');
+    tableRows.forEach(row => {
+        row.addEventListener('click', function(e) {
+            // Don't toggle if clicking on buttons, checkboxes, or links
+            if (e.target.closest('a') || e.target.closest('button') || e.target.closest('input')) {
+                return;
+            }
+            const checkbox = row.querySelector('.invoice-select');
+            checkbox.checked = !checkbox.checked;
+            updateBulkActionButton();
+            updateRowHighlight(row);
+        });
+
+        // Update row highlight when checkbox changes
+        const checkbox = row.querySelector('.invoice-select');
+        checkbox.addEventListener('change', function() {
+            updateRowHighlight(row);
+            updateBulkActionButton();
+        });
+    });
+
+    // Update bulk action button state
+    function updateBulkActionButton() {
+        const checkedCount = document.querySelectorAll('.invoice-select:checked').length;
+        const bulkBtn = document.getElementById('bulkActionsBtn');
+        const modalCount = document.getElementById('selectedCount');
+
+        if (checkedCount > 0) {
+            bulkBtn.disabled = false;
+            bulkBtn.innerHTML = `<i class="fas fa-check-square me-1"></i> Bulk Actions (${checkedCount})`;
+            if (modalCount) modalCount.textContent = checkedCount;
+        } else {
+            bulkBtn.disabled = true;
+            bulkBtn.innerHTML = `<i class="fas fa-check-square me-1"></i> Bulk Actions`;
+            if (modalCount) modalCount.textContent = 0;
+        }
+    }
+
+    // Toggle select all checkboxes
+    window.toggleSelectAll = function() {
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const rowCheckboxes = document.querySelectorAll('#invoiceTable tbody tr .invoice-select');
+        rowCheckboxes.forEach(cb => {
+            cb.checked = selectAllCheckbox.checked;
+            updateRowHighlight(cb.closest('tr'));
+        });
+        updateBulkActionButton();
+    };
+
+    // Highlight row based on checkbox state
+    function updateRowHighlight(row) {
+        const checkbox = row.querySelector('.invoice-select');
+        if (checkbox.checked) {
+            row.style.backgroundColor = 'rgba(13, 110, 253, 0.1)';
+        } else {
+            row.style.backgroundColor = '';
+        }
+    }
+
+    // Bulk update status (placeholder - requires backend implementation)
+    window.bulkUpdateStatus = function(newStatus) {
+        const selected = Array.from(document.querySelectorAll('.invoice-select:checked')).map(cb => cb.value);
+
+        if (selected.length === 0) {
+            alert('Please select at least one invoice.');
+            return;
+        }
+
+        alert(`Bulk status update to '${newStatus}' for ${selected.length} invoice(s) is not yet implemented.\n\nPlease update each invoice individually using the edit buttons.`);
+    };
+
+    // Bulk print
+    window.bulkPrintInvoices = function() {
+        const selected = Array.from(document.querySelectorAll('.invoice-select:checked')).map(cb => cb.value);
+        if (selected.length === 0) {
+            alert('Please select at least one invoice to print.');
+            return;
+        }
+        // Open each invoice in a new tab for printing
+        selected.forEach(id => {
+            window.open(`/billing/${id}/print/`, '_blank');
+        });
+    };
+
+    // Bulk export CSV
+    window.bulkExportCSV = function() {
+        const selected = Array.from(document.querySelectorAll('.invoice-select:checked')).map(cb => cb.value);
+        if (selected.length === 0) {
+            alert('Please select at least one invoice to export.');
+            return;
+        }
+        const ids = selected.join(',');
+        window.location.href = `{% url 'billing:export_report_csv' %}?invoice_ids=${ids}`;
+    };
+
+    // Change page size
+    window.changePageSize = function(size) {
+        const url = new URL(window.location);
+        url.searchParams.set('page_size', size);
+        url.searchParams.delete('page'); // Reset to first page
+        window.location.href = url.toString();
+    };
+
+    // Get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Show loading indicator on form submit
+    document.getElementById('searchForm').addEventListener('submit', function() {
+        document.getElementById('loadingIndicator').style.display = 'block';
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+A to select all visible checkboxes
+        if (e.ctrlKey && e.key === 'a') {
+            e.preventDefault();
+            const checkboxes = document.querySelectorAll('#invoiceTable tbody tr .invoice-select');
+            checkboxes.forEach(cb => {
+                cb.checked = true;
+                updateRowHighlight(cb.closest('tr'));
+            });
+            updateBulkActionButton();
+        }
+        // Escape to close modals
+        if (e.key === 'Escape') {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('bulkActionsModal'));
+            if (modal) modal.hide();
+        }
+    });
+});
+</script>
 {% endblock %}

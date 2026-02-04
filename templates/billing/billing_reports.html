@@ -1,106 +1,567 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
+{% load billing_tags %}
+
 {% block title %}Billing Reports - Hospital Management System{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+<style>
+    .report-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    .report-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    .report-card .card-body {
+        padding: 2rem;
+        text-align: center;
+    }
+    .report-card .stat-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+    }
+    .report-card .stat-label {
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6c757d;
+    }
+    .chart-card {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .chart-card .card-header {
+        background: linear-gradient(to right, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px 12px 0 0 !important;
+        padding: 1rem 1.5rem;
+    }
+    .table-card {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    .table-card .card-header {
+        background: linear-gradient(to right, #f8f9fa, #e9ecef);
+        border-bottom: 2px solid #dee2e6;
+        padding: 1rem 1.5rem;
+    }
+    .table-card .card-body {
+        padding: 0;
+    }
+    .table-card table {
+        margin-bottom: 0;
+    }
+    .export-buttons {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .dataTables_wrapper .dataTables_filter {
+        float: none !important;
+        text-align: left;
+        margin-bottom: 1rem;
+    }
+    .dataTables_wrapper .dataTables_length {
+        float: none !important;
+        text-align: right;
+        margin-bottom: 1rem;
+    }
+    @media (max-width: 768px) {
+        .dataTables_wrapper .dataTables_filter,
+        .dataTables_wrapper .dataTables_length {
+            text-align: center !important;
+        }
+        .export-buttons {
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container">
-    <h2 class="mb-4">Billing Reports</h2>
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">
+                <i class="fas fa-chart-line text-primary me-2"></i>Billing Reports
+            </h1>
+            <small class="text-muted">Financial overview and analytics</small>
+        </div>
+        <div class="export-buttons">
+            <a href="{% url 'billing:export_report_csv' %}" class="btn btn-outline-primary">
+                <i class="fas fa-file-csv me-1"></i> Export CSV
+            </a>
+            <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
+                <i class="fas fa-print me-1"></i> Print Report
+            </button>
+            <a href="{% url 'billing:reports' %}?refresh=1" class="btn btn-outline-info">
+                <i class="fas fa-sync me-1"></i> Refresh
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
     <div class="row mb-4">
         <div class="col-md-4">
-            <div class="card text-bg-success mb-3">
+            <div class="card report-card">
                 <div class="card-body">
-                    <h5 class="card-title">Outstanding Balances</h5>
-                    <p class="card-text display-6">{{ outstanding|currency }}</p>
+                    <i class="fas fa-hourglass-half fa-2x mb-2 text-warning"></i>
+                    <div class="stat-label">Outstanding Balances</div>
+                    <div class="stat-value text-warning">{{ outstanding|currency }}</div>
+                    <small class="text-muted">Awaiting payment</small>
                 </div>
             </div>
         </div>
-        <div class="col-md-8">
-            <div class="card mb-3">
+        <div class="col-md-4">
+            <div class="card report-card">
                 <div class="card-body">
-                    <h5 class="card-title">Revenue (Last 12 Months)</h5>
-                    <canvas id="revenueChart"></canvas>
+                    <i class="fas fa-calendar-check fa-2x mb-2 text-success"></i>
+                    <div class="stat-label">Total Revenue</div>
+                    <div class="stat-value text-success">{{ total_revenue_12m|currency }}</div>
+                    <small class="text-muted">Last 12 months</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card report-card">
+                <div class="card-body">
+                    <i class="fas fa-percentage fa-2x mb-2 text-info"></i>
+                    <div class="stat-label">Collection Rate</div>
+                    <div class="stat-value text-info">{{ collection_rate|floatformat:1 }}%</div>
+                    <small class="text-muted">Invoices collected</small>
                 </div>
             </div>
         </div>
     </div>
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card mb-3">
+
+    <!-- Revenue Chart -->
+    <div class="card chart-card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0">
+                <i class="fas fa-chart-line me-2"></i> Monthly Revenue Trend (Last 12 Months)
+            </h6>
+        </div>
+        <div class="card-body">
+            <canvas id="revenueChart" height="100"></canvas>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column: Data Tables -->
+        <div class="col-lg-8">
+            <!-- Invoice Status Counts -->
+            <div class="card table-card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i> Invoice Status Distribution
+                    </h6>
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title">Invoice Status Counts</h5>
-                    <table class="table table-bordered">
-                        <thead><tr><th>Status</th><th>Count</th></tr></thead>
-                        <tbody>
-                        {% for row in status_counts %}
-                            <tr><td>{{ row.status|capfirst }}</td><td>{{ row.count }}</td></tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="statusCountsTable">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Count</th>
+                                    <th>Percentage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in status_counts %}
+                                <tr>
+                                    <td>
+                                        <span class="badge {{ row.status|payment_status_badge|cut:'<'|cut:'>'|cut:'span' }}">
+                                            {{ row.status|capfirst }}
+                                        </span>
+                                    </td>
+                                    <td class="fw-bold">{{ row.count }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            {% widthratio row.count total_invoices 100 as percentage %}
+                                            <div class="progress-bar bg-{{ row.status|payment_status_badge|cut:'<'|cut:'>'|cut:'span' }}"
+                                                 style="width: {{ percentage }}%">
+                                                {{ percentage }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-active">
+                                <tr>
+                                    <th>Total</th>
+                                    <th>{{ total_invoices }}</th>
+                                    <th>100%</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
                 </div>
             </div>
-            <div class="card mb-3">
+
+            <!-- Revenue by Department -->
+            <div class="card table-card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-hospital me-2"></i> Revenue by Department
+                    </h6>
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title">Revenue by Department</h5>
-                    <table class="table table-bordered">
-                        <thead><tr><th>Department</th><th>Total</th></tr></thead>
-                        <tbody>
-                        {% for row in dept_revenue %}
-                            <tr><td>{{ row.service__category__name|default:'Uncategorized' }}</td><td>{{ row.total|currency }}</td></tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="deptRevenueTable">
+                            <thead>
+                                <tr>
+                                    <th>Department</th>
+                                    <th class="text-end">Total Revenue</th>
+                                    <th class="text-center">% of Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in dept_revenue %}
+                                <tr>
+                                    <td>{{ row.service__category__name|default:'Uncategorized' }}</td>
+                                    <td class="text-end amount-display">{{ row.total|currency }}</td>
+                                    <td class="text-center">
+                                        {% widthratio row.total total_revenue 100 as dept_percent %}
+                                        <span class="badge bg-info">{{ dept_percent|floatformat:1 }}%</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-active">
+                                <tr>
+                                    <th>Total</th>
+                                    <th class="text-end">{{ total_revenue|currency }}</th>
+                                    <th class="text-center">100%</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
                 </div>
             </div>
-            <div class="card mb-3">
+
+            <!-- Revenue by Service -->
+            <div class="card table-card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-vial me-2"></i> Top Services by Revenue
+                    </h6>
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title">Revenue by Service</h5>
-                    <table class="table table-bordered">
-                        <thead><tr><th>Service</th><th>Total</th></tr></thead>
-                        <tbody>
-                        {% for row in service_revenue %}
-                            <tr><td>{{ row.service__name|default:'Custom/Other' }}</td><td>{{ row.total|currency }}</td></tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="serviceRevenueTable">
+                            <thead>
+                                <tr>
+                                    <th>Service</th>
+                                    <th class="text-end">Total Revenue</th>
+                                    <th class="text-center">Invoices</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in service_revenue %}
+                                <tr>
+                                    <td>{{ row.service__name|default:'Custom/Other' }}</td>
+                                    <td class="text-end amount-display">{{ row.total|currency }}</td>
+                                    <td class="text-center">{{ row.invoice_count|default:0 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-            <div class="card mb-3">
+
+            <!-- Revenue by Provider -->
+            <div class="card table-card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-user-md me-2"></i> Revenue by Provider
+                    </h6>
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title">Revenue by Provider</h5>
-                    <table class="table table-bordered">
-                        <thead><tr><th>Provider</th><th>Total</th></tr></thead>
-                        <tbody>
-                        {% for row in provider_revenue %}
-                            <tr><td>{{ row.created_by__username|default:'Unknown' }}</td><td>{{ row.total|currency }}</td></tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="providerRevenueTable">
+                            <thead>
+                                <tr>
+                                    <th>Provider</th>
+                                    <th class="text-end">Total Revenue</th>
+                                    <th class="text-center">Invoices</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in provider_revenue %}
+                                <tr>
+                                    <td>{{ row.created_by__username|default:'Unknown' }}</td>
+                                    <td class="text-end amount-display">{{ row.total|currency }}</td>
+                                    <td class="text-center">{{ row.invoice_count|default:0 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-            <a href="{% url 'billing:export_report_csv' %}" class="btn btn-outline-primary"><i class="fas fa-file-csv me-1"></i> Export CSV</a>
+        </div>
+
+        <!-- Right Column: Additional Metrics -->
+        <div class="col-lg-4">
+            <!-- Quick Metrics Card -->
+            <div class="card table-card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i> Key Metrics
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Average Invoice Value</span>
+                            <strong class="amount-display">{{ avg_invoice_value|currency }}</strong>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Average Payment</span>
+                            <strong class="amount-display">{{ avg_payment|currency }}</strong>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Invoice Count (12m)</span>
+                            <strong>{{ total_invoices_12m|default:"0" }}</strong>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Payment Count</span>
+                            <strong>{{ payment_count|default:"0" }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Revenue Trend Mini Chart -->
+            <div class="card chart-card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-arrow-trend-up me-2"></i> Growth Trend
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="growthChart" height="150"></canvas>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card table-card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-clock me-2"></i> Recent Invoices
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for invoice in recent_invoices|slice:":5" %}
+                        <a href="{% url 'billing:detail' invoice.id %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ invoice.invoice_number }}</h6>
+                                <small>{{ invoice.created_at|date:"M d" }}</small>
+                            </div>
+                            <small class="text-muted">{{ invoice.patient.get_full_name|truncatechars:30 }}</small>
+                            <div class="mt-1">
+                                <span class="badge {{ invoice.status|payment_status_badge|cut:'<'|cut:'>'|cut:'span' }}">
+                                    {{ invoice.total_amount|currency }}
+                                </span>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Card -->
+            <div class="card table-card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-cog me-2"></i> Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'billing:create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i> Create Invoice
+                        </a>
+                        <a href="{% url 'billing:reports' %}?format=pdf" class="btn btn-outline-danger">
+                            <i class="fas fa-file-pdf me-2"></i> Export as PDF
+                        </a>
+                        <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#dateRangeModal">
+                            <i class="fas fa-calendar me-2"></i> Custom Date Range
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Date Range Modal -->
+<div class="modal fade" id="dateRangeModal" tabindex="-1" aria-labelledby="dateRangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="dateRangeModalLabel">Select Date Range</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="get" action="{% url 'billing:reports' %}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="start_date" class="form-label">Start Date</label>
+                        <input type="date" name="start_date" id="start_date" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="end_date" class="form-label">End Date</label>
+                        <input type="date" name="end_date" id="end_date" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Generate Report</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 {% endblock %}
+
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
 <script>
-    const ctx = document.getElementById('revenueChart').getContext('2d');
-    const revenueChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: {{ months|safe }},
-            datasets: [{
-                label: 'Revenue',
-                data: {{ revenue_data|safe }},
-                borderColor: 'rgba(54, 162, 235, 1)',
-                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                fill: true,
-                tension: 0.3
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { display: false } }
+    document.addEventListener('DOMContentLoaded', function() {
+        // Revenue Chart
+        const ctx = document.getElementById('revenueChart').getContext('2d');
+        const revenueChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: {{ months|safe }},
+                datasets: [{
+                    label: 'Revenue',
+                    data: {{ revenue_data|safe }},
+                    borderColor: 'rgba(102, 126, 234, 1)',
+                    backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                return 'Revenue: ' + context.parsed.y.toLocaleString('en-NG', {
+                                    style: 'currency',
+                                    currency: 'NGN'
+                                });
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString('en-NG', {
+                                    style: 'currency',
+                                    currency: 'NGN',
+                                    maximumFractionDigits: 0
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Growth Rate Chart (Bar)
+        const growthCtx = document.getElementById('growthChart').getContext('2d');
+        const growthChart = new Chart(growthCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ months|safe }},
+                datasets: [{
+                    label: 'Monthly Revenue',
+                    data: {{ revenue_data|safe }},
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Initialize DataTables
+        if (typeof $ !== 'undefined') {
+            $('#statusCountsTable').DataTable({
+                Searching: false,
+                paging: false,
+                info: false,
+                order: [[1, 'desc']]
+            });
+            $('#deptRevenueTable').DataTable({
+                Searching: false,
+                paging: false,
+                info: false,
+                order: [[1, 'desc']]
+            });
+            $('#serviceRevenueTable').DataTable({
+                Searching: false,
+                paging: false,
+                info: false,
+                order: [[1, 'desc']]
+            });
+            $('#providerRevenueTable').DataTable({
+                Searching: false,
+                paging: false,
+                info: false,
+                order: [[1, 'desc']]
+            });
         }
     });
 </script>
