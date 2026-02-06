@@ -210,7 +210,7 @@
                                     </td>
                                     <td>
                                         <a href="{% url 'inpatient:admission_detail' admission.id %}" class="btn btn-info btn-sm">View</a>
-                                        {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant,receptionist' %}
+{% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant,receptionist,health_record_officer' %}
                                             {% if admission.get_total_cost > admission.amount_paid %}
                                                 <a href="{% url 'billing:create_invoice_for_admission' admission.id %}" class="btn btn-success btn-sm">Pay</a>
                                             {% endif %}
@@ -316,7 +316,7 @@
                 {% if user.is_superuser or user.profile and user.profile.role in 'admin,receptionist,health_record_officer' %}
                 <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary btn-block mb-2">Edit Patient</a>
                 {% endif %}
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant,receptionist' %}
+                {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant,receptionist,health_record_officer' %}
                 <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-success btn-block mb-2">Wallet Dashboard</a>
                 {% endif %}
             </div>

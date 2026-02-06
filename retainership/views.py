@@ -48,7 +48,10 @@ from django.db.models import Sum
 @login_required
 def select_patient_for_retainership(request):
     search_form = PatientSearchForm(request.GET)
-    patients = Patient.objects.all().order_by('first_name')
+    # Only show patients who already have Retainership registration
+    patients = Patient.objects.filter(
+        retainership_info__isnull=False
+    ).select_related('retainership_info').order_by('first_name')
 
     if search_form.is_valid():
         search_query = search_form.cleaned_data.get('search')
@@ -57,11 +60,14 @@ def select_patient_for_retainership(request):
                 Q(first_name__icontains=search_query) |
                 Q(last_name__icontains=search_query) |
                 Q(patient_id__icontains=search_query) |
-                Q(phone_number__icontains=search_query)
+                Q(phone_number__icontains=search_query) |
+                Q(retainership_info__retainership_reg_number__icontains=search_query)
             )
 
-    # Filter out patients who already have an Retainership record
-    patients = patients.exclude(retainership_info__isnull=False)
+    # Add wallet info to each patient
+    for patient in patients:
+        membership = patient.wallet_memberships.filter(wallet__wallet_type='retainership').first()
+        patient.has_retainership_wallet = membership is not None
 
     paginator = Paginator(patients, 10)
     page_number = request.GET.get('page')
@@ -70,7 +76,7 @@ def select_patient_for_retainership(request):
     context = {
         'search_form': search_form,
         'page_obj': page_obj,
-        'title': 'Select Patient for Retainership Registration'
+        'title': 'Select Retainership Patient'
     }
     return render(request, 'retainership/select_patient_for_retainership.html', context)
 

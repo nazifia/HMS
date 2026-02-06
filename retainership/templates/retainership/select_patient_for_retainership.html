@@ -18,7 +18,7 @@
         <h6 class="m-0 font-weight-bold text-primary">{{ title }}</h6>
         <form class="d-none d-sm-inline-block form-inline mr-auto my-2 my-md-0 mw-100 navbar-search" method="GET">
             <div class="input-group">
-                <input type="text" class="form-control bg-light border-0 small" placeholder="Search patient by name, ID, or phone..." aria-label="Search"
+                       <input type="text" class="form-control bg-light border-0 small" placeholder="Search by name, ID, phone, or reg #..." aria-label="Search"
                        aria-describedby="basic-addon2" name="search" value="{{ search_form.search.value|default_if_none:'' }}">
                 <div class="input-group-append">
                     <button class="btn btn-primary" type="submit">
@@ -30,7 +30,7 @@
     </div>
     <div class="card-body">
         <div class="alert alert-info mb-3">
-            <strong>Note:</strong> Only <span class="badge bg-secondary">Regular</span> patients are listed here. Retainership patients are managed separately.
+            <strong>Note:</strong> Only <span class="badge bg-success">Retainership</span> patients are listed here.
         </div>
         <div class="table-responsive">
             <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
@@ -38,8 +38,9 @@
                     <tr>
                         <th>Patient Name</th>
                         <th>Patient ID</th>
+                        <th>Retainership Reg #</th>
+                        <th>Status</th>
                         <th>Phone Number</th>
-                        <th>Email</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -48,15 +49,27 @@
                     <tr>
                         <td>{{ patient.get_full_name }}</td>
                         <td>{{ patient.patient_id }}</td>
-                        <td>{{ patient.phone_number }}</td>
-                        <td>{{ patient.email|default:"N/A" }}</td>
+                        <td><span class="badge bg-primary">{{ patient.retainership_info.retainership_reg_number }}</span></td>
                         <td>
-                            <a href="{% url 'retainership:register_patient_for_retainership' patient.id %}" class="btn btn-sm btn-success">Register for Retainership</a>
+                            {% if patient.retainership_info.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ patient.phone_number|default:"N/A" }}</td>
+                        <td>
+                            <a href="{% url 'patients:detail' patient.id %}" class="btn btn-sm btn-info">View</a>
+                            {% if patient.has_retainership_wallet %}
+                                <a href="{% url 'retainership:manage_wallet' patient.id %}" class="btn btn-sm btn-primary">Manage Wallet</a>
+                            {% else %}
+                                <a href="{% url 'retainership:create_wallet' patient.id %}" class="btn btn-sm btn-success">Create Wallet</a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5">No patients found who are not already registered for Retainership.</td>
+                        <td colspan="6" class="text-center">No retainership patients found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

@@ -140,6 +140,8 @@ ROLE_PERMISSIONS = {
             'vitals.view', 'vitals.create', 'vitals.edit',
             'consultations.view', 'consultations.create',
             'appointments.view', 'appointments.create', 'appointments.edit',
+            'billing.view', 'billing.create', 'billing.edit', 'billing.process_payment',
+            'wallet.view', 'wallet.edit', 'wallet.transactions',
             'reports.view',
         ]
     },

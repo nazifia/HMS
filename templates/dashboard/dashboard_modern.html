@@ -385,7 +385,7 @@
                                     </div>
                                     {% endif %}
                                     
-                                    {% if user.is_superuser or user.profile.role in 'admin,receptionist,doctor' %}
+                                    {% if user.is_superuser or user.profile.role in 'admin,receptionist,health_record_officer,doctor' %}
                                     <div class="col-md-3 mb-3">
                                         <a href="{% url 'appointments:create' %}" class="btn btn-info btn-block">
                                             <i class="fas fa-calendar-plus me-2"></i>Book Appointment
