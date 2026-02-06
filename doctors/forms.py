@@ -22,12 +22,11 @@ class DoctorUserCreationForm(UserCreationForm):
     """Form for creating a new user account for a doctor"""
     first_name = forms.CharField(max_length=30, required=True)
     last_name = forms.CharField(max_length=30, required=True)
-    email = forms.EmailField(required=True)
     phone_number = forms.CharField(max_length=15, required=True, help_text="Required for login. Use digits only.")
-    
+
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'email', 'password1', 'password2', 'phone_number']
+        fields = ['username', 'first_name', 'last_name', 'password1', 'password2', 'phone_number']
     
     def clean_phone_number(self):
         """Validate that the phone number contains only digits"""
@@ -48,8 +47,7 @@ class DoctorUserCreationForm(UserCreationForm):
         user = super().save(commit=False)
         user.first_name = self.cleaned_data['first_name']
         user.last_name = self.cleaned_data['last_name']
-        user.email = self.cleaned_data['email']
-        
+
         if commit:
             user.save()
             # Add the 'doctor' role to the user
