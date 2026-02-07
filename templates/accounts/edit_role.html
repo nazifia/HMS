@@ -142,6 +142,24 @@
                                 </div>
                             </div>
 
+                            <!-- Permission Search -->
+                            <div class="input-group mb-3">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text"
+                                       id="permission-search"
+                                       class="form-control"
+                                       placeholder="Search permissions by name or codename..."
+                                       autocomplete="off">
+                                <button type="button"
+                                        class="btn btn-outline-secondary"
+                                        onclick="clearSearch()"
+                                        title="Clear search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+
                             <div id="permissions-container">
                                 {% regroup form.permissions.field.queryset by content_type.app_label as app_groups %}
                                 {% for app_group in app_groups %}
@@ -242,10 +260,79 @@ function deselectAllPermissions() {
 function toggleAppPermissions(appName) {
     const checkboxes = document.querySelectorAll('.app-' + appName);
     const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-    
+
     checkboxes.forEach(function(checkbox) {
         checkbox.checked = !allChecked;
     });
+}
+
+// Permission search functionality
+function filterPermissions() {
+    const searchTerm = document.getElementById('permission-search').value.toLowerCase().trim();
+    const permissionGroups = document.querySelectorAll('.permission-group');
+    let totalVisible = 0;
+
+    permissionGroups.forEach(function(group) {
+        const groupName = group.querySelector('.permission-group-header').textContent.toLowerCase();
+        const permissionItems = group.querySelectorAll('.permission-list .form-check');
+        let groupHasVisible = false;
+
+        // If search is empty, show all
+        if (searchTerm === '') {
+            permissionItems.forEach(function(item) {
+                item.style.display = '';
+            });
+            group.style.display = '';
+            groupHasVisible = true;
+        } else {
+            // Check if group name matches
+            if (groupName.includes(searchTerm)) {
+                // Show all items in this group
+                permissionItems.forEach(function(item) {
+                    item.style.display = '';
+                });
+                group.style.display = '';
+                groupHasVisible = true;
+            } else {
+                // Filter individual permissions
+                permissionItems.forEach(function(item) {
+                    const permissionText = item.textContent.toLowerCase();
+                    if (permissionText.includes(searchTerm)) {
+                        item.style.display = '';
+                        groupHasVisible = true;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                group.style.display = groupHasVisible ? '' : 'none';
+            }
+        }
+
+        if (groupHasVisible) {
+            totalVisible++;
+        }
+    });
+
+    // Show/hide "no results" message
+    const noResultsDiv = document.getElementById('no-permissions-message');
+    if (totalVisible === 0 && searchTerm !== '') {
+        if (!noResultsDiv) {
+            const container = document.getElementById('permissions-container');
+            const message = document.createElement('div');
+            message.id = 'no-permissions-message';
+            message.className = 'alert alert-info mt-3';
+            message.innerHTML = '<i class="fas fa-search me-2"></i>No permissions found matching "' + searchTerm + '"';
+            container.parentNode.insertBefore(message, container);
+        }
+    } else if (noResultsDiv) {
+        noResultsDiv.remove();
+    }
+}
+
+// Clear search
+function clearSearch() {
+    document.getElementById('permission-search').value = '';
+    filterPermissions();
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -259,6 +346,12 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
     });
+
+    // Add real-time search
+    const searchInput = document.getElementById('permission-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', filterPermissions);
+    }
 });
 </script>
 {% endblock %}
