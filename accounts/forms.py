@@ -204,11 +204,6 @@ class UserProfileForm(forms.ModelForm):
         max_length=150,
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
-    email = forms.EmailField(
-        label="Email Address",
-        required=True,
-        widget=forms.EmailInput(attrs={'class': 'form-control'})
-    )
 
     # Fields from CustomUserProfile model
     contact_phone_number = forms.CharField(
@@ -269,7 +264,7 @@ class UserProfileForm(forms.ModelForm):
         model = User # The primary model this form is based on (for ModelForm features)
         # Exclude username from ModelForm fields since it's displayed as read-only
         # Phone number is preserved automatically in the save() method
-        fields = ['first_name', 'last_name', 'email']
+        fields = ['first_name', 'last_name']
 
     def __init__(self, *args, **kwargs):
         # The 'instance' passed to this form should be the CustomUser instance.
@@ -293,7 +288,6 @@ class UserProfileForm(forms.ModelForm):
             initial_data['username'] = getattr(user_instance, 'username', '')
             initial_data['first_name'] = getattr(user_instance, 'first_name', '')
             initial_data['last_name'] = getattr(user_instance, 'last_name', '')
-            initial_data['email'] = getattr(user_instance, 'email', '')
             # initial_data['phone_number'] = getattr(user_instance, 'phone_number', '') # If editable
 
             # Admin/Staff fields
@@ -354,14 +348,6 @@ class UserProfileForm(forms.ModelForm):
             username = self._original_username
         return username if username else ''
 
-    def clean_email(self):
-        email = self.cleaned_data.get('email')
-        user_instance = self.instance
-        if user_instance and email and user_instance.email != email:
-            if CustomUser.objects.filter(email=email).exclude(pk=user_instance.pk).exists():
-                raise ValidationError("This email address is already in use.")
-        return email
-    
     def clean_contact_phone_number(self):
         phone = self.cleaned_data.get('contact_phone_number')
         if phone:
@@ -397,7 +383,6 @@ class UserProfileForm(forms.ModelForm):
         user_instance.username = self.cleaned_data.get('username', user_instance.username)
         user_instance.first_name = self.cleaned_data.get('first_name', user_instance.first_name)
         user_instance.last_name = self.cleaned_data.get('last_name', user_instance.last_name)
-        user_instance.email = self.cleaned_data.get('email', user_instance.email)
 
         # CRITICAL: Set the phone_number from database - never allow it to be NULL
         if phone_number_from_db:
@@ -410,7 +395,7 @@ class UserProfileForm(forms.ModelForm):
         if commit:
             # Use update_fields to explicitly save only the fields we're updating
             # This prevents any accidental NULL saves on other fields
-            update_fields = ['username', 'first_name', 'last_name', 'email', 'phone_number', 'is_active']
+            update_fields = ['username', 'first_name', 'last_name', 'phone_number', 'is_active']
             user_instance.save(update_fields=update_fields)
 
             # CRITICAL: Reload the user from database to get a fresh instance
