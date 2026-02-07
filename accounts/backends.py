@@ -5,7 +5,7 @@ MINIMAL VERSION - No logging to prevent Windows OSError.
 
 from django.contrib.auth.backends import BaseBackend, ModelBackend
 from django.contrib.auth import get_user_model
-from accounts.models import CustomUser
+from accounts.models import CustomUser, Role
 
 User = get_user_model()
 
@@ -95,14 +95,15 @@ class RolePermissionBackend(ModelBackend):
     def get_all_permissions(self, user_obj, obj=None):
         if not user_obj.is_active or user_obj.is_anonymous or obj is not None:
             return set()
-        
+
         # Use the standard Django _perm_cache if possible, or our own
         if not hasattr(user_obj, '_role_perm_cache'):
             perms = set()
             # Add permissions from roles
             if hasattr(user_obj, 'roles'):
-                # Use .all() and select_related for efficiency
-                for role in user_obj.roles.all().prefetch_related('permissions', 'permissions__content_type'):
+                # Use select_related for efficiency
+                for role in user_obj.roles.all().prefetch_related('permissions'):
+                    # role.get_all_permissions() returns a set of Permission objects
                     for permission in role.get_all_permissions():
                         perms.add(f"{permission.content_type.app_label}.{permission.codename}")
             user_obj._role_perm_cache = perms
@@ -112,4 +113,12 @@ class RolePermissionBackend(ModelBackend):
         if not user_obj.is_active:
             return False
         return perm in self.get_all_permissions(user_obj, obj)
+
+    def get_user(self, user_id):
+        """Override to ensure cache is per-request/session friendly."""
+        try:
+            user = CustomUser.objects.get(pk=user_id)
+            return user
+        except CustomUser.DoesNotExist:
+            return None
 

@@ -16,105 +16,106 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Debug flag for verbose logging (set to True for debugging)
+DEBUG_PERMISSIONS = False
+
 # Permission mapping from custom names to Django permission codenames
 # This maps the permission strings used in ROLE_PERMISSIONS to actual Django Permission codenames
+# Values are now FULL permission strings in the format 'app_label.codename'
 PERMISSION_MAPPING = {
-    # Patients
-    'patients.view': 'view_patient',
-    'patients.create': 'add_patient',
-    'patients.edit': 'change_patient',
-    'patients.delete': 'delete_patient',
-    'patients.toggle_status': 'toggle_patient_status',
-    'patients.wallet_manage': 'wallet_manage',
-    'patients.nhia_manage': 'nhia_manage',
+    # Patients (app: patients)
+    'patients.view': 'patients.view_patient',
+    'patients.create': 'patients.add_patient',
+    'patients.edit': 'patients.change_patient',
+    'patients.delete': 'patients.delete_patient',
+    'patients.toggle_status': 'patients.toggle_patientstatus',  # custom permission
+    'patients.wallet_manage': 'patients.manage_wallet',  # custom permission
+    'patients.nhia_manage': 'patients.manage_nhiastatus',  # custom permission
 
-    # Medical Records
-    'medical.view': 'view_medicalrecord',
-    'medical.create': 'add_medicalrecord',
-    'medical.edit': 'change_medicalrecord',
-    'medical.delete': 'delete_medicalrecord',
-    'vitals.view': 'view_vital',
-    'vitals.create': 'add_vital',
-    'vitals.edit': 'change_vital',
-    'vitals.delete': 'delete_vital',
+    # Medical Records (app: patients or consultations? Assuming patients for now)
+    'medical.view': 'patients.view_medicalrecord',
+    'medical.create': 'patients.add_medicalrecord',
+    'medical.edit': 'patients.change_medicalrecord',
+    'medical.delete': 'patients.delete_medicalrecord',
+    'vitals.view': 'patients.view_vital',
+    'vitals.create': 'patients.add_vital',
+    'vitals.edit': 'patients.change_vital',
+    'vitals.delete': 'patients.delete_vital',
 
-    # Consultations
-    'consultations.view': 'view_consultation',
-    'consultations.create': 'add_consultation',
-    'consultations.edit': 'change_consultation',
-    'referrals.view': 'view_referral',
-    'referrals.create': 'add_referral',
-    'referrals.edit': 'change_referral',
+    # Consultations (app: consultations)
+    'consultations.view': 'consultations.view_consultation',
+    'consultations.create': 'consultations.add_consultation',
+    'consultations.edit': 'consultations.change_consultation',
+    'referrals.view': 'consultations.view_referral',
+    'referrals.create': 'consultations.add_referral',
+    'referrals.edit': 'consultations.change_referral',
 
-    # Pharmacy
-    'pharmacy.view': 'view_pharmacy',
-    'pharmacy.create': 'add_pharmacy',
-    'pharmacy.edit': 'change_pharmacy',
-    'pharmacy.dispense': 'dispense_medication',
-    'prescriptions.view': 'view_prescription',
-    'prescriptions.create': 'add_prescription',
-    'prescriptions.edit': 'change_prescription',
+    # Pharmacy (app: pharmacy)
+    'pharmacy.view': 'pharmacy.view_pharmacy',
+    'pharmacy.create': 'pharmacy.add_pharmacy',
+    'pharmacy.edit': 'pharmacy.change_pharmacy',
+    'pharmacy.dispense': 'pharmacy.dispense_medication',  # custom permission
+    'prescriptions.view': 'pharmacy.view_prescription',
+    'prescriptions.create': 'pharmacy.add_prescription',
+    'prescriptions.edit': 'pharmacy.change_prescription',
 
-    # Laboratory
-    'lab.view': 'view_labtest',
-    'lab.create': 'add_labtest',
-    'lab.edit': 'change_labtest',
-    'lab.results': 'enter_labresults',
+    # Laboratory (app: laboratory)
+    'lab.view': 'laboratory.view_labtest',
+    'lab.create': 'laboratory.add_labtest',
+    'lab.edit': 'laboratory.change_labtest',
+    'lab.results': 'laboratory.enter_labresults',  # custom permission
 
-    # Billing
-    'billing.view': 'view_invoice',
-    'billing.create': 'add_invoice',
-    'billing.edit': 'change_invoice',
-    'billing.process_payment': 'process_payment',
-    'wallet.view': 'view_wallet',
-    'wallet.create': 'add_wallet',
-    'wallet.edit': 'change_wallet',
-    'wallet.transactions': 'view_wallettransaction',
-    'wallet.manage': 'manage_wallet',
+    # Billing (app: billing)
+    'billing.view': 'billing.view_invoice',
+    'billing.create': 'billing.add_invoice',
+    'billing.edit': 'billing.change_invoice',
+    'billing.process_payment': 'billing.process_payment',  # custom permission
+    'wallet.view': 'billing.view_wallet',
+    'wallet.create': 'billing.add_wallet',
+    'wallet.edit': 'billing.change_wallet',
+    'wallet.transactions': 'billing.view_wallettransaction',
+    'wallet.manage': 'billing.manage_wallet',  # custom permission
 
-    # Appointments
-    'appointments.view': 'view_appointment',
-    'appointments.create': 'add_appointment',
-    'appointments.edit': 'change_appointment',
+    # Appointments (app: appointments)
+    'appointments.view': 'appointments.view_appointment',
+    'appointments.create': 'appointments.add_appointment',
+    'appointments.edit': 'appointments.change_appointment',
 
-    # Inpatient
-    'inpatient.view': 'view_admission',
-    'inpatient.create': 'add_admission',
-    'inpatient.edit': 'change_admission',
-    'inpatient.discharge': 'discharge_patient',
+    # Inpatient (app: inpatient)
+    'inpatient.view': 'inpatient.view_admission',
+    'inpatient.create': 'inpatient.add_admission',
+    'inpatient.edit': 'inpatient.change_admission',
+    'inpatient.discharge': 'inpatient.discharge_patient',  # custom permission
 
-    # User Management
-    'users.view': 'view_customuser',
-    'users.create': 'add_customuser',
-    'users.edit': 'change_customuser',
-    'users.delete': 'delete_customuser',
-    'roles.view': 'view_role',
-    'roles.create': 'add_role',
-    'roles.edit': 'change_role',
+    # User Management (app: accounts)
+    'users.view': 'accounts.view_customuser',
+    'users.create': 'accounts.add_customuser',
+    'users.edit': 'accounts.change_customuser',
+    'users.delete': 'accounts.delete_customuser',
+    'roles.view': 'accounts.view_role',
+    'roles.create': 'accounts.add_role',
+    'roles.edit': 'accounts.change_role',
 
-    # Reports
-    'reports.view': 'view_report',
-    'reports.generate': 'generate_report',
+    # Reports (app: ? Could be core or accounts)
+    'reports.view': 'core.view_report',  # Assuming report model in core
+    'reports.generate': 'core.generate_report',  # custom permission
 }
 
 def get_django_permission(custom_permission):
     """
-    Convert a custom permission string to Django permission codename.
+    Convert a custom permission string to full Django permission string.
     Returns 'app_label.codename' format.
+
+    Now uses complete permission strings from PERMISSION_MAPPING.
     """
+    # Return the full permission string directly from mapping
     if custom_permission in PERMISSION_MAPPING:
-        parts = custom_permission.split('.')
-        if len(parts) == 2:
-            app_label = parts[0]
-            codename = PERMISSION_MAPPING.get(custom_permission)
-            if codename:
-                return f'{app_label}.{codename}'
-    # If not found in mapping, try direct conversion
-    parts = custom_permission.split('.')
-    if len(parts) == 2:
-        app_label, action = parts
-        if action in ['view', 'add', 'change', 'delete']:
-            pass
+        return PERMISSION_MAPPING[custom_permission]
+
+    # If not in mapping, log a warning and return as-is
+    if DEBUG_PERMISSIONS:
+        logger.warning(f"Permission '{custom_permission}' not found in PERMISSION_MAPPING")
+
     return custom_permission
 
 # Define role hierarchies and permissions
@@ -327,9 +328,13 @@ def user_has_permission(user, permission):
     """Check if user has specific permission.
 
     Priority:
-    1. Django's built-in permission system (user.has_perm)
-    2. Role model permissions via RolePermissionBackend
-    3. Custom ROLE_PERMISSIONS mapping (for backward compatibility)
+    1. Superuser check
+    2. Django's built-in permission system (user.has_perm) which includes RolePermissionBackend
+    3. Custom ROLE_PERMISSIONS mapping (for backward compatibility with custom permissions)
+
+    Args:
+        user: The user to check
+        permission: Permission string (e.g., 'patients.view', 'roles.edit')
     """
     if not user.is_authenticated:
         return False
@@ -338,20 +343,27 @@ def user_has_permission(user, permission):
     if user.is_superuser:
         return True
 
-    # First, try standard Django permission check (includes RolePermissionBackend)
-    # This is the primary method - Role model should be source of truth
+    # Check via Django permission system (includes RolePermissionBackend)
+    # For backward compatibility, accept both custom permission strings and full Django strings
     django_perm = get_django_permission(permission)
     if user.has_perm(django_perm):
+        if DEBUG_PERMISSIONS:
+            logger.info(f"Permission GRANTED: {permission} -> {django_perm} for user {user}")
         return True
 
-    # Fallback: check if custom permission is in user's role permissions
-    # This maintains backward compatibility with ROLE_PERMISSIONS dict
-    user_roles = get_user_roles(user)
-    for role_name in user_roles:
-        if role_name in ROLE_PERMISSIONS:
-            if permission in ROLE_PERMISSIONS[role_name]['permissions']:
-                return True
+    # If permission is not in mapping, also try direct custom string for backward compatibility
+    # This checks against the ROLE_PERMISSIONS dict (custom permission strings)
+    if permission != django_perm:
+        user_roles = get_user_roles(user)
+        for role_name in user_roles:
+            if role_name in ROLE_PERMISSIONS:
+                if permission in ROLE_PERMISSIONS[role_name]['permissions']:
+                    if DEBUG_PERMISSIONS:
+                        logger.info(f"Permission GRANTED via ROLE_PERMISSIONS: {permission} for user {user}")
+                    return True
 
+    if DEBUG_PERMISSIONS:
+        logger.info(f"Permission DENIED: {permission} for user {user}")
     return False
 
 
@@ -546,6 +558,7 @@ def get_user_accessible_modules(user):
     for role_name in user_roles:
         if role_name in ROLE_PERMISSIONS:
             for permission in ROLE_PERMISSIONS[role_name]['permissions']:
+                # Extract module from custom permission string (e.g., 'patients.view' -> 'patients')
                 module = permission.split('.')[0]
                 if module not in accessible_modules:
                     accessible_modules.append(module)

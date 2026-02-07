@@ -38,10 +38,21 @@ class Role(models.Model):
 
     def get_all_permissions(self):
         """Get all permissions including those from parent roles"""
-        permissions = set(self.permissions.all())
+        # Use prefetched data if available
+        if hasattr(self, '_prefetched_objects_cache') and 'permissions' in self._prefetched_objects_cache:
+            permissions = set(self._prefetched_objects_cache['permissions'])
+        else:
+            permissions = set(self.permissions.all())
+
+        # Include parent role permissions
         current = self.parent
         while current:
-            permissions.update(current.permissions.all())
+            # Try to use prefetched parent permissions
+            if hasattr(current, '_prefetched_objects_cache') and 'permissions' in current._prefetched_objects_cache:
+                parent_perms = set(current._prefetched_objects_cache['permissions'])
+            else:
+                parent_perms = set(current.permissions.all())
+            permissions.update(parent_perms)
             current = current.parent
         return permissions
 
