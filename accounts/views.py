@@ -2003,9 +2003,10 @@ def superuser_bulk_operations(request):
     })
 
 
-@superuser_required
+@login_required
+@permission_required('users.view')
 def superuser_user_permissions(request):
-    """Manage user permissions"""
+    """Manage user permissions - accessible to users with users.view permission"""
     users = User.objects.select_related('profile').order_by('username')
     permissions = Permission.objects.select_related('content_type').order_by('content_type__model', 'name')
     
@@ -2017,9 +2018,10 @@ def superuser_user_permissions(request):
     })
 
 
-@superuser_required
+@login_required
+@permission_required('users.edit')
 def superuser_manage_user_permissions(request, user_id):
-    """Manage permissions for a specific user"""
+    """Manage permissions for a specific user - accessible to users with users.edit permission"""
     from core.permissions import APP_PERMISSIONS
 
     user = get_object_or_404(User, id=user_id)
