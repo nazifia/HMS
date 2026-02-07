@@ -377,7 +377,7 @@
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    {% if user.is_superuser or user.profile.role in 'admin,receptionist,health_record_officer' %}
+                                    {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer" %}
                                     <div class="col-md-3 mb-3">
                                         <a href="{% url 'patients:register' %}" class="btn btn-primary btn-block">
                                             <i class="fas fa-user-plus me-2"></i>Register Patient
@@ -385,7 +385,7 @@
                                     </div>
                                     {% endif %}
                                     
-                                    {% if user.is_superuser or user.profile.role in 'admin,receptionist,health_record_officer,doctor' %}
+                                    {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer,doctor" %}
                                     <div class="col-md-3 mb-3">
                                         <a href="{% url 'appointments:create' %}" class="btn btn-info btn-block">
                                             <i class="fas fa-calendar-plus me-2"></i>Book Appointment
@@ -393,7 +393,7 @@
                                     </div>
                                     {% endif %}
                                     
-                                    {% if user.is_superuser or user.profile.role in 'admin,doctor,nurse' %}
+                                    {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse" %}
                                     <div class="col-md-3 mb-3">
                                         <a href="{% url 'inpatient:create_admission' %}" class="btn btn-warning btn-block">
                                             <i class="fas fa-bed me-2"></i>Admit Patient
@@ -401,7 +401,7 @@
                                     </div>
                                     {% endif %}
                                     
-                                    {% if user.is_superuser or user.profile.role in 'admin,accountant' %}
+                                    {% if user.is_superuser or user|has_any_role:"admin,accountant" %}
                                     <div class="col-md-3 mb-3">
                                         <a href="{% url 'billing:create' %}" class="btn btn-success btn-block">
                                             <i class="fas fa-file-invoice me-2"></i>Create Invoice

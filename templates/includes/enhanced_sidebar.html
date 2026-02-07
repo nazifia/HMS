@@ -180,7 +180,7 @@
                 {% endif %}
 
                 <!-- Patient Care -->
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse,receptionist,health_record_officer' %}
+                {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse,receptionist,health_record_officer" %}
                 <li class="nav-item">
                     <a class="nav-link nav-link-sidebar {% if '/patients/' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#patientMenu">
                         <i class="fas fa-user-injured sidebar-icon"></i>
@@ -195,7 +195,7 @@
                                     <span class="sidebar-text">All Patients</span>
                                 </a>
                             </li>
-                            {% if user.is_superuser or user.profile and user.profile.role in 'admin,receptionist,health_record_officer' %}
+                            {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer" %}
                             <li class="nav-item">
                                 <a href="{% url 'patients:register' %}" class="nav-link nav-link-submenu {% if request.path == '/patients/register/' %}active{% endif %}">
                                     <i class="fas fa-user-plus sidebar-icon-sub"></i>
@@ -293,7 +293,7 @@
                 {% endif %}
 
                 <!-- Laboratory -->
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,lab_technician,doctor' %}
+                {% if user.is_superuser or user|has_any_role:"admin,lab_technician,doctor" %}
                 <li class="nav-item">
                     <a class="nav-link nav-link-sidebar {% if '/laboratory/' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#labMenu">
                         <i class="fas fa-flask sidebar-icon"></i>
@@ -321,7 +321,7 @@
                 {% endif %}
 
                 <!-- Theatre -->
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse,theatre_staff' %}
+                {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse,theatre_staff" %}
                 <li class="nav-item">
                     <a class="nav-link nav-link-sidebar {% if '/theatre/' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#theatreMenu">
                         <i class="fas fa-procedures sidebar-icon"></i>
@@ -426,7 +426,7 @@
                 </li>
 
                 <!-- Billing -->
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant,receptionist,health_record_officer' %}
+                {% if user.is_superuser or user|has_any_role:"admin,accountant,receptionist,health_record_officer" %}
                 <li class="nav-item">
                     <a class="nav-link nav-link-sidebar {% if '/billing/' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#billingMenu">
                         <i class="fas fa-file-invoice-dollar sidebar-icon"></i>
@@ -441,7 +441,7 @@
                                     <span class="sidebar-text">Invoices</span>
                                 </a>
                             </li>
-                            {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant,receptionist,health_record_officer' %}
+                            {% if user.is_superuser or user|has_any_role:"admin,accountant,receptionist,health_record_officer" %}
                             <li class="nav-item">
                                 <a href="{% url 'billing:create' %}" class="nav-link nav-link-submenu {% if request.path == '/billing/create/' %}active{% endif %}">
                                     <i class="fas fa-plus sidebar-icon-sub"></i>
@@ -455,7 +455,7 @@
                 {% endif %}
 
                 <!-- NHIA -->
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse,accountant,receptionist,health_record_officer' %}
+                {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse,accountant,receptionist,health_record_officer" %}
                 <li class="nav-item">
                     <a class="nav-link nav-link-sidebar {% if '/nhia/' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#nhiaMenu">
                         <i class="fas fa-shield-alt sidebar-icon"></i>
@@ -488,7 +488,7 @@
                 {% endif %}
 
                 <!-- Retainership -->
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant,receptionist,health_record_officer' %}
+                {% if user.is_superuser or user|has_any_role:"admin,accountant,receptionist,health_record_officer" %}
                 <li class="nav-item">
                     <a class="nav-link nav-link-sidebar {% if '/retainership/' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#retainershipMenu">
                         <i class="fas fa-handshake sidebar-icon"></i>
@@ -515,7 +515,7 @@
                 {% endif %}
 
                 <!-- Desk Office -->
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse,accountant,receptionist,health_record_officer' %}
+                {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse,accountant,receptionist,health_record_officer" %}
                 <li class="nav-item">
                     <a class="nav-link nav-link-sidebar {% if '/desk-office/' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#deskOfficeMenu">
                         <i class="fas fa-briefcase sidebar-icon"></i>

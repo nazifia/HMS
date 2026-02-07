@@ -16,6 +16,107 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Permission mapping from custom names to Django permission codenames
+# This maps the permission strings used in ROLE_PERMISSIONS to actual Django Permission codenames
+PERMISSION_MAPPING = {
+    # Patients
+    'patients.view': 'view_patient',
+    'patients.create': 'add_patient',
+    'patients.edit': 'change_patient',
+    'patients.delete': 'delete_patient',
+    'patients.toggle_status': 'toggle_patient_status',
+    'patients.wallet_manage': 'wallet_manage',
+    'patients.nhia_manage': 'nhia_manage',
+
+    # Medical Records
+    'medical.view': 'view_medicalrecord',
+    'medical.create': 'add_medicalrecord',
+    'medical.edit': 'change_medicalrecord',
+    'medical.delete': 'delete_medicalrecord',
+    'vitals.view': 'view_vital',
+    'vitals.create': 'add_vital',
+    'vitals.edit': 'change_vital',
+    'vitals.delete': 'delete_vital',
+
+    # Consultations
+    'consultations.view': 'view_consultation',
+    'consultations.create': 'add_consultation',
+    'consultations.edit': 'change_consultation',
+    'referrals.view': 'view_referral',
+    'referrals.create': 'add_referral',
+    'referrals.edit': 'change_referral',
+
+    # Pharmacy
+    'pharmacy.view': 'view_pharmacy',
+    'pharmacy.create': 'add_pharmacy',
+    'pharmacy.edit': 'change_pharmacy',
+    'pharmacy.dispense': 'dispense_medication',
+    'prescriptions.view': 'view_prescription',
+    'prescriptions.create': 'add_prescription',
+    'prescriptions.edit': 'change_prescription',
+
+    # Laboratory
+    'lab.view': 'view_labtest',
+    'lab.create': 'add_labtest',
+    'lab.edit': 'change_labtest',
+    'lab.results': 'enter_labresults',
+
+    # Billing
+    'billing.view': 'view_invoice',
+    'billing.create': 'add_invoice',
+    'billing.edit': 'change_invoice',
+    'billing.process_payment': 'process_payment',
+    'wallet.view': 'view_wallet',
+    'wallet.create': 'add_wallet',
+    'wallet.edit': 'change_wallet',
+    'wallet.transactions': 'view_wallettransaction',
+    'wallet.manage': 'manage_wallet',
+
+    # Appointments
+    'appointments.view': 'view_appointment',
+    'appointments.create': 'add_appointment',
+    'appointments.edit': 'change_appointment',
+
+    # Inpatient
+    'inpatient.view': 'view_admission',
+    'inpatient.create': 'add_admission',
+    'inpatient.edit': 'change_admission',
+    'inpatient.discharge': 'discharge_patient',
+
+    # User Management
+    'users.view': 'view_customuser',
+    'users.create': 'add_customuser',
+    'users.edit': 'change_customuser',
+    'users.delete': 'delete_customuser',
+    'roles.view': 'view_role',
+    'roles.create': 'add_role',
+    'roles.edit': 'change_role',
+
+    # Reports
+    'reports.view': 'view_report',
+    'reports.generate': 'generate_report',
+}
+
+def get_django_permission(custom_permission):
+    """
+    Convert a custom permission string to Django permission codename.
+    Returns 'app_label.codename' format.
+    """
+    if custom_permission in PERMISSION_MAPPING:
+        parts = custom_permission.split('.')
+        if len(parts) == 2:
+            app_label = parts[0]
+            codename = PERMISSION_MAPPING.get(custom_permission)
+            if codename:
+                return f'{app_label}.{codename}'
+    # If not found in mapping, try direct conversion
+    parts = custom_permission.split('.')
+    if len(parts) == 2:
+        app_label, action = parts
+        if action in ['view', 'add', 'change', 'delete']:
+            pass
+    return custom_permission
+
 # Define role hierarchies and permissions
 ROLE_PERMISSIONS = {
     'admin': {
@@ -24,41 +125,41 @@ ROLE_PERMISSIONS = {
             # Patient Management
             'patients.view', 'patients.create', 'patients.edit', 'patients.delete',
             'patients.toggle_status', 'patients.wallet_manage', 'patients.nhia_manage',
-            
+
             # Medical Records
             'medical.view', 'medical.create', 'medical.edit', 'medical.delete',
             'vitals.view', 'vitals.create', 'vitals.edit', 'vitals.delete',
-            
+
             # Consultations & Referrals
             'consultations.view', 'consultations.create', 'consultations.edit',
             'referrals.view', 'referrals.create', 'referrals.edit',
-            
+
             # Pharmacy
             'pharmacy.view', 'pharmacy.create', 'pharmacy.edit', 'pharmacy.dispense',
             'prescriptions.view', 'prescriptions.create', 'prescriptions.edit',
-            
+
             # Laboratory
             'lab.view', 'lab.create', 'lab.edit', 'lab.results',
-            
+
             # Billing & Finance
             'billing.view', 'billing.create', 'billing.edit', 'billing.process_payment',
             'wallet.view', 'wallet.create', 'wallet.edit', 'wallet.transactions', 'wallet.manage',
-            
+
             # Appointments
             'appointments.view', 'appointments.create', 'appointments.edit',
-            
+
             # Inpatient Management
             'inpatient.view', 'inpatient.create', 'inpatient.edit', 'inpatient.discharge',
-            
+
             # User Management
             'users.view', 'users.create', 'users.edit', 'users.delete',
             'roles.view', 'roles.create', 'roles.edit',
-            
+
             # Reports & Analytics
             'reports.view', 'reports.generate',
         ]
     },
-    
+
     'doctor': {
         'description': 'Medical Doctor - Patient care and medical operations',
         'permissions': [
@@ -74,7 +175,7 @@ ROLE_PERMISSIONS = {
             'reports.view',
         ]
     },
-    
+
     'nurse': {
         'description': 'Registered Nurse - Patient care and vitals monitoring',
         'permissions': [
@@ -89,7 +190,7 @@ ROLE_PERMISSIONS = {
             'reports.view',
         ]
     },
-    
+
     'receptionist': {
         'description': 'Front Desk Receptionist & Health Records - Patient registration, appointments, and records',
         'permissions': [
@@ -101,7 +202,7 @@ ROLE_PERMISSIONS = {
             'reports.view',
         ]
     },
-    
+
     'pharmacist': {
         'description': 'Licensed Pharmacist - Medication management and dispensing',
         'permissions': [
@@ -111,7 +212,7 @@ ROLE_PERMISSIONS = {
             'reports.view',
         ]
     },
-    
+
     'lab_technician': {
         'description': 'Laboratory Technician - Test management and results',
         'permissions': [
@@ -121,7 +222,7 @@ ROLE_PERMISSIONS = {
             'reports.view',
         ]
     },
-    
+
     'accountant': {
         'description': 'Hospital Accountant - Financial management and billing',
         'permissions': [
@@ -131,7 +232,7 @@ ROLE_PERMISSIONS = {
             'reports.view',
         ]
     },
-    
+
     'health_record_officer': {
         'description': 'Health Record Officer & Receptionist - Medical records and front desk operations',
         'permissions': [
@@ -145,7 +246,7 @@ ROLE_PERMISSIONS = {
             'reports.view',
         ]
     },
-    
+
     'radiology_staff': {
         'description': 'Radiology Technician - Imaging services',
         'permissions': [
@@ -201,10 +302,10 @@ def get_user_roles(user):
     """Get all roles for a user including inherited roles."""
     if not user.is_authenticated:
         return []
-    
+
     if user.is_superuser:
         return list(ROLE_PERMISSIONS.keys())
-    
+
     roles = []
     # Many-to-many roles
     user_roles_manager = getattr(user, 'roles', None)
@@ -223,33 +324,34 @@ def get_user_roles(user):
 
 
 def user_has_permission(user, permission):
-    """Check if user has specific permission."""
+    """Check if user has specific permission.
+
+    Priority:
+    1. Django's built-in permission system (user.has_perm)
+    2. Role model permissions via RolePermissionBackend
+    3. Custom ROLE_PERMISSIONS mapping (for backward compatibility)
+    """
     if not user.is_authenticated:
         return False
-    
+
     # Superuser has all permissions
     if user.is_superuser:
         return True
-    
-    # Check standard Django permissions (which now includes our RolePermissionBackend)
-    # Most permissions in ROLE_PERMISSIONS are like 'patients.view'
-    # Django standard is 'patients.view_patient'
-    # We try both or handle the mapping
-    if user.has_perm(permission):
+
+    # First, try standard Django permission check (includes RolePermissionBackend)
+    # This is the primary method - Role model should be source of truth
+    django_perm = get_django_permission(permission)
+    if user.has_perm(django_perm):
         return True
-        
-    # Fallback to check if the permission name is in our hardcoded role system
+
+    # Fallback: check if custom permission is in user's role permissions
+    # This maintains backward compatibility with ROLE_PERMISSIONS dict
     user_roles = get_user_roles(user)
     for role_name in user_roles:
         if role_name in ROLE_PERMISSIONS:
             if permission in ROLE_PERMISSIONS[role_name]['permissions']:
                 return True
-    
-    # Check direct user permissions by codename (last part of 'app.codename')
-    codename = permission.split('.')[-1]
-    if user.user_permissions.filter(codename=codename).exists():
-        return True
-    
+
     return False
 
 
@@ -257,14 +359,14 @@ def user_has_any_permission(user, permissions):
     """Check if user has any of the specified permissions."""
     if not user.is_authenticated:
         return False
-    
+
     if user.is_superuser:
         return True
-    
+
     for permission in permissions:
         if user_has_permission(user, permission):
             return True
-    
+
     return False
 
 
@@ -272,14 +374,14 @@ def user_has_all_permissions(user, permissions):
     """Check if user has all of the specified permissions."""
     if not user.is_authenticated:
         return False
-    
+
     if user.is_superuser:
         return True
-    
+
     for permission in permissions:
         if not user_has_permission(user, permission):
             return False
-    
+
     return True
 
 
@@ -287,13 +389,13 @@ def user_in_role(user, role_names):
     """Check if user has any of the specified roles."""
     if not user.is_authenticated:
         return False
-    
+
     if user.is_superuser:
         return True
-    
+
     if isinstance(role_names, str):
         role_names = [role_names]
-    
+
     user_roles = get_user_roles(user)
     return any(role in user_roles for role in role_names)
 
@@ -302,13 +404,13 @@ def user_in_all_roles(user, role_names):
     """Check if user has all of the specified roles."""
     if not user.is_authenticated:
         return False
-    
+
     if user.is_superuser:
         return True
-    
+
     if isinstance(role_names, str):
         role_names = [role_names]
-    
+
     user_roles = get_user_roles(user)
     return all(role in user_roles for role in role_names)
 
@@ -322,7 +424,6 @@ def permission_required(permission, login_url=None, raise_exception=True):
         def _wrapped_view(request, *args, **kwargs):
             if not user_has_permission(request.user, permission):
                 if raise_exception:
-                    # Render a friendly permission denied page instead of plain 403 text
                     return render(request, 'errors/permission_denied.html', status=403)
                 else:
                     messages.error(request, "You don't have permission to access this resource.")
@@ -387,20 +488,20 @@ def user_permissions_context(request):
     if hasattr(request, 'user') and request.user.is_authenticated:
         user_roles = get_user_roles(request.user)
         user_permissions = {}
-        
+
         # Build permission dictionary for templates
         for role_name in user_roles:
             if role_name in ROLE_PERMISSIONS:
                 for permission in ROLE_PERMISSIONS[role_name]['permissions']:
                     user_permissions[permission] = True
-        
+
         # Add role information
         user_permissions['roles'] = user_roles
         user_permissions['is_admin'] = 'admin' in user_roles
         user_permissions['is_superuser'] = request.user.is_superuser
-        
+
         return user_permissions
-    
+
     return {
         'roles': [],
         'is_admin': False,
@@ -441,20 +542,19 @@ def get_user_accessible_modules(user):
     """Get list of modules accessible to user."""
     accessible_modules = []
     user_roles = get_user_roles(user)
-    
+
     for role_name in user_roles:
         if role_name in ROLE_PERMISSIONS:
             for permission in ROLE_PERMISSIONS[role_name]['permissions']:
                 module = permission.split('.')[0]
                 if module not in accessible_modules:
                     accessible_modules.append(module)
-    
+
     return accessible_modules
 
 
 def can_perform_action(user, action, context=None):
     """Check if user can perform specific action in context."""
-    # This is a more sophisticated permission checker that can consider context
     permission_map = {
         'view_patient': 'patients.view',
         'edit_patient': 'patients.edit',
@@ -488,10 +588,10 @@ def can_perform_action(user, action, context=None):
         'view_reports': 'reports.view',
         'generate_reports': 'reports.generate',
     }
-    
+
     if action in permission_map:
         return user_has_permission(user, permission_map[action])
-    
+
     return False
 
 
@@ -533,19 +633,16 @@ def get_role_display_name(role_name):
 def create_default_roles():
     """Create default roles with permissions."""
     from django.contrib.auth.models import Permission
-    
+
     for role_name, role_data in ROLE_PERMISSIONS.items():
         role, created = Role.objects.get_or_create(
             name=role_name,
             defaults={'description': role_data['description']}
         )
-        
+
         if created:
             logger.info(f"Created role: {role_name}")
         else:
             logger.info(f"Role already exists: {role_name}")
-        
-        # Note: In a real implementation, you would also need to map Django permissions
-        # to the custom permissions defined above. This is a simplified version.
-    
+
     return True

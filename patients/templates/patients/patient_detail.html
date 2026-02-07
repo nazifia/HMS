@@ -45,7 +45,7 @@
                 <div style="background: #ffeb3b; color: #d32f2f; padding: 8px; margin-bottom: 8px; font-weight: bold; border: 2px solid #d32f2f;">
                   TEST: You are seeing this message because the activation/deactivation button block is being rendered.
                 </div>
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,health_record_officer' %}
+                {% if user.is_superuser or user|has_any_role:"admin,health_record_officer" %}
                     {% if not patient.is_active %}
                         <form method="post" action="{% url 'patients:toggle_patient_status' patient.id %}" style="margin-bottom: 1rem;">
                             {% csrf_token %}
@@ -113,7 +113,7 @@
                     </a>
                 {% else %}
                     <p>No NHIA record found for this patient.</p>
-                    {% if user.is_superuser or user.profile and user.profile.role in 'admin,receptionist,health_record_officer' %}
+                    {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer" %}
                         <a href="{% url 'patients:register_nhia_patient' patient.id %}" class="btn btn-success btn-sm">
                             <i class="fas fa-plus"></i> Register NHIA Record
                         </a>
@@ -150,7 +150,7 @@
                             <i class="fas fa-exclamation-triangle"></i> This retainership patient has no wallet linked.
                         </div>
                         <p>No retainership wallet linked to this patient.</p>
-                        {% if user.is_superuser or user.profile and user.profile.role in 'admin,health_record_officer' %}
+                        {% if user.is_superuser or user|has_any_role:"admin,health_record_officer" %}
                             <div class="btn-group" role="group">
                                 <a href="{% url 'retainership:create_wallet' patient.id %}" class="btn btn-success btn-sm">
                                     <i class="fas fa-plus"></i> Create Wallet
@@ -167,7 +167,7 @@
                     </a>
                 {% else %}
                     <p>No retainership record found for this patient.</p>
-                    {% if user.is_superuser or user.profile and user.profile.role in 'admin,receptionist,health_record_officer' %}
+                    {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer" %}
                         <a href="{% url 'patients:register_retainership_patient' patient.id %}" class="btn btn-success btn-sm">
                             <i class="fas fa-plus"></i> Register Retainership Record
                         </a>
@@ -210,7 +210,7 @@
                                     </td>
                                     <td>
                                         <a href="{% url 'inpatient:admission_detail' admission.id %}" class="btn btn-info btn-sm">View</a>
-{% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant,receptionist,health_record_officer' %}
+{% if user.is_superuser or user|has_any_role:"admin,accountant,receptionist,health_record_officer" %}
                                             {% if admission.get_total_cost > admission.amount_paid %}
                                                 <a href="{% url 'billing:create_invoice_for_admission' admission.id %}" class="btn btn-success btn-sm">Pay</a>
                                             {% endif %}
@@ -226,7 +226,7 @@
                 {% endif %}
                 <hr>
 
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,receptionist,health_record_officer' %}
+                {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer" %}
                 <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary">Edit Patient</a>
                 {% endif %}
             </div>
@@ -239,7 +239,7 @@
             </div>
             <div class="card-body">
                 <p><em>Medical history details will be displayed here.</em></p>
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse,health_record_officer' %}
+                {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse,health_record_officer" %}
                 <!-- Add Medical History Form/Button -->
                 {% endif %}
             </div>
@@ -252,7 +252,7 @@
             </div>
             <div class="card-body">
                 <p><em>Patient vitals will be displayed here.</em></p>
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse' %}
+                {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse" %}
                 <!-- Add Vitals Form/Button -->
                 {% endif %}
             </div>
@@ -298,25 +298,25 @@
             </div>
             <div class="card-body">
                 <a href="#" class="btn btn-info btn-block mb-2">New Appointment</a>
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse,receptionist,health_record_officer' %}
+                {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse,receptionist,health_record_officer" %}
                 <a href="{% url 'consultations:create_consultation' patient.id %}" class="btn btn-warning btn-block mb-2">New Consultation</a>
                 {% endif %}
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse' %}
+                {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse" %}
                 <button type="button" class="btn btn-danger btn-block mb-2" id="referPatientBtn" data-bs-toggle="modal" data-bs-target="#referralModal">
                     <i class="fas fa-user-md"></i> Refer Patient
                 </button>
                 {% endif %}
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor' %}
+                {% if user.is_superuser or user|has_any_role:"admin,doctor" %}
                 <a href="{% url 'pharmacy:create_prescription' patient.id %}" class="btn btn-success btn-block mb-2" style="display: block !important; visibility: visible !important;">Send Medication Prescription</a>
                 <a href="{% url 'pharmacy:pharmacy_create_prescription' patient.id %}" class="btn btn-primary btn-block mb-2">Pharmacy Prescription</a>
                 {% endif %}
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor' %}
+                {% if user.is_superuser or user|has_any_role:"admin,doctor" %}
                 <a href="{% url 'laboratory:create_test_request' %}?patient={{ patient.id }}" class="btn btn-secondary btn-block mb-2">Request Lab Tests</a>
                 {% endif %}
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,receptionist,health_record_officer' %}
+                {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer" %}
                 <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary btn-block mb-2">Edit Patient</a>
                 {% endif %}
-                {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant,receptionist,health_record_officer' %}
+                {% if user.is_superuser or user|has_any_role:"admin,accountant,receptionist,health_record_officer" %}
                 <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-success btn-block mb-2">Wallet Dashboard</a>
                 {% endif %}
             </div>
@@ -325,7 +325,7 @@
 </div>
 
 <!-- Referral Modal -->
-{% if user.is_superuser or user.profile and user.profile.role in 'admin,doctor,nurse' %}
+{% if user.is_superuser or user|has_any_role:"admin,doctor,nurse" %}
 <div class="modal fade" id="referralModal" tabindex="-1" aria-labelledby="referralModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -570,6 +570,6 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
 // Pass user role info to JavaScript
 window.userIsSuperuser = {{ user.is_superuser|yesno:"true,false" }};
-window.userHasMedicalRole = {% if user.profile and user.profile.role in 'admin,doctor,nurse' %}true{% else %}false{% endif %};
+window.userHasMedicalRole = {% if user.profile and user|has_any_role:"admin,doctor,nurse" %}true{% else %}false{% endif %};
 </script>
 {% endblock js %}

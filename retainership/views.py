@@ -6,6 +6,8 @@ from django.contrib import messages
 from django.db import transaction
 from decimal import Decimal
 
+from accounts.constants import ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER
+from core.decorators import role_required
 from patients.models import Patient, SharedWallet, WalletMembership, PatientWallet, WalletTransaction
 from core.patient_search_forms import PatientSearchForm
 from patients.forms import RetainershipIndependentPatientForm # Import RetainershipIndependentPatientForm
@@ -13,6 +15,7 @@ from .models import RetainershipPatient
 from .forms import RetainershipPatientForm, RetainershipWalletLinkForm
 
 @login_required
+@role_required([ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER])
 def retainership_patient_list(request):
     retainership_patients = RetainershipPatient.objects.select_related('patient').all().order_by('-date_registered')
 
@@ -46,6 +49,7 @@ from .forms import RetainershipPatientForm
 from django.db.models import Sum
 
 @login_required
+@role_required([ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER])
 def select_patient_for_retainership(request):
     search_form = PatientSearchForm(request.GET)
     # Only show patients who already have Retainership registration
@@ -82,6 +86,7 @@ def select_patient_for_retainership(request):
 
 
 @login_required
+@role_required([ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER])
 def retainership_wallet_list(request):
     """List all retainership wallets with management capabilities"""
     # Get all retainership wallets
@@ -140,6 +145,7 @@ def retainership_wallet_list(request):
 
 
 @login_required
+@role_required([ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER])
 def view_wallet_details(request, wallet_id):
     """View detailed information about a specific retainership wallet"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type='retainership')
@@ -183,6 +189,7 @@ def view_wallet_details(request, wallet_id):
 
 
 @login_required
+@role_required([ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER])
 def manage_wallet_by_id(request, wallet_id):
     """Manage a retainership wallet by wallet ID (not patient ID)"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type='retainership')
@@ -288,6 +295,7 @@ def manage_wallet_by_id(request, wallet_id):
     return render(request, 'retainership/manage_wallet_by_id.html', context)
 
 @login_required
+@role_required([ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER])
 def register_patient_for_retainership(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
 
@@ -317,6 +325,7 @@ def register_patient_for_retainership(request, patient_id):
     return render(request, 'retainership/register_patient_for_retainership.html', context)
 
 @login_required
+@role_required([ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER])
 def register_independent_retainership_patient(request):
     if request.method == 'POST':
         form = RetainershipIndependentPatientForm(request.POST, request.FILES)
@@ -334,6 +343,7 @@ def register_independent_retainership_patient(request):
     return render(request, 'retainership/register_independent_retainership_patient.html', context)
 
 @login_required
+@role_required([ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER])
 def create_retainership_wallet(request, patient_id):
     """Create a shared wallet for a retainership patient"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -385,6 +395,7 @@ def create_retainership_wallet(request, patient_id):
     })
 
 @login_required
+@role_required([ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER])
 def manage_retainership_wallet(request, patient_id):
     """Manage retainership wallet transactions and settings"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -491,6 +502,7 @@ def manage_retainership_wallet(request, patient_id):
     })
 
 @login_required
+@role_required([ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER])
 def link_retainership_patient_to_wallet(request, patient_id):
     """Link a retainership patient to an existing retainership wallet"""
     patient = get_object_or_404(Patient, id=patient_id)

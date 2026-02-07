@@ -510,7 +510,7 @@
                                         <i class="fas fa-cog fa-sm fa-fw me-2 text-secondary"></i>
                                         <span>Settings</span>
                                     </a>
-                                    {% if user.is_superuser or user.profile and user.profile.role in 'admin,accountant' %}
+                                    {% if user.is_superuser or user|has_any_role:"admin,accountant" %}
                                     <a class="dropdown-item" href="{% url 'core:admin_dashboard' %}">
                                         <i class="fas fa-shield-alt fa-sm fa-fw me-2 text-warning"></i>
                                         <span>Admin Dashboard</span>

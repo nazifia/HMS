@@ -23,7 +23,7 @@
             </nav>
         </div>
         <div class="d-flex gap-2">
-            {% if user.is_superuser or user.profile and user.profile.role in 'admin,receptionist,health_record_officer' %}
+            {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer" %}
             <a href="{% url 'patients:edit' patient.id %}" class="btn btn-outline-primary">
                 <i class="fas fa-edit me-2"></i>Edit Patient
             </a>

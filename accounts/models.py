@@ -166,16 +166,12 @@ class CustomUser(AbstractUser):
         return f"User #{self.pk}"
 
     def get_profile(self):
-        # Helper method to get or create profile with error handling
-        try:
-            # Use the Django reverse relationship (now that related_name='profile')
-            return self.profile
-        except CustomUserProfile.DoesNotExist:
-            # Create profile if it doesn't exist
-            return CustomUserProfile.objects.create(user=self)
-        except CustomUserProfile.MultipleObjectsReturned:
-            # Handle case where multiple profiles might exist (data integrity issue)
-            return CustomUserProfile.objects.filter(user=self).first()
+        """
+        Get the user's profile. Uses get_or_create for atomic operation
+        to prevent race conditions that could create duplicate profiles.
+        """
+        profile, created = CustomUserProfile.objects.get_or_create(user=self)
+        return profile
 
     def is_pharmacist(self):
         """Check if user has pharmacist role or permissions"""
