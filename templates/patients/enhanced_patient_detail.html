@@ -1,5 +1,6 @@
 {% extends 'enhanced_base.html' %}
 {% load custom_filters %}
+{% load core_tags %}
 
 {% block title %}Patient Details - {{ patient.get_full_name|default:patient.user.first_name|default:patient.user.username }}{% endblock %}
 
