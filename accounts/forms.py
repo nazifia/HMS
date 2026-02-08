@@ -730,8 +730,26 @@ class RoleForm(forms.ModelForm):
 
     def clean_parent(self):
         parent = self.cleaned_data.get('parent')
-        if parent and self.instance.pk and parent.pk == self.instance.pk:
+        if not parent or not self.instance.pk:
+            return parent
+
+        # Direct self-parenting check
+        if parent.pk == self.instance.pk:
             raise ValidationError("A role cannot be its own parent")
+
+        # Check for circular references in the hierarchy
+        # Traverse up the parent chain to see if we eventually reach this role
+        current = parent
+        visited = set()
+        while current and current.pk not in visited:
+            visited.add(current.pk)
+            if current.pk == self.instance.pk:
+                raise ValidationError(
+                    f"Circular reference detected: '{self.instance.name}' cannot have "
+                    f"'{parent.name}' as parent because it creates a cycle in the role hierarchy"
+                )
+            current = current.parent
+
         return parent
 
     def clean_name(self):

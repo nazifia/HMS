@@ -1,0 +1,471 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% block title %}{{ page_title }} - Hospital Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .comparison-container {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        gap: 2rem;
+        margin-top: 2rem;
+    }
+    .role-column {
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        border: 1px solid #dee2e6;
+    }
+    .role-column.role-a {
+        border-top: 4px solid #0d6efd;
+    }
+    .role-column.role-b {
+        border-top: 4px solid #198754;
+    }
+    .role-header {
+        text-align: center;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #dee2e6;
+        margin-bottom: 1.5rem;
+    }
+    .role-header h4 {
+        margin: 0;
+        font-weight: 700;
+        color: #495057;
+    }
+    .role-stats {
+        display: flex;
+        justify-content: space-around;
+        margin-top: 1rem;
+    }
+    .stat {
+        text-align: center;
+    }
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        display: block;
+    }
+    .stat-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .comparison-legend {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+    }
+    .legend-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 0.25rem;
+        border: 1px solid rgba(0,0,0,0.1);
+    }
+    .legend-both { background-color: #d1ecf1; }
+    .legend-a-only { background-color: #cfe2ff; }
+    .legend-b-only { background-color: #d1e7dd; }
+
+    .permission-group {
+        margin-bottom: 1.5rem;
+    }
+    .permission-group-header {
+        font-weight: 600;
+        color: #495057;
+        padding: 0.5rem;
+        background-color: #e9ecef;
+        border-radius: 0.25rem 0.25rem 0 0;
+    }
+    .permission-item {
+        padding: 0.5rem;
+        margin: 0.25rem 0;
+        border-radius: 0.25rem;
+        font-size: 0.9rem;
+        border-left: 3px solid transparent;
+    }
+    .permission-item.in-both {
+        background-color: #d1ecf1;
+        border-left-color: #0dcaf0;
+    }
+    .permission-item.only-in-a {
+        background-color: #cfe2ff;
+        border-left-color: #0d6efd;
+    }
+    .permission-item.only-in-b {
+        background-color: #d1e7dd;
+        border-left-color: #198754;
+    }
+    .permission-codename {
+        font-family: 'Courier New', monospace;
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-left: 0.5rem;
+    }
+    .badge-crud {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+        margin-left: 0.5rem;
+    }
+    .vs-divider {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #adb5bd;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+    }
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    .select-roles-form {
+        background: #e9ecef;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 2rem;
+    }
+    .action-buttons {
+        margin-top: 1rem;
+    }
+    .btn-sync {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+    }
+    .permission-count {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-left: 0.5rem;
+    }
+
+    @media (max-width: 1199.98px) {
+        .comparison-container {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+        .vs-divider {
+            transform: rotate(90deg);
+            margin: 1rem 0;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-balance-scale me-2"></i>{{ page_title }}</h2>
+                <a href="{% url 'accounts:role_management' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Roles
+                </a>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Select Roles Form -->
+            <div class="select-roles-form">
+                <h5 class="mb-3"><i class="fas fa-sort-alpha-down me-2"></i>Select Roles to Compare</h5>
+                <form method="get" class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label for="role_a" class="form-label">Role A</label>
+                        <select name="role_a" id="role_a" class="form-select" required>
+                            <option value="">-- Select a role --</option>
+                            {% for role in roles %}
+                                <option value="{{ role.id }}" {% if role_a and role.id == role_a.id %}selected{% endif %}>
+                                    {{ role.name }}
+                                    {% if role.parent %} (parent: {{ role.parent.name }}){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label for="role_b" class="form-label">Role B</label>
+                        <select name="role_b" id="role_b" class="form-select" required>
+                            <option value="">-- Select a role --</option>
+                            {% for role in roles %}
+                                <option value="{{ role.id }}" {% if role_b and role.id == role_b.id %}selected{% endif %}>
+                                    {{ role.name }}
+                                    {% if role.parent %} (parent: {{ role.parent.name }}){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-sync-alt me-2"></i>Compare
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {% if comparison_data %}
+                <!-- Comparison Results -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5><i class="fas fa-chart-bar me-2"></i>Comparison Results</h5>
+                    <div class="comparison-legend">
+                        <div class="legend-item">
+                            <div class="legend-color legend-both"></div>
+                            <span>In Both ({{ comparison_data.total_both }})</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color legend-a-only"></div>
+                            <span>Only in A ({{ comparison_data.only_in_a|length }})</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color legend-b-only"></div>
+                            <span>Only in B ({{ comparison_data.only_in_b|length }})</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="comparison-container">
+                    <!-- Role A Column -->
+                    <div class="role-column role-a">
+                        <div class="role-header">
+                            <h4>{{ role_a.name }}</h4>
+                            {% if role_a.parent %}
+                                <small class="text-muted">Inherits from: {{ role_a.parent.name }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="role-stats">
+                            <div class="stat">
+                                <span class="stat-value text-primary">{{ comparison_data.total_a }}</span>
+                                <span class="stat-label">Total Permissions</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value text-secondary">{{ role_a.get_direct_permission_count }}</span>
+                                <span class="stat-label">Direct</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value text-info">{{ role_a.get_inherited_permission_count }}</span>
+                                <span class="stat-label">Inherited</span>
+                            </div>
+                        </div>
+                        <hr>
+                        <h6 class="mb-3">Permissions Breakdown</h6>
+
+                        <div class="permission-list">
+                            <div class="text-muted small mb-2">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Highlighted permissions differ from Role B
+                            </div>
+
+                            {% regroup comparison_data.only_in_a by content_type.app_label as app_groups_a %}
+                            {% for app_group in app_groups_a %}
+                                <div class="permission-group">
+                                    <div class="permission-group-header">
+                                        <i class="fas fa-folder me-2"></i>{{ app_group.grouper|title }}
+                                        <span class="badge bg-primary">{{ app_group.list|length }}</span>
+                                    </div>
+                                    {% regroup app_group.list by content_type.model as model_groups_a %}
+                                    {% for model_group in model_groups_a %}
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">{{ model_group.grouper|title }}</small>
+                                            {% for permission in model_group.list %}
+                                                <div class="permission-item only-in-a">
+                                                    <i class="fas fa-exclamation-circle text-primary me-1"></i>
+                                                    {{ permission.name }}
+                                                    <span class="permission-codename">{{ permission.codename }}</span>
+                                                    {% if permission.codename|slice:":5" == "add_" %}
+                                                        <span class="badge bg-success badge-crud">Add</span>
+                                                    {% elif permission.codename|slice:":6" == "change_" %}
+                                                        <span class="badge bg-primary badge-crud">Change</span>
+                                                    {% elif permission.codename|slice:":7" == "delete_" %}
+                                                        <span class="badge bg-danger badge-crud">Delete</span>
+                                                    {% elif permission.codename|slice:":5" == "view_" %}
+                                                        <span class="badge bg-info badge-crud">View</span>
+                                                    {% endif %}
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% empty %}
+                                <div class="empty-state">
+                                    <i class="fas fa-check-circle"></i>
+                                    <p>All permissions match Role B</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- VS Divider -->
+                    <div class="vs-divider">
+                        VS
+                    </div>
+
+                    <!-- Role B Column -->
+                    <div class="role-column role-b">
+                        <div class="role-header">
+                            <h4>{{ role_b.name }}</h4>
+                            {% if role_b.parent %}
+                                <small class="text-muted">Inherits from: {{ role_b.parent.name }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="role-stats">
+                            <div class="stat">
+                                <span class="stat-value text-success">{{ comparison_data.total_b }}</span>
+                                <span class="stat-label">Total Permissions</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value text-secondary">{{ role_b.get_direct_permission_count }}</span>
+                                <span class="stat-label">Direct</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value text-info">{{ role_b.get_inherited_permission_count }}</span>
+                                <span class="stat-label">Inherited</span>
+                            </div>
+                        </div>
+                        <hr>
+                        <h6 class="mb-3">Permissions Breakdown</h6>
+
+                        <div class="permission-list">
+                            <div class="text-muted small mb-2">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Highlighted permissions differ from Role A
+                            </div>
+
+                            {% regroup comparison_data.only_in_b by content_type.app_label as app_groups_b %}
+                            {% for app_group in app_groups_b %}
+                                <div class="permission-group">
+                                    <div class="permission-group-header">
+                                        <i class="fas fa-folder me-2"></i>{{ app_group.grouper|title }}
+                                        <span class="badge bg-success">{{ app_group.list|length }}</span>
+                                    </div>
+                                    {% regroup app_group.list by content_type.model as model_groups_b %}
+                                    {% for model_group in model_groups_b %}
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">{{ model_group.grouper|title }}</small>
+                                            {% for permission in model_group.list %}
+                                                <div class="permission-item only-in-b">
+                                                    <i class="fas fa-exclamation-circle text-success me-1"></i>
+                                                    {{ permission.name }}
+                                                    <span class="permission-codename">{{ permission.codename }}</span>
+                                                    {% if permission.codename|slice:":5" == "add_" %}
+                                                        <span class="badge bg-success badge-crud">Add</span>
+                                                    {% elif permission.codename|slice:":6" == "change_" %}
+                                                        <span class="badge bg-primary badge-crud">Change</span>
+                                                    {% elif permission.codename|slice:":7" == "delete_" %}
+                                                        <span class="badge bg-danger badge-crud">Delete</span>
+                                                    {% elif permission.codename|slice:":5" == "view_" %}
+                                                        <span class="badge bg-info badge-crud">View</span>
+                                                    {% endif %}
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% empty %}
+                                <div class="empty-state">
+                                    <i class="fas fa-check-circle"></i>
+                                    <p>All permissions match Role A</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shared Permissions Summary -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-handshake me-2"></i>Shared Permissions (Both Roles)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-muted mb-3">
+                            <i class="fas fa-info-circle me-1"></i>
+                            These {{ comparison_data.in_both|length }} permissions are granted to both roles.
+                        </div>
+                        {% regroup comparison_data.in_both by content_type.app_label as shared_app_groups %}
+                        <div class="row">
+                            {% for app_group in shared_app_groups %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="permission-group">
+                                        <div class="permission-group-header">
+                                            <i class="fas fa-folder-open me-2"></i>{{ app_group.grouper|title }}
+                                            <span class="badge bg-info">{{ app_group.list|length }}</span>
+                                        </div>
+                                        <div class="p-2">
+                                            {% regroup app_group.list by content_type.model as model_groups %}
+                                            {% for model_group in model_groups %}
+                                                <small class="text-muted d-block mb-1">{{ model_group.grouper|title }} ({{ model_group.list|length }})</small>
+                                                <div class="d-flex flex-wrap gap-1 mb-2">
+                                                    {% for permission in model_group.list %}
+                                                        <span class="badge bg-light text-dark border">
+                                                            {{ permission.codename }}
+                                                        </span>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <!-- Empty State -->
+                <div class="empty-state card">
+                    <div class="card-body">
+                        <i class="fas fa-balance-scale"></i>
+                        <h4>Compare Role Permissions</h4>
+                        <p class="text-muted">Select two roles above to compare their effective permissions (including inherited permissions).</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit when both roles are selected
+    const roleA = document.getElementById('role_a');
+    const roleB = document.getElementById('role_b');
+
+    function checkAndSubmit() {
+        if (roleA.value && roleB.value && roleA.value !== roleB.value) {
+            // Optional: Auto-submit
+            // document.querySelector('form').submit();
+        }
+    }
+
+    roleA.addEventListener('change', checkAndSubmit);
+    roleB.addEventListener('change', checkAndSubmit);
+
+    // Scroll to results if comparison exists
+    if (window.location.search.includes('role_a=')) {
+        const results = document.querySelector('.comparison-container');
+        if (results) {
+            results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+});
+</script>
+{% endblock %}

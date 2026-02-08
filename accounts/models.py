@@ -56,6 +56,40 @@ class Role(models.Model):
             current = current.parent
         return permissions
 
+    def get_inheritance_chain(self):
+        """Get list of parent roles in order (immediate parent first)"""
+        chain = []
+        current = self.parent
+        while current:
+            chain.append(current)
+            current = current.parent
+        return chain
+
+    def get_direct_permission_count(self):
+        """Count of permissions directly assigned to this role"""
+        return self.permissions.count()
+
+    def get_inherited_permission_count(self):
+        """Count of permissions inherited from parent roles"""
+        return len(self.get_all_permissions()) - self.permissions.count()
+
+    def check_circular_reference(self, potential_parent):
+        """
+        Check if setting potential_parent as this role's parent would create a circular reference.
+        Returns True if circular reference would occur, False otherwise.
+        """
+        if not potential_parent:
+            return False
+
+        current = potential_parent
+        visited = set()
+        while current and current.pk not in visited:
+            visited.add(current.pk)
+            if current.pk == self.pk:
+                return True
+            current = current.parent
+        return False
+
     class Meta:
         verbose_name = _('role')
         verbose_name_plural = _('roles')

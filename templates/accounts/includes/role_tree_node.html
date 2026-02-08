@@ -1,0 +1,16 @@
+{% load custom_filters %}
+{% for role in roles %}
+    <div class="tree-node" style="margin-left: {{ level }}rem;">
+        <a href="{% url 'accounts:edit_role' role.id %}" class="tree-node-link">
+            {{ role.name }}
+        </a>
+        <span class="tree-node-details">
+            ({{ role.permissions.count }} perms, {{ role.children.count }} children)
+        </span>
+    </div>
+    {% if role.children.exists %}
+        <div class="tree-children">
+            {% include "accounts/includes/role_tree_node.html" with roles=role.children.all level=level|add:1 %}
+        </div>
+    {% endif %}
+{% endfor %}

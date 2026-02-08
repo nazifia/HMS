@@ -6,16 +6,26 @@
 {% block extra_css %}
 <style>
     .role-card {
-        transition: transform 0.2s;
-        border-left: 4px solid #007bff;
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-left: 4px solid #0d6efd;
+        cursor: pointer;
     }
     .role-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
-    .permission-badge {
-        font-size: 0.75rem;
-        margin: 2px;
+    .role-card.selected {
+        border-left-color: #198754;
+        background-color: #f8fff9;
+    }
+    .role-card .card-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 1px solid #dee2e6;
+    }
+    .role-checkbox {
+        width: 1.25rem;
+        height: 1.25rem;
+        margin-right: 0.75rem;
     }
     .role-actions {
         opacity: 0;
@@ -24,18 +34,167 @@
     .role-card:hover .role-actions {
         opacity: 1;
     }
+    .badge-crud {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+        margin-left: 0.25rem;
+    }
+
+    /* Hierarchy Tree */
+    .role-hierarchy {
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border: 1px solid #e9ecef;
+    }
+    .hierarchy-tree {
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+        line-height: 1.8;
+    }
+    .tree-node {
+        margin-left: 1.5rem;
+        position: relative;
+    }
+    .tree-node::before {
+        content: '└─';
+        position: absolute;
+        left: -1.5rem;
+        color: #6c757d;
+    }
+    .tree-root {
+        margin-left: 0;
+        font-weight: 600;
+        color: #0d6efd;
+    }
+    .tree-root::before {
+        content: '';
+    }
+    .tree-children {
+        margin-top: 0.5rem;
+    }
+    .tree-node-link {
+        color: #0d6efd;
+        text-decoration: none;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        transition: background-color 0.2s;
+    }
+    .tree-node-link:hover {
+        background-color: #e7f1ff;
+        color: #0a58ca;
+    }
+    .tree-node-details {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-left: 0.5rem;
+    }
+
+    /* Circular Reference Warning */
+    .circular-ref-warning {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+        padding: 1rem;
+        border-radius: 0.375rem;
+        margin-bottom: 1.5rem;
+    }
+    .circular-ref-warning h6 {
+        color: #721c24;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Stats Cards */
+    .stat-card {
+        border: none;
+        border-radius: 0.5rem;
+        color: white;
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+    .stat-card .card-body {
+        padding: 1.5rem;
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        opacity: 0.9;
+    }
+
+    /* Badge styles */
+    .permission-preview-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+        margin: 2px;
+    }
+
+    @media (max-width: 767.98px) {
+        .hierarchy-tree {
+            font-size: 0.8rem;
+        }
+        .stat-card .card-body {
+            padding: 1rem;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
+    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-user-shield me-2"></i>Role Management</h2>
-        {% if user|can_create:"role" %}
-        <a href="{% url 'accounts:create_role' %}" class="btn btn-primary">
-            <i class="fas fa-plus me-2"></i>Create New Role
-        </a>
-        {% endif %}
+        <div class="d-flex align-items-center gap-3">
+            <h2 class="mb-0"><i class="fas fa-user-shield me-2"></i>Role Management</h2>
+            <span class="badge bg-secondary fs-6" id="selected-count">0 selected</span>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="bulk-actions-btn" disabled>
+                    <i class="fas fa-check-square me-2"></i>Bulk Actions
+                </button>
+                <ul class="dropdown-menu">
+                    <li><h6 class="dropdown-header">Choose an action:</h6></li>
+                    <form method="post" id="bulk-actions-form" novalidate>
+                        {% csrf_token %}
+                        <input type="hidden" name="bulk_action" id="bulk-action-input">
+                        <div id="selected-roles-container"></div>
+                        <li>
+                            <button class="dropdown-item text-danger" type="button" onclick="confirmBulkDelete()">
+                                <i class="fas fa-trash me-2 text-danger"></i>Delete Selected
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#assignParentModal">
+                                <i class="fas fa-sitemap me-2"></i>Assign Parent
+                            </button>
+                        </li>
+                        <li>
+                            <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#copyPermissionsModal">
+                                <i class="fas fa-copy me-2"></i>Copy Permissions From...
+                            </button>
+                        </li>
+                    </form>
+                </ul>
+            </div>
+            <a href="{% url 'accounts:compare_roles' %}" class="btn btn-outline-info">
+                <i class="fas fa-balance-scale me-2"></i>Compare Roles
+            </a>
+            {% if user|can_create:"role" %}
+            <a href="{% url 'accounts:create_role' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Create New Role
+            </a>
+            {% endif %}
+        </div>
     </div>
 
     {% if messages %}
@@ -47,18 +206,78 @@
         {% endfor %}
     {% endif %}
 
+    <!-- Role Hierarchy -->
+    <div class="role-hierarchy">
+        <h5><i class="fas fa-sitemap me-2"></i>Role Hierarchy</h5>
+        <p class="text-muted small mb-3">Visual representation of role inheritance. Click a role name to edit it.</p>
+
+        {% with top_roles=roles %}
+            {% regroup top_roles by parent as parent_groups %}
+            {% for parent_group in parent_groups %}
+                {% if not parent_group.grouper %}
+                    {% for root_role in parent_group.list %}
+                        <div class="hierarchy-tree mb-3">
+                            <div class="tree-root">
+                                <a href="{% url 'accounts:edit_role' root_role.id %}" class="tree-node-link">
+                                    {{ root_role.name }}
+                                </a>
+                                <span class="tree-node-details">
+                                    ({{ root_role.permissions.count }} perms, {{ root_role.children.count }} children)
+                                </span>
+                            </div>
+                            {% if root_role.children.exists %}
+                                <div class="tree-children">
+                                    {% with children=root_role.children.all %}
+                                        {% include "accounts/includes/role_tree_node.html" with roles=children level=1 %}
+                                    {% endwith %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+        {% endwith %}
+
+        {% if roles|length == 0 %}
+            <p class="text-muted">No roles created yet. <a href="{% url 'accounts:create_role' %}">Create your first role</a>.</p>
+        {% endif %}
+    </div>
+
+    <!-- Circular Reference Warning -->
+    {% if circular_refs %}
+        <div class="circular-ref-warning">
+            <h6><i class="fas fa-exclamation-triangle me-2"></i>Circular Reference Detected!</h6>
+            <p>The following circular dependencies were found in the role hierarchy:</p>
+            <ul class="mb-1">
+                {% for cycle in circular_refs %}
+                    <li>{{ cycle }}</li>
+                {% endfor %}
+            </ul>
+            <p class="mb-0"><strong>Action Required:</strong> Edit these roles to break the cycle. A role cannot indirectly be its own parent.</p>
+        </div>
+    {% endif %}
+
+    <!-- Role Cards -->
     <div class="row">
         {% for role in roles %}
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card role-card h-100">
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card role-card h-100" data-role-id="{{ role.id }}" onclick="toggleRoleCheckbox({{ role.id }})">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">{{ role.name }}</h5>
+                    <div class="form-check w-100 mb-0">
+                        <input class="form-check-input role-checkbox" type="checkbox" name="selected_roles" value="{{ role.id }}" id="role_{{ role.id }}" onclick="event.stopPropagation()">
+                        <label class="form-check-label w-100" for="role_{{ role.id }}">
+                            <h5 class="mb-0">{{ role.name }}</h5>
+                        </label>
+                    </div>
                     {% if user|can_edit:"role" %}
                     <div class="role-actions">
-                        <a href="{% url 'accounts:edit_role' role.id %}" class="btn btn-sm btn-outline-primary" title="Edit Role">
+                        <a href="{% url 'accounts:clone_role' role.id %}" class="btn btn-sm btn-outline-success clone-btn me-1" title="Clone Role" onclick="event.stopPropagation()">
+                            <i class="fas fa-copy"></i>
+                        </a>
+                        <a href="{% url 'accounts:edit_role' role.id %}" class="btn btn-sm btn-outline-primary me-1" title="Edit Role" onclick="event.stopPropagation()">
                             <i class="fas fa-edit"></i>
                         </a>
-                        <a href="{% url 'accounts:delete_role' role.id %}" class="btn btn-sm btn-outline-danger" title="Delete Role">
+                        <a href="{% url 'accounts:delete_role' role.id %}" class="btn btn-sm btn-outline-danger" title="Delete Role" onclick="event.stopPropagation(); return confirm('Are you sure you want to delete this role? This action cannot be undone.');">
                             <i class="fas fa-trash"></i>
                         </a>
                     </div>
@@ -66,57 +285,63 @@
                 </div>
                 <div class="card-body">
                     {% if role.description %}
-                        <p class="text-muted">{{ role.description }}</p>
+                        <p class="text-muted small mb-2">{{ role.description|truncatechars:80 }}</p>
                     {% endif %}
-                    
+
                     {% if role.parent %}
                         <p class="mb-2">
                             <small class="text-info">
-                                <i class="fas fa-arrow-up me-1"></i>Inherits from: {{ role.parent.name }}
+                                <i class="fas fa-arrow-up me-1"></i>Parent: <strong>{{ role.parent.name }}</strong>
                             </small>
                         </p>
                     {% endif %}
 
-                    {% if role.children.exists %}
-                        <p class="mb-2">
-                            <small class="text-success">
-                                <i class="fas fa-arrow-down me-1"></i>Parent to: 
-                                {% for child in role.children.all %}
-                                    {{ child.name }}{% if not forloop.last %}, {% endif %}
-                                {% endfor %}
-                            </small>
-                        </p>
-                    {% endif %}
-
-                    <div class="mb-3">
-                        <small class="text-muted d-block mb-2">
-                            <i class="fas fa-users me-1"></i>Users: {{ role.customuser_roles.count }}
-                        </small>
-                        <small class="text-muted d-block">
-                            <i class="fas fa-key me-1"></i>Permissions: {{ role.permissions.count }}
-                        </small>
+                    <div class="role-stats-grid mb-3">
+                        <div class="role-stat">
+                            <span class="role-stat-value">{{ role.customuser_roles.count }}</span>
+                            <span class="role-stat-label">Users</span>
+                        </div>
+                        <div class="role-stat">
+                            <span class="role-stat-value">{{ role.permissions.count }}</span>
+                            <span class="role-stat-label">Direct</span>
+                        </div>
+                        <div class="role-stat">
+                            <span class="role-stat-value">{{ role.get_inherited_permission_count }}</span>
+                            <span class="role-stat-label">Inherited</span>
+                        </div>
+                        <div class="role-stat">
+                            <span class="role-stat-value">{{ role.children.count }}</span>
+                            <span class="role-stat-label">Children</span>
+                        </div>
                     </div>
 
                     {% if role.permissions.exists %}
                         <div class="permissions-preview">
-                            <small class="text-muted d-block mb-2">Recent Permissions:</small>
-                            {% for permission in role.permissions.all|slice:":3" %}
-                                <span class="badge bg-secondary permission-badge">{{ permission.name|truncatechars:20 }}</span>
+                            <small class="text-muted d-block mb-2">Sample Permissions:</small>
+                            {% for permission in role.permissions.all|slice:":4" %}
+                                {% if permission.codename|slice:":5" == "add_" %}
+                                    <span class="badge bg-success permission-preview-badge">+{{ permission.codename|cut:"add_" }}</span>
+                                {% elif permission.codename|slice:":6" == "change_" %}
+                                    <span class="badge bg-primary permission-preview-badge">~{{ permission.codename|cut:"change_" }}</span>
+                                {% elif permission.codename|slice:":7" == "delete_" %}
+                                    <span class="badge bg-danger permission-preview-badge">-{{ permission.codename|cut:"delete_" }}</span>
+                                {% elif permission.codename|slice:":5" == "view_" %}
+                                    <span class="badge bg-info permission-preview-badge">view</span>
+                                {% else %}
+                                    <span class="badge bg-secondary permission-preview-badge">{{ permission.codename|truncatechars:15 }}</span>
+                                {% endif %}
                             {% endfor %}
-                            {% if role.permissions.count > 3 %}
-                                <span class="badge bg-light text-dark permission-badge">+{{ role.permissions.count|add:"-3" }} more</span>
+                            {% if role.permissions.count > 4 %}
+                                <span class="badge bg-light text-dark permission-preview-badge">+{{ role.permissions.count|add:"-4" }} more</span>
                             {% endif %}
                         </div>
+                    {% else %}
+                        <p class="text-muted small"><i class="fas fa-exclamation-circle me-1"></i>No permissions assigned</p>
                     {% endif %}
                 </div>
-                <div class="card-footer">
+                <div class="card-footer bg-transparent">
                     <small class="text-muted">
-                        <i class="fas fa-clock me-1"></i>
-                        {% if role.customuser_roles.exists %}
-                            Last assigned: {{ role.customuser_roles.first.date_joined|date:"M d, Y" }}
-                        {% else %}
-                            Not assigned to any users
-                        {% endif %}
+                        <i class="fas fa-users me-1"></i>{{ role.customuser_roles.count }} user{{ role.customuser_roles.count|pluralize }}
                     </small>
                 </div>
             </div>
@@ -131,114 +356,193 @@
         {% endfor %}
     </div>
 
-    <!-- Role Statistics -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-chart-bar me-2"></i>Role Statistics</h5>
+    <!-- Modals for Bulk Actions -->
+    <!-- Assign Parent Modal -->
+    <div class="modal fade" id="assignParentModal" tabindex="-1" aria-labelledby="assignParentModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="assignParentModalLabel"><i class="fas fa-sitemap me-2"></i>Assign Parent Role</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="text-center">
-                                <h3 class="text-primary">{{ roles.count }}</h3>
-                                <p class="text-muted">Total Roles</p>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="text-center">
-                                <h3 class="text-success">{% count_active_roles roles %}</h3>
-                                <p class="text-muted">Active Roles</p>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="text-center">
-                                <h3 class="text-info">{% count_child_roles roles %}</h3>
-                                <p class="text-muted">Child Roles</p>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="text-center">
-                                <h3 class="text-warning">{% sum_permissions roles %}</h3>
-                                <p class="text-muted">Total Permissions</p>
-                            </div>
-                        </div>
+                <div class="modal-body">
+                    <p>Select a parent role to assign to the <span id="selected-count-modal">0</span> selected role(s).</p>
+                    <p class="text-muted small">The selected roles will inherit all permissions from the parent role.</p>
+                    <div class="mb-3">
+                        <label for="parent-role-select" class="form-label">Parent Role</label>
+                        <select class="form-select" id="parent-role-select" name="parent_role">
+                            <option value="">-- Select a role --</option>
+                            {% for role in roles %}
+                                <option value="{{ role.id }}">{{ role.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Be careful: circular references are prevented.</div>
                     </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitBulkAction('assign_parent')">Assign Parent</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+    <!-- Copy Permissions Modal -->
+    <div class="modal fade" id="copyPermissionsModal" tabindex="-1" aria-labelledby="copyPermissionsModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="copyPermissionsModalLabel"><i class="fas fa-copy me-2"></i>Copy Permissions</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        {% if user|can_create:"role" %}
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:create_role' %}" class="btn btn-outline-primary w-100 mb-2">
-                                <i class="fas fa-plus me-2"></i>Create Role
-                            </a>
-                        </div>
-                        {% endif %}
-                        {% if user|can_view:"role" %}
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:permission_management' %}" class="btn btn-outline-info w-100 mb-2">
-                                <i class="fas fa-key me-2"></i>Manage Permissions
-                            </a>
-                        </div>
-                        {% endif %}
-                        {% if user|can_view:"user" %}
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:user_dashboard' %}" class="btn btn-outline-success w-100 mb-2">
-                                <i class="fas fa-users me-2"></i>Manage Users
-                            </a>
-                        </div>
-                        {% endif %}
-                        {% if user|can_view:"user" %}
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:activity_alerts' %}" class="btn btn-outline-warning w-100 mb-2">
-                                <i class="fas fa-history me-2"></i>Audit Logs
-                            </a>
-                        </div>
-                        {% endif %}
+                <div class="modal-body">
+                    <p>Copy permissions from a source role to the <span id="selected-count-modal2">0</span> selected role(s).</p>
+                    <p class="text-muted small">This will replace all existing permissions on the selected roles with permissions from the source role.</p>
+                    <div class="mb-3">
+                        <label for="source-role-select" class="form-label">Source Role</label>
+                        <select class="form-select" id="source-role-select" name="source_role">
+                            <option value="">-- Select a role --</option>
+                            {% for role in roles %}
+                                <option value="{{ role.id }}">{{ role.name }} ({{ role.permissions.count }} perms)</option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitBulkAction('copy_permissions_from')">Copy Permissions</button>
+                </div>
             </div>
         </div>
     </div>
-
-    <!-- Access Information -->
-    {% if not user|can_view:"role" %}
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="alert alert-info">
-                <h5><i class="fas fa-info-circle me-2"></i>Role Management Access</h5>
-                <p>You don't have permission to view role management. Contact your system administrator if you need access to manage roles and permissions.</p>
-                <a href="{% url 'accounts:dashboard' %}" class="btn btn-primary">Go to Dashboard</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+let selectedRoleIds = new Set();
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Add confirmation for delete actions
-    document.querySelectorAll('a[href*="delete"]').forEach(function(link) {
-        link.addEventListener('click', function(e) {
-            if (!confirm('Are you sure you want to delete this role? This action cannot be undone.')) {
-                e.preventDefault();
-            }
+    // Load saved state from localStorage
+    loadCollapseState();
+
+    // Role checkbox handling
+    document.querySelectorAll('.role-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function(e) {
+            e.stopPropagation();
+            updateSelectedRoles();
         });
     });
+
+    // Close modals on action to reset
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('hidden.bs.modal', function () {
+            // Clear selections if needed
+        });
+    });
+});
+
+function toggleRoleCheckbox(roleId) {
+    const checkbox = document.getElementById('role_' + roleId);
+    checkbox.checked = !checkbox.checked;
+    updateSelectedRoles();
+}
+
+function updateSelectedRoles() {
+    selectedRoleIds.clear();
+    document.querySelectorAll('.role-checkbox:checked').forEach(cb => {
+        selectedRoleIds.add(cb.value);
+    });
+
+    const count = selectedRoleIds.size;
+    const countBadge = document.getElementById('selected-count');
+    const bulkBtn = document.getElementById('bulk-actions-btn');
+
+    countBadge.textContent = count + ' selected';
+    bulkBtn.disabled = count === 0;
+
+    // Update modal message
+    document.getElementById('selected-count-modal').textContent = count;
+    document.getElementById('selected-count-modal2').textContent = count;
+
+    // Highlight selected cards
+    document.querySelectorAll('.role-card').forEach(card => {
+        const checkbox = card.querySelector('.role-checkbox');
+        if (checkbox.checked) {
+            card.classList.add('selected');
+        } else {
+            card.classList.remove('selected');
+        }
+    });
+
+    // Save state to localStorage
+    saveCollapseState();
+}
+
+function confirmBulkDelete() {
+    const count = selectedRoleIds.size;
+    if (count === 0) return;
+
+    if (confirm(`Are you sure you want to delete ${count} selected role(s)? This action cannot be undone.`)) {
+        submitBulkAction('delete');
+    }
+}
+
+function submitBulkAction(action) {
+    const form = document.getElementById('bulk-actions-form');
+    document.getElementById('bulk-action-input').value = action;
+
+    // Add selected roles to form
+    const container = document.getElementById('selected-roles-container');
+    container.innerHTML = '';
+    selectedRoleIds.forEach(id => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'selected_roles';
+        input.value = id;
+        container.appendChild(input);
+    });
+
+    // Close modal if open
+    const modal = document.querySelector('.modal.show');
+    if (modal) {
+        const bsModal = bootstrap.Modal.getInstance(modal);
+        if (bsModal) bsModal.hide();
+    }
+
+    form.submit();
+}
+
+function saveCollapseState() {
+    // Save which model groups are collapsed
+    const collapsed = [];
+    document.querySelectorAll('.model-group .collapse:not(.show)').forEach(el => {
+        collapsed.push(el.id);
+    });
+    localStorage.setItem('role_form_collapsed', JSON.stringify(collapsed));
+    localStorage.setItem('selected_roles', JSON.stringify([...selectedRoleIds]));
+}
+
+function loadCollapseState() {
+    // Restore selected roles
+    const savedSelected = localStorage.getItem('selected_roles');
+    if (savedSelected) {
+        try {
+            const ids = JSON.parse(savedSelected);
+            ids.forEach(id => {
+                const checkbox = document.getElementById('role_' + id);
+                if (checkbox) checkbox.checked = true;
+            });
+            updateSelectedRoles();
+        } catch (e) {
+            // Ignore errors
+        }
+    }
+}
+
+// Add some React and Responsive
+window.addEventListener('beforeunload', function() {
+    saveCollapseState();
 });
 </script>
 {% endblock %}

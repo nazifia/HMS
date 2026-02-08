@@ -589,24 +589,6 @@ def create_role(request):
     return render(request, 'accounts/role_form.html', context)
 
 @login_required
-@permission_required('roles.edit')
-def edit_role(request, role_id):
-    role = get_object_or_404(Role, id=role_id)
-    if request.method == 'POST':
-        form = RoleForm(request.POST, instance=role)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Role updated successfully.')
-            return redirect('accounts:role_management')
-    else:
-        form = RoleForm(instance=role)
-    context = {
-        'form': form,
-        'page_title': f'Edit Role: {role.name}'
-    }
-    return render(request, 'accounts/role_form.html', context)
-
-@login_required
 def role_demo(request):
     return render(request, 'accounts/role_demo.html', {'page_title': 'Role Demo'})
 
@@ -710,26 +692,6 @@ def delete_role(request, role_id):
         'page_title': f'Delete Role: {role.name}'
     }
     return render(request, 'accounts/role_confirm_delete.html', context)
-
-
-@login_required
-@permission_required('roles.view')
-def role_management(request):
-    roles = Role.objects.all().prefetch_related('permissions')
-    form = RoleForm()
-    if request.method == 'POST':
-        form = RoleForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Role created successfully.')
-            return redirect('accounts:role_management')
-
-    context = {
-        'roles': roles,
-        'form': form,
-        'page_title': 'Role Management'
-    }
-    return render(request, 'accounts/role_management.html', context)
 
 
 @login_required
@@ -1354,8 +1316,119 @@ def role_management(request):
     """View for managing roles and permissions"""
     roles = Role.objects.all().prefetch_related('permissions', 'children').order_by('name')
 
+    # Detect circular references
+    circular_refs = []
+    for role in roles:
+        if role.check_circular_reference(role.parent):
+            circular_refs.append(f"Role '{role.name}' has a circular reference with its parent chain")
+
+    # Handle bulk actions
+    if request.method == 'POST':
+        action = request.POST.get('bulk_action')
+        selected_role_ids = request.POST.getlist('selected_roles')
+
+        if action and selected_role_ids:
+            selected_roles = Role.objects.filter(id__in=selected_role_ids)
+            count = selected_roles.count()
+
+            if action == 'delete':
+                # Check if any roles have users or children
+                roles_with_users = []
+                roles_with_children = []
+                for role in selected_roles:
+                    if role.customuser_roles.exists():
+                        roles_with_users.append(role.name)
+                    if role.children.exists():
+                        roles_with_children.append(role.name)
+
+                if roles_with_users or roles_with_children:
+                    error_msg = "Cannot delete roles that have assigned users or child roles: "
+                    if roles_with_users:
+                        error_msg += f"Users assigned: {', '.join(roles_with_users)}. "
+                    if roles_with_children:
+                        error_msg += f"Have child roles: {', '.join(roles_with_children)}"
+                    messages.error(request, error_msg)
+                else:
+                    # Log before deletion
+                    AuditLog.objects.create(
+                        user=request.user,
+                        action='bulk_delete',
+                        details={
+                            'role_names': list(selected_roles.values_list('name', flat=True)),
+                            'count': count
+                        },
+                        ip_address=request.META.get('REMOTE_ADDR'),
+                        timestamp=timezone.now()
+                    )
+                    selected_roles.delete()
+                    messages.success(request, f'Successfully deleted {count} role(s).')
+
+            elif action == 'assign_parent':
+                parent_id = request.POST.get('parent_role')
+                if parent_id:
+                    try:
+                        parent_role = Role.objects.get(id=parent_id)
+                        # Check for circular references
+                        for role in selected_roles:
+                            if role.check_circular_reference(parent_role):
+                                messages.error(request, f'Cannot assign parent: circular reference would be created for role "{role.name}".')
+                                return redirect('accounts:role_management')
+                            if role.id == parent_role.id:
+                                messages.error(request, f'Cannot assign a role as its own parent.')
+                                return redirect('accounts:role_management')
+
+                        # Check if parent is in selected roles
+                        if parent_role.id in selected_role_ids:
+                            messages.error(request, 'Cannot assign a selected role as parent of itself.')
+                        else:
+                            updated = selected_roles.update(parent=parent_role)
+                            AuditLog.objects.create(
+                                user=request.user,
+                                action='bulk_update',
+                                details={
+                                    'role_names': list(selected_roles.values_list('name', flat=True)),
+                                    'action': 'assign_parent',
+                                    'parent': parent_role.name,
+                                    'count': updated
+                                },
+                                ip_address=request.META.get('REMOTE_ADDR'),
+                                timestamp=timezone.now()
+                            )
+                            messages.success(request, f'Assigned parent "{parent_role.name}" to {updated} role(s).')
+                    except Role.DoesNotExist:
+                        messages.error(request, 'Selected parent role does not exist.')
+
+            elif action == 'copy_permissions_from':
+                source_id = request.POST.get('source_role')
+                if source_id:
+                    try:
+                        source_role = Role.objects.get(id=source_id)
+                        source_permissions = source_role.permissions.all()
+                        permission_count = source_permissions.count()
+
+                        for role in selected_roles:
+                            role.permissions.set(source_permissions)
+                            AuditLog.objects.create(
+                                user=request.user,
+                                action='bulk_update',
+                                details={
+                                    'role_name': role.name,
+                                    'action': 'copy_permissions',
+                                    'source_role': source_role.name,
+                                    'permission_count': permission_count
+                                },
+                                ip_address=request.META.get('REMOTE_ADDR'),
+                                timestamp=timezone.now()
+                            )
+                        messages.success(request, f'Copied {permission_count} permissions from "{source_role.name}" to {count} role(s).')
+                    except Role.DoesNotExist:
+                        messages.error(request, 'Selected source role does not exist.')
+
+            return redirect('accounts:role_management')
+
     context = {
         'roles': roles,
+        'circular_refs': circular_refs,
         'page_title': 'Role Management',
         'active_nav': 'role_management',
     }
@@ -1390,10 +1463,12 @@ def create_role(request):
 
     context = {
         'form': form,
+        'is_edit': False,
+        'role': None,
         'page_title': 'Create Role',
         'active_nav': 'role_management',
     }
-    return render(request, 'accounts/create_role.html', context)
+    return render(request, 'accounts/role_form.html', context)
 
 
 @login_required
@@ -1430,10 +1505,106 @@ def edit_role(request, role_id):
     context = {
         'form': form,
         'role': role,
+        'is_edit': True,
         'page_title': f'Edit Role: {role.name}',
         'active_nav': 'role_management',
     }
-    return render(request, 'accounts/edit_role.html', context)
+    return render(request, 'accounts/role_form.html', context)
+
+
+@login_required
+@permission_required('roles.edit')
+def clone_role(request, role_id):
+    """View for cloning an existing role"""
+    original_role = get_object_or_404(Role, id=role_id)
+
+    if request.method == 'POST':
+        form = RoleForm(request.POST)
+        if form.is_valid():
+            new_role = form.save()
+
+            # Log the cloning action
+            AuditLog.objects.create(
+                user=request.user,
+                action='create',
+                details={
+                    'role_name': new_role.name,
+                    'cloned_from': original_role.name,
+                    'permissions': list(new_role.permissions.values_list('name', flat=True))
+                },
+                ip_address=request.META.get('REMOTE_ADDR'),
+                timestamp=timezone.now()
+            )
+
+            messages.success(request, f'Role "{new_role.name}" created successfully (cloned from "{original_role.name}").')
+            return redirect('accounts:role_management')
+    else:
+        # Pre-fill form with original role data
+        initial_data = {
+            'name': f'{original_role.name} (Copy)',
+            'description': original_role.description,
+            'parent': original_role.parent,
+            'permissions': original_role.permissions.all(),
+        }
+        form = RoleForm(initial=initial_data)
+
+    context = {
+        'form': form,
+        'original_role': original_role,
+        'is_edit': False,
+        'page_title': f'Clone Role: {original_role.name}',
+        'active_nav': 'role_management',
+    }
+    return render(request, 'accounts/role_form.html', context)
+
+
+@login_required
+@permission_required('roles.view')
+def compare_roles(request):
+    """View for comparing permissions between two roles"""
+    roles = Role.objects.all().order_by('name')
+
+    role_a = None
+    role_b = None
+    comparison_data = None
+
+    if request.method == 'GET':
+        role_a_id = request.GET.get('role_a')
+        role_b_id = request.GET.get('role_b')
+
+        if role_a_id and role_b_id:
+            try:
+                role_a = Role.objects.get(id=role_a_id)
+                role_b = Role.objects.get(id=role_b_id)
+
+                # Calculate permission differences
+                perms_a = role_a.get_all_permissions()
+                perms_b = role_b.get_all_permissions()
+
+                all_perms = perms_a | perms_b
+
+                comparison_data = {
+                    'role_a': role_a,
+                    'role_b': role_b,
+                    'only_in_a': sorted([p for p in perms_a if p not in perms_b], key=lambda x: x.content_type.app_label),
+                    'only_in_b': sorted([p for p in perms_b if p not in perms_a], key=lambda x: x.content_type.app_label),
+                    'in_both': sorted([p for p in perms_a if p in perms_b], key=lambda x: x.content_type.app_label),
+                    'total_a': len(perms_a),
+                    'total_b': len(perms_b),
+                    'total_both': len(perms_a & perms_b),
+                }
+            except Role.DoesNotExist:
+                messages.error(request, "One or both selected roles do not exist.")
+
+    context = {
+        'roles': roles,
+        'role_a': role_a,
+        'role_b': role_b,
+        'comparison_data': comparison_data,
+        'page_title': 'Compare Roles',
+        'active_nav': 'role_management',
+    }
+    return render(request, 'accounts/compare_roles.html', context)
 
 
 @login_required
