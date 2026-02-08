@@ -248,7 +248,7 @@ def patient_detail(request, patient_id):
 
 
 @login_required
-@permission_required('patients.change')
+@permission_required('patients.edit')
 def edit_patient(request, patient_id):
     """View for editing patient information"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -273,7 +273,7 @@ def edit_patient(request, patient_id):
 
 
 @login_required
-@permission_required('patients.change')
+@permission_required('patients.edit')
 def toggle_patient_status(request, patient_id):
     """View for toggling patient active status"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -321,7 +321,7 @@ def search_patients(request):
 
 
 @login_required
-@permission_required('medical.change')
+@permission_required('medical.edit')
 def edit_medical_history(request, history_id):
     """View for editing patient medical history"""
     medical_history = get_object_or_404(MedicalHistory, id=history_id)
@@ -1328,7 +1328,7 @@ def apply_wallet_net_impact(request, patient_id):
 
 
 @login_required
-@permission_required('patients.change')
+@permission_required('patients.edit')
 def register_nhia_patient(request, patient_id):
     """View for registering NHIA patient"""
     from nhia.models import NHIAPatient
@@ -1365,7 +1365,7 @@ def register_nhia_patient(request, patient_id):
 
 
 @login_required
-@permission_required('patients.change')
+@permission_required('patients.edit')
 def edit_nhia_patient(request, patient_id):
     """View for editing NHIA patient"""
     from nhia.models import NHIAPatient
@@ -1399,7 +1399,7 @@ def edit_nhia_patient(request, patient_id):
 
 
 @login_required
-@permission_required('patients.change')
+@permission_required('patients.edit')
 def register_retainership_patient(request, patient_id):
     """View for registering retainership patient"""
     from retainership.models import RetainershipPatient
@@ -1498,7 +1498,7 @@ def add_vaccination(request, patient_id):
 
 
 @login_required
-@permission_required('patients.change')
+@permission_required('patients.edit')
 def edit_retainership_patient(request, patient_id):
     """View for editing retainership patient"""
     from retainership.models import RetainershipPatient
@@ -1659,7 +1659,7 @@ def add_clinical_note(request, patient_id):
 
 
 @login_required
-@permission_required('medical.change')
+@permission_required('medical.edit')
 def edit_clinical_note(request, note_id):
     """View for editing a clinical note"""
     clinical_note = get_object_or_404(ClinicalNote, id=note_id)
