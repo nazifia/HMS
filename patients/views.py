@@ -141,6 +141,7 @@ def patient_list(request):
 
 
 @login_required
+@permission_required('patients.add')
 def register_patient(request):
     """View for registering a new patient"""
     if request.method == 'POST':
@@ -165,6 +166,7 @@ def register_patient(request):
 
 
 @login_required
+@permission_required('patients.view')
 def patient_detail(request, patient_id):
     """View for displaying patient details - Optimized with select_related and prefetch_related"""
     patient = get_object_or_404(Patient.objects.select_related('nhia_info', 'retainership_info'), id=patient_id)
@@ -246,6 +248,7 @@ def patient_detail(request, patient_id):
 
 
 @login_required
+@permission_required('patients.change')
 def edit_patient(request, patient_id):
     """View for editing patient information"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -270,6 +273,7 @@ def edit_patient(request, patient_id):
 
 
 @login_required
+@permission_required('patients.change')
 def toggle_patient_status(request, patient_id):
     """View for toggling patient active status"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -317,6 +321,7 @@ def search_patients(request):
 
 
 @login_required
+@permission_required('medical.change')
 def edit_medical_history(request, history_id):
     """View for editing patient medical history"""
     medical_history = get_object_or_404(MedicalHistory, id=history_id)
@@ -342,6 +347,7 @@ def edit_medical_history(request, history_id):
 
 
 @login_required
+@permission_required('medical.delete')
 def delete_medical_history(request, history_id):
     """View for deleting patient medical history"""
     medical_history = get_object_or_404(MedicalHistory, id=history_id)
@@ -363,6 +369,7 @@ def delete_medical_history(request, history_id):
 
 
 @login_required
+@permission_required('medical.view')
 def patient_medical_history(request, patient_id):
     """View for displaying patient medical history"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -379,6 +386,7 @@ def patient_medical_history(request, patient_id):
 
 
 @login_required
+@permission_required('vitals.view')
 def patient_vitals(request, patient_id):
     """View for displaying patient vitals"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -1320,6 +1328,7 @@ def apply_wallet_net_impact(request, patient_id):
 
 
 @login_required
+@permission_required('patients.change')
 def register_nhia_patient(request, patient_id):
     """View for registering NHIA patient"""
     from nhia.models import NHIAPatient
@@ -1356,6 +1365,7 @@ def register_nhia_patient(request, patient_id):
 
 
 @login_required
+@permission_required('patients.change')
 def edit_nhia_patient(request, patient_id):
     """View for editing NHIA patient"""
     from nhia.models import NHIAPatient
@@ -1389,6 +1399,7 @@ def edit_nhia_patient(request, patient_id):
 
 
 @login_required
+@permission_required('patients.change')
 def register_retainership_patient(request, patient_id):
     """View for registering retainership patient"""
     from retainership.models import RetainershipPatient
@@ -1431,6 +1442,7 @@ def register_retainership_patient(request, patient_id):
 
 
 @login_required
+@permission_required('medical.create')
 def add_vaccination(request, patient_id):
     """View for adding vaccination record to patient"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -1486,6 +1498,7 @@ def add_vaccination(request, patient_id):
 
 
 @login_required
+@permission_required('patients.change')
 def edit_retainership_patient(request, patient_id):
     """View for editing retainership patient"""
     from retainership.models import RetainershipPatient
@@ -1519,6 +1532,7 @@ def edit_retainership_patient(request, patient_id):
 
 
 @login_required
+@permission_required('patients.view')
 def patient_dashboard(request, patient_id):
     """Enhanced patient dashboard showing comprehensive patient information"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -1618,6 +1632,7 @@ def clear_patient_context(request):
 
 
 @login_required
+@permission_required('medical.create')
 def add_clinical_note(request, patient_id):
     """View for adding a clinical note to a patient"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -1644,6 +1659,7 @@ def add_clinical_note(request, patient_id):
 
 
 @login_required
+@permission_required('medical.change')
 def edit_clinical_note(request, note_id):
     """View for editing a clinical note"""
     clinical_note = get_object_or_404(ClinicalNote, id=note_id)
@@ -1669,6 +1685,7 @@ def edit_clinical_note(request, note_id):
 
 
 @login_required
+@permission_required('medical.delete')
 def delete_clinical_note(request, note_id):
     """View for deleting a clinical note"""
     clinical_note = get_object_or_404(ClinicalNote, id=note_id)

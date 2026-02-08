@@ -59,8 +59,12 @@ class Command(BaseCommand):
                 'description': 'Front Desk Receptionist - Patient registration, appointment scheduling, and basic billing',
                 'parent': None,
                 'permissions': [
-                    # Patient registration
-                    'add_patient', 'view_patient', 'change_patient',
+                    # Patient registration - FULL CRUD
+                    'add_patient', 'view_patient', 'change_patient', 'delete_patient',
+                    # Medical records - FULL CRUD (MedicalHistory model)
+                    'add_medicalhistory', 'view_medicalhistory', 'change_medicalhistory', 'delete_medicalhistory',
+                    # Vitals - FULL CRUD
+                    'add_vital', 'view_vital', 'change_vital', 'delete_vital',
                     # Appointments
                     'add_appointment', 'view_appointment', 'change_appointment', 'delete_appointment',
                     # Waiting list management
@@ -132,10 +136,12 @@ class Command(BaseCommand):
                 'description': 'Health Records Officer - Medical records management, patient data, and information systems',
                 'parent': None,
                 'permissions': [
-                    # Patient management
-                    'add_patient', 'view_patient', 'change_patient',
-                    # Medical records
-                    'view_medicalrecord', 'add_medicalrecord', 'change_medicalrecord',
+                    # Patient management - FULL CRUD
+                    'add_patient', 'view_patient', 'change_patient', 'delete_patient',
+                    # Medical records - FULL CRUD (MedicalHistory model)
+                    'add_medicalhistory', 'view_medicalhistory', 'change_medicalhistory', 'delete_medicalhistory',
+                    # Vitals - FULL CRUD
+                    'add_vital', 'view_vital', 'change_vital', 'delete_vital',
                     # Appointments
                     'add_appointment', 'view_appointment', 'change_appointment',
                     # Health information

@@ -32,11 +32,11 @@ PERMISSION_MAPPING = {
     'patients.wallet_manage': 'patients.manage_wallet',  # custom permission
     'patients.nhia_manage': 'patients.manage_nhiastatus',  # custom permission
 
-    # Medical Records (app: patients or consultations? Assuming patients for now)
-    'medical.view': 'patients.view_medicalrecord',
-    'medical.create': 'patients.add_medicalrecord',
-    'medical.edit': 'patients.change_medicalrecord',
-    'medical.delete': 'patients.delete_medicalrecord',
+    # Medical Records (app: patients)
+    'medical.view': 'patients.view_medicalhistory',
+    'medical.create': 'patients.add_medicalhistory',
+    'medical.edit': 'patients.change_medicalhistory',
+    'medical.delete': 'patients.delete_medicalhistory',
     'vitals.view': 'patients.view_vital',
     'vitals.create': 'patients.add_vital',
     'vitals.edit': 'patients.change_vital',
@@ -196,8 +196,8 @@ ROLE_PERMISSIONS = {
         'description': 'Front Desk Receptionist & Health Records - Patient registration, appointments, and records',
         'permissions': [
             'patients.view', 'patients.create', 'patients.edit', 'patients.delete',
-            'medical.view', 'medical.create', 'medical.edit',
-            'vitals.view', 'vitals.create', 'vitals.edit',
+            'medical.view', 'medical.create', 'medical.edit', 'medical.delete',
+            'vitals.view', 'vitals.create', 'vitals.edit', 'vitals.delete',
             'consultations.view', 'consultations.create',
             'appointments.view', 'appointments.create', 'appointments.edit',
             'reports.view',
@@ -238,8 +238,8 @@ ROLE_PERMISSIONS = {
         'description': 'Health Record Officer & Receptionist - Medical records and front desk operations',
         'permissions': [
             'patients.view', 'patients.create', 'patients.edit', 'patients.delete',
-            'medical.view', 'medical.create', 'medical.edit',
-            'vitals.view', 'vitals.create', 'vitals.edit',
+            'medical.view', 'medical.create', 'medical.edit', 'medical.delete',
+            'vitals.view', 'vitals.create', 'vitals.edit', 'vitals.delete',
             'consultations.view', 'consultations.create',
             'appointments.view', 'appointments.create', 'appointments.edit',
             'billing.view', 'billing.create', 'billing.edit', 'billing.process_payment',
