@@ -37,10 +37,10 @@ PERMISSION_MAPPING = {
     'medical.create': 'patients.add_medicalhistory',
     'medical.edit': 'patients.change_medicalhistory',
     'medical.delete': 'patients.delete_medicalhistory',
-    'vitals.view': 'patients.view_vital',
-    'vitals.create': 'patients.add_vital',
-    'vitals.edit': 'patients.change_vital',
-    'vitals.delete': 'patients.delete_vital',
+    'vitals.view': 'patients.view_vitals',
+    'vitals.create': 'patients.add_vitals',
+    'vitals.edit': 'patients.change_vitals',
+    'vitals.delete': 'patients.delete_vitals',
 
     # Consultations (app: consultations)
     'consultations.view': 'consultations.view_consultation',

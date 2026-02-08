@@ -64,7 +64,7 @@ class Command(BaseCommand):
                     # Medical records - FULL CRUD (MedicalHistory model)
                     'add_medicalhistory', 'view_medicalhistory', 'change_medicalhistory', 'delete_medicalhistory',
                     # Vitals - FULL CRUD
-                    'add_vital', 'view_vital', 'change_vital', 'delete_vital',
+                    'add_vitals', 'view_vitals', 'change_vitals', 'delete_vitals',
                     # Appointments
                     'add_appointment', 'view_appointment', 'change_appointment', 'delete_appointment',
                     # Waiting list management
@@ -141,7 +141,7 @@ class Command(BaseCommand):
                     # Medical records - FULL CRUD (MedicalHistory model)
                     'add_medicalhistory', 'view_medicalhistory', 'change_medicalhistory', 'delete_medicalhistory',
                     # Vitals - FULL CRUD
-                    'add_vital', 'view_vital', 'change_vital', 'delete_vital',
+                    'add_vitals', 'view_vitals', 'change_vitals', 'delete_vitals',
                     # Appointments
                     'add_appointment', 'view_appointment', 'change_appointment',
                     # Health information
