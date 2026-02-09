@@ -6082,8 +6082,20 @@ def quick_add_stock(request):
 @login_required
 def medication_autocomplete(request):
     """API endpoint for medication autocomplete"""
-    # Implementation for medication autocomplete
-    pass
+    term = request.GET.get('term', '')
+    medications = Medication.objects.filter(
+        name__icontains=term
+    )[:10]
+
+    data = [{
+        'id': med.id,
+        'name': med.name,
+        'generic_name': med.generic_name,
+        'dosage_form': med.dosage_form,
+        'strength': med.strength,
+    } for med in medications]
+
+    return JsonResponse(data, safe=False)
 
 
 @login_required

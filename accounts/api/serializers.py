@@ -60,7 +60,7 @@ class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 
+        fields = ['id', 'username', 'phone_number', 'email', 'first_name', 'last_name',
                  'password', 'is_active', 'is_staff', 'is_superuser',
                  'profile', 'roles', 'role_ids']
         extra_kwargs = {
@@ -72,18 +72,25 @@ class UserSerializer(serializers.ModelSerializer):
         profile_data = validated_data.pop('profile')
         role_ids = validated_data.pop('roles', [])
         password = validated_data.pop('password')
-        
+
+        # Extract phone_number for create_user and remove it from validated_data
+        phone_number = validated_data.pop('phone_number')
+
         user = CustomUser.objects.create_user(
+            phone_number=phone_number,
             password=password,
             **validated_data
         )
-        
-        # Create profile
-        UserProfile.objects.create(user=user, **profile_data)
-        
+
+        # Update the auto-created profile (from signal) instead of creating new
+        profile = user.profile
+        for attr, value in profile_data.items():
+            setattr(profile, attr, value)
+        profile.save()
+
         # Assign roles
         user.roles.set(role_ids)
-        
+
         return user
         
     def update(self, instance, validated_data):

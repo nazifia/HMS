@@ -141,9 +141,11 @@ class UserActivityMiddleware:
             user = request.user if request.user.is_authenticated else None
             if not user:
                 return  # Only track authenticated users
-            
-            # Get user session
-            session_key = request.session.session_key if hasattr(request, 'session') else ''
+
+            # Get user session - ensure session_key is never None
+            session_key = ''
+            if hasattr(request, 'session'):
+                session_key = request.session.session_key or ''
             
             # Get IP address
             ip_address = self.get_client_ip(request)

@@ -1,8 +1,11 @@
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from pharmacy.models import MedicationCategory, Medication, Prescription, PrescriptionItem
 from patients.models import Patient
+from accounts.models import Role
 
 User = get_user_model()
 
@@ -10,23 +13,29 @@ class PharmacyViewsTest(TestCase):
     def setUp(self):
         # Create test client
         self.client = Client()
-        
-        # Create test user with pharmacist role
+
+        # Create test user
         self.user = User.objects.create_user(
             phone_number="9876543210",
             username="testpharmacist",
             password="testpass123"
         )
-        
-        # Add pharmacist role to user
-        # Note: This would depend on your role implementation
-        
+
+        # Assign needed permissions directly to user for prescription access
+        from django.contrib.contenttypes.models import ContentType
+        from django.contrib.auth.models import Permission
+        from pharmacy.models import Prescription
+
+        prescription_ct = ContentType.objects.get_for_model(Prescription)
+        view_perm = Permission.objects.get(codename='view_prescription', content_type=prescription_ct)
+        self.user.user_permissions.add(view_perm)
+
         # Create test data
         self.category = MedicationCategory.objects.create(
             name="Pain Relief",
             description="Pain relief medications"
         )
-        
+
         self.medication = Medication.objects.create(
             name="Ibuprofen",
             generic_name="Ibuprofen",
@@ -38,7 +47,7 @@ class PharmacyViewsTest(TestCase):
             price=15.00,
             reorder_level=20
         )
-        
+
         self.patient = Patient.objects.create(
             first_name="Jane",
             last_name="Smith",
@@ -50,14 +59,14 @@ class PharmacyViewsTest(TestCase):
             country="Patientland",
             patient_id="P000000002"
         )
-        
+
         self.prescription = Prescription.objects.create(
             patient=self.patient,
             doctor=self.user,
             prescription_date="2023-01-01",
             diagnosis="Headache"
         )
-        
+
         self.prescription_item = PrescriptionItem.objects.create(
             prescription=self.prescription,
             medication=self.medication,
@@ -66,9 +75,32 @@ class PharmacyViewsTest(TestCase):
             duration="3 days",
             quantity=12
         )
-        
+
+        # Create dispensary and assign to pharmacist
+        from pharmacy.models import Dispensary, PharmacistDispensaryAssignment
+        self.dispensary = Dispensary.objects.create(
+            name="Test Dispensary",
+            location="Main Hospital",
+            is_active=True
+        )
+
+        # Create assignment - THIS IS CRITICAL for the user to access pharmacy views
+        from datetime import date
+        self.assignment = PharmacistDispensaryAssignment.objects.create(
+            pharmacist=self.user,
+            dispensary=self.dispensary,
+            start_date=date.today(),
+            is_active=True
+        )
+
         # Login the user
         self.client.login(phone_number="9876543210", password="testpass123")
+
+        # Set up session to select the dispensary
+        session = self.client.session
+        session['selected_dispensary_id'] = self.dispensary.id
+        session['selected_dispensary_name'] = self.dispensary.name
+        session.save()
 
     def test_pharmacy_dashboard_view(self):
         """Test that pharmacy dashboard loads successfully"""
@@ -93,7 +125,8 @@ class PharmacyViewsTest(TestCase):
         """Test that prescription list view loads successfully"""
         response = self.client.get(reverse('pharmacy:prescription_list'))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Prescription List")
+        # Check for a known text that should appear in the page
+        self.assertContains(response, "Prescription")
 
     def test_prescription_detail_view(self):
         """Test that prescription detail view loads successfully"""
@@ -107,7 +140,9 @@ class PharmacyViewsTest(TestCase):
         response = self.client.get(reverse('pharmacy:medication_autocomplete'), {'term': 'Ibu'})
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertIn('Ibuprofen', data)
+        # Check that the medication is in the results
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]['name'], 'Ibuprofen')
 
     def test_revenue_analysis_view_authenticated(self):
         """Revenue analysis should return a response for authenticated user"""

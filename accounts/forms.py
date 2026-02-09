@@ -350,6 +350,9 @@ class UserProfileForm(forms.ModelForm):
 
     def clean_contact_phone_number(self):
         phone = self.cleaned_data.get('contact_phone_number')
+        # Convert empty string or whitespace to None
+        if phone is not None and str(phone).strip() == '':
+            phone = None
         if phone:
             if not phone.isdigit():
                 raise ValidationError("Contact phone number must contain only digits.")

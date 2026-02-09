@@ -1122,18 +1122,14 @@ class PrescriptionItem(models.Model):
     dispensed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.medication.name} - {self.quantity} units"
+        return f"{self.medication.name} ({self.quantity}) for {self.prescription.patient.get_full_name()}"
 
     @property
     def remaining_quantity_to_dispense(self):
         """Calculate how many units still need to be dispensed"""
         if self.is_dispensed:
             return 0
-        # Sum up all dispensing logs for this item
-        total_dispensed = self.dispensing_logs.aggregate(
-            total=models.Sum('dispensed_quantity')
-        )['total'] or 0
-        return max(0, self.quantity - total_dispensed)
+        return max(0, self.quantity - self.quantity_dispensed_so_far)
 
 class Pack(models.Model):
     name = models.CharField(max_length=100)

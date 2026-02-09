@@ -4,6 +4,23 @@ Comprehensive Role-Based Access Control (RBAC) System for HMS
 This module provides a centralized permission system that works across all modules
 in the Hospital Management System. It defines role-based access controls for different
 user types and their permissions.
+
+ARCHITECTURE:
+=============
+1. PERMISSION_DEFINITIONS: Single source of truth for all permissions in the system.
+   Each permission includes metadata (django_codename, category, description, model, is_custom).
+
+2. PERMISSION_MAPPING: Auto-generated mapping from custom permission keys to Django
+   permission strings (e.g., 'patients.view' -> 'patients.view_patient').
+
+3. ROLE_PERMISSIONS: Role definitions with permission lists. Uses custom permission keys
+   that map to PERMISSION_DEFINITIONS.
+
+4. CATEGORY_PERMISSIONS: Auto-generated grouping of permissions by category for
+   easier management.
+
+All permission checks should use the helper functions (user_has_permission, user_in_role)
+which handle translation, inheritance, and caching.
 """
 
 from functools import wraps
@@ -13,110 +30,704 @@ from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.conf import settings
 import logging
+import warnings
 
 logger = logging.getLogger(__name__)
 
 # Debug flag for verbose logging (set to True for debugging)
 DEBUG_PERMISSIONS = False
 
-# Permission mapping from custom names to Django permission codenames
-# This maps the permission strings used in ROLE_PERMISSIONS to actual Django Permission codenames
-# Values are now FULL permission strings in the format 'app_label.codename'
-PERMISSION_MAPPING = {
-    # Patients (app: patients)
-    'patients.view': 'patients.view_patient',
-    'patients.create': 'patients.add_patient',
-    'patients.edit': 'patients.change_patient',
-    'patients.delete': 'patients.delete_patient',
-    'patients.toggle_status': 'patients.toggle_patientstatus',  # custom permission
-    'patients.wallet_manage': 'patients.manage_wallet',  # custom permission
-    'patients.nhia_manage': 'patients.manage_nhiastatus',  # custom permission
+# ============================================================================
+# PERMISSION_DEFINITIONS: Single source of truth for all permissions
+# ============================================================================
+# This dictionary defines all permissions used in the HMS system. It serves as the
+# authoritative reference for permission metadata, including the Django permission
+# string, category, description, associated model, and whether it's a custom permission.
+#
+# Structure:
+#   'custom_key': {
+#       'django_codename': 'app_label.codename',  # Full Django permission string
+#       'category': 'category_name',               # Grouping category
+#       'description': 'Human readable description',
+#       'model': 'ModelName',                      # Associated Django model
+#       'is_custom': True/False                    # True if not a standard Django perm
+#   }
+#
+# To add a new permission:
+#   1. Add entry to PERMISSION_DEFINITIONS below
+#   2. Add the custom_key to appropriate ROLE_PERMISSIONS['role']['permissions']
+#   3. Update documentation
 
-    # Medical Records (app: patients)
-    'medical.view': 'patients.view_medicalhistory',
-    'medical.create': 'patients.add_medicalhistory',
-    'medical.edit': 'patients.change_medicalhistory',
-    'medical.delete': 'patients.delete_medicalhistory',
-    'vitals.view': 'patients.view_vitals',
-    'vitals.create': 'patients.add_vitals',
-    'vitals.edit': 'patients.change_vitals',
-    'vitals.delete': 'patients.delete_vitals',
+PERMISSION_DEFINITIONS = {
+    # --------------------------------------------------------------------------
+    # Patient Management (patients app)
+    # --------------------------------------------------------------------------
+    'patients.view': {
+        'django_codename': 'patients.view_patient',
+        'category': 'patient_management',
+        'description': 'Can view patient records',
+        'model': 'Patient',
+        'is_custom': False,
+    },
+    'patients.create': {
+        'django_codename': 'patients.add_patient',
+        'category': 'patient_management',
+        'description': 'Can add/create new patients',
+        'model': 'Patient',
+        'is_custom': False,
+    },
+    'patients.edit': {
+        'django_codename': 'patients.change_patient',
+        'category': 'patient_management',
+        'description': 'Can edit patient records',
+        'model': 'Patient',
+        'is_custom': False,
+    },
+    'patients.delete': {
+        'django_codename': 'patients.delete_patient',
+        'category': 'patient_management',
+        'description': 'Can delete patient records',
+        'model': 'Patient',
+        'is_custom': False,
+    },
+    'patients.toggle_status': {
+        'django_codename': 'patients.toggle_patientstatus',
+        'category': 'patient_management',
+        'description': 'Can toggle patient active/inactive status',
+        'model': 'Patient',
+        'is_custom': True,
+    },
+    'patients.wallet_manage': {
+        'django_codename': 'patients.manage_wallet',
+        'category': 'patient_management',
+        'description': 'Can manage patient wallet (add funds, adjust balances)',
+        'model': 'Patient',
+        'is_custom': True,
+    },
+    'patients.nhia_manage': {
+        'django_codename': 'patients.manage_nhiastatus',
+        'category': 'patient_management',
+        'description': 'Can manage NHIA insurance status',
+        'model': 'Patient',
+        'is_custom': True,
+    },
 
-    # Consultations (app: consultations)
-    'consultations.view': 'consultations.view_consultation',
-    'consultations.create': 'consultations.add_consultation',
-    'consultations.edit': 'consultations.change_consultation',
-    'referrals.view': 'consultations.view_referral',
-    'referrals.create': 'consultations.add_referral',
-    'referrals.edit': 'consultations.change_referral',
+    # --------------------------------------------------------------------------
+    # Medical Records (patients app - MedicalHistory, Vitals)
+    # --------------------------------------------------------------------------
+    'medical.view': {
+        'django_codename': 'patients.view_medicalhistory',
+        'category': 'medical_records',
+        'description': 'Can view medical history records',
+        'model': 'MedicalHistory',
+        'is_custom': False,
+    },
+    'medical.create': {
+        'django_codename': 'patients.add_medicalhistory',
+        'category': 'medical_records',
+        'description': 'Can add medical history records',
+        'model': 'MedicalHistory',
+        'is_custom': False,
+    },
+    'medical.edit': {
+        'django_codename': 'patients.change_medicalhistory',
+        'category': 'medical_records',
+        'description': 'Can edit medical history records',
+        'model': 'MedicalHistory',
+        'is_custom': False,
+    },
+    'medical.delete': {
+        'django_codename': 'patients.delete_medicalhistory',
+        'category': 'medical_records',
+        'description': 'Can delete medical history records',
+        'model': 'MedicalHistory',
+        'is_custom': False,
+    },
+    'vitals.view': {
+        'django_codename': 'patients.view_vitals',
+        'category': 'medical_records',
+        'description': 'Can view vital signs records',
+        'model': 'Vitals',
+        'is_custom': False,
+    },
+    'vitals.create': {
+        'django_codename': 'patients.add_vitals',
+        'category': 'medical_records',
+        'description': 'Can add vital signs records',
+        'model': 'Vitals',
+        'is_custom': False,
+    },
+    'vitals.edit': {
+        'django_codename': 'patients.change_vitals',
+        'category': 'medical_records',
+        'description': 'Can edit vital signs records',
+        'model': 'Vitals',
+        'is_custom': False,
+    },
+    'vitals.delete': {
+        'django_codename': 'patients.delete_vitals',
+        'category': 'medical_records',
+        'description': 'Can delete vital signs records',
+        'model': 'Vitals',
+        'is_custom': False,
+    },
 
-    # Pharmacy (app: pharmacy)
-    'pharmacy.view': 'pharmacy.view_pharmacy',
-    'pharmacy.create': 'pharmacy.add_pharmacy',
-    'pharmacy.edit': 'pharmacy.change_pharmacy',
-    'pharmacy.dispense': 'pharmacy.dispense_medication',  # custom permission
-    'prescriptions.view': 'pharmacy.view_prescription',
-    'prescriptions.create': 'pharmacy.add_prescription',
-    'prescriptions.edit': 'pharmacy.change_prescription',
+    # --------------------------------------------------------------------------
+    # Consultations (consultations app)
+    # --------------------------------------------------------------------------
+    'consultations.view': {
+        'django_codename': 'consultations.view_consultation',
+        'category': 'consultations',
+        'description': 'Can view consultation records',
+        'model': 'Consultation',
+        'is_custom': False,
+    },
+    'consultations.create': {
+        'django_codename': 'consultations.add_consultation',
+        'category': 'consultations',
+        'description': 'Can create consultations',
+        'model': 'Consultation',
+        'is_custom': False,
+    },
+    'consultations.edit': {
+        'django_codename': 'consultations.change_consultation',
+        'category': 'consultations',
+        'description': 'Can edit consultation records',
+        'model': 'Consultation',
+        'is_custom': False,
+    },
+    'consultations.delete': {
+        'django_codename': 'consultations.delete_consultation',
+        'category': 'consultations',
+        'description': 'Can delete consultation records',
+        'model': 'Consultation',
+        'is_custom': False,
+    },
+    'referrals.view': {
+        'django_codename': 'consultations.view_referral',
+        'category': 'consultations',
+        'description': 'Can view referral records',
+        'model': 'Referral',
+        'is_custom': False,
+    },
+    'referrals.create': {
+        'django_codename': 'consultations.add_referral',
+        'category': 'consultations',
+        'description': 'Can create referrals',
+        'model': 'Referral',
+        'is_custom': False,
+    },
+    'referrals.edit': {
+        'django_codename': 'consultations.change_referral',
+        'category': 'consultations',
+        'description': 'Can edit referral records',
+        'model': 'Referral',
+        'is_custom': False,
+    },
+    'referrals.delete': {
+        'django_codename': 'consultations.delete_referral',
+        'category': 'consultations',
+        'description': 'Can delete referral records',
+        'model': 'Referral',
+        'is_custom': False,
+    },
 
-    # Laboratory (app: laboratory)
-    'lab.view': 'laboratory.view_labtest',
-    'lab.create': 'laboratory.add_labtest',
-    'lab.edit': 'laboratory.change_labtest',
-    'lab.results': 'laboratory.enter_labresults',  # custom permission
+    # --------------------------------------------------------------------------
+    # Pharmacy (pharmacy app)
+    # --------------------------------------------------------------------------
+    'pharmacy.view': {
+        'django_codename': 'pharmacy.view_dispensary',
+        'category': 'pharmacy',
+        'description': 'Can view dispensary records',
+        'model': 'Dispensary',
+        'is_custom': False,
+    },
+    'pharmacy.create': {
+        'django_codename': 'pharmacy.add_dispensary',
+        'category': 'pharmacy',
+        'description': 'Can add dispensary records',
+        'model': 'Dispensary',
+        'is_custom': False,
+    },
+    'pharmacy.edit': {
+        'django_codename': 'pharmacy.change_dispensary',
+        'category': 'pharmacy',
+        'description': 'Can edit dispensary records',
+        'model': 'Dispensary',
+        'is_custom': False,
+    },
+    'pharmacy.dispense': {
+        'django_codename': 'pharmacy.dispense_medication',
+        'category': 'pharmacy',
+        'description': 'Can dispense medications to patients',
+        'model': 'Prescription',
+        'is_custom': True,
+    },
+    'prescriptions.view': {
+        'django_codename': 'pharmacy.view_prescription',
+        'category': 'pharmacy',
+        'description': 'Can view prescription records',
+        'model': 'Prescription',
+        'is_custom': False,
+    },
+    'prescriptions.create': {
+        'django_codename': 'pharmacy.add_prescription',
+        'category': 'pharmacy',
+        'description': 'Can create prescriptions',
+        'model': 'Prescription',
+        'is_custom': False,
+    },
+    'prescriptions.edit': {
+        'django_codename': 'pharmacy.change_prescription',
+        'category': 'pharmacy',
+        'description': 'Can edit prescription records',
+        'model': 'Prescription',
+        'is_custom': False,
+    },
+    'prescriptions.delete': {
+        'django_codename': 'pharmacy.delete_prescription',
+        'category': 'pharmacy',
+        'description': 'Can delete prescription records',
+        'model': 'Prescription',
+        'is_custom': False,
+    },
 
-    # Billing (app: billing)
-    'billing.view': 'billing.view_invoice',
-    'billing.create': 'billing.add_invoice',
-    'billing.edit': 'billing.change_invoice',
-    'billing.process_payment': 'billing.process_payment',  # custom permission
-    'wallet.view': 'billing.view_wallet',
-    'wallet.create': 'billing.add_wallet',
-    'wallet.edit': 'billing.change_wallet',
-    'wallet.transactions': 'billing.view_wallettransaction',
-    'wallet.manage': 'billing.manage_wallet',  # custom permission
+    # --------------------------------------------------------------------------
+    # Laboratory (laboratory app)
+    # --------------------------------------------------------------------------
+    'lab.view': {
+        'django_codename': 'laboratory.view_test',
+        'category': 'laboratory',
+        'description': 'Can view lab test records',
+        'model': 'Test',
+        'is_custom': False,
+    },
+    'lab.create': {
+        'django_codename': 'laboratory.add_test',
+        'category': 'laboratory',
+        'description': 'Can create lab tests',
+        'model': 'Test',
+        'is_custom': False,
+    },
+    'lab.edit': {
+        'django_codename': 'laboratory.change_test',
+        'category': 'laboratory',
+        'description': 'Can edit lab test records',
+        'model': 'Test',
+        'is_custom': False,
+    },
+    'lab.delete': {
+        'django_codename': 'laboratory.delete_test',
+        'category': 'laboratory',
+        'description': 'Can delete lab test records',
+        'model': 'Test',
+        'is_custom': False,
+    },
+    'lab.results': {
+        'django_codename': 'laboratory.enter_testresults',
+        'category': 'laboratory',
+        'description': 'Can enter/edit lab test results',
+        'model': 'TestResult',
+        'is_custom': True,
+    },
 
-    # Appointments (app: appointments)
-    'appointments.view': 'appointments.view_appointment',
-    'appointments.create': 'appointments.add_appointment',
-    'appointments.edit': 'appointments.change_appointment',
+    # --------------------------------------------------------------------------
+    # Billing & Finance (billing app)
+    # --------------------------------------------------------------------------
+    'billing.view': {
+        'django_codename': 'billing.view_invoice',
+        'category': 'billing',
+        'description': 'Can view invoices',
+        'model': 'Invoice',
+        'is_custom': False,
+    },
+    'billing.create': {
+        'django_codename': 'billing.add_invoice',
+        'category': 'billing',
+        'description': 'Can create invoices',
+        'model': 'Invoice',
+        'is_custom': False,
+    },
+    'billing.edit': {
+        'django_codename': 'billing.change_invoice',
+        'category': 'billing',
+        'description': 'Can edit invoices',
+        'model': 'Invoice',
+        'is_custom': False,
+    },
+    'billing.delete': {
+        'django_codename': 'billing.delete_invoice',
+        'category': 'billing',
+        'description': 'Can delete invoices',
+        'model': 'Invoice',
+        'is_custom': False,
+    },
+    'billing.process_payment': {
+        'django_codename': 'billing.process_payment',
+        'category': 'billing',
+        'description': 'Can process payments',
+        'model': 'Payment',
+        'is_custom': True,
+    },
+    # --------------------------------------------------------------------------
+    # Wallet & Transactions (patients app)
+    # --------------------------------------------------------------------------
+    'wallet.view': {
+        'django_codename': 'patients.view_patientwallet',
+        'category': 'billing',
+        'description': 'Can view patient wallets',
+        'model': 'PatientWallet',
+        'is_custom': False,
+    },
+    'wallet.create': {
+        'django_codename': 'patients.add_patientwallet',
+        'category': 'billing',
+        'description': 'Can create patient wallets',
+        'model': 'PatientWallet',
+        'is_custom': False,
+    },
+    'wallet.edit': {
+        'django_codename': 'patients.change_patientwallet',
+        'category': 'billing',
+        'description': 'Can edit patient wallets',
+        'model': 'PatientWallet',
+        'is_custom': False,
+    },
+    'wallet.delete': {
+        'django_codename': 'patients.delete_patientwallet',
+        'category': 'billing',
+        'description': 'Can delete patient wallets',
+        'model': 'PatientWallet',
+        'is_custom': False,
+    },
+    'wallet.transactions': {
+        'django_codename': 'patients.view_wallettransaction',
+        'category': 'billing',
+        'description': 'Can view wallet transactions',
+        'model': 'WalletTransaction',
+        'is_custom': False,
+    },
+    'wallet.manage': {
+        'django_codename': 'patients.manage_patientwallet',
+        'category': 'billing',
+        'description': 'Can manage wallet operations (adjust balances, refunds)',
+        'model': 'PatientWallet',
+        'is_custom': True,
+    },
 
-    # Inpatient (app: inpatient)
-    'inpatient.view': 'inpatient.view_admission',
-    'inpatient.create': 'inpatient.add_admission',
-    'inpatient.edit': 'inpatient.change_admission',
-    'inpatient.discharge': 'inpatient.discharge_patient',  # custom permission
+    # --------------------------------------------------------------------------
+    # Appointments (appointments app)
+    # --------------------------------------------------------------------------
+    'appointments.view': {
+        'django_codename': 'appointments.view_appointment',
+        'category': 'appointments',
+        'description': 'Can view appointment records',
+        'model': 'Appointment',
+        'is_custom': False,
+    },
+    'appointments.create': {
+        'django_codename': 'appointments.add_appointment',
+        'category': 'appointments',
+        'description': 'Can create appointments',
+        'model': 'Appointment',
+        'is_custom': False,
+    },
+    'appointments.edit': {
+        'django_codename': 'appointments.change_appointment',
+        'category': 'appointments',
+        'description': 'Can edit appointment records',
+        'model': 'Appointment',
+        'is_custom': False,
+    },
+    'appointments.delete': {
+        'django_codename': 'appointments.delete_appointment',
+        'category': 'appointments',
+        'description': 'Can delete appointment records',
+        'model': 'Appointment',
+        'is_custom': False,
+    },
 
-    # User Management (app: accounts)
-    'users.view': 'accounts.view_customuser',
-    'users.create': 'accounts.add_customuser',
-    'users.edit': 'accounts.change_customuser',
-    'users.delete': 'accounts.delete_customuser',
-    'roles.view': 'accounts.view_role',
-    'roles.create': 'accounts.add_role',
-    'roles.edit': 'accounts.change_role',
+    # --------------------------------------------------------------------------
+    # Inpatient Management (inpatient app)
+    # --------------------------------------------------------------------------
+    'inpatient.view': {
+        'django_codename': 'inpatient.view_admission',
+        'category': 'inpatient',
+        'description': 'Can view admission records',
+        'model': 'Admission',
+        'is_custom': False,
+    },
+    'inpatient.create': {
+        'django_codename': 'inpatient.add_admission',
+        'category': 'inpatient',
+        'description': 'Can create admissions',
+        'model': 'Admission',
+        'is_custom': False,
+    },
+    'inpatient.edit': {
+        'django_codename': 'inpatient.change_admission',
+        'category': 'inpatient',
+        'description': 'Can edit admission records',
+        'model': 'Admission',
+        'is_custom': False,
+    },
+    'inpatient.delete': {
+        'django_codename': 'inpatient.delete_admission',
+        'category': 'inpatient',
+        'description': 'Can delete admission records',
+        'model': 'Admission',
+        'is_custom': False,
+    },
+    'inpatient.discharge': {
+        'django_codename': 'inpatient.discharge_patient',
+        'category': 'inpatient',
+        'description': 'Can discharge inpatients',
+        'model': 'Admission',
+        'is_custom': True,
+    },
 
-    # Reports (app: ? Could be core or accounts)
-    'reports.view': 'core.view_report',  # Assuming report model in core
-    'reports.generate': 'core.generate_report',  # custom permission
+    # --------------------------------------------------------------------------
+    # User & Role Management (accounts app)
+    # --------------------------------------------------------------------------
+    'users.view': {
+        'django_codename': 'accounts.view_customuser',
+        'category': 'user_management',
+        'description': 'Can view user accounts',
+        'model': 'CustomUser',
+        'is_custom': False,
+    },
+    'users.create': {
+        'django_codename': 'accounts.add_customuser',
+        'category': 'user_management',
+        'description': 'Can create new user accounts',
+        'model': 'CustomUser',
+        'is_custom': False,
+    },
+    'users.edit': {
+        'django_codename': 'accounts.change_customuser',
+        'category': 'user_management',
+        'description': 'Can edit user accounts',
+        'model': 'CustomUser',
+        'is_custom': False,
+    },
+    'users.delete': {
+        'django_codename': 'accounts.delete_customuser',
+        'category': 'user_management',
+        'description': 'Can delete user accounts',
+        'model': 'CustomUser',
+        'is_custom': False,
+    },
+    'roles.view': {
+        'django_codename': 'accounts.view_role',
+        'category': 'user_management',
+        'description': 'Can view roles',
+        'model': 'Role',
+        'is_custom': False,
+    },
+    'roles.create': {
+        'django_codename': 'accounts.add_role',
+        'category': 'user_management',
+        'description': 'Can create roles',
+        'model': 'Role',
+        'is_custom': False,
+    },
+    'roles.edit': {
+        'django_codename': 'accounts.change_role',
+        'category': 'user_management',
+        'description': 'Can edit roles',
+        'model': 'Role',
+        'is_custom': False,
+    },
+    'roles.delete': {
+        'django_codename': 'accounts.delete_role',
+        'category': 'user_management',
+        'description': 'Can delete roles',
+        'model': 'Role',
+        'is_custom': False,
+    },
+
+    # --------------------------------------------------------------------------
+    # Reports & Analytics (reporting app)
+    # --------------------------------------------------------------------------
+    'reports.view': {
+        'django_codename': 'reporting.view_report',
+        'category': 'reports',
+        'description': 'Can view reports',
+        'model': 'Report',
+        'is_custom': False,
+    },
+    'reports.generate': {
+        'django_codename': 'reporting.generate_report',
+        'category': 'reports',
+        'description': 'Can generate reports',
+        'model': 'Report',
+        'is_custom': True,
+    },
+
+    # --------------------------------------------------------------------------
+    # Radiology (radiology app - if exists)
+    # --------------------------------------------------------------------------
+    'radiology.view': {
+        'django_codename': 'radiology.view_radiologytest',
+        'category': 'radiology',
+        'description': 'Can view radiology tests/services',
+        'model': 'RadiologyTest',
+        'is_custom': False,
+    },
+    'radiology.create': {
+        'django_codename': 'radiology.add_radiologytest',
+        'category': 'radiology',
+        'description': 'Can create radiology tests/services',
+        'model': 'RadiologyTest',
+        'is_custom': False,
+    },
+    'radiology.edit': {
+        'django_codename': 'radiology.change_radiologytest',
+        'category': 'radiology',
+        'description': 'Can edit radiology tests/services',
+        'model': 'RadiologyTest',
+        'is_custom': False,
+    },
+    'radiology.delete': {
+        'django_codename': 'radiology.delete_radiologytest',
+        'category': 'radiology',
+        'description': 'Can delete radiology tests/services',
+        'model': 'RadiologyTest',
+        'is_custom': False,
+    },
 }
+
+# ============================================================================
+# Auto-generate PERMISSION_MAPPING from DEFINITIONS
+# ============================================================================
+PERMISSION_MAPPING = {
+    custom_key: defn['django_codename']
+    for custom_key, defn in PERMISSION_DEFINITIONS.items()
+}
+
+# ============================================================================
+# Auto-generate CATEGORY_PERMISSIONS from DEFINITIONS
+# ============================================================================
+CATEGORY_PERMISSIONS = {}
+for custom_key, defn in PERMISSION_DEFINITIONS.items():
+    category = defn['category']
+    if category not in CATEGORY_PERMISSIONS:
+        CATEGORY_PERMISSIONS[category] = []
+    CATEGORY_PERMISSIONS[category].append(custom_key)
 
 def get_django_permission(custom_permission):
     """
     Convert a custom permission string to full Django permission string.
     Returns 'app_label.codename' format.
 
-    Now uses complete permission strings from PERMISSION_MAPPING.
+    DEPRECATED: This function is maintained for backward compatibility.
+    New code should use get_permission_info() or reference PERMISSION_DEFINITIONS directly.
+
+    Args:
+        custom_permission: Custom permission key (e.g., 'patients.view')
+
+    Returns:
+        Full Django permission string (e.g., 'patients.view_patient')
     """
     # Return the full permission string directly from mapping
     if custom_permission in PERMISSION_MAPPING:
         return PERMISSION_MAPPING[custom_permission]
 
     # If not in mapping, log a warning and return as-is
+    warnings.warn(
+        f"Permission '{custom_permission}' not found in PERMISSION_DEFINITIONS. "
+        f"This may indicate a missing permission definition or use of raw Django permissions.",
+        DeprecationWarning,
+        stacklevel=2
+    )
     if DEBUG_PERMISSIONS:
         logger.warning(f"Permission '{custom_permission}' not found in PERMISSION_MAPPING")
 
     return custom_permission
+
+
+def get_permission_info(permission_key):
+    """
+    Get metadata for a permission from PERMISSION_DEFINITIONS.
+
+    Args:
+        permission_key: Custom permission key (e.g., 'patients.view')
+
+    Returns:
+        Dict with permission metadata or None if not found
+    """
+    return PERMISSION_DEFINITIONS.get(permission_key)
+
+
+def get_permissions_by_category(category):
+    """
+    Get all permission keys belonging to a specific category.
+
+    Args:
+        category: Category name (e.g., 'patient_management')
+
+    Returns:
+        List of custom permission keys
+    """
+    return CATEGORY_PERMISSIONS.get(category, [])
+
+
+def get_all_categories():
+    """
+    Get list of all permission categories.
+
+    Returns:
+        List of category names
+    """
+    return list(CATEGORY_PERMISSIONS.keys())
+
+
+def validate_permission_definitions():
+    """
+    Validate that all permission definitions are consistent.
+
+    Checks:
+    - All PERMISSION_DEFINITIONS entries have required fields
+    - All django_codename values are in correct format (app_label.codename)
+    - No duplicate django_codename values
+    - All referenced models exist in ROLE_PERMISSIONS (basic check)
+
+    Returns:
+        Tuple of (is_valid, errors_list)
+    """
+    errors = []
+    warnings_list = []
+    seen_django_codenames = set()
+
+    required_fields = {'django_codename', 'category', 'description', 'model', 'is_custom'}
+
+    for key, defn in PERMISSION_DEFINITIONS.items():
+        # Check required fields
+        missing = required_fields - set(defn.keys())
+        if missing:
+            errors.append(f"Permission '{key}' missing required fields: {missing}")
+            continue
+
+        # Validate django_codename format
+        django_codename = defn['django_codename']
+        if '.' not in django_codename or django_codename.count('.') != 1:
+            errors.append(f"Permission '{key}' has invalid django_codename: '{django_codename}' (expected 'app_label.codename')")
+
+        # Check for duplicates
+        if django_codename in seen_django_codenames:
+            errors.append(f"Duplicate django_codename '{django_codename}' found (for {key})")
+        else:
+            seen_django_codenames.add(django_codename)
+
+        # Validate model name is non-empty
+        if not defn['model'] or not isinstance(defn['model'], str):
+            errors.append(f"Permission '{key}' has invalid model name")
+
+        # Validate is_custom is boolean
+        if not isinstance(defn['is_custom'], bool):
+            errors.append(f"Permission '{key}' has non-boolean is_custom value")
+
+    return (len(errors) == 0, errors, warnings_list)
 
 # Define role hierarchies and permissions
 ROLE_PERMISSIONS = {

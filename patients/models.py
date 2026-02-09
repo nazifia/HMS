@@ -280,6 +280,14 @@ class Patient(models.Model):
         if not self.patient_id:
             self.patient_id = self._generate_patient_id()
 
+        # Convert string dates to date objects before validation
+        if isinstance(self.date_of_birth, str):
+            from datetime import datetime
+            try:
+                self.date_of_birth = datetime.strptime(self.date_of_birth, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                pass  # Let validation handle the error
+
         # Validate required fields
         self.clean()
 

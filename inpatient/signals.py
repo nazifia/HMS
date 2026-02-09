@@ -2,7 +2,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import Admission
 from billing.models import Invoice, InvoiceItem, Service
-from patients.models import PatientWallet
+from patients.models import PatientWallet, WalletTransaction
 from django.utils import timezone
 import logging
 
@@ -10,6 +10,12 @@ logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=Admission)
 def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwargs):
+    """
+    When an admission is created (for non-NHIA patients), automatically:
+    1. Create an invoice for the admission fee
+    2. Create a wallet payment (which triggers billing signals to deduct from wallet)
+    3. Update admission billed_amount if wallet deduction succeeds
+    """
     if created:
         try:
             # Check if patient is NHIA - NHIA patients are exempt from admission fees
@@ -23,23 +29,21 @@ def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwar
                 logger.info(f'No admission cost for admission {instance.id} - no invoice created.')
                 return
 
-            # Check if admission fee has already been deducted to prevent double deduction
-            from patients.models import WalletTransaction
-            from django.db.models import Q
-            existing_admission_fee = WalletTransaction.objects.filter(
-                Q(patient_wallet__patient=instance.patient) | Q(shared_wallet__patient=instance.patient),
+            # Check if admission fee has already been processed to prevent double deduction
+            existing_fee = WalletTransaction.objects.filter(
+                patient_wallet__patient=instance.patient,
                 transaction_type='admission_fee',
-                admission=instance  # Use FK relationship for accurate duplicate detection
+                admission=instance
             ).exists()
 
-            if existing_admission_fee:
+            if existing_fee:
                 logger.info(f'Admission fee already deducted for admission {instance.id} - skipping.')
                 return
 
-            # Get the service for admission
+            # Get or create service for admission
             service, _ = Service.objects.get_or_create(
                 name="Admission Fee",
-                defaults={'price': admission_cost, 'category_id': 1} # Assuming category 1 is for inpatient services
+                defaults={'price': admission_cost, 'category_id': 1}
             )
 
             # Create the invoice
@@ -51,9 +55,9 @@ def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwar
                 source_app='inpatient',
                 created_by=instance.created_by,
                 subtotal=admission_cost,
-                tax_amount=0, # Assuming no tax for now
+                tax_amount=0,
                 total_amount=admission_cost,
-                admission=instance  # Link invoice to admission
+                admission=instance
             )
 
             # Create the invoice item
@@ -67,56 +71,36 @@ def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwar
                 total_amount=admission_cost
             )
 
-            # Automatically deduct admission fee from patient wallet (even if it goes negative)
-            from patients.models import PatientWallet
-            from django.db import transaction
+            # Create payment record (wallet) - this will trigger billing signals.
+            # The billing signal will attempt to deduct from wallet. We set a flag
+            # to indicate that this payment is part of admission processing.
+            from billing.models import Payment
+            payment = Payment.objects.create(
+                invoice=invoice,
+                amount=admission_cost,
+                payment_method='wallet',
+                payment_date=timezone.now().date(),
+                received_by=instance.created_by,
+                notes=f'Automatic wallet deduction for admission fee'
+            )
 
-            with transaction.atomic():
-                # Get or create patient wallet
-                wallet, created_wallet = PatientWallet.objects.get_or_create(
-                    patient=instance.patient,
-                    defaults={'balance': 0}
-                )
+            logger.info(f'Payment {payment.id} created for admission fee. Billing signals will handle wallet deduction.')
 
-                if created_wallet:
-                    logger.info(f'Created new wallet for patient {instance.patient.get_full_name()}')
-
-                # Deduct admission fee from wallet (allowing negative balance)
-                wallet.debit(
-                    amount=admission_cost,
-                    description=f'Admission fee for {instance.patient.get_full_name()} - {instance.bed.ward.name if instance.bed else "General"}',
-                    transaction_type='admission_fee',
-                    user=instance.created_by,
-                    invoice=invoice,
-                    admission=instance  # Link transaction to admission
-                )
-
-                logger.info(f'Automatically deducted ₦{admission_cost} admission fee from wallet for patient {instance.patient.get_full_name()}. New balance: ₦{wallet.balance}')
-
-                # Update invoice status to paid since wallet was charged
-                invoice.status = 'paid'
-                invoice.save()
-
-                # Create payment record
-                from billing.models import Payment
-                Payment.objects.create(
-                    invoice=invoice,
-                    amount=admission_cost,
-                    payment_method='wallet',
-                    payment_date=timezone.now().date(),
-                    received_by=instance.created_by,
-                    notes=f'Automatic wallet deduction for admission fee'
-                )
-
-                logger.info(f'Invoice {invoice.id} marked as paid via wallet deduction.')
+            # Check if wallet transaction was created (wallet deduction succeeded)
+            try:
+                wt = WalletTransaction.objects.get(payment=payment)
+                # Success: wallet deduction succeeded
+                Admission.objects.filter(pk=instance.pk).update(billed_amount=admission_cost)
+                logger.info(f'Admission fee ₦{admission_cost} processed via wallet. New admission billed_amount: ₦{admission_cost}')
+            except WalletTransaction.DoesNotExist:
+                # Failed: wallet deduction didn't happen (maybe no wallet or insufficient balance)
+                # Invoice remains pending, billed_amount stays 0
+                logger.warning(f'Wallet deduction failed for admission {instance.id}. Invoice {invoice.id} remains unpaid.')
 
         except ValueError as e:
-            # Validation errors - log but don't break admission
             logger.warning(f'Validation error in wallet deduction for admission {instance.id}: {str(e)}')
         except Exception as e:
-            # Unexpected errors - log with full traceback
             logger.error(
                 f'Unexpected error processing admission invoice and wallet deduction for admission {instance.id}: {str(e)}',
                 exc_info=True
             )
-            # Don't raise the exception to avoid breaking the admission creation process

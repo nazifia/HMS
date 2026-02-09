@@ -349,7 +349,12 @@ python manage.py compress --force
 
 ## Documentation Files
 
-- `HMS_ROLE_SYSTEM_GUIDE.md` - RBAC system usage
+### RBAC & Permissions
+- `docs/ROLE_PERMISSIONS_REFERENCE.md` - Complete role & permission reference matrix
+- `docs/PERMISSION_MIGRATION_GUIDE.md` - Step-by-step migration from legacy system
+- `accounts/PERMISSIONS_README.md` - Developer guide for permissions system
+
+### Other Guides
 - `CART_SYSTEM_QUICK_START.md` - Pharmacy cart workflow
 - `MEDICATION_PAYMENT_GUIDE.md` - Payment processing
 - `NHIA_AUTHORIZATION_QUICK_START.md` - NHIA integration

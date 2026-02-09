@@ -127,32 +127,33 @@ class PermissionDecoratorTest(TestCase):
     def test_permission_required_decorator(self):
         """Test the permission_required decorator"""
         from django.http import HttpResponse
-        
-        @permission_required('test.permission')
+        from django.test import RequestFactory
+
+        @permission_required('test.permission', raise_exception=True)
         def test_view(request):
             return HttpResponse('Success')
-        
+
         request = self.factory.get('/')
         request.user = self.user
-        
-        # Should raise permission denied
-        with self.assertRaises(Exception):
-            test_view(request)
+
+        # Should return 403 response (not raise exception)
+        response = test_view(request)
+        self.assertEqual(response.status_code, 403)
     
     def test_role_required_decorator(self):
         """Test the role_required decorator"""
         from django.http import HttpResponse
-        
-        @role_required('admin')
+
+        @role_required('admin', raise_exception=True)
         def test_view(request):
             return HttpResponse('Success')
-        
+
         request = self.factory.get('/')
         request.user = self.user
-        
-        # Should raise permission denied
-        with self.assertRaises(Exception):
-            test_view(request)
+
+        # Should return 403 response (not raise exception)
+        response = test_view(request)
+        self.assertEqual(response.status_code, 403)
 
 
 class TemplateTagTest(TestCase):

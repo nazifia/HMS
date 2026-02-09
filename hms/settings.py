@@ -165,9 +165,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     # Disable SSL in development middleware (must be first to intercept HTTPS headers)
-    'core.middleware.disable_ssl_in_dev.DisableSSLInDevMiddleware',
+    'core.disable_ssl_in_dev.DisableSSLInDevMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'core.middleware.disable_ssl_in_dev.DisableSSLInDevMiddleware',  # Disable SSL in development
+    'core.disable_ssl_in_dev.DisableSSLInDevMiddleware',  # Disable SSL in development
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -204,6 +204,7 @@ TEMPLATES = [
                 'patients.context_processors.current_patient_context',
                 'core.context_processors.hms_permissions',
                 'core.context_processors.hms_user_roles',
+                'accounts.context_processors.user_permissions',
             ],
         },
     },

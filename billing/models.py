@@ -247,84 +247,11 @@ class Payment(models.Model):
         return f"Payment of ₦{self.amount} for Invoice #{self.invoice.invoice_number}"
 
     def save(self, *args, **kwargs):
-        is_new = self.pk is None
-        payment_processed_in_transaction = False
-
-        if is_new and self.payment_method == 'wallet':
-            with transaction.atomic():
-                # Save the Payment record first to get an ID for linking
-                # This call to super().save() is for the Payment model itself.
-                super().save(*args, **kwargs)
-                # At this point, self.pk is populated if the save was successful.
-
-                try:
-                    # Ensure PatientWallet model is imported if not already at top level
-                    # from patients.models import PatientWallet # Already imported at top
-                    patient_wallet = PatientWallet.objects.get(patient=self.invoice.patient)
-                    
-                    # Perform the debit operation - this will automatically handle shared wallets
-                    patient_wallet.debit(
-                        amount=self.amount,
-                        description=f"Payment for Invoice #{self.invoice.invoice_number} via Wallet",
-                        transaction_type="payment",
-                        user=self.received_by,
-                        invoice=self.invoice, # Pass the invoice instance
-                        payment_instance=self  # Pass the payment instance (self)
-                    )
-
-                    # Update invoice's amount_paid and status
-                    # It's crucial to fetch the invoice again or ensure its state is fresh
-                    # if other operations might have modified it, though here it should be fine.
-                    invoice_to_update = self.invoice 
-                    invoice_to_update.amount_paid += self.amount
-                    # The Invoice.save() method should handle updating its own status based on amount_paid
-                    invoice_to_update.save(update_fields=['amount_paid', 'status'])
-                    
-                    payment_processed_in_transaction = True
-
-                except PatientWallet.DoesNotExist as e:
-                    # This error implies the patient does not have a wallet.
-                    # The transaction will roll back the Payment save.
-                    raise ValueError(f"Patient wallet not found for {self.invoice.patient.get_full_name()}. Payment cancelled.") from e
-                except ValueError as e:
-                    # This catches validation errors from patient_wallet.debit (e.g., debit amount <= 0)
-                    # or other ValueErrors. The transaction will roll back the Payment save.
-                    raise e # Re-raise to signal failure and ensure rollback
-                # Any other unexpected error will also cause a rollback.
-                
-                # Note: The patient_wallet.debit() method now automatically handles shared wallets
-                # through the get_effective_wallet() method, so no additional logic is needed here.
-        else:
-            # Standard save for non-wallet payments or for updates to existing payments.
-            super().save(*args, **kwargs)
-            # If it's a new non-wallet payment, update the invoice.
-            if is_new: # and self.payment_method != 'wallet' (already covered by outer else)
-                invoice_to_update = self.invoice
-                invoice_to_update.amount_paid += self.amount
-                invoice_to_update.save(update_fields=['amount_paid', 'status'])
-            elif not is_new: # Existing payment is being updated
-                # Handling updates to existing payment amounts and their effect on invoice.amount_paid
-                # requires careful logic to correctly adjust the invoice's total paid amount.
-                # This typically involves: 
-                # 1. Getting the original amount of the payment before this save.
-                # 2. Calculating the difference between the new amount and the original amount.
-                # 3. Adjusting invoice.amount_paid by this difference.
-                # This is a simplified placeholder and might need a more robust implementation, 
-                # possibly by recalculating the sum of all payments for the invoice.
-                # For now, if only other fields of an existing payment are updated (not amount), 
-                # this block might not need to do much to invoice.amount_paid.
-                # If 'amount' is in update_fields, then recalculation is essential.
-                # Let's assume for now that if an existing payment's amount is changed, 
-                # a more comprehensive invoice update mechanism is needed or handled by a signal/service.
-                # A simple approach for amount updates (if kwargs indicate amount changed):
-                # We'd need the original amount. Django doesn't easily provide this in save().
-                # A common pattern is to override __init__ to store original values or use signals.
-                # For now, this part is a placeholder for more complex update logic.
-                pass
-
-        # If a wallet payment was processed, the invoice update is already handled within the transaction.
-        # The conditional invoice update for new non-wallet payments is handled in the 'else' block.
-        # No further invoice update should be needed here if logic above is correct.
+        """
+        Simple save method. Wallet and invoice operations are handled by signals
+        to ensure consistent behavior for create, update, and delete operations.
+        """
+        super().save(*args, **kwargs)
 
     class Meta:
         indexes = [
