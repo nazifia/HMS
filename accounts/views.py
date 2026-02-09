@@ -1,4 +1,5 @@
 import logging
+import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User, Permission
@@ -2194,9 +2195,18 @@ def superuser_user_permissions(request):
 def superuser_manage_user_permissions(request, user_id):
     """Manage permissions for a specific user - accessible to users with users.edit permission"""
     from core.permissions import APP_PERMISSIONS
+    from accounts.models import Role
+    from accounts.permissions import ROLE_PERMISSIONS
 
     user = get_object_or_404(User, id=user_id)
     user_permissions = user.user_permissions.all()
+
+    # Get all available roles
+    all_roles = Role.objects.all().order_by('name')
+
+    # Get user's current roles
+    user_roles = user.roles.all()
+    user_role_ids = list(user_roles.values_list('id', flat=True))
 
     # Get all permissions, prioritizing custom HMS permissions
     all_permissions = Permission.objects.select_related('content_type').all()
@@ -2223,18 +2233,30 @@ def superuser_manage_user_permissions(request, user_id):
     ordered_permissions = custom_permissions + model_permissions
 
     if request.method == 'POST':
+        # Handle role assignment
+        role_ids = request.POST.getlist('roles')
+        user.roles.set(role_ids)
+
+        # Handle permission assignment
         permission_ids = request.POST.getlist('permissions')
         user.user_permissions.set(permission_ids)
+
+        # Update legacy profile role if a single role is selected
+        if len(role_ids) == 1:
+            selected_role = Role.objects.filter(id=role_ids[0]).first()
+            if selected_role and hasattr(user, 'profile') and user.profile:
+                user.profile.role = selected_role.name
+                user.profile.save()
 
         # Log the action
         AuditLog.objects.create(
             user=request.user,
-            action=f'Updated permissions for {user.username}',
-            details=f'Superuser {request.user.username} updated permissions for {user.username}',
+            action=f'Updated roles and permissions for {user.username}',
+            details=f'Superuser {request.user.username} updated roles ({len(role_ids)}) and permissions ({len(permission_ids)}) for {user.username}',
             timestamp=timezone.now()
         )
 
-        messages.success(request, f'Permissions for {user.username} updated successfully.')
+        messages.success(request, f'Roles and permissions for {user.username} updated successfully.')
         return redirect('accounts:superuser_user_permissions')
 
     return render(request, 'accounts/superuser/manage_user_permissions.html', {
@@ -2244,6 +2266,10 @@ def superuser_manage_user_permissions(request, user_id):
         'custom_permissions': custom_permissions,
         'model_permissions': model_permissions,
         'app_permissions': APP_PERMISSIONS,
+        'all_roles': all_roles,
+        'user_roles': user_roles,
+        'user_role_ids': user_role_ids,
+        'role_permissions_json': json.dumps(ROLE_PERMISSIONS),
         'page_title': f'Manage Permissions: {user.username}',
         'active_nav': 'user_permissions',
     })
