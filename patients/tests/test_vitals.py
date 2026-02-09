@@ -3,6 +3,8 @@ Tests for patient vitals functionality
 """
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from django.utils import timezone
 from decimal import Decimal, InvalidOperation
@@ -180,6 +182,21 @@ class VitalsViewTest(TestCase):
             last_name='User',
             password='testpass123'
         )
+
+        # Directly assign vitals permissions to user (simpler for testing)
+        vitals_content_type = ContentType.objects.get_for_model(Vitals)
+        view_perm, created = Permission.objects.get_or_create(
+            codename='view_vitals',
+            content_type=vitals_content_type,
+            defaults={'name': 'Can view vitals'}
+        )
+        add_perm, created = Permission.objects.get_or_create(
+            codename='add_vitals',
+            content_type=vitals_content_type,
+            defaults={'name': 'Can add vitals'}
+        )
+        self.user.user_permissions.add(view_perm, add_perm)
+
         self.patient = Patient.objects.create(
             first_name="John",
             last_name="Doe",
@@ -196,7 +213,7 @@ class VitalsViewTest(TestCase):
 
     def test_vitals_view_get(self):
         """Test GET request to vitals view"""
-        self.client.login(username='testuser', password='testpass123')
+        self.client.login(phone_number='1234567890', password='testpass123')
         url = reverse('patients:vitals', args=[self.patient.id])
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -204,7 +221,7 @@ class VitalsViewTest(TestCase):
 
     def test_vitals_view_post_valid_data(self):
         """Test POST request with valid vitals data"""
-        self.client.login(username='testuser', password='testpass123')
+        self.client.login(phone_number='1234567890', password='testpass123')
         url = reverse('patients:vitals', args=[self.patient.id])
         
         form_data = {
@@ -228,12 +245,16 @@ class VitalsViewTest(TestCase):
 
     def test_vitals_view_auto_populate_recorded_by(self):
         """Test that recorded_by is auto-populated when not provided"""
-        self.client.login(username='testuser', password='testpass123')
+        self.client.login(phone_number='1234567890', password='testpass123')
         url = reverse('patients:vitals', args=[self.patient.id])
         
         form_data = {
             'temperature': '36.5',
+            'blood_pressure_systolic': '120',
+            'blood_pressure_diastolic': '80',
             'pulse_rate': '72',
+            'height': '175.0',
+            'weight': '70.0',
             # recorded_by is intentionally omitted
         }
         

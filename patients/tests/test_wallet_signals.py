@@ -73,7 +73,7 @@ class WalletSignalsTestCase(TestCase):
         self.assertEqual(self.invoice.status, 'partially_paid')
 
         # Verify WalletTransaction record
-        transaction = WalletTransaction.objects.get(wallet=self.patient_wallet, payment=payment)
+        transaction = WalletTransaction.objects.get(patient_wallet=self.patient_wallet, payment=payment)
         self.assertEqual(transaction.amount, payment_amount)
         self.assertEqual(transaction.transaction_type, 'payment')
         self.assertEqual(transaction.balance_after, expected_balance)
@@ -124,7 +124,7 @@ class WalletSignalsTestCase(TestCase):
 
         # Verify adjustment transaction
         transaction = WalletTransaction.objects.filter(
-            wallet=self.patient_wallet,
+            patient_wallet=self.patient_wallet,
             transaction_type='adjustment',
             amount=Decimal('200.00')
         ).first()
@@ -162,7 +162,7 @@ class WalletSignalsTestCase(TestCase):
 
         # Verify adjustment transaction
         transaction = WalletTransaction.objects.filter(
-            wallet=self.patient_wallet,
+            patient_wallet=self.patient_wallet,
             transaction_type='adjustment',
             amount=Decimal('300.00')
         ).first()
@@ -200,8 +200,8 @@ class WalletSignalsTestCase(TestCase):
 
         # Verify reversal transaction
         transaction = WalletTransaction.objects.filter(
-            wallet=self.patient_wallet,
-            transaction_type='reversal',
+            patient_wallet=self.patient_wallet,
+            transaction_type='refund',
             amount=payment_amount
         ).first()
         self.assertIsNotNone(transaction)
@@ -277,7 +277,7 @@ class WalletSignalsTestCase(TestCase):
 
         # Verify WalletTransaction record for admission fee
         transaction = WalletTransaction.objects.get(
-            wallet=self.patient_wallet,
+            patient_wallet=self.patient_wallet,
             transaction_type='admission_fee',
             amount=expected_debit_amount
         )

@@ -519,12 +519,13 @@ class VitalsForm(forms.ModelForm):
 
     recorded_by = forms.CharField(
         max_length=100,
+        required=False,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
             'placeholder': 'Name of person recording vitals'
         }),
         label='Recorded By',
-        help_text='Enter the name of the person recording these vitals'
+        help_text='Enter the name of the person recording these vitals (auto-filled if omitted)'
     )
 
     class Meta:
