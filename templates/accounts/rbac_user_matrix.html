@@ -1,0 +1,423 @@
+{% extends 'base.html' %}
+{% load permission_tags %}
+
+{% block title %}User-Role Assignment Matrix{% endblock %}
+
+{% block extra_css %}
+<style>
+    .matrix-container {
+        overflow-x: auto;
+        max-height: 70vh;
+    }
+    .matrix-table {
+        font-size: 0.85rem;
+    }
+    .matrix-table th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8f9fa;
+        min-width: 120px;
+    }
+    .matrix-table th:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 11;
+        background-color: #f8f9fa;
+        min-width: 200px;
+    }
+    .matrix-table td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 9;
+        background-color: white;
+        font-weight: 500;
+    }
+    .role-checkbox {
+        width: 1.25rem;
+        height: 1.25rem;
+        cursor: pointer;
+    }
+    .role-checkbox:checked {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+    .user-row:hover td {
+        background-color: #f8f9fa;
+    }
+    .user-row:hover td:first-child {
+        background-color: #e9ecef;
+    }
+    .role-header {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        transform: rotate(180deg);
+        white-space: nowrap;
+        padding: 1rem 0.5rem;
+        height: 150px;
+    }
+    .bulk-action-bar {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        border-top: 2px solid #dee2e6;
+        padding: 1rem;
+        z-index: 20;
+    }
+    .stats-badge {
+        font-size: 0.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-th text-primary me-2"></i>User-Role Assignment Matrix</h2>
+            <p class="text-muted mb-0">Bulk assign roles to users using the checkboxes below</p>
+        </div>
+        <div class="btn-group">
+            <a href="{% url 'accounts:rbac_dashboard' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+            <a href="{% url 'accounts:role_management' %}" class="btn btn-outline-primary">
+                <i class="fas fa-users-cog me-2"></i>Manage Roles
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h4 class="mb-1">{{ user_role_matrix|length }}</h4>
+                    <small class="text-muted">Total Users</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h4 class="mb-1">{{ roles|length }}</h4>
+                    <small class="text-muted">Total Roles</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h4 class="mb-1" id="total-assignments">0</h4>
+                    <small class="text-muted">Total Assignments</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h4 class="mb-1" id="changes-count">0</h4>
+                    <small class="text-muted">Pending Changes</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="userFilter" placeholder="Filter users...">
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" id="roleFilter">
+                        <option value="">Filter by role...</option>
+                        {% for role in roles %}
+                        <option value="{{ role.id }}">{{ role.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                        <i class="fas fa-times me-2"></i>Clear Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Matrix -->
+    <form method="post" action="{% url 'accounts:bulk_user_actions' %}" id="matrixForm">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="assign_role_matrix">
+        
+        <div class="matrix-container border rounded">
+            <table class="table table-bordered matrix-table mb-0">
+                <thead>
+                    <tr>
+                        <th class="bg-light">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>User</span>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        Bulk
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#" onclick="selectAllVisible(true)">Select All</a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="selectAllVisible(false)">Deselect All</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </th>
+                        {% for role in roles %}
+                        <th class="text-center bg-light">
+                            <div class="role-header">
+                                <a href="{% url 'accounts:edit_role' role.id %}" class="text-decoration-none">
+                                    {{ role.name }}
+                                </a>
+                            </div>
+                            <div class="mt-2">
+                                <span class="badge bg-secondary stats-badge">{{ role.customuser_role.count }}</span>
+                            </div>
+                            <div class="mt-1">
+                                <input type="checkbox" class="form-check-input role-checkbox" 
+                                       onchange="toggleRoleColumn({{ role.id }})" 
+                                       id="col-header-{{ role.id }}">
+                            </div>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in user_role_matrix %}
+                    <tr class="user-row" data-user-id="{{ item.user.id }}" data-username="{{ item.user.username|lower }}">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <input type="checkbox" class="form-check-input me-2 row-selector" 
+                                       value="{{ item.user.id }}" name="selected_users">
+                                <div class="user-info">
+                                    <div class="fw-bold">{{ item.user.get_full_name|default:item.user.username }}</div>
+                                    <small class="text-muted">{{ item.user.email|default:item.user.phone_number }}</small>
+                                    <span class="badge bg-light text-dark ms-2 stats-badge">
+                                        {{ item.roles|length }} roles
+                                    </span>
+                                </div>
+                            </div>
+                        </td>
+                        {% for role in roles %}
+                        <td class="text-center">
+                            <input type="checkbox" 
+                                   class="form-check-input role-checkbox role-{{ role.id }}" 
+                                   name="user_{{ item.user.id }}_roles" 
+                                   value="{{ role.id }}"
+                                   data-user-id="{{ item.user.id }}"
+                                   data-role-id="{{ role.id }}"
+                                   {% if role.id in item.roles %}checked{% endif %}
+                                   onchange="trackChange({{ item.user.id }}, {{ role.id }}, this.checked)">
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Bulk Action Bar -->
+        <div class="bulk-action-bar d-flex justify-content-between align-items-center">
+            <div>
+                <span class="text-muted">
+                    <span id="selected-count">0</span> users selected
+                </span>
+            </div>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-danger" onclick="resetChanges()">
+                    <i class="fas fa-undo me-2"></i>Reset Changes
+                </button>
+                <button type="submit" class="btn btn-primary" id="saveBtn" disabled>
+                    <i class="fas fa-save me-2"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Track changes
+let changes = new Map();
+let originalState = new Map();
+
+// Store original state on page load
+document.querySelectorAll('.role-checkbox[data-user-id]').forEach(checkbox => {
+    const key = `${checkbox.dataset.userId}-${checkbox.dataset.roleId}`;
+    originalState.set(key, checkbox.checked);
+});
+
+// Track individual changes
+function trackChange(userId, roleId, isChecked) {
+    const key = `${userId}-${roleId}`;
+    const original = originalState.get(key);
+    
+    if (isChecked !== original) {
+        changes.set(key, { userId, roleId, action: isChecked ? 'add' : 'remove' });
+    } else {
+        changes.delete(key);
+    }
+    
+    updateStats();
+}
+
+// Toggle entire role column
+function toggleRoleColumn(roleId) {
+    const headerCheckbox = document.getElementById(`col-header-${roleId}`);
+    const isChecked = headerCheckbox.checked;
+    
+    document.querySelectorAll(`.role-${roleId}`).forEach(checkbox => {
+        if (checkbox.closest('tr').style.display !== 'none') {
+            checkbox.checked = isChecked;
+            trackChange(checkbox.dataset.userId, roleId, isChecked);
+        }
+    });
+}
+
+// Update statistics
+function updateStats() {
+    const changesCount = changes.size;
+    document.getElementById('changes-count').textContent = changesCount;
+    document.getElementById('saveBtn').disabled = changesCount === 0;
+    
+    // Count total assignments
+    let totalAssignments = 0;
+    document.querySelectorAll('.role-checkbox[data-user-id]:checked').forEach(() => {
+        totalAssignments++;
+    });
+    document.getElementById('total-assignments').textContent = totalAssignments;
+}
+
+// Select/deselect all visible rows
+function selectAllVisible(select) {
+    document.querySelectorAll('.user-row:not([style*="display: none"]) .row-selector').forEach(checkbox => {
+        checkbox.checked = select;
+    });
+    updateSelectedCount();
+}
+
+// Update selected count
+document.querySelectorAll('.row-selector').forEach(checkbox => {
+    checkbox.addEventListener('change', updateSelectedCount);
+});
+
+function updateSelectedCount() {
+    const count = document.querySelectorAll('.row-selector:checked').length;
+    document.getElementById('selected-count').textContent = count;
+}
+
+// Filter users
+document.getElementById('userFilter').addEventListener('input', function(e) {
+    const filter = e.target.value.toLowerCase();
+    filterRows();
+});
+
+document.getElementById('roleFilter').addEventListener('change', function(e) {
+    filterRows();
+});
+
+function filterRows() {
+    const userFilter = document.getElementById('userFilter').value.toLowerCase();
+    const roleFilter = document.getElementById('roleFilter').value;
+    
+    document.querySelectorAll('.user-row').forEach(row => {
+        const username = row.dataset.username;
+        const userMatch = username.includes(userFilter);
+        
+        let roleMatch = true;
+        if (roleFilter) {
+            const roleCheckbox = row.querySelector(`.role-${roleFilter}`);
+            roleMatch = roleCheckbox && roleCheckbox.checked;
+        }
+        
+        row.style.display = (userMatch && roleMatch) ? '' : 'none';
+    });
+}
+
+function clearFilters() {
+    document.getElementById('userFilter').value = '';
+    document.getElementById('roleFilter').value = '';
+    document.querySelectorAll('.user-row').forEach(row => {
+        row.style.display = '';
+    });
+}
+
+// Reset all changes
+function resetChanges() {
+    if (!confirm('Reset all pending changes?')) return;
+    
+    changes.clear();
+    document.querySelectorAll('.role-checkbox[data-user-id]').forEach(checkbox => {
+        const key = `${checkbox.dataset.userId}-${checkbox.dataset.roleId}`;
+        checkbox.checked = originalState.get(key);
+    });
+    
+    // Reset column headers
+    document.querySelectorAll('[id^="col-header-"]').forEach(header => {
+        header.checked = false;
+    });
+    
+    updateStats();
+}
+
+// Form submission
+document.getElementById('matrixForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (changes.size === 0) return;
+    
+    // Prepare data for submission
+    const changesData = Array.from(changes.values());
+    
+    // Group by user
+    const userChanges = {};
+    changesData.forEach(change => {
+        if (!userChanges[change.userId]) {
+            userChanges[change.userId] = { add: [], remove: [] };
+        }
+        if (change.action === 'add') {
+            userChanges[change.userId].add.push(change.roleId);
+        } else {
+            userChanges[change.userId].remove.push(change.roleId);
+        }
+    });
+    
+    // Submit via AJAX
+    fetch('{% url "accounts:bulk_user_actions" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: new URLSearchParams({
+            'action': 'assign_role_matrix',
+            'changes': JSON.stringify(userChanges)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Successfully updated ${data.updated_count} user(s)`);
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        alert('Network error: ' + error.message);
+    });
+});
+
+// Initialize stats
+updateStats();
+</script>
+{% endblock %}

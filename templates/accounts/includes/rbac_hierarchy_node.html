@@ -1,0 +1,21 @@
+{% comment %}
+Recursive template for displaying role hierarchy in RBAC dashboard
+Usage: {% include 'accounts/includes/rbac_hierarchy_node.html' with role=role level=0 %}
+{% endcomment %}
+
+<div class="tree-node {% if level == 0 %}tree-root{% endif %}">
+    <a href="{% url 'accounts:edit_role' role.id %}" class="tree-node-link">
+        {{ role.name }}
+    </a>
+    <span class="tree-node-details">
+        ({{ role.permissions.count }} perms, {{ role.customuser_role.count }} users{% if role.children.count > 0 %}, {{ role.children.count }} children{% endif %})
+    </span>
+    
+    {% if role.children.exists %}
+    <div class="tree-children">
+        {% for child in role.children.all %}
+            {% include 'accounts/includes/rbac_hierarchy_node.html' with role=child level=level|add:1 %}
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>

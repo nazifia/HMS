@@ -1,0 +1,538 @@
+{% extends 'base.html' %}
+{% load permission_tags %}
+{% load custom_filters %}
+
+{% block title %}RBAC Dashboard - Admin Control Center{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        border: none;
+        border-radius: 12px;
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+    .role-badge {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.6rem;
+        margin: 0.15rem;
+        border-radius: 20px;
+    }
+    .hierarchy-tree {
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+    }
+    .tree-node {
+        margin-left: 1.5rem;
+        position: relative;
+        padding: 0.25rem 0;
+    }
+    .tree-node::before {
+        content: '└─';
+        position: absolute;
+        left: -1.5rem;
+        color: #6c757d;
+    }
+    .tree-root {
+        margin-left: 0;
+        font-weight: 600;
+    }
+    .tree-root::before {
+        content: '';
+    }
+    .quick-action-btn {
+        transition: all 0.2s;
+    }
+    .quick-action-btn:hover {
+        transform: translateX(5px);
+    }
+    .issue-alert {
+        border-left: 4px solid;
+        border-radius: 0 8px 8px 0;
+    }
+    .issue-alert.danger { border-left-color: #dc3545; }
+    .issue-alert.warning { border-left-color: #ffc107; }
+    .issue-alert.info { border-left-color: #0dcaf0; }
+    .permission-category {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    .recent-item {
+        border-left: 3px solid #0d6efd;
+        padding-left: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    .user-role-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.2rem 0.5rem;
+        margin: 0.1rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        background-color: #e9ecef;
+        color: #495057;
+    }
+    .user-role-tag .remove-role {
+        margin-left: 0.3rem;
+        cursor: pointer;
+        color: #dc3545;
+        font-weight: bold;
+    }
+    .user-role-tag .remove-role:hover {
+        color: #a71d2a;
+    }
+    .add-role-btn {
+        padding: 0.2rem 0.5rem;
+        font-size: 0.75rem;
+        border-radius: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-shield-alt text-primary me-2"></i>RBAC Dashboard</h2>
+            <p class="text-muted mb-0">Role-Based Access Control - Admin Control Center</p>
+        </div>
+        <div class="btn-group">
+            <a href="{% url 'accounts:role_management' %}" class="btn btn-primary">
+                <i class="fas fa-users-cog me-2"></i>Manage Roles
+            </a>
+            <a href="{% url 'accounts:rbac_user_matrix' %}" class="btn btn-outline-primary">
+                <i class="fas fa-th me-2"></i>User Matrix
+            </a>
+            <a href="{% url 'accounts:rbac_audit_trail' %}" class="btn btn-outline-info">
+                <i class="fas fa-history me-2"></i>Audit Trail
+            </a>
+        </div>
+    </div>
+
+    <!-- Issues Alerts -->
+    {% if issues %}
+    <div class="mb-4">
+        {% for issue in issues %}
+        <div class="alert issue-alert {{ issue.type }} d-flex align-items-center mb-2">
+            <i class="fas fa-{% if issue.type == 'danger' %}exclamation-circle{% elif issue.type == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-3 fa-lg"></i>
+            <div class="flex-grow-1">
+                {{ issue.message }}
+            </div>
+            <a href="{{ issue.action_url }}" class="btn btn-sm btn-{{ issue.type }}">
+                {{ issue.action_text }}
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card bg-primary text-white h-100" onclick="location.href='{% url 'accounts:role_management' %}'">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-white text-primary me-3">
+                        <i class="fas fa-user-tag"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0">{{ total_roles }}</h3>
+                        <small class="opacity-75">Total Roles</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card bg-success text-white h-100" onclick="location.href='{% url 'accounts:user_dashboard' %}'">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-white text-success me-3">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0">{{ total_users }}</h3>
+                        <small class="opacity-75">Total Users</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card bg-warning text-dark h-100" onclick="location.href='{% url 'accounts:permission_management' %}'">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-white text-warning me-3">
+                        <i class="fas fa-key"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0">{{ total_permissions }}</h3>
+                        <small class="opacity-75">Permissions</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card bg-info text-white h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-white text-info me-3">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0">{{ max_hierarchy_depth }}</h3>
+                        <small class="opacity-75">Max Depth</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column -->
+        <div class="col-lg-8">
+            <!-- User-Role Quick Assignment -->
+            <div class="card mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0"><i class="fas fa-user-cog me-2 text-primary"></i>Quick User-Role Assignment</h5>
+                    <a href="{% url 'accounts:rbac_user_matrix' %}" class="btn btn-sm btn-outline-primary">
+                        View Full Matrix
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>User</th>
+                                    <th>Current Roles</th>
+                                    <th>Quick Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user_obj in users_with_roles %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" 
+                                                 style="width: 35px; height: 35px; font-size: 0.9rem;">
+                                                {{ user_obj.username|first|upper }}
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">{{ user_obj.get_full_name|default:user_obj.username }}</div>
+                                                <small class="text-muted">{{ user_obj.email|default:"No email" }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td id="user-roles-{{ user_obj.id }}">
+                                        {% for role in user_obj.roles.all %}
+                                        <span class="user-role-tag">
+                                            {{ role.name }}
+                                            <span class="remove-role" onclick="removeRole({{ user_obj.id }}, {{ role.id }}, '{{ role.name }}')">&times;</span>
+                                        </span>
+                                        {% empty %}
+                                        <span class="text-muted fst-italic">No roles assigned</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle add-role-btn" 
+                                                    type="button" data-bs-toggle="dropdown">
+                                                <i class="fas fa-plus me-1"></i>Add Role
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                {% for role in top_roles %}
+                                                <li>
+                                                    <a class="dropdown-item" href="#" 
+                                                       onclick="assignRole({{ user_obj.id }}, {{ role.id }}, '{{ role.name }}'); return false;">
+                                                        {{ role.name }}
+                                                    </a>
+                                                </li>
+                                                {% endfor %}
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item" href="{% url 'accounts:user_privileges' user_obj.id %}">
+                                                        <i class="fas fa-cog me-2"></i>Manage All Roles
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Roles -->
+            <div class="card mb-4">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2 text-primary"></i>Top Roles by User Count</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Role</th>
+                                    <th>Users</th>
+                                    <th>Direct Permissions</th>
+                                    <th>Inherited</th>
+                                    <th>Children</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for role in top_roles %}
+                                <tr>
+                                    <td>
+                                        <span class="fw-bold">{{ role.name }}</span>
+                                        {% if role.parent %}
+                                        <br><small class="text-muted">Parent: {{ role.parent.name }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ role.user_count }}</span>
+                                    </td>
+                                    <td>{{ role.permission_count }}</td>
+                                    <td>{{ role.get_inherited_permission_count }}</td>
+                                    <td>{{ role.child_count }}</td>
+                                    <td>
+                                        <a href="{% url 'accounts:edit_role' role.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Role Hierarchy -->
+            <div class="card">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-sitemap me-2 text-primary"></i>Role Hierarchy</h5>
+                </div>
+                <div class="card-body">
+                    {% if root_roles %}
+                    <div class="hierarchy-tree">
+                        {% for root in root_roles %}
+                            {% include 'accounts/includes/rbac_hierarchy_node.html' with role=root level=0 %}
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">No role hierarchy defined yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2 text-warning"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'accounts:create_role' %}" class="btn btn-outline-primary quick-action-btn text-start">
+                            <i class="fas fa-plus-circle me-2"></i>Create New Role
+                        </a>
+                        <a href="{% url 'accounts:superuser_user_permissions' %}" class="btn btn-outline-success quick-action-btn text-start">
+                            <i class="fas fa-user-shield me-2"></i>Manage User Permissions
+                        </a>
+                        <a href="{% url 'accounts:compare_roles' %}" class="btn btn-outline-info quick-action-btn text-start">
+                            <i class="fas fa-exchange-alt me-2"></i>Compare Roles
+                        </a>
+                        <a href="{% url 'accounts:superuser_bulk_operations' %}" class="btn btn-outline-secondary quick-action-btn text-start">
+                            <i class="fas fa-tasks me-2"></i>Bulk User Operations
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent RBAC Activity -->
+            <div class="card mb-4">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-history me-2 text-info"></i>Recent Activity</h5>
+                    <a href="{% url 'accounts:rbac_audit_trail' %}" class="btn btn-sm btn-link">View All</a>
+                </div>
+                <div class="card-body">
+                    {% for log in recent_audit_logs %}
+                    <div class="recent-item">
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">{{ log.timestamp|timesince }} ago</small>
+                            <span class="badge bg-light text-dark">{{ log.action }}</span>
+                        </div>
+                        <div class="mt-1">
+                            <strong>{{ log.user.username }}</strong>
+                            {% if log.target_user %}
+                            on <strong>{{ log.target_user.username }}</strong>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted text-center">No recent activity</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Permissions by App -->
+            <div class="card">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-th-large me-2 text-success"></i>Permissions by Module</h5>
+                </div>
+                <div class="card-body">
+                    {% for app in permissions_by_app %}
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                        <span class="fw-bold text-capitalize">{{ app.content_type__app_label }}</span>
+                        <span class="badge bg-secondary">{{ app.count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// CSRF Token for AJAX requests
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+
+// Assign role to user
+function assignRole(userId, roleId, roleName) {
+    fetch('{% url "accounts:ajax_assign_role" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({
+            user_id: userId,
+            role_id: roleId,
+            action: 'assign'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the UI
+            const rolesContainer = document.getElementById(`user-roles-${userId}`);
+            const newTag = document.createElement('span');
+            newTag.className = 'user-role-tag';
+            newTag.innerHTML = `${roleName} <span class="remove-role" onclick="removeRole(${userId}, ${roleId}, '${roleName}')">&times;</span>`;
+            
+            // Remove "No roles assigned" text if present
+            const noRolesText = rolesContainer.querySelector('.text-muted');
+            if (noRolesText) {
+                noRolesText.remove();
+            }
+            
+            rolesContainer.appendChild(newTag);
+            
+            // Show success message
+            showToast('success', data.message);
+        } else {
+            showToast('error', data.error || 'Failed to assign role');
+        }
+    })
+    .catch(error => {
+        showToast('error', 'Network error: ' + error.message);
+    });
+}
+
+// Remove role from user
+function removeRole(userId, roleId, roleName) {
+    if (!confirm(`Remove role "${roleName}" from this user?`)) {
+        return;
+    }
+    
+    fetch('{% url "accounts:ajax_assign_role" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({
+            user_id: userId,
+            role_id: roleId,
+            action: 'remove'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the UI
+            const rolesContainer = document.getElementById(`user-roles-${userId}`);
+            const roleTags = rolesContainer.querySelectorAll('.user-role-tag');
+            roleTags.forEach(tag => {
+                if (tag.textContent.includes(roleName)) {
+                    tag.remove();
+                }
+            });
+            
+            // Add "No roles assigned" text if no roles left
+            if (rolesContainer.querySelectorAll('.user-role-tag').length === 0) {
+                rolesContainer.innerHTML = '<span class="text-muted fst-italic">No roles assigned</span>';
+            }
+            
+            showToast('success', data.message);
+        } else {
+            showToast('error', data.error || 'Failed to remove role');
+        }
+    })
+    .catch(error => {
+        showToast('error', 'Network error: ' + error.message);
+    });
+}
+
+// Show toast notification
+function showToast(type, message) {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(toast);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+</script>
+{% endblock %}
