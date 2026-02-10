@@ -2039,20 +2039,25 @@ class InterDispensaryTransfer(models.Model):
             can_transfer, message = self.check_availability()
             if not can_transfer:
                 raise ValueError(message)
-            
-            # Find source inventory
-            source_inventory = MedicationInventory.objects.get(
+
+            # Find or create source inventory (legacy MedicationInventory model)
+            # Note: Stock is tracked in ActiveStoreInventory, this is for backward compatibility
+            source_inventory, created = MedicationInventory.objects.get_or_create(
                 medication=self.medication,
-                dispensary=self.from_dispensary
+                dispensary=self.from_dispensary,
+                defaults={
+                    'stock_quantity': 0,
+                    'reorder_level': self.medication.reorder_level if hasattr(self.medication, 'reorder_level') else 10
+                }
             )
-            
+
             # Find or create destination inventory
             dest_inventory, created = MedicationInventory.objects.get_or_create(
                 medication=self.medication,
                 dispensary=self.to_dispensary,
                 defaults={
                     'stock_quantity': 0,
-                    'reorder_level': self.medication.reorder_level
+                    'reorder_level': self.medication.reorder_level if hasattr(self.medication, 'reorder_level') else 10
                 }
             )
             

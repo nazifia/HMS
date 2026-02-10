@@ -1,213 +1,611 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
 {% load form_tags %}
-{# Template version: 2024-11-06-v2 #}
 
-{% block title %}{{ title }}{% endblock %}
+{% block title %}{{ page_title|default:"Pharmacy Inventory" }}{% endblock %}
 
 {% block extra_css %}
 <style>
-    .inventory-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    /* ===== Page Header ===== */
+    .page-header {
+        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #0369a1 100%);
         color: white;
-        border-radius: 15px;
-        padding: 30px;
-        margin-bottom: 30px;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 10px 40px -10px rgba(14, 165, 233, 0.3);
     }
 
-    .stats-card {
-        transition: all 0.3s ease;
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        overflow: hidden;
+    .page-header h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0;
     }
 
-    .stats-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    .page-header p {
+        opacity: 0.9;
+        margin: 0.5rem 0 0 0;
+        font-size: 0.95rem;
     }
 
-    .search-card {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-    }
-
-    .inventory-table {
-        border-radius: 15px;
-        overflow: hidden;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
-
-    .inventory-table-header th {
-        transition: all 0.3s ease;
+    /* ===== Stats Cards ===== */
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        border: 1px solid #e2e8f0;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
-        border-bottom: 3px solid rgba(255,255,255,0.3);
+        overflow: hidden;
     }
 
-    .inventory-table-header th:hover {
-        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-        cursor: pointer;
-        transform: translateY(-1px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
+        border-color: #cbd5e1;
     }
 
-    .table th {
-        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-        border: none;
-        font-weight: 800;
-        color: #ffffff;
-        padding: 18px 15px;
-        text-transform: uppercase;
-        font-size: 0.9rem;
-        letter-spacing: 1px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        border-bottom: 3px solid #e74c3c;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
     }
 
-    .table td {
-        padding: 18px;
-        vertical-align: middle;
-        border-color: #e3e6f0;
-    }
+    .stat-card.primary::before { background: linear-gradient(180deg, #0ea5e9, #0284c7); }
+    .stat-card.success::before { background: linear-gradient(180deg, #10b981, #059669); }
+    .stat-card.warning::before { background: linear-gradient(180deg, #f59e0b, #d97706); }
+    .stat-card.info::before { background: linear-gradient(180deg, #8b5cf6, #7c3aed); }
 
-    .medication-name {
-        font-weight: 600;
-        color: #2c3e50;
-        font-size: 1.1rem;
-    }
-
-    .stock-badge {
-        font-size: 0.8rem;
-        padding: 6px 12px;
-        border-radius: 25px;
-        font-weight: 500;
-    }
-
-    .action-buttons .btn {
-        margin: 2px;
-        border-radius: 8px;
-        transition: all 0.2s ease;
-    }
-
-    .action-buttons .btn:hover {
-        transform: scale(1.05);
-    }
-
-    .empty-state {
-        padding: 80px 20px;
-        text-align: center;
-        color: #6c757d;
-    }
-
-    .empty-state i {
-        font-size: 5rem;
-        margin-bottom: 25px;
-        opacity: 0.4;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .stat-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
+    .stat-card .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.5rem;
+        font-size: 1.25rem;
+        margin-bottom: 0.75rem;
     }
 
-    .btn-modern {
+    .stat-card.primary .stat-icon { background: #e0f2fe; color: #0284c7; }
+    .stat-card.success .stat-icon { background: #d1fae5; color: #059669; }
+    .stat-card.warning .stat-icon { background: #fef3c7; color: #d97706; }
+    .stat-card.info .stat-icon { background: #ede9fe; color: #7c3aed; }
+
+    .stat-card .stat-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-card .stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1e293b;
+        line-height: 1;
+    }
+
+    /* ===== Filter Card ===== */
+    .filter-card {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-card .card-header {
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 1rem 1.25rem;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .filter-card .card-header h5 {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #475569;
+        margin: 0;
+    }
+
+    .filter-card .card-body {
+        padding: 1.25rem;
+    }
+
+    /* ===== Table Card ===== */
+    .table-card {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .table-card .card-header {
+        background: white;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 1rem 1.25rem;
+    }
+
+    /* ===== Modern Table ===== */
+    .modern-table {
+        width: 100%;
+        margin: 0;
+    }
+
+    .modern-table thead th {
+        background: #f8fafc;
+        color: #475569;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 0.875rem 1rem;
+        border-bottom: 2px solid #e2e8f0;
+        white-space: nowrap;
+    }
+
+    .modern-table tbody td {
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+    .modern-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .modern-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* ===== Medication Cell ===== */
+    .med-info {
+        display: flex;
+        align-items: center;
+        gap: 0.875rem;
+    }
+
+    .med-avatar {
+        width: 40px;
+        height: 40px;
         border-radius: 10px;
-        padding: 8px 16px;
+        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .med-details .med-name {
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 0.9375rem;
+    }
+
+    .med-details .med-generic {
+        font-size: 0.8125rem;
+        color: #64748b;
+    }
+
+    /* ===== Stock Status ===== */
+    .stock-indicator {
+        display: flex;
+        flex-direction: column;
+        gap: 0.375rem;
+    }
+
+    .stock-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        font-size: 0.8125rem;
+    }
+
+    .stock-row .dispensary-name {
+        color: #64748b;
+        white-space: nowrap;
+    }
+
+    .stock-row .stock-value {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 500;
+    }
+
+    .stock-progress {
+        width: 60px;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .stock-progress-bar {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.3s ease;
+    }
+
+    .stock-progress-bar.high { background: #10b981; }
+    .stock-progress-bar.medium { background: #f59e0b; }
+    .stock-progress-bar.low { background: #ef4444; }
+
+    .stock-badge {
+        padding: 0.25rem 0.625rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .stock-badge.in-stock {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .stock-badge.low-stock {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .stock-badge.out-stock {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    /* ===== Status Badge ===== */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .status-badge.active {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-badge.inactive {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .status-badge::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+    }
+
+    .status-badge.active::before { background: #10b981; }
+    .status-badge.inactive::before { background: #94a3b8; }
+
+    /* ===== Action Buttons ===== */
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        background: transparent;
+        color: #64748b;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .action-btn:hover {
+        background: #f1f5f9;
+        color: #1e293b;
+    }
+
+    .action-btn.view:hover { background: #e0f2fe; color: #0284c7; }
+    .action-btn.edit:hover { background: #fef3c7; color: #d97706; }
+    .action-btn.procure:hover { background: #d1fae5; color: #059669; }
+    .action-btn.deactivate:hover { background: #fee2e2; color: #dc2626; }
+
+    /* ===== Empty State ===== */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+
+    .empty-state-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: #94a3b8;
+        margin-bottom: 1.5rem;
+    }
+
+    .empty-state h5 {
+        color: #334155;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state p {
+        color: #64748b;
+        font-size: 0.9375rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* ===== Modal Styling ===== */
+    .modal-content {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+        color: white;
+        border-radius: 16px 16px 0 0;
+        border-bottom: none;
+        padding: 1.25rem 1.5rem;
+    }
+
+    .modal-header .btn-close {
+        filter: invert(1);
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .modal-footer {
+        border-top: 1px solid #e2e8f0;
+        padding: 1rem 1.5rem;
+    }
+
+    /* ===== Form Controls ===== */
+    .form-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control, .form-select {
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        padding: 0.625rem 0.875rem;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #0ea5e9;
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+    }
+
+    /* ===== Buttons ===== */
+    .btn-modern {
+        border-radius: 8px;
+        padding: 0.625rem 1.25rem;
+        font-size: 0.875rem;
         font-weight: 500;
         transition: all 0.2s ease;
     }
 
     .btn-modern:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* ===== Pagination ===== */
+    .pagination {
+        gap: 0.25rem;
+    }
+
+    .page-link {
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 0.875rem;
+        font-size: 0.875rem;
+        color: #475569;
+        transition: all 0.2s ease;
+    }
+
+    .page-link:hover {
+        background: #f1f5f9;
+        color: #0284c7;
+    }
+
+    .page-item.active .page-link {
+        background: #0ea5e9;
+        color: white;
+    }
+
+    .page-item.disabled .page-link {
+        color: #cbd5e1;
+        background: transparent;
+    }
+
+    /* ===== Category Badge ===== */
+    .category-badge {
+        display: inline-block;
+        padding: 0.25rem 0.625rem;
+        background: #f1f5f9;
+        color: #475569;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    /* ===== Dosage Info ===== */
+    .dosage-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+    }
+
+    .dosage-form {
+        font-weight: 500;
+        color: #1e293b;
+        font-size: 0.875rem;
+    }
+
+    .dosage-strength {
+        font-size: 0.75rem;
+        color: #64748b;
+    }
+
+    /* ===== Price Display ===== */
+    .price-display {
+        font-weight: 600;
+        color: #059669;
+        font-size: 0.9375rem;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+        .page-header {
+            padding: 1.25rem;
+        }
+
+        .page-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .modern-table {
+            font-size: 0.875rem;
+        }
+
+        .modern-table thead th,
+        .modern-table tbody td {
+            padding: 0.75rem;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4">
-    <!-- Enhanced Header -->
-    <div class="inventory-header">
-        <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
-            <div class="mb-3 mb-md-0">
-                <h1 class="h2 mb-3">
-                    <i class="fas fa-pills me-3"></i>{{ title }}
-                </h1>
-                <p class="mb-0 opacity-85 fs-5">Manage your medication inventory, track stock levels, and handle procurement efficiently</p>
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1><i class="fas fa-pills me-3"></i>Pharmacy Inventory</h1>
+                <p class="mt-2">Manage medications, track stock levels, and handle procurement efficiently</p>
             </div>
-            <div class="d-flex flex-wrap gap-2">
-                <a href="{% url 'pharmacy:add_medication' %}" class="btn btn-light btn-modern">
-                    <i class="fas fa-plus me-2"></i>Add Medication
-                </a>
-                <a href="{% url 'pharmacy:manage_categories' %}" class="btn btn-outline-light btn-modern">
-                    <i class="fas fa-tags me-2"></i>Categories
-                </a>
-                <a href="{% url 'pharmacy:supplier_list' %}" class="btn btn-outline-light btn-modern">
-                    <i class="fas fa-truck me-2"></i>Suppliers
-                </a>
-                <a href="{% url 'pharmacy:procurement_dashboard' %}" class="btn btn-outline-light btn-modern">
-                    <i class="fas fa-shopping-cart me-2"></i>Procurement
-                </a>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+                    <a href="{% url 'pharmacy:add_medication' %}" class="btn btn-light btn-modern">
+                        <i class="fas fa-plus me-2"></i>Add Medication
+                    </a>
+                    <div class="dropdown d-inline-block">
+                        <button class="btn btn-outline-light btn-modern dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{% url 'pharmacy:manage_categories' %}">
+                                <i class="fas fa-tags text-primary me-2"></i>Categories
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'pharmacy:supplier_list' %}">
+                                <i class="fas fa-truck text-info me-2"></i>Suppliers
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'pharmacy:procurement_dashboard' %}">
+                                <i class="fas fa-shopping-cart text-success me-2"></i>Procurement
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Enhanced Search and Filter Section -->
-    <div class="row">
+    <!-- Stats Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card primary h-100">
+                <div class="stat-icon">
+                    <i class="fas fa-pills"></i>
+                </div>
+                <div class="stat-label">Total Medications</div>
+                <div class="stat-value">{{ total_medications|default:page_obj.paginator.count }}</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card success h-100">
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-label">Active Medications</div>
+                <div class="stat-value">{{ active_count }}</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card warning h-100">
+                <div class="stat-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-label">Low Stock Items</div>
+                <div class="stat-value">{{ low_stock_count }}</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card info h-100">
+                <div class="stat-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="stat-label">Categories</div>
+                <div class="stat-value">{{ categories|length }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="row mb-4">
         <div class="col-12">
-            <div class="search-card card mb-4">
-                <div class="card-header bg-white py-4 border-0">
-                    <h5 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-search me-2"></i>Search & Filter Medications
-                    </h5>
+            <div class="filter-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-filter me-2"></i>Search & Filter</h5>
                 </div>
                 <div class="card-body">
-                    <form method="get" class="row g-4">
+                    <form method="get" class="row g-3">
                         <div class="col-lg-4 col-md-6">
-                            <label for="{{ form.search.id_for_label }}" class="form-label fw-semibold">
-                                <i class="fas fa-search text-primary me-2"></i>Search Medications
-                            </label>
-                            {{ form.search }}
-                            {% if form.search.errors %}
-                                <div class="text-danger small">{{ form.search.errors }}</div>
-                            {% endif %}
+                            <label class="form-label">Search Medications</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0">
+                                    <i class="fas fa-search text-muted"></i>
+                                </span>
+                                {{ form.search }}
+                            </div>
                         </div>
                         <div class="col-lg-3 col-md-6">
-                            <label for="{{ form.category.id_for_label }}" class="form-label fw-semibold">
-                                <i class="fas fa-tags text-primary me-2"></i>Category
-                            </label>
+                            <label class="form-label">Category</label>
                             {{ form.category }}
-                            {% if form.category.errors %}
-                                <div class="text-danger small">{{ form.category.errors }}</div>
-                            {% endif %}
                         </div>
                         <div class="col-lg-3 col-md-6">
-                            <label for="{{ form.is_active.id_for_label }}" class="form-label fw-semibold">
-                                <i class="fas fa-toggle-on text-primary me-2"></i>Status
-                            </label>
+                            <label class="form-label">Status</label>
                             {{ form.is_active }}
-                            {% if form.is_active.errors %}
-                                <div class="text-danger small">{{ form.is_active.errors }}</div>
-                            {% endif %}
                         </div>
                         <div class="col-lg-2 col-md-6 d-flex align-items-end">
                             <div class="d-flex gap-2 w-100">
                                 <button type="submit" class="btn btn-primary btn-modern flex-fill">
-                                    <i class="fas fa-search me-2"></i>Search
+                                    <i class="fas fa-search me-1"></i>Search
                                 </button>
-                                <a href="{% url 'pharmacy:inventory' %}" class="btn btn-outline-secondary btn-modern">
+                                <a href="{% url 'pharmacy:inventory' %}" class="btn btn-outline-secondary btn-modern" title="Reset filters">
                                     <i class="fas fa-redo"></i>
                                 </a>
                             </div>
@@ -218,110 +616,23 @@
         </div>
     </div>
 
-    <!-- Enhanced Quick Stats -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="stats-card card border-0 h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-2">
-                                Total Medications
-                            </div>
-                            <div class="h3 mb-0 font-weight-bold text-gray-800">{{ page_obj.paginator.count }}</div>
-                        </div>
-                        <div class="ms-3">
-                            <div class="stat-icon bg-primary bg-opacity-10 text-primary">
-                                <i class="fas fa-pills"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="stats-card card border-0 h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-2">
-                                Active Medications
-                            </div>
-                            <div class="h3 mb-0 font-weight-bold text-gray-800">
-                                {% for med in page_obj %}{% if med.is_active %}{{ forloop.counter }}{% endif %}{% endfor %}
-                            </div>
-                        </div>
-                        <div class="ms-3">
-                            <div class="stat-icon bg-success bg-opacity-10 text-success">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="stats-card card border-0 h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-2">
-                                Low Stock Items
-                            </div>
-                            <div class="h3 mb-0 font-weight-bold text-gray-800">
-                                0
-                            </div>
-                        </div>
-                        <div class="ms-3">
-                            <div class="stat-icon bg-warning bg-opacity-10 text-warning">
-                                <i class="fas fa-exclamation-triangle"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="stats-card card border-0 h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-2">
-                                Quick Actions
-                            </div>
-                            <div class="mt-3">
-                                <a href="{% url 'pharmacy:add_medication' %}" class="btn btn-sm btn-primary btn-modern">
-                                    <i class="fas fa-plus me-1"></i>Add Medication
-                                </a>
-                            </div>
-                        </div>
-                        <div class="ms-3">
-                            <div class="stat-icon bg-info bg-opacity-10 text-info">
-                                <i class="fas fa-bolt"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Enhanced Medication Inventory List -->
+    <!-- Medication Table -->
     <div class="row">
         <div class="col-12">
-            <div class="inventory-table card border-0 mb-4">
-                <div class="card-header bg-white py-4 border-0">
-                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
-                        <h5 class="m-0 font-weight-bold text-primary mb-2 mb-md-0">
-                            <i class="fas fa-pills me-2"></i>Medication Inventory
-                            <span class="badge bg-primary ms-2">{{ page_obj.paginator.count }} total</span>
+            <div class="table-card">
+                <div class="card-header">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                        <h5 class="m-0 font-weight-bold text-gray-800">
+                            <i class="fas fa-list me-2 text-primary"></i>
+                            Medication List
+                            <span class="badge bg-primary ms-2">{{ page_obj.paginator.count }} items</span>
                         </h5>
-                        <div class="d-flex flex-wrap gap-2">
-                            <a href="{% url 'pharmacy:supplier_list' %}" class="btn btn-sm btn-outline-info btn-modern">
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'pharmacy:supplier_list' %}" class="btn btn-sm btn-outline-primary btn-modern">
                                 <i class="fas fa-truck me-1"></i>Suppliers
                             </a>
                             <a href="{% url 'pharmacy:add_medication' %}" class="btn btn-sm btn-success btn-modern">
-                                <i class="fas fa-plus me-1"></i>Add Medication
+                                <i class="fas fa-plus me-1"></i>Add New
                             </a>
                         </div>
                     </div>
@@ -329,246 +640,249 @@
                 <div class="card-body p-0">
                     {% if page_obj %}
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0" width="100%" cellspacing="0">
-                            <thead class="inventory-table-header">
+                        <table class="modern-table">
+                            <thead>
                                 <tr>
-                                    <th class="border-0"><i class="fas fa-pills me-2"></i>Medication Details</th>
-                                    <th class="border-0"><i class="fas fa-tags me-2"></i>Category</th>
-                                    <th class="border-0"><i class="fas fa-capsules me-2"></i>Form & Strength</th>
-                                    <th class="border-0"><i class="fas fa-dollar-sign me-2"></i>Price</th>
-                                    <th class="border-0"><i class="fas fa-chart-line me-2"></i>Stock Status</th>
-                                    <th class="border-0"><i class="fas fa-toggle-on me-2"></i>Status</th>
-                                    <th class="border-0 text-center"><i class="fas fa-cogs me-2"></i>Actions</th>
+                                    <th>Medication</th>
+                                    <th>Category</th>
+                                    <th>Dosage</th>
+                                    <th>Price</th>
+                                    <th>Stock Status</th>
+                                    <th>Status</th>
+                                    <th class="text-center">Actions</th>
                                 </tr>
                             </thead>
-                    <tbody>
-                        {% for medication in page_obj %}
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="stat-icon bg-primary bg-opacity-10 text-primary me-3" style="width: 40px; height: 40px; font-size: 1rem;">
-                                        <i class="fas fa-pills"></i>
-                                    </div>
-                                    <div>
-                                        <div class="medication-name">{{ medication.name }}</div>
-                                        {% if medication.generic_name %}
-                                        <small class="text-muted">{{ medication.generic_name }}</small>
+                            <tbody>
+                                {% for medication in page_obj %}
+                                <tr>
+                                    <td>
+                                        <div class="med-info">
+                                            <div class="med-avatar">
+                                                <i class="fas fa-pills"></i>
+                                            </div>
+                                            <div class="med-details">
+                                                <div class="med-name">{{ medication.name }}</div>
+                                                {% if medication.generic_name %}
+                                                <div class="med-generic">{{ medication.generic_name }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if medication.category %}
+                                        <span class="category-badge">{{ medication.category.name }}</span>
+                                        {% else %}
+                                        <span class="text-muted">—</span>
                                         {% endif %}
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                {% if medication.category %}
-                                <span class="badge bg-light text-dark border">{{ medication.category.name }}</span>
-                                {% else %}
-                                <span class="text-muted">N/A</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div>
-                                    <span class="fw-semibold text-primary">{{ medication.dosage_form }}</span>
-                                    {% if medication.strength %}
-                                    <small class="d-block text-muted">{{ medication.strength }}</small>
-                                    {% endif %}
-                                </div>
-                            </td>
-                            <td>
-                                <span class="fw-bold text-success fs-6">{{ medication.price|currency }}</span>
-                            </td>
-                            <td>
-                                {% for inventory in medication.inventories.all %}
-                                    <div class="mb-1">
-                                        <small class="text-muted fw-semibold">{{ inventory.dispensary.name }}:</small>
-                                        <span class="stock-badge badge {% if inventory.is_low_stock %}bg-warning text-dark{% elif inventory.stock_quantity > 0 %}bg-success{% else %}bg-danger{% endif %}">
-                                            {{ inventory.stock_quantity }} units
+                                    </td>
+                                    <td>
+                                        <div class="dosage-info">
+                                            <span class="dosage-form">{{ medication.dosage_form|default:"—" }}</span>
+                                            {% if medication.strength %}
+                                            <span class="dosage-strength">{{ medication.strength }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="price-display">{{ medication.price|currency }}</span>
+                                    </td>
+                                    <td>
+                                        {% if medication.inventories.all %}
+                                        <div class="stock-indicator">
+                                            {% for inventory in medication.inventories.all %}
+                                            <div class="stock-row">
+                                                <span class="dispensary-name">{{ inventory.dispensary.name }}</span>
+                                                <span class="stock-value">
+                                                    <div class="stock-progress">
+                                                        {% if inventory.stock_quantity > 50 %}
+                                                            <div class="stock-progress-bar high" style="width: 100%"></div>
+                                                        {% elif inventory.stock_quantity > 20 %}
+                                                            <div class="stock-progress-bar medium" style="width: {{ inventory.stock_quantity }}%"></div>
+                                                        {% else %}
+                                                            <div class="stock-progress-bar low" style="width: {% if inventory.stock_quantity > 0 %}{{ inventory.stock_quantity|add:20 }}{% else %}0{% endif %}%"></div>
+                                                        {% endif %}
+                                                    </div>
+                                                    <span class="stock-badge {% if inventory.is_low_stock %}low-stock{% elif inventory.stock_quantity > 0 %}in-stock{% else %}out-stock{% endif %}">
+                                                        {{ inventory.stock_quantity }}
+                                                    </span>
+                                                </span>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% else %}
+                                        <span class="stock-badge out-stock">No Stock</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if medication.is_active %}
+                                        <span class="status-badge active">
+                                            <span></span>Active
                                         </span>
-                                        {% if inventory.is_low_stock %}
-                                        <small class="text-warning d-block">
-                                            <i class="fas fa-exclamation-triangle"></i> Low Stock!
-                                        </small>
+                                        {% else %}
+                                        <span class="status-badge inactive">
+                                            <span></span>Inactive
+                                        </span>
                                         {% endif %}
-                                    </div>
-                                {% empty %}
-                                    <span class="stock-badge badge bg-secondary">No inventory</span>
-                                {% endfor %}
-                            </td>
-                            <td>
-                                {% if medication.is_active %}
-                                    <span class="badge bg-success">
-                                        <i class="fas fa-check"></i> Active
-                                    </span>
-                                {% else %}
-                                    <span class="badge bg-danger">
-                                        <i class="fas fa-times"></i> Inactive
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div class="action-dropdown dropdown">
-                                    <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="fas fa-ellipsis-v"></i> Actions
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li>
-                                            <a class="dropdown-item" href="{% url 'pharmacy:medication_detail' medication.id %}">
-                                                <i class="fas fa-eye text-primary"></i>View Details
+                                    </td>
+                                    <td>
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <a href="{% url 'pharmacy:medication_detail' medication.id %}" 
+                                               class="action-btn view" title="View Details">
+                                                <i class="fas fa-eye"></i>
                                             </a>
-                                        </li>
-                                        <li>
-                                            <a class="dropdown-item" href="{% url 'pharmacy:edit_medication' medication.id %}">
-                                                <i class="fas fa-edit text-info"></i>Edit Medication
+                                            <a href="{% url 'pharmacy:edit_medication' medication.id %}" 
+                                               class="action-btn edit" title="Edit">
+                                                <i class="fas fa-edit"></i>
                                             </a>
-                                        </li>
-                                        <li>
-                                            <button type="button" class="dropdown-item"
+                                            <button type="button" class="action-btn procure" title="Procure Stock"
                                                     data-bs-toggle="modal"
                                                     data-bs-target="#procureModal{{ medication.id }}">
-                                                <i class="fas fa-shopping-cart text-success"></i>Procure Stock
+                                                <i class="fas fa-shopping-cart"></i>
                                             </button>
-                                        </li>
-                                        {% if medication.is_active %}
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
-                                            <a class="dropdown-item text-danger" href="{% url 'pharmacy:delete_medication' medication.id %}">
-                                                <i class="fas fa-ban text-danger"></i>Deactivate
+                                            {% if medication.is_active %}
+                                            <a href="{% url 'pharmacy:delete_medication' medication.id %}" 
+                                               class="action-btn deactivate" title="Deactivate"
+                                               onclick="return confirm('Are you sure you want to deactivate this medication?')">
+                                                <i class="fas fa-ban"></i>
                                             </a>
-                                        </li>
-                                        {% endif %}
-                                    </ul>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
 
-            {% else %}
-            <div class="text-center py-4">
-                <i class="fas fa-pills fa-3x text-muted mb-3"></i>
-                <h5 class="text-muted">No medications found</h5>
-                <p class="text-muted">
-                    {% if request.GET.search or request.GET.category or request.GET.is_active %}
-                        No medications match your search criteria. Try adjusting your filters.
-                    {% else %}
-                        Get started by adding your first medication.
-                    {% endif %}
-                </p>
-                <a href="{% url 'pharmacy:add_medication' %}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> Add First Medication
-                </a>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-
-                <!-- Pagination -->
-                {% if page_obj.has_other_pages %}
-                    <nav aria-label="Page navigation">
-                        <ul class="pagination justify-content-center">
-                            {% if page_obj.has_previous %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="First">
-                                        <span aria-hidden="true">&laquo;&laquo;</span>
-                                    </a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Previous">
-                                        <span aria-hidden="true">&laquo;</span>
-                                    </a>
-                                </li>
-                            {% else %}
-                                <li class="page-item disabled">
-                                    <a class="page-link" href="#" aria-label="First">
-                                        <span aria-hidden="true">&laquo;&laquo;</span>
-                                    </a>
-                                </li>
-                                <li class="page-item disabled">
-                                    <a class="page-link" href="#" aria-label="Previous">
-                                        <span aria-hidden="true">&laquo;</span>
-                                    </a>
-                                </li>
-                            {% endif %}
-
-                            {% for num in page_obj.paginator.page_range %}
-                                {% if page_obj.number == num %}
-                                    <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
-                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <!-- Pagination -->
+                    {% if page_obj.has_other_pages %}
+                    <div class="p-3 border-top">
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination justify-content-center mb-0">
+                                {% if page_obj.has_previous %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                        <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                            <i class="fas fa-angle-double-left"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                            <i class="fas fa-angle-left"></i>
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <a class="page-link" href="#"><i class="fas fa-angle-double-left"></i></a>
+                                    </li>
+                                    <li class="page-item disabled">
+                                        <a class="page-link" href="#"><i class="fas fa-angle-left"></i></a>
                                     </li>
                                 {% endif %}
-                            {% endfor %}
 
-                            {% if page_obj.has_next %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Next">
-                                        <span aria-hidden="true">&raquo;</span>
-                                    </a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Last">
-                                        <span aria-hidden="true">&raquo;&raquo;</span>
-                                    </a>
-                                </li>
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                        <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                            <i class="fas fa-angle-right"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                            <i class="fas fa-angle-double-right"></i>
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <a class="page-link" href="#"><i class="fas fa-angle-right"></i></a>
+                                    </li>
+                                    <li class="page-item disabled">
+                                        <a class="page-link" href="#"><i class="fas fa-angle-double-right"></i></a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
+
+                    {% else %}
+                    <!-- Empty State -->
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <i class="fas fa-pills"></i>
+                        </div>
+                        <h5>No medications found</h5>
+                        <p>
+                            {% if request.GET.search or request.GET.category or request.GET.is_active %}
+                                No medications match your search criteria. Try adjusting your filters.
                             {% else %}
-                                <li class="page-item disabled">
-                                    <a class="page-link" href="#" aria-label="Next">
-                                        <span aria-hidden="true">&raquo;</span>
-                                    </a>
-                                </li>
-                                <li class="page-item disabled">
-                                    <a class="page-link" href="#" aria-label="Last">
-                                        <span aria-hidden="true">&raquo;&raquo;</span>
-                                    </a>
-                                </li>
+                                Get started by adding your first medication to the inventory.
                             {% endif %}
-                        </ul>
-                    </nav>
-                {% endif %}
+                        </p>
+                        <a href="{% url 'pharmacy:add_medication' %}" class="btn btn-primary btn-modern">
+                            <i class="fas fa-plus me-2"></i>Add First Medication
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
 </div>
+
 <!-- Procurement Modals -->
 {% for medication in page_obj %}
-<div class="modal fade" id="procureModal{{ medication.id }}" tabindex="-1">
-    <div class="modal-dialog">
+<div class="modal fade" id="procureModal{{ medication.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Procure {{ medication.name }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title">
+                    <i class="fas fa-shopping-cart me-2"></i>
+                    Procure {{ medication.name }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="post" action="{% url 'pharmacy:create_procurement_request' medication.id %}">
                 <div class="modal-body">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label for="supplier{{ medication.id }}" class="form-label">Select Supplier</label>
-                        <select name="supplier" id="supplier{{ medication.id }}" class="form-select supplier-select" required>
-                            <option value="">Choose supplier...</option>
+                        <label class="form-label">Select Supplier</label>
+                        <select name="supplier" class="form-select supplier-select" required>
+                            <option value="">Choose a supplier...</option>
                         </select>
                     </div>
-                    <div class="row">
+                    <div class="row g-3">
                         <div class="col-md-6">
-                            <label for="quantity{{ medication.id }}" class="form-label">Quantity</label>
-                            <input type="number" name="quantity" id="quantity{{ medication.id }}"
-                                   class="form-control" min="1" required>
+                            <label class="form-label">Quantity</label>
+                            <div class="input-group">
+                                <input type="number" name="quantity" class="form-control" min="1" required placeholder="Enter quantity">
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            <label for="unit_price{{ medication.id }}" class="form-label">Unit Price</label>
-                            <input type="number" name="unit_price" id="unit_price{{ medication.id }}"
-                                   class="form-control" step="0.01" min="0" value="{{ medication.price }}" required>
+                            <label class="form-label">Unit Price</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₦</span>
+                                <input type="number" name="unit_price" class="form-control" step="0.01" min="0" value="{{ medication.price }}" required>
+                            </div>
                         </div>
                     </div>
                     <div class="mt-3">
-                        <label for="notes{{ medication.id }}" class="form-label">Notes (Optional)</label>
-                        <textarea name="notes" id="notes{{ medication.id }}" class="form-control" rows="2" placeholder="Add notes about this procurement request..."></textarea>
+                        <label class="form-label">Notes (Optional)</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Add any notes about this procurement request..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-shopping-cart"></i> Create Procurement Request
+                    <button type="button" class="btn btn-outline-secondary btn-modern" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-modern">
+                        <i class="fas fa-check me-2"></i>Create Request
                     </button>
                 </div>
             </form>
@@ -581,11 +895,15 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize select2 for category dropdown
-        $('.select2').select2({
-            theme: 'bootstrap-5',
-            width: '100%'
-        });
+        // Initialize Select2 for category dropdown
+        if ($('.select2').length) {
+            $('.select2').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: 'Select category...',
+                allowClear: true
+            });
+        }
 
         // Load suppliers for procurement modals
         fetch('{% url "pharmacy:api_suppliers" %}')
@@ -601,6 +919,14 @@
                 });
             })
             .catch(error => console.error('Error loading suppliers:', error));
+
+        // Auto-submit on select change (optional enhancement)
+        const autoSubmitElements = document.querySelectorAll('select[name="category"], select[name="is_active"]');
+        autoSubmitElements.forEach(element => {
+            element.addEventListener('change', function() {
+                this.closest('form').submit();
+            });
+        });
     });
 </script>
 {% endblock %}

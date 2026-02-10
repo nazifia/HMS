@@ -3,25 +3,63 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
 from accounts.permissions import permission_required
 from django.contrib import messages
-from django.db.models import Q, Sum, F, Count, Avg, StdDev, Variance, Min, Max, Case, When, Value
+from django.db.models import (
+    Q,
+    Sum,
+    F,
+    Count,
+    Avg,
+    StdDev,
+    Variance,
+    Min,
+    Max,
+    Case,
+    When,
+    Value,
+)
 from django.db import models, transaction, IntegrityError
 from django.core.paginator import Paginator
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from .models import (
-    Medication, MedicationCategory, Supplier, Purchase, PurchaseItem,
-    Prescription, PrescriptionItem, Dispensary, ActiveStore, ActiveStoreInventory, MedicationInventory,
-    BulkStore, BulkStoreInventory, MedicationTransfer, DispensaryTransfer, DispensingLog,
-    MedicalPack, PackItem, MedicalPackItem, PackOrder
+    Medication,
+    MedicationCategory,
+    Supplier,
+    Purchase,
+    PurchaseItem,
+    Prescription,
+    PrescriptionItem,
+    Dispensary,
+    ActiveStore,
+    ActiveStoreInventory,
+    MedicationInventory,
+    BulkStore,
+    BulkStoreInventory,
+    MedicationTransfer,
+    DispensaryTransfer,
+    DispensingLog,
+    MedicalPack,
+    PackItem,
+    MedicalPackItem,
+    PackOrder,
 )
 from accounts.models import CustomUser
 from patients.models import Patient
 from .forms import (
-    MedicationForm, MedicationCategoryForm, SupplierForm, PurchaseForm, PurchaseItemForm,
-    PrescriptionForm, PrescriptionItemForm, DispensaryForm,
-    MedicationInventoryForm, ActiveStoreInventoryForm, PrescriptionSearchForm,
-    MedicationSearchForm, DispensarySearchForm
+    MedicationForm,
+    MedicationCategoryForm,
+    SupplierForm,
+    PurchaseForm,
+    PurchaseItemForm,
+    PrescriptionForm,
+    PrescriptionItemForm,
+    DispensaryForm,
+    MedicationInventoryForm,
+    ActiveStoreInventoryForm,
+    PrescriptionSearchForm,
+    MedicationSearchForm,
+    DispensarySearchForm,
 )
 from reporting.forms import PharmacySalesReportForm
 from django.forms import formset_factory
@@ -31,120 +69,121 @@ from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def select_dispensary(request):
     """View for pharmacists to select their working dispensary"""
     # Admins don't need to select dispensary
     if request.user.is_superuser:
-        return redirect('pharmacy:pharmacy_dashboard')
-    
+        return redirect("pharmacy:pharmacy_dashboard")
+
     # Get user's assigned dispensaries
     assigned_dispensaries = []
-    if hasattr(request.user, 'get_all_assigned_dispensaries'):
+    if hasattr(request.user, "get_all_assigned_dispensaries"):
         assigned_dispensaries = request.user.get_all_assigned_dispensaries()
-    
+
     # If user has no assigned dispensaries, show message and redirect to dashboard
     if not assigned_dispensaries:
         messages.error(
             request,
             "You have not been assigned to any dispensary yet. "
-            "Please contact an administrator to get assigned to a dispensary."
+            "Please contact an administrator to get assigned to a dispensary.",
         )
-        return redirect('dashboard:dashboard')
-    
+        return redirect("dashboard:dashboard")
+
     # If user has only one dispensary assigned, auto-select and redirect
     if len(assigned_dispensaries) == 1:
         dispensary = assigned_dispensaries[0]
         # Check if they already have a selection
-        current_id = request.session.get('selected_dispensary_id')
+        current_id = request.session.get("selected_dispensary_id")
         if not current_id:
-            request.session['selected_dispensary_id'] = dispensary.id
-            request.session['selected_dispensary_name'] = dispensary.name
-            messages.success(request, f"Automatically selected {dispensary.name} as your dispensary.")
-            return redirect('pharmacy:pharmacy_dashboard')
+            request.session["selected_dispensary_id"] = dispensary.id
+            request.session["selected_dispensary_name"] = dispensary.name
+            messages.success(
+                request, f"Automatically selected {dispensary.name} as your dispensary."
+            )
+            return redirect("pharmacy:pharmacy_dashboard")
         # If already selected but they wanted to see this page, still show it
-    
+
     # Multiple dispensaries - show selection page
     current_selection = None
-    stored_id = request.session.get('selected_dispensary_id')
+    stored_id = request.session.get("selected_dispensary_id")
     if stored_id:
         try:
             current_selection = Dispensary.objects.get(id=stored_id, is_active=True)
         except Dispensary.DoesNotExist:
             current_selection = None
-    
+
     context = {
-        'assigned_dispensaries': assigned_dispensaries,
-        'current_selection': current_selection,
-        'page_title': 'Select Dispensary',
-        'active_nav': 'pharmacy',
+        "assigned_dispensaries": assigned_dispensaries,
+        "current_selection": current_selection,
+        "page_title": "Select Dispensary",
+        "active_nav": "pharmacy",
     }
-    
-    return render(request, 'pharmacy/select_dispensary.html', context)
+
+    return render(request, "pharmacy/select_dispensary.html", context)
 
 
 @login_required
 @require_http_methods(["POST"])
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def set_dispensary(request):
     """Endpoint to set the selected dispensary"""
-    dispensary_id = request.POST.get('dispensary_id')
-    
+    dispensary_id = request.POST.get("dispensary_id")
+
     try:
         dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
-        
+
         # Verify pharmacist has access to this dispensary
         if not request.user.is_superuser:
             if not request.user.can_access_dispensary(dispensary):
                 messages.error(
-                    request,
-                    f"You don't have permission to access '{dispensary.name}'."
+                    request, f"You don't have permission to access '{dispensary.name}'."
                 )
-                return redirect('pharmacy:select_dispensary')
-        
+                return redirect("pharmacy:select_dispensary")
+
         # Set in session
-        request.session['selected_dispensary_id'] = dispensary.id
-        request.session['selected_dispensary_name'] = dispensary.name
+        request.session["selected_dispensary_id"] = dispensary.id
+        request.session["selected_dispensary_name"] = dispensary.name
         messages.success(request, f"Dispensary set to '{dispensary.name}'.")
-        
+
         # Redirect to where they were going, or dashboard
-        next_url = request.GET.get('next', 'pharmacy:pharmacy_dashboard')
+        next_url = request.GET.get("next", "pharmacy:pharmacy_dashboard")
         return redirect(next_url)
-        
+
     except Dispensary.DoesNotExist:
         messages.error(request, "Invalid dispensary selected.")
-        return redirect('pharmacy:select_dispensary')
+        return redirect("pharmacy:select_dispensary")
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def pharmacy_dashboard(request):
     """View for the pharmacy dashboard"""
     # Check if user needs to select dispensary (pharmacists only)
     if not request.user.is_superuser:
-        if hasattr(request.user, 'is_pharmacist') and request.user.is_pharmacist():
-            selected_dispensary_id = request.session.get('selected_dispensary_id')
+        if hasattr(request.user, "is_pharmacist") and request.user.is_pharmacist():
+            selected_dispensary_id = request.session.get("selected_dispensary_id")
             if not selected_dispensary_id:
                 # Check if user has assigned dispensaries
                 assigned_dispensaries = []
-                if hasattr(request.user, 'get_all_assigned_dispensaries'):
+                if hasattr(request.user, "get_all_assigned_dispensaries"):
                     assigned_dispensaries = request.user.get_all_assigned_dispensaries()
-                
+
                 if assigned_dispensaries:
                     # Redirect to selection page
-                    return redirect('pharmacy:select_dispensary')
+                    return redirect("pharmacy:select_dispensary")
                 else:
                     # No assignments - show message but still allow access
                     messages.warning(
                         request,
-                        "You are not assigned to any dispensary. Some pharmacy features may be limited."
+                        "You are not assigned to any dispensary. Some pharmacy features may be limited.",
                     )
-    
+
     # Get selected dispensary for context
     selected_dispensary = None
     pharmacist_dispensary = None
     if not request.user.is_superuser:
-        selected_dispensary_id = request.session.get('selected_dispensary_id')
+        selected_dispensary_id = request.session.get("selected_dispensary_id")
         if selected_dispensary_id:
             try:
                 selected_dispensary = Dispensary.objects.get(id=selected_dispensary_id)
@@ -164,50 +203,62 @@ def pharmacy_dashboard(request):
 
     # Get low stock items (filtered for pharmacist if assigned)
     low_stock_items = ActiveStoreInventory.objects.filter(
-        models.Q(**{key: value for key, value in pharmacy_filter.children if pharmacy_filter}) |
-        models.Q(active_store__dispensary=pharmacist_dispensary) if pharmacist_dispensary else models.Q(stock_quantity__lte=models.F('reorder_level'))
-    ).select_related('medication', 'active_store__dispensary')[:5]
-    
+        models.Q(
+            **{key: value for key, value in pharmacy_filter.children if pharmacy_filter}
+        )
+        | models.Q(active_store__dispensary=pharmacist_dispensary)
+        if pharmacist_dispensary
+        else models.Q(stock_quantity__lte=models.F("reorder_level"))
+    ).select_related("medication", "active_store__dispensary")[:5]
+
     # If pharmacist has selected dispensary, filter low stock items to their dispensary only
     if pharmacist_dispensary:
         low_stock_items = ActiveStoreInventory.objects.filter(
-            stock_quantity__lte=models.F('reorder_level'),
-            active_store__dispensary=pharmacist_dispensary
-        ).select_related('medication', 'active_store__dispensary')[:5]
+            stock_quantity__lte=models.F("reorder_level"),
+            active_store__dispensary=pharmacist_dispensary,
+        ).select_related("medication", "active_store__dispensary")[:5]
 
     # Get recent purchases (filtered for pharmacist)
-    recent_purchases = Purchase.objects.select_related('supplier')
+    recent_purchases = Purchase.objects.select_related("supplier")
     if pharmacist_dispensary:
         recent_purchases = recent_purchases.filter(dispensary=pharmacist_dispensary)
-    recent_purchases = recent_purchases.order_by('-purchase_date')[:5]
+    recent_purchases = recent_purchases.order_by("-purchase_date")[:5]
 
     # Get recent prescriptions (filtered for pharmacist)
-    recent_prescriptions = Prescription.objects.select_related('patient', 'doctor')
+    recent_prescriptions = Prescription.objects.select_related("patient", "doctor")
     # For prescriptions, we filter based on carts created by the pharmacist or with the disputing pharmacist's dispensary
     if pharmacist_dispensary:
         # Use carts to filter prescriptions - only show prescriptions that have carts for this dispensary
         from .cart_models import PrescriptionCart
+
         carts_for_dispensary = PrescriptionCart.objects.filter(
             dispensary=pharmacist_dispensary
-        ).values_list('prescription_id', flat=True)
+        ).values_list("prescription_id", flat=True)
         recent_prescriptions = recent_prescriptions.filter(id__in=carts_for_dispensary)
-    recent_prescriptions = recent_prescriptions.order_by('-prescription_date')[:5]
+    recent_prescriptions = recent_prescriptions.order_by("-prescription_date")[:5]
 
     # Get inter-dispensary transfer statistics
     try:
         from .models import InterDispensaryTransfer
+
         total_inter_transfers = InterDispensaryTransfer.objects.count()
-        pending_transfers = InterDispensaryTransfer.objects.filter(status='pending').count()
+        pending_transfers = InterDispensaryTransfer.objects.filter(
+            status="pending"
+        ).count()
         recent_transfers = InterDispensaryTransfer.objects.select_related(
-            'medication', 'from_dispensary', 'to_dispensary'
-        ).order_by('-created_at')[:5]
+            "medication", "from_dispensary", "to_dispensary"
+        ).order_by("-created_at")[:5]
     except:
         total_inter_transfers = 0
         pending_transfers = 0
         recent_transfers = []
 
     # Add referral integration
-    from core.department_dashboard_utils import get_user_department, categorize_referrals, get_department_referral_statistics
+    from core.department_dashboard_utils import (
+        get_user_department,
+        categorize_referrals,
+        get_department_referral_statistics,
+    )
 
     user_department = get_user_department(request.user)
     categorized_referrals = None
@@ -217,119 +268,139 @@ def pharmacy_dashboard(request):
     if user_department:
         categorized_referrals = categorize_referrals(user_department)
         referral_stats = get_department_referral_statistics(user_department)
-        pending_referrals_count = referral_stats['pending_referrals']
-        pending_authorizations = referral_stats['requiring_authorization']
+        pending_referrals_count = referral_stats["pending_referrals"]
+        pending_authorizations = referral_stats["requiring_authorization"]
 
     context = {
-        'total_medications': total_medications,
-        'total_suppliers': total_suppliers,
-        'total_dispensaries': total_dispensaries,
-        'low_stock_items': low_stock_items,
-        'recent_purchases': recent_purchases,
-        'recent_prescriptions': recent_prescriptions,
-        'total_inter_transfers': total_inter_transfers,
-        'pending_transfers': pending_transfers,
-        'recent_transfers': recent_transfers,
-        'categorized_referrals': categorized_referrals,
-        'pending_referrals_count': pending_referrals_count,
-        'pending_authorizations': pending_authorizations,
-        'selected_dispensary': selected_dispensary,
-        'page_title': 'Pharmacy Dashboard',
-        'active_nav': 'pharmacy',
+        "total_medications": total_medications,
+        "total_suppliers": total_suppliers,
+        "total_dispensaries": total_dispensaries,
+        "low_stock_items": low_stock_items,
+        "recent_purchases": recent_purchases,
+        "recent_prescriptions": recent_prescriptions,
+        "total_inter_transfers": total_inter_transfers,
+        "pending_transfers": pending_transfers,
+        "recent_transfers": recent_transfers,
+        "categorized_referrals": categorized_referrals,
+        "pending_referrals_count": pending_referrals_count,
+        "pending_authorizations": pending_authorizations,
+        "selected_dispensary": selected_dispensary,
+        "page_title": "Pharmacy Dashboard",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/dashboard.html', context)
+    return render(request, "pharmacy/dashboard.html", context)
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def features_showcase(request):
     """View for showcasing pharmacy features"""
-    return render(request, 'pharmacy/features.html')
+    return render(request, "pharmacy/features.html")
 
 
 @never_cache
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def inventory_list(request):
     """View for listing pharmacy inventory - Optimized with select_related"""
     # Get all medications with optimized query
-    medications = Medication.objects.filter(is_active=True).select_related('category')
+    medications = Medication.objects.filter(is_active=True).select_related("category")
 
     # Initialize the search form
     form = MedicationSearchForm(request.GET or None)
 
     # Search functionality
-    search_query = request.GET.get('search', '')
+    search_query = request.GET.get("search", "")
     if search_query:
         medications = medications.filter(
-            Q(name__icontains=search_query) |
-            Q(generic_name__icontains=search_query) |
-            Q(description__icontains=search_query)
+            Q(name__icontains=search_query)
+            | Q(generic_name__icontains=search_query)
+            | Q(description__icontains=search_query)
         )
 
     # Filter by category
-    category_id = request.GET.get('category', '')
+    category_id = request.GET.get("category", "")
     if category_id:
         medications = medications.filter(category_id=category_id)
 
     # Filter by active status
-    is_active = request.GET.get('is_active', '')
-    if is_active == 'active':
+    is_active = request.GET.get("is_active", "")
+    if is_active == "active":
         medications = medications.filter(is_active=True)
-    elif is_active == 'inactive':
+    elif is_active == "inactive":
         medications = medications.filter(is_active=False)
 
     # Pagination
     paginator = Paginator(medications, 10)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
     # Get categories for filter dropdown
     categories = MedicationCategory.objects.all()
 
+    # Calculate statistics
+    total_medications = Medication.objects.count()
+    active_count = Medication.objects.filter(is_active=True).count()
+
+    # Count low stock items (check inventory levels)
+    from django.db.models import Sum
+
+    low_stock_count = 0
+    all_meds = Medication.objects.filter(is_active=True).prefetch_related("inventories")
+    for med in all_meds:
+        for inv in med.inventories.all():
+            if inv.is_low_stock:
+                low_stock_count += 1
+                break
+
     context = {
-        'page_obj': page_obj,
-        'categories': categories,
-        'form': form,  # Pass the form to the template
-        'search_query': search_query,
-        'category_id': category_id,
-        'page_title': 'Pharmacy Inventory',
-        'active_nav': 'pharmacy',
+        "page_obj": page_obj,
+        "categories": categories,
+        "form": form,
+        "search_query": search_query,
+        "category_id": category_id,
+        "page_title": "Pharmacy Inventory",
+        "active_nav": "pharmacy",
+        "total_medications": total_medications,
+        "active_count": active_count,
+        "low_stock_count": low_stock_count,
     }
 
-    response = render(request, 'pharmacy/inventory_list.html', context)
-    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response['Pragma'] = 'no-cache'
-    response['Expires'] = '0'
+    response = render(request, "pharmacy/inventory_list.html", context)
+    response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
     return response
 
 
 @login_required
-@permission_required('pharmacy.create')
+@permission_required("pharmacy.create")
 def add_medication(request):
     """View for adding a new medication"""
-    if request.method == 'POST':
+    if request.method == "POST":
         form = MedicationForm(request.POST)
         if form.is_valid():
             medication = form.save()
-            messages.success(request, f'Medication {medication.name} added successfully.')
-            return redirect('pharmacy:inventory')
+            messages.success(
+                request, f"Medication {medication.name} added successfully."
+            )
+            return redirect("pharmacy:inventory")
     else:
         form = MedicationForm()
 
     context = {
-        'form': form,
-        'page_title': 'Add Medication',
-        'active_nav': 'pharmacy',
-        'title': 'Add Medication'  # Add title for the template
+        "form": form,
+        "page_title": "Add Medication",
+        "active_nav": "pharmacy",
+        "title": "Add Medication",  # Add title for the template
     }
 
-    return render(request, 'pharmacy/medication_form.html', context)
+    return render(request, "pharmacy/medication_form.html", context)
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def medication_detail(request, medication_id):
     """View for displaying medication details"""
     medication = get_object_or_404(Medication, id=medication_id)
@@ -337,126 +408,138 @@ def medication_detail(request, medication_id):
     # Get inventory information
     inventory_items = ActiveStoreInventory.objects.filter(
         medication=medication
-    ).select_related('active_store__dispensary')
+    ).select_related("active_store__dispensary")
 
     context = {
-        'medication': medication,
-        'inventory_items': inventory_items,
-        'page_title': f'Medication Details - {medication.name}',
-        'active_nav': 'pharmacy',
+        "medication": medication,
+        "inventory_items": inventory_items,
+        "page_title": f"Medication Details - {medication.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/medication_detail.html', context)
+    return render(request, "pharmacy/medication_detail.html", context)
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def edit_medication(request, medication_id):
     """View for editing medication information"""
     medication = get_object_or_404(Medication, id=medication_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = MedicationForm(request.POST, instance=medication)
         if form.is_valid():
             medication = form.save()
-            messages.success(request, f'Medication {medication.name} updated successfully.')
-            return redirect('pharmacy:medication_detail', medication_id=medication.id)
+            messages.success(
+                request, f"Medication {medication.name} updated successfully."
+            )
+            return redirect("pharmacy:medication_detail", medication_id=medication.id)
     else:
         form = MedicationForm(instance=medication)
 
     context = {
-        'form': form,
-        'medication': medication,
-        'page_title': f'Edit Medication - {medication.name}',
-        'active_nav': 'pharmacy',
-        'title': f'Edit Medication - {medication.name}'  # Add title for the template
+        "form": form,
+        "medication": medication,
+        "page_title": f"Edit Medication - {medication.name}",
+        "active_nav": "pharmacy",
+        "title": f"Edit Medication - {medication.name}",  # Add title for the template
     }
 
-    return render(request, 'pharmacy/medication_form.html', context)
+    return render(request, "pharmacy/medication_form.html", context)
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def delete_medication(request, medication_id):
     """View for deleting a medication"""
     medication = get_object_or_404(Medication, id=medication_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         medication.is_active = False
         medication.save()
-        messages.success(request, f'Medication {medication.name} deactivated successfully.')
-        return redirect('pharmacy:inventory')
+        messages.success(
+            request, f"Medication {medication.name} deactivated successfully."
+        )
+        return redirect("pharmacy:inventory")
 
     context = {
-        'medication': medication,
-        'page_title': f'Delete Medication - {medication.name}',
-        'active_nav': 'pharmacy',
+        "medication": medication,
+        "page_title": f"Delete Medication - {medication.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/delete_medication.html', context)
+    return render(request, "pharmacy/delete_medication.html", context)
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def manage_categories(request):
     """View for managing medication categories"""
-    categories = MedicationCategory.objects.all().order_by('name')
+    categories = MedicationCategory.objects.all().order_by("name")
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = MedicationCategoryForm(request.POST)
         if form.is_valid():
             category = form.save()
-            messages.success(request, f'Category {category.name} created successfully.')
-            return redirect('pharmacy:manage_categories')
+            messages.success(request, f"Category {category.name} created successfully.")
+            return redirect("pharmacy:manage_categories")
     else:
         form = MedicationCategoryForm()
 
     context = {
-        'categories': categories,
-        'form': form,
+        "categories": categories,
+        "form": form,
     }
 
-    return render(request, 'pharmacy/manage_categories.html', context)
+    return render(request, "pharmacy/manage_categories.html", context)
 
 
 @login_required
-@permission_required('prescriptions.view')
+@permission_required("prescriptions.view")
 def patient_prescriptions(request, patient_id):
     """View for listing prescriptions for a patient"""
     # Get the patient
     patient = get_object_or_404(Patient, id=patient_id)
 
     # Get prescriptions for this patient
-    prescriptions = Prescription.objects.filter(patient=patient).select_related('doctor').order_by('-prescription_date')
+    prescriptions = (
+        Prescription.objects.filter(patient=patient)
+        .select_related("doctor")
+        .order_by("-prescription_date")
+    )
 
     # Pagination
     paginator = Paginator(prescriptions, 10)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
     context = {
-        'patient': patient,
-        'page_obj': page_obj,
-        'page_title': f'Prescriptions for {patient.get_full_name()}',
-        'active_nav': 'pharmacy',
+        "patient": patient,
+        "page_obj": page_obj,
+        "page_title": f"Prescriptions for {patient.get_full_name()}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/prescription_list.html', context)
+    return render(request, "pharmacy/prescription_list.html", context)
 
 
 @login_required
-@permission_required('prescriptions.create')
+@permission_required("prescriptions.create")
 def create_prescription(request, patient_id=None):
     """View for creating a prescription"""
-    if request.method == 'POST':
+    if request.method == "POST":
         # Handle patient context ID from form submission
-        patient_context_id = request.POST.get('patient_context_id')
+        patient_context_id = request.POST.get("patient_context_id")
 
         # If patient context ID is provided, use it to preselect patient
         if patient_context_id:
             try:
                 preselected_patient = Patient.objects.get(id=patient_context_id)
-                form = PrescriptionForm(request.POST, request=request, preselected_patient=preselected_patient)
+                form = PrescriptionForm(
+                    request.POST,
+                    request=request,
+                    preselected_patient=preselected_patient,
+                )
             except Patient.DoesNotExist:
                 form = PrescriptionForm(request.POST, request=request)
         else:
@@ -469,8 +552,12 @@ def create_prescription(request, patient_id=None):
                 prescription.doctor = request.user
             prescription.save()
             form.save_m2m()  # Save many-to-many relationships if any
-            messages.success(request, f'Prescription #{prescription.id} created successfully.')
-            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+            messages.success(
+                request, f"Prescription #{prescription.id} created successfully."
+            )
+            return redirect(
+                "pharmacy:prescription_detail", prescription_id=prescription.id
+            )
     else:
         # Preselect patient from multiple sources with priority:
         # 1. URL parameter (patient_id)
@@ -486,39 +573,48 @@ def create_prescription(request, patient_id=None):
                 preselected_patient = None
 
         # If no URL parameter, check current patient context from session
-        elif hasattr(request, 'current_patient') and request.current_patient:
+        elif hasattr(request, "current_patient") and request.current_patient:
             try:
-                preselected_patient = Patient.objects.get(id=request.current_patient['id'])
+                preselected_patient = Patient.objects.get(
+                    id=request.current_patient["id"]
+                )
             except (Patient.DoesNotExist, KeyError):
                 preselected_patient = None
 
-        form = PrescriptionForm(request=request, preselected_patient=preselected_patient)
+        form = PrescriptionForm(
+            request=request, preselected_patient=preselected_patient
+        )
 
     context = {
-        'form': form,
-        'title': 'Create Prescription',
-        'active_nav': 'pharmacy',
-        'current_patient': getattr(request, 'current_patient', None),
-        'has_current_patient': hasattr(request, 'has_current_patient') and request.has_current_patient,
+        "form": form,
+        "title": "Create Prescription",
+        "active_nav": "pharmacy",
+        "current_patient": getattr(request, "current_patient", None),
+        "has_current_patient": hasattr(request, "has_current_patient")
+        and request.has_current_patient,
     }
 
-    return render(request, 'pharmacy/prescription_form.html', context)
+    return render(request, "pharmacy/prescription_form.html", context)
 
 
 @login_required
-@permission_required('prescriptions.create')
+@permission_required("prescriptions.create")
 def pharmacy_create_prescription(request, patient_id=None):
     """View for pharmacy creating a prescription"""
     # This is the same as create_prescription but might have different permissions or workflow
-    if request.method == 'POST':
+    if request.method == "POST":
         # Handle patient context ID from form submission
-        patient_context_id = request.POST.get('patient_context_id')
+        patient_context_id = request.POST.get("patient_context_id")
 
         # If patient context ID is provided, use it to preselect patient
         if patient_context_id:
             try:
                 preselected_patient = Patient.objects.get(id=patient_context_id)
-                form = PrescriptionForm(request.POST, request=request, preselected_patient=preselected_patient)
+                form = PrescriptionForm(
+                    request.POST,
+                    request=request,
+                    preselected_patient=preselected_patient,
+                )
             except Patient.DoesNotExist:
                 form = PrescriptionForm(request.POST, request=request)
         else:
@@ -526,8 +622,12 @@ def pharmacy_create_prescription(request, patient_id=None):
 
         if form.is_valid():
             prescription = form.save()
-            messages.success(request, f'Prescription #{prescription.id} created successfully.')
-            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+            messages.success(
+                request, f"Prescription #{prescription.id} created successfully."
+            )
+            return redirect(
+                "pharmacy:prescription_detail", prescription_id=prescription.id
+            )
     else:
         # Preselect patient from multiple sources with priority:
         # 1. URL parameter (patient_id)
@@ -543,37 +643,41 @@ def pharmacy_create_prescription(request, patient_id=None):
                 preselected_patient = None
 
         # If no URL parameter, check current patient context from session
-        elif hasattr(request, 'current_patient') and request.current_patient:
+        elif hasattr(request, "current_patient") and request.current_patient:
             try:
-                preselected_patient = Patient.objects.get(id=request.current_patient['id'])
+                preselected_patient = Patient.objects.get(
+                    id=request.current_patient["id"]
+                )
             except (Patient.DoesNotExist, KeyError):
                 preselected_patient = None
 
-        form = PrescriptionForm(request=request, preselected_patient=preselected_patient)
+        form = PrescriptionForm(
+            request=request, preselected_patient=preselected_patient
+        )
 
     context = {
-        'form': form,
-        'title': 'Create Prescription (Pharmacy)',
-        'active_nav': 'pharmacy',
-        'patient': preselected_patient,  # Add patient to context for template
-        'selected_patient': preselected_patient,  # Also add selected_patient for template compatibility
-        'current_patient': getattr(request, 'current_patient', None),
-        'has_current_patient': hasattr(request, 'has_current_patient') and request.has_current_patient,
+        "form": form,
+        "title": "Create Prescription (Pharmacy)",
+        "active_nav": "pharmacy",
+        "patient": preselected_patient,  # Add patient to context for template
+        "selected_patient": preselected_patient,  # Also add selected_patient for template compatibility
+        "current_patient": getattr(request, "current_patient", None),
+        "has_current_patient": hasattr(request, "has_current_patient")
+        and request.has_current_patient,
     }
 
-    return render(request, 'pharmacy/pharmacy_create_prescription.html', context)
+    return render(request, "pharmacy/pharmacy_create_prescription.html", context)
 
 
 @login_required
-@permission_required('pharmacy.create')
+@permission_required("pharmacy.create")
 def create_procurement_request(request, medication_id):
     """View for creating a procurement request"""
     medication = get_object_or_404(Medication, id=medication_id)
 
     # Get suppliers who have supplied this medication before
     suppliers = Supplier.objects.filter(
-        purchases__items__medication=medication,
-        is_active=True
+        purchases__items__medication=medication, is_active=True
     ).distinct()
 
     # If no previous suppliers found, show all active suppliers
@@ -581,301 +685,304 @@ def create_procurement_request(request, medication_id):
         suppliers = Supplier.objects.filter(is_active=True)
 
     context = {
-        'medication': medication,
-        'suppliers': suppliers,
-        'page_title': f'Procurement Request - {medication.name}',
-        'active_nav': 'pharmacy',
+        "medication": medication,
+        "suppliers": suppliers,
+        "page_title": f"Procurement Request - {medication.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/create_procurement_request.html', context)
+    return render(request, "pharmacy/create_procurement_request.html", context)
+
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def edit_category(request, category_id):
     """View for editing a medication category"""
     category = get_object_or_404(MedicationCategory, id=category_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = MedicationCategoryForm(request.POST, instance=category)
         if form.is_valid():
             category = form.save()
-            messages.success(request, f'Category {category.name} updated successfully.')
-            return redirect('pharmacy:manage_categories')
+            messages.success(request, f"Category {category.name} updated successfully.")
+            return redirect("pharmacy:manage_categories")
     else:
         form = MedicationCategoryForm(instance=category)
 
     context = {
-        'form': form,
-        'category': category,
-        'page_title': f'Edit Category - {category.name}',
-        'active_nav': 'pharmacy',
-        'title': f'Edit Category - {category.name}'  # Add title for the template
+        "form": form,
+        "category": category,
+        "page_title": f"Edit Category - {category.name}",
+        "active_nav": "pharmacy",
+        "title": f"Edit Category - {category.name}",  # Add title for the template
     }
 
-    return render(request, 'pharmacy/add_edit_category.html', context)
+    return render(request, "pharmacy/add_edit_category.html", context)
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def delete_category(request, category_id):
     """View for deleting a medication category"""
     category = get_object_or_404(MedicationCategory, id=category_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         category.delete()
-        messages.success(request, f'Category {category.name} deleted successfully.')
-        return redirect('pharmacy:manage_categories')
+        messages.success(request, f"Category {category.name} deleted successfully.")
+        return redirect("pharmacy:manage_categories")
 
     context = {
-        'category': category,
-        'page_title': f'Delete Category - {category.name}',
-        'active_nav': 'pharmacy',
-        'title': f'Delete Category - {category.name}'  # Add title for the template
+        "category": category,
+        "page_title": f"Delete Category - {category.name}",
+        "active_nav": "pharmacy",
+        "title": f"Delete Category - {category.name}",  # Add title for the template
     }
 
-    return render(request, 'pharmacy/confirm_delete_category.html', context)
+    return render(request, "pharmacy/confirm_delete_category.html", context)
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def manage_suppliers(request):
     """View for managing suppliers"""
-    suppliers = Supplier.objects.filter(is_active=True).order_by('name')
+    suppliers = Supplier.objects.filter(is_active=True).order_by("name")
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = SupplierForm(request.POST)
         if form.is_valid():
             supplier = form.save()
-            messages.success(request, f'Supplier {supplier.name} created successfully.')
-            return redirect('pharmacy:manage_suppliers')
+            messages.success(request, f"Supplier {supplier.name} created successfully.")
+            return redirect("pharmacy:manage_suppliers")
     else:
         form = SupplierForm()
 
     context = {
-        'suppliers': suppliers,
-        'form': form,
-        'page_title': 'Manage Suppliers',
-        'active_nav': 'pharmacy',
+        "suppliers": suppliers,
+        "form": form,
+        "page_title": "Manage Suppliers",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/manage_suppliers.html', context)
+    return render(request, "pharmacy/manage_suppliers.html", context)
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def supplier_list(request):
     """View for listing suppliers"""
-    suppliers = Supplier.objects.all().order_by('name')
+    suppliers = Supplier.objects.all().order_by("name")
 
     # Search functionality
-    search_query = request.GET.get('search', '')
+    search_query = request.GET.get("search", "")
     if search_query:
         suppliers = suppliers.filter(
-            Q(name__icontains=search_query) |
-            Q(contact_person__icontains=search_query) |
-            Q(email__icontains=search_query) |
-            Q(phone_number__icontains=search_query) |
-            Q(city__icontains=search_query)
+            Q(name__icontains=search_query)
+            | Q(contact_person__icontains=search_query)
+            | Q(email__icontains=search_query)
+            | Q(phone_number__icontains=search_query)
+            | Q(city__icontains=search_query)
         )
 
     # Status filter
-    is_active = request.GET.get('is_active', '')
-    if is_active == 'true':
+    is_active = request.GET.get("is_active", "")
+    if is_active == "true":
         suppliers = suppliers.filter(is_active=True)
-    elif is_active == 'false':
+    elif is_active == "false":
         suppliers = suppliers.filter(is_active=False)
     # If empty string or not provided, show all suppliers
 
     # Pagination
     paginator = Paginator(suppliers, 10)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     suppliers = paginator.get_page(page_number)
 
     context = {
-        'suppliers': suppliers,
-        'search_query': search_query,
-        'is_active': is_active,
-        'title': 'Supplier List',
-        'active_nav': 'pharmacy',
+        "suppliers": suppliers,
+        "search_query": search_query,
+        "is_active": is_active,
+        "title": "Supplier List",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/supplier_list.html', context)
+    return render(request, "pharmacy/supplier_list.html", context)
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def supplier_detail(request, supplier_id):
     """View for displaying supplier details"""
     supplier = get_object_or_404(Supplier, id=supplier_id)
 
     # Get recent purchases from this supplier
-    recent_purchases = Purchase.objects.filter(
-        supplier=supplier
-    ).order_by('-purchase_date')[:10]
+    recent_purchases = Purchase.objects.filter(supplier=supplier).order_by(
+        "-purchase_date"
+    )[:10]
 
     context = {
-        'supplier': supplier,
-        'recent_purchases': recent_purchases,
-        'title': f'Supplier Details - {supplier.name}',
-        'active_nav': 'pharmacy',
+        "supplier": supplier,
+        "recent_purchases": recent_purchases,
+        "title": f"Supplier Details - {supplier.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/supplier_detail.html', context)
+    return render(request, "pharmacy/supplier_detail.html", context)
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def edit_supplier(request, supplier_id):
     """View for editing supplier information"""
     supplier = get_object_or_404(Supplier, id=supplier_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = SupplierForm(request.POST, instance=supplier)
         if form.is_valid():
             supplier = form.save()
-            messages.success(request, f'Supplier {supplier.name} updated successfully.')
-            return redirect('pharmacy:supplier_detail', supplier_id=supplier.id)
+            messages.success(request, f"Supplier {supplier.name} updated successfully.")
+            return redirect("pharmacy:supplier_detail", supplier_id=supplier.id)
     else:
         form = SupplierForm(instance=supplier)
 
     context = {
-        'form': form,
-        'supplier': supplier,
-        'title': f'Edit Supplier - {supplier.name}',
-        'active_nav': 'pharmacy',
+        "form": form,
+        "supplier": supplier,
+        "title": f"Edit Supplier - {supplier.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/add_edit_supplier.html', context)
+    return render(request, "pharmacy/add_edit_supplier.html", context)
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def delete_supplier(request, supplier_id):
     """View for deleting a supplier"""
     supplier = get_object_or_404(Supplier, id=supplier_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         supplier.is_active = False
         supplier.save()
-        messages.success(request, f'Supplier {supplier.name} deactivated successfully.')
-        return redirect('pharmacy:supplier_list')
+        messages.success(request, f"Supplier {supplier.name} deactivated successfully.")
+        return redirect("pharmacy:supplier_list")
 
     context = {
-        'supplier': supplier,
-        'title': f'Delete Supplier - {supplier.name}',
-        'active_nav': 'pharmacy',
+        "supplier": supplier,
+        "title": f"Delete Supplier - {supplier.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/delete_supplier.html', context)
+    return render(request, "pharmacy/delete_supplier.html", context)
 
 
 @login_required
-@permission_required('pharmacy.create')
+@permission_required("pharmacy.create")
 def quick_procurement(request, supplier_id):
     """View for deleting a supplier"""
     supplier = get_object_or_404(Supplier, id=supplier_id, is_active=True)
     context = {
-        'supplier': supplier,
-        'page_title': f'Delete Supplier - {supplier.name}',
-        'active_nav': 'pharmacy',
+        "supplier": supplier,
+        "page_title": f"Delete Supplier - {supplier.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/delete_supplier.html', context)
+    return render(request, "pharmacy/delete_supplier.html", context)
 
 
 @login_required
-@permission_required('pharmacy.create')
+@permission_required("pharmacy.create")
 def quick_procurement(request, supplier_id):
     """View for quick procurement from a supplier"""
     supplier = get_object_or_404(Supplier, id=supplier_id, is_active=True)
 
     # Get frequently ordered medications from this supplier
-    frequently_ordered = PurchaseItem.objects.filter(
-        purchase__supplier=supplier
-    ).values(
-        'medication_id', 'medication__name'
-    ).annotate(
-        order_count=Count('id'),
-        total_quantity=Sum('quantity')
-    ).order_by('-order_count')[:10]
+    frequently_ordered = (
+        PurchaseItem.objects.filter(purchase__supplier=supplier)
+        .values("medication_id", "medication__name")
+        .annotate(order_count=Count("id"), total_quantity=Sum("quantity"))
+        .order_by("-order_count")[:10]
+    )
 
     context = {
-        'supplier': supplier,
-        'frequently_ordered': frequently_ordered,
-        'page_title': f'Quick Procurement - {supplier.name}',
-        'active_nav': 'pharmacy',
+        "supplier": supplier,
+        "frequently_ordered": frequently_ordered,
+        "page_title": f"Quick Procurement - {supplier.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/quick_procurement.html', context)
+    return render(request, "pharmacy/quick_procurement.html", context)
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def procurement_dashboard(request):
     """View for the procurement dashboard"""
     # Get procurement statistics
     total_purchases = Purchase.objects.count()
-    pending_purchases = Purchase.objects.filter(approval_status='pending').count()
-    approved_purchases = Purchase.objects.filter(approval_status='approved').count()
+    pending_purchases = Purchase.objects.filter(approval_status="pending").count()
+    approved_purchases = Purchase.objects.filter(approval_status="approved").count()
 
     # Get recent purchases
-    recent_purchases = Purchase.objects.select_related('supplier').order_by('-purchase_date')[:10]
+    recent_purchases = Purchase.objects.select_related("supplier").order_by(
+        "-purchase_date"
+    )[:10]
 
     context = {
-        'total_purchases': total_purchases,
-        'pending_purchases': pending_purchases,
-        'approved_purchases': approved_purchases,
-        'recent_purchases': recent_purchases,
-        'page_title': 'Procurement Dashboard',
-        'active_nav': 'pharmacy',
+        "total_purchases": total_purchases,
+        "pending_purchases": pending_purchases,
+        "approved_purchases": approved_purchases,
+        "recent_purchases": recent_purchases,
+        "page_title": "Procurement Dashboard",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/procurement_dashboard.html', context)
+    return render(request, "pharmacy/procurement_dashboard.html", context)
+
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def procurement_analytics(request):
     """View for procurement analytics"""
     # Implementation for procurement analytics
 
     # Get purchase data for analytics
-    purchases = Purchase.objects.select_related('supplier').order_by('-purchase_date')[:50]
+    purchases = Purchase.objects.select_related("supplier").order_by("-purchase_date")[
+        :50
+    ]
 
     # Calculate procurement statistics
     total_purchases = Purchase.objects.count()
-    total_purchase_value = Purchase.objects.aggregate(
-        total=Sum('total_amount')
-    )['total'] or 0
+    total_purchase_value = (
+        Purchase.objects.aggregate(total=Sum("total_amount"))["total"] or 0
+    )
 
     # Get supplier-wise purchase data
-    supplier_stats = Purchase.objects.values(
-        'supplier__name'
-    ).annotate(
-        total_purchases=Count('id'),
-        total_value=Sum('total_amount')
-    ).order_by('-total_value')[:10]
+    supplier_stats = (
+        Purchase.objects.values("supplier__name")
+        .annotate(total_purchases=Count("id"), total_value=Sum("total_amount"))
+        .order_by("-total_value")[:10]
+    )
 
     context = {
-        'purchases': purchases,
-        'total_purchases': total_purchases,
-        'total_purchase_value': total_purchase_value,
-        'supplier_stats': supplier_stats,
-        'page_title': 'Procurement Analytics',
-        'active_nav': 'pharmacy',
+        "purchases": purchases,
+        "total_purchases": total_purchases,
+        "total_purchase_value": total_purchase_value,
+        "supplier_stats": supplier_stats,
+        "page_title": "Procurement Analytics",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/procurement_analytics.html', context)
+    return render(request, "pharmacy/procurement_analytics.html", context)
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def automated_reorder_suggestions(request):
     """View for automated reorder suggestions"""
     # Implementation for automated reorder suggestions
     # Get medications that are below reorder level
     low_stock_items = ActiveStoreInventory.objects.filter(
-        stock_quantity__lte=F('reorder_level')
-    ).select_related('medication', 'active_store__dispensary')
+        stock_quantity__lte=F("reorder_level")
+    ).select_related("medication", "active_store__dispensary")
 
     # Get items that need reordering based on usage patterns
     # This is a simplified implementation - in a real system, you might use more complex algorithms
@@ -885,27 +992,30 @@ def automated_reorder_suggestions(request):
         avg_monthly_usage = item.stock_quantity * 0.3  # Placeholder calculation
         suggested_order_qty = max(
             item.reorder_level,  # Using reorder_level instead of reorder_quantity
-            (avg_monthly_usage * 3) - item.stock_quantity  # 3 months supply minus current stock
+            (avg_monthly_usage * 3)
+            - item.stock_quantity,  # 3 months supply minus current stock
         )
 
-        reorder_suggestions.append({
-            'inventory_item': item,
-            'current_stock': item.stock_quantity,
-            'reorder_level': item.reorder_level,
-            'suggested_quantity': suggested_order_qty,
-        })
+        reorder_suggestions.append(
+            {
+                "inventory_item": item,
+                "current_stock": item.stock_quantity,
+                "reorder_level": item.reorder_level,
+                "suggested_quantity": suggested_order_qty,
+            }
+        )
 
     context = {
-        'reorder_suggestions': reorder_suggestions,
-        'page_title': 'Reorder Suggestions',
-        'active_nav': 'pharmacy',
+        "reorder_suggestions": reorder_suggestions,
+        "page_title": "Reorder Suggestions",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/reorder_suggestions.html', context)
+    return render(request, "pharmacy/reorder_suggestions.html", context)
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def revenue_analysis(request):
     """View for revenue analysis"""
     # Backwards-compatibility redirect: the comprehensive implementation
@@ -914,44 +1024,44 @@ def revenue_analysis(request):
     from django.shortcuts import redirect
     from django.urls import reverse
 
-    target = reverse('pharmacy:simple_revenue_statistics')
-    query = request.META.get('QUERY_STRING', '')
+    target = reverse("pharmacy:simple_revenue_statistics")
+    query = request.META.get("QUERY_STRING", "")
     if query:
         return redirect(f"{target}?{query}")
     return redirect(target)
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def expense_analysis(request):
     """View for expense analysis with date, month, and year filtering"""
     from datetime import datetime, date
     from django.db.models import Avg, StdDev, Variance
-    
+
     # Get filter parameters
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
-    month = request.GET.get('month')
-    year = request.GET.get('year')
-    
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+    month = request.GET.get("month")
+    year = request.GET.get("year")
+
     # Base queryset
-    purchases_qs = Purchase.objects.select_related('supplier')
-    
+    purchases_qs = Purchase.objects.select_related("supplier")
+
     # Apply date filters
     if start_date:
         try:
-            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+            start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
             purchases_qs = purchases_qs.filter(purchase_date__gte=start_date_obj)
         except ValueError:
             pass
-    
+
     if end_date:
         try:
-            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+            end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
             purchases_qs = purchases_qs.filter(purchase_date__lte=end_date_obj)
         except ValueError:
             pass
-    
+
     if month:
         try:
             month_int = int(month)
@@ -959,151 +1069,173 @@ def expense_analysis(request):
                 purchases_qs = purchases_qs.filter(purchase_date__month=month_int)
         except ValueError:
             pass
-    
+
     if year:
         try:
             year_int = int(year)
             purchases_qs = purchases_qs.filter(purchase_date__year=year_int)
         except ValueError:
             pass
-    
+
     # Get expense data with filtering
-    purchases = purchases_qs.order_by('-purchase_date')[:50]
-    
+    purchases = purchases_qs.order_by("-purchase_date")[:50]
+
     # Calculate expense statistics with filtering
     expense_stats = purchases_qs.aggregate(
-        total=Sum('total_amount'),
-        avg_order=Avg('total_amount'),
-        count=Count('id')
+        total=Sum("total_amount"), avg_order=Avg("total_amount"), count=Count("id")
     )
-    
-    total_expenses = expense_stats['total'] or 0
-    avg_order_value = expense_stats['avg_order'] or 0
-    total_orders = expense_stats['count'] or 0
-    
+
+    total_expenses = expense_stats["total"] or 0
+    avg_order_value = expense_stats["avg_order"] or 0
+    total_orders = expense_stats["count"] or 0
+
     # Calculate expense ratios
     current_date = timezone.now().date()
-    months_with_data = purchases_qs.dates('purchase_date', 'month', order='DESC')
-    avg_monthly_expense = total_expenses / len(months_with_data) if months_with_data else 0
-    
+    months_with_data = purchases_qs.dates("purchase_date", "month", order="DESC")
+    avg_monthly_expense = (
+        total_expenses / len(months_with_data) if months_with_data else 0
+    )
+
     # Get revenue data for ratio calculation (simplified - in real implementation, this would come from billing module)
-    total_revenue = total_expenses * Decimal('1.5')  # Simplified ratio using Decimal
-    procurement_to_revenue = (total_expenses / total_revenue * Decimal('100')) if total_revenue > 0 else Decimal('0')
-    
+    total_revenue = total_expenses * Decimal("1.5")  # Simplified ratio using Decimal
+    procurement_to_revenue = (
+        (total_expenses / total_revenue * Decimal("100"))
+        if total_revenue > 0
+        else Decimal("0")
+    )
+
     expense_ratios = {
-        'avg_monthly_expense': avg_monthly_expense,
-        'procurement_to_revenue': procurement_to_revenue,
+        "avg_monthly_expense": avg_monthly_expense,
+        "procurement_to_revenue": procurement_to_revenue,
     }
-    
+
     # Get procurement expenses by payment status
-    payment_analysis = purchases_qs.values('payment_status').annotate(
-        total_amount=Sum('total_amount'),
-        count=Count('id')
-    ).order_by('-total_amount')
-    
+    payment_analysis = (
+        purchases_qs.values("payment_status")
+        .annotate(total_amount=Sum("total_amount"), count=Count("id"))
+        .order_by("-total_amount")
+    )
+
     procurement_expenses = {
-        'pending_payments': purchases_qs.filter(payment_status='pending').aggregate(
-            total=Sum('total_amount')
-        )['total'] or 0,
+        "pending_payments": purchases_qs.filter(payment_status="pending").aggregate(
+            total=Sum("total_amount")
+        )["total"]
+        or 0,
     }
-    
+
     # Get category-wise expense data
-    category_expenses = PurchaseItem.objects.filter(
-        purchase__in=purchases_qs
-    ).values(
-        'medication__category__name'
-    ).annotate(
-        total_cost=Sum(F('quantity') * F('unit_price')),
-        total_quantity=Sum('quantity')
-    ).order_by('-total_cost')[:10]
-    
-    # Get supplier expenses
-    supplier_expenses = purchases_qs.values(
-        'supplier__name'
-    ).annotate(
-        total_spent=Sum('total_amount'),
-        order_count=Count('id'),
-        avg_order_value=Avg('total_amount')
-    ).annotate(
-        payment_efficiency=Case(
-            When(payment_status='paid', then=Value(100)),
-            When(payment_status='partial', then=Value(50)),
-            default=Value(0),
-            output_field=models.IntegerField()
+    category_expenses = (
+        PurchaseItem.objects.filter(purchase__in=purchases_qs)
+        .values("medication__category__name")
+        .annotate(
+            total_cost=Sum(F("quantity") * F("unit_price")),
+            total_quantity=Sum("quantity"),
         )
-    ).order_by('-total_spent')
-    
+        .order_by("-total_cost")[:10]
+    )
+
+    # Get supplier expenses
+    supplier_expenses = (
+        purchases_qs.values("supplier__name")
+        .annotate(
+            total_spent=Sum("total_amount"),
+            order_count=Count("id"),
+            avg_order_value=Avg("total_amount"),
+        )
+        .annotate(
+            payment_efficiency=Case(
+                When(payment_status="paid", then=Value(100)),
+                When(payment_status="partial", then=Value(50)),
+                default=Value(0),
+                output_field=models.IntegerField(),
+            )
+        )
+        .order_by("-total_spent")
+    )
+
     # Get monthly expenses for chart
     from django.db.models.functions import TruncMonth
-    monthly_expenses = purchases_qs.annotate(
-        month=TruncMonth('purchase_date')
-    ).values('month').annotate(
-        total_expenses=Sum('total_amount'),
-        order_count=Count('id')
-    ).order_by('month')[:12]
-    
+
+    monthly_expenses = (
+        purchases_qs.annotate(month=TruncMonth("purchase_date"))
+        .values("month")
+        .annotate(total_expenses=Sum("total_amount"), order_count=Count("id"))
+        .order_by("month")[:12]
+    )
+
     # Get optimization opportunities
-    optimization_opportunities = PurchaseItem.objects.filter(
-        purchase__in=purchases_qs
-    ).values(
-        'medication__name'
-    ).annotate(
-        avg_price=Avg('unit_price'),
-        min_price=Min('unit_price'),
-        max_price=Max('unit_price'),
-        supplier_count=Count('purchase__supplier', distinct=True)
-    ).annotate(
-        price_range=F('max_price') - F('min_price')
-    ).filter(
-        price_range__gt=0
-    ).order_by('-price_range')
-    
+    optimization_opportunities = (
+        PurchaseItem.objects.filter(purchase__in=purchases_qs)
+        .values("medication__name")
+        .annotate(
+            avg_price=Avg("unit_price"),
+            min_price=Min("unit_price"),
+            max_price=Max("unit_price"),
+            supplier_count=Count("purchase__supplier", distinct=True),
+        )
+        .annotate(price_range=F("max_price") - F("min_price"))
+        .filter(price_range__gt=0)
+        .order_by("-price_range")
+    )
+
     # Get medication efficiency analysis
-    medication_efficiency = PurchaseItem.objects.filter(
-        purchase__in=purchases_qs
-    ).values(
-        'medication__name'
-    ).annotate(
-        total_cost=Sum(F('quantity') * F('unit_price')),
-        total_quantity=Sum('quantity'),
-        avg_unit_cost=Avg('unit_price')
-    ).annotate(
-        cost_variance=StdDev('unit_price')
-    ).annotate(
-        potential_savings=F('cost_variance') * F('total_quantity')
-    ).order_by('-cost_variance')
-    
+    medication_efficiency = (
+        PurchaseItem.objects.filter(purchase__in=purchases_qs)
+        .values("medication__name")
+        .annotate(
+            total_cost=Sum(F("quantity") * F("unit_price")),
+            total_quantity=Sum("quantity"),
+            avg_unit_cost=Avg("unit_price"),
+        )
+        .annotate(cost_variance=StdDev("unit_price"))
+        .annotate(potential_savings=F("cost_variance") * F("total_quantity"))
+        .order_by("-cost_variance")
+    )
+
     # Prepare filter values for form
     current_year = current_date.year
     years = list(range(current_year - 5, current_year + 1))
-    months = [(1, 'January'), (2, 'February'), (3, 'March'), (4, 'April'),
-              (5, 'May'), (6, 'June'), (7, 'July'), (8, 'August'),
-              (9, 'September'), (10, 'October'), (11, 'November'), (12, 'December')]
-    
+    months = [
+        (1, "January"),
+        (2, "February"),
+        (3, "March"),
+        (4, "April"),
+        (5, "May"),
+        (6, "June"),
+        (7, "July"),
+        (8, "August"),
+        (9, "September"),
+        (10, "October"),
+        (11, "November"),
+        (12, "December"),
+    ]
+
     context = {
-        'title': 'Expense Analysis',
-        'purchases': purchases,
-        'total_expenses': total_expenses,
-        'category_expenses': category_expenses,
-        'expense_ratios': expense_ratios,
-        'procurement_expenses': procurement_expenses,
-        'supplier_expenses': supplier_expenses,
-        'monthly_expenses': monthly_expenses,
-        'payment_analysis': payment_analysis,
-        'optimization_opportunities': optimization_opportunities,
-        'medication_efficiency': medication_efficiency,
-        'page_title': 'Expense Analysis',
-        'active_nav': 'pharmacy',
+        "title": "Expense Analysis",
+        "purchases": purchases,
+        "total_expenses": total_expenses,
+        "category_expenses": category_expenses,
+        "expense_ratios": expense_ratios,
+        "procurement_expenses": procurement_expenses,
+        "supplier_expenses": supplier_expenses,
+        "monthly_expenses": monthly_expenses,
+        "payment_analysis": payment_analysis,
+        "optimization_opportunities": optimization_opportunities,
+        "medication_efficiency": medication_efficiency,
+        "page_title": "Expense Analysis",
+        "active_nav": "pharmacy",
         # Filter values for form
-        'years': years,
-        'months': months,
-        'selected_start_date': start_date,
-        'selected_end_date': end_date,
-        'selected_month': int(month) if month else '',
-        'selected_year': int(year) if year else '',
+        "years": years,
+        "months": months,
+        "selected_start_date": start_date,
+        "selected_end_date": end_date,
+        "selected_month": int(month) if month else "",
+        "selected_year": int(year) if year else "",
     }
 
-    return render(request, 'pharmacy/expense_analysis.html', context)
+    return render(request, "pharmacy/expense_analysis.html", context)
+
+
 import json
 from datetime import datetime
 from django.utils import timezone
@@ -1127,109 +1259,159 @@ def test_revenue_charts_public(request):
     monthly_trends = revenue_service.get_monthly_trends(12)
 
     # Prepare chart data for monthly trends
-    chart_months = [trend['month'] for trend in monthly_trends]
+    chart_months = [trend["month"] for trend in monthly_trends]
     chart_data = {
-        'months': json.dumps(chart_months),
-        'pharmacy': json.dumps([float(trend['pharmacy']) for trend in monthly_trends]),
-        'laboratory': json.dumps([float(trend['laboratory']) for trend in monthly_trends]),
-        'consultations': json.dumps([float(trend['consultations']) for trend in monthly_trends]),
-        'theatre': json.dumps([float(trend['theatre']) for trend in monthly_trends]),
-        'admissions': json.dumps([float(trend['admissions']) for trend in monthly_trends]),
-        'general': json.dumps([float(trend['general']) for trend in monthly_trends]),
-        'wallet': json.dumps([float(trend['wallet']) for trend in monthly_trends]),
-        'total': json.dumps([float(trend['total_revenue']) for trend in monthly_trends])
+        "months": json.dumps(chart_months),
+        "pharmacy": json.dumps([float(trend["pharmacy"]) for trend in monthly_trends]),
+        "laboratory": json.dumps(
+            [float(trend["laboratory"]) for trend in monthly_trends]
+        ),
+        "consultations": json.dumps(
+            [float(trend["consultations"]) for trend in monthly_trends]
+        ),
+        "theatre": json.dumps([float(trend["theatre"]) for trend in monthly_trends]),
+        "admissions": json.dumps(
+            [float(trend["admissions"]) for trend in monthly_trends]
+        ),
+        "general": json.dumps([float(trend["general"]) for trend in monthly_trends]),
+        "wallet": json.dumps([float(trend["wallet"]) for trend in monthly_trends]),
+        "total": json.dumps(
+            [float(trend["total_revenue"]) for trend in monthly_trends]
+        ),
     }
 
     # Top revenue sources analysis
     revenue_sources = [
-        {'name': 'Pharmacy', 'revenue': comprehensive_data['pharmacy_revenue']['total_revenue'], 'icon': 'fas fa-pills', 'color': 'primary'},
-        {'name': 'Laboratory', 'revenue': comprehensive_data['laboratory_revenue']['total_revenue'], 'icon': 'fas fa-microscope', 'color': 'success'},
-        {'name': 'Consultations', 'revenue': comprehensive_data['consultation_revenue']['total_revenue'], 'icon': 'fas fa-stethoscope', 'color': 'info'},
-        {'name': 'Theatre', 'revenue': comprehensive_data['theatre_revenue']['total_revenue'], 'icon': 'fas fa-procedures', 'color': 'warning'},
-        {'name': 'Admissions', 'revenue': comprehensive_data['admission_revenue']['total_revenue'], 'icon': 'fas fa-bed', 'color': 'danger'},
-        {'name': 'General & Others', 'revenue': comprehensive_data['general_revenue']['total_revenue'], 'icon': 'fas fa-receipt', 'color': 'secondary'},
-        {'name': 'Wallet', 'revenue': comprehensive_data['wallet_revenue']['total_revenue'], 'icon': 'fas fa-wallet', 'color': 'dark'}
+        {
+            "name": "Pharmacy",
+            "revenue": comprehensive_data["pharmacy_revenue"]["total_revenue"],
+            "icon": "fas fa-pills",
+            "color": "primary",
+        },
+        {
+            "name": "Laboratory",
+            "revenue": comprehensive_data["laboratory_revenue"]["total_revenue"],
+            "icon": "fas fa-microscope",
+            "color": "success",
+        },
+        {
+            "name": "Consultations",
+            "revenue": comprehensive_data["consultation_revenue"]["total_revenue"],
+            "icon": "fas fa-stethoscope",
+            "color": "info",
+        },
+        {
+            "name": "Theatre",
+            "revenue": comprehensive_data["theatre_revenue"]["total_revenue"],
+            "icon": "fas fa-procedures",
+            "color": "warning",
+        },
+        {
+            "name": "Admissions",
+            "revenue": comprehensive_data["admission_revenue"]["total_revenue"],
+            "icon": "fas fa-bed",
+            "color": "danger",
+        },
+        {
+            "name": "General & Others",
+            "revenue": comprehensive_data["general_revenue"]["total_revenue"],
+            "icon": "fas fa-receipt",
+            "color": "secondary",
+        },
+        {
+            "name": "Wallet",
+            "revenue": comprehensive_data["wallet_revenue"]["total_revenue"],
+            "icon": "fas fa-wallet",
+            "color": "dark",
+        },
     ]
 
     # Sort by revenue (highest first)
-    revenue_sources.sort(key=lambda x: x['revenue'], reverse=True)
+    revenue_sources.sort(key=lambda x: x["revenue"], reverse=True)
 
     # Performance metrics
-    total_revenue = comprehensive_data['total_revenue']
+    total_revenue = comprehensive_data["total_revenue"]
     performance_metrics = {
-        'total_transactions': sum([
-            comprehensive_data['pharmacy_revenue']['total_payments'],
-            comprehensive_data['laboratory_revenue']['total_payments'],
-            comprehensive_data['consultation_revenue']['total_payments'],
-            comprehensive_data['theatre_revenue']['total_payments'],
-            comprehensive_data['admission_revenue']['total_payments'],
-            comprehensive_data['general_revenue']['total_payments'],
-            comprehensive_data['wallet_revenue']['total_transactions']
-        ]),
-        'average_transaction_value': total_revenue / max(1, sum([
-            comprehensive_data['pharmacy_revenue']['total_payments'],
-            comprehensive_data['laboratory_revenue']['total_payments'],
-            comprehensive_data['consultation_revenue']['total_payments'],
-            comprehensive_data['theatre_revenue']['total_payments'],
-            comprehensive_data['admission_revenue']['total_payments'],
-            comprehensive_data['general_revenue']['total_payments'],
-            comprehensive_data['wallet_revenue']['total_transactions']
-        ])),
-        'days_in_period': (end_date - start_date).days + 1,
-        'daily_average': total_revenue / max(1, (end_date - start_date).days + 1)
+        "total_transactions": sum(
+            [
+                comprehensive_data["pharmacy_revenue"]["total_payments"],
+                comprehensive_data["laboratory_revenue"]["total_payments"],
+                comprehensive_data["consultation_revenue"]["total_payments"],
+                comprehensive_data["theatre_revenue"]["total_payments"],
+                comprehensive_data["admission_revenue"]["total_payments"],
+                comprehensive_data["general_revenue"]["total_payments"],
+                comprehensive_data["wallet_revenue"]["total_transactions"],
+            ]
+        ),
+        "average_transaction_value": total_revenue
+        / max(
+            1,
+            sum(
+                [
+                    comprehensive_data["pharmacy_revenue"]["total_payments"],
+                    comprehensive_data["laboratory_revenue"]["total_payments"],
+                    comprehensive_data["consultation_revenue"]["total_payments"],
+                    comprehensive_data["theatre_revenue"]["total_payments"],
+                    comprehensive_data["admission_revenue"]["total_payments"],
+                    comprehensive_data["general_revenue"]["total_payments"],
+                    comprehensive_data["wallet_revenue"]["total_transactions"],
+                ]
+            ),
+        ),
+        "days_in_period": (end_date - start_date).days + 1,
+        "daily_average": total_revenue / max(1, (end_date - start_date).days + 1),
     }
 
     context = {
-        'start_date': start_date,
-        'end_date': end_date,
-        'total_revenue': total_revenue,
-        'comprehensive_data': comprehensive_data,
-        'monthly_trends': monthly_trends,
-        'daily_breakdown': [],
-        'chart_data': chart_data,
-        'revenue_sources': revenue_sources,
-        'performance_metrics': performance_metrics,
-        'include_daily_breakdown': False,
-        'selected_departments': [],
-        'page_title': 'Revenue Charts Test',
-        'active_nav': 'pharmacy',
-
+        "start_date": start_date,
+        "end_date": end_date,
+        "total_revenue": total_revenue,
+        "comprehensive_data": comprehensive_data,
+        "monthly_trends": monthly_trends,
+        "daily_breakdown": [],
+        "chart_data": chart_data,
+        "revenue_sources": revenue_sources,
+        "performance_metrics": performance_metrics,
+        "include_daily_breakdown": False,
+        "selected_departments": [],
+        "page_title": "Revenue Charts Test",
+        "active_nav": "pharmacy",
         # Individual department data for backward compatibility with template
-        'pharmacy_revenue': comprehensive_data['pharmacy_revenue'],
-        'lab_revenue': comprehensive_data['laboratory_revenue'],
-        'consultation_revenue': comprehensive_data['consultation_revenue'],
-        'theatre_revenue': comprehensive_data['theatre_revenue'],
-        'admission_revenue': comprehensive_data['admission_revenue'],
-        'general_revenue': comprehensive_data['general_revenue'],
-        'wallet_revenue': comprehensive_data['wallet_revenue'],
+        "pharmacy_revenue": comprehensive_data["pharmacy_revenue"],
+        "lab_revenue": comprehensive_data["laboratory_revenue"],
+        "consultation_revenue": comprehensive_data["consultation_revenue"],
+        "theatre_revenue": comprehensive_data["theatre_revenue"],
+        "admission_revenue": comprehensive_data["admission_revenue"],
+        "general_revenue": comprehensive_data["general_revenue"],
+        "wallet_revenue": comprehensive_data["wallet_revenue"],
     }
 
-    return render(request, 'pharmacy/simple_revenue_statistics.html', context)
+    return render(request, "pharmacy/simple_revenue_statistics.html", context)
 
 
 @login_required
-def _add_pack_to_patient_billing(patient, pack_order, source_context='pharmacy'):
+def _add_pack_to_patient_billing(patient, pack_order, source_context="pharmacy"):
     """Helper function to add pack costs to patient billing"""
 
     # Create or get invoice for patient
     invoice, created = Invoice.objects.get_or_create(
         patient=patient,
-        status='pending',
-        source_app='pharmacy',  # Using pharmacy as the source for pack orders
+        status="pending",
+        source_app="pharmacy",  # Using pharmacy as the source for pack orders
         defaults={
-            'invoice_date': timezone.now().date(),
-            'due_date': timezone.now().date() + timezone.timedelta(days=7),
-            'subtotal': Decimal('0.00'),
-            'tax_amount': Decimal('0.00'),
-            'total_amount': Decimal('0.00'),
-            'created_by': pack_order.ordered_by,
-        }
+            "invoice_date": timezone.now().date(),
+            "due_date": timezone.now().date() + timezone.timedelta(days=7),
+            "subtotal": Decimal("0.00"),
+            "tax_amount": Decimal("0.00"),
+            "total_amount": Decimal("0.00"),
+            "created_by": pack_order.ordered_by,
+        },
     )
 
     # Create or get medical pack service category
     pack_service_category, _ = ServiceCategory.objects.get_or_create(
         name="Medical Packs",
-        defaults={'description': 'Pre-packaged medical supplies and medications'}
+        defaults={"description": "Pre-packaged medical supplies and medications"},
     )
 
     # Create or get service for this specific pack
@@ -1237,10 +1419,10 @@ def _add_pack_to_patient_billing(patient, pack_order, source_context='pharmacy')
         name=f"Medical Pack: {pack_order.pack.name}",
         category=pack_service_category,
         defaults={
-            'price': pack_order.pack.get_total_cost(),
-            'description': f"Medical pack for {pack_order.pack.get_pack_type_display()}: {pack_order.pack.name}",
-            'tax_percentage': Decimal('0.00')  # Assuming no tax on medical packs
-        }
+            "price": pack_order.pack.get_total_cost(),
+            "description": f"Medical pack for {pack_order.pack.get_pack_type_display()}: {pack_order.pack.name}",
+            "tax_percentage": Decimal("0.00"),  # Assuming no tax on medical packs
+        },
     )
 
     # Add invoice item for the pack
@@ -1251,20 +1433,22 @@ def _add_pack_to_patient_billing(patient, pack_order, source_context='pharmacy')
         description=f"Medical Pack: {pack_order.pack.name} (Order #{pack_order.id}) - {source_context.title()}",
         quantity=1,
         unit_price=pack_cost,
-        tax_percentage=Decimal('0.00'),
-        tax_amount=Decimal('0.00'),
-        discount_amount=Decimal('0.00'),
-        total_amount=pack_cost
+        tax_percentage=Decimal("0.00"),
+        tax_amount=Decimal("0.00"),
+        discount_amount=Decimal("0.00"),
+        total_amount=pack_cost,
     )
 
     # Update invoice totals
-    invoice.subtotal = invoice.items.aggregate(
-        total=models.Sum('total_amount')
-    )['total'] or Decimal('0.00')
-    invoice.tax_amount = invoice.items.aggregate(
-        total=models.Sum('tax_amount')
-    )['total'] or Decimal('0.00')
-    invoice.total_amount = invoice.subtotal + invoice.tax_amount - invoice.discount_amount
+    invoice.subtotal = invoice.items.aggregate(total=models.Sum("total_amount"))[
+        "total"
+    ] or Decimal("0.00")
+    invoice.tax_amount = invoice.items.aggregate(total=models.Sum("tax_amount"))[
+        "total"
+    ] or Decimal("0.00")
+    invoice.total_amount = (
+        invoice.subtotal + invoice.tax_amount - invoice.discount_amount
+    )
     invoice.save()
 
     return invoice_item
@@ -1276,12 +1460,14 @@ def _notify_pharmacy_of_pack_order(pack_order, ordered_by):
     from accounts.models import CustomUser
 
     # Get all pharmacist users
-    pharmacists = CustomUser.objects.filter(
-        is_active=True
-    ).filter(
-        models.Q(roles__name__iexact='pharmacist') |
-        models.Q(profile__role__iexact='pharmacist')
-    ).distinct()
+    pharmacists = (
+        CustomUser.objects.filter(is_active=True)
+        .filter(
+            models.Q(roles__name__iexact="pharmacist")
+            | models.Q(profile__role__iexact="pharmacist")
+        )
+        .distinct()
+    )
 
     # Get prescription info if available
     prescription_info = ""
@@ -1293,23 +1479,23 @@ def _notify_pharmacy_of_pack_order(pack_order, ordered_by):
         InternalNotification.objects.create(
             user=pharmacist,
             sender=ordered_by,
-            title=f'New Pack Order #{pack_order.id}',
+            title=f"New Pack Order #{pack_order.id}",
             message=(
-                f'A new pack order has been created and processed.\n\n'
-                f'Pack: {pack_order.pack.name}\n'
-                f'Patient: {pack_order.patient.get_full_name()}\n'
-                f'Patient ID: {pack_order.patient.patient_id}\n'
-                f'Ordered by: {ordered_by.get_full_name()}\n'
-                f'Ordered at: {pack_order.ordered_at.strftime("%Y-%m-%d %H:%M")}\n'
-                f'Status: {pack_order.get_status_display()}{prescription_info}\n\n'
-                f'Please review and dispense the prescription.'
+                f"A new pack order has been created and processed.\n\n"
+                f"Pack: {pack_order.pack.name}\n"
+                f"Patient: {pack_order.patient.get_full_name()}\n"
+                f"Patient ID: {pack_order.patient.patient_id}\n"
+                f"Ordered by: {ordered_by.get_full_name()}\n"
+                f"Ordered at: {pack_order.ordered_at.strftime('%Y-%m-%d %H:%M')}\n"
+                f"Status: {pack_order.get_status_display()}{prescription_info}\n\n"
+                f"Please review and dispense the prescription."
             ),
-            notification_type='info'
+            notification_type="info",
         )
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def simple_revenue_statistics(request):
     """Simple revenue statistics view showing department-wise revenue in a table and chart"""
     from .revenue_service import RevenueAggregationService, MonthFilterHelper
@@ -1318,16 +1504,16 @@ def simple_revenue_statistics(request):
     from django.utils import timezone
 
     # Handle search parameters
-    search_query = request.GET.get('search', '').strip().lower()
+    search_query = request.GET.get("search", "").strip().lower()
 
     # Handle date range parameters
-    start_date_str = request.GET.get('start_date', '')
-    end_date_str = request.GET.get('end_date', '')
+    start_date_str = request.GET.get("start_date", "")
+    end_date_str = request.GET.get("end_date", "")
 
     # Parse dates if provided, otherwise use current month
     try:
         if start_date_str:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
         else:
             # Get first day of current month
             today = timezone.now().date()
@@ -1339,7 +1525,7 @@ def simple_revenue_statistics(request):
 
     try:
         if end_date_str:
-            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
         else:
             # Get last day of current month
             today = timezone.now().date()
@@ -1372,96 +1558,158 @@ def simple_revenue_statistics(request):
     monthly_trends = revenue_service.get_monthly_trends(12)
 
     # Calculate total revenue
-    total_revenue = comprehensive_data['total_revenue']
+    total_revenue = comprehensive_data["total_revenue"]
 
     # Prepare chart data for monthly trends
-    chart_months = [trend['month'] for trend in monthly_trends]
+    chart_months = [trend["month"] for trend in monthly_trends]
     chart_data = {
-        'months': json.dumps(chart_months),
-        'pharmacy': json.dumps([float(trend['pharmacy']) for trend in monthly_trends]),
-        'laboratory': json.dumps([float(trend['laboratory']) for trend in monthly_trends]),
-        'consultations': json.dumps([float(trend['consultations']) for trend in monthly_trends]),
-        'theatre': json.dumps([float(trend['theatre']) for trend in monthly_trends]),
-        'admissions': json.dumps([float(trend['admissions']) for trend in monthly_trends]),
-        'general': json.dumps([float(trend['general']) for trend in monthly_trends]),
-        'wallet': json.dumps([float(trend['wallet']) for trend in monthly_trends]),
-        'total': json.dumps([float(trend['total_revenue']) for trend in monthly_trends])
+        "months": json.dumps(chart_months),
+        "pharmacy": json.dumps([float(trend["pharmacy"]) for trend in monthly_trends]),
+        "laboratory": json.dumps(
+            [float(trend["laboratory"]) for trend in monthly_trends]
+        ),
+        "consultations": json.dumps(
+            [float(trend["consultations"]) for trend in monthly_trends]
+        ),
+        "theatre": json.dumps([float(trend["theatre"]) for trend in monthly_trends]),
+        "admissions": json.dumps(
+            [float(trend["admissions"]) for trend in monthly_trends]
+        ),
+        "general": json.dumps([float(trend["general"]) for trend in monthly_trends]),
+        "wallet": json.dumps([float(trend["wallet"]) for trend in monthly_trends]),
+        "total": json.dumps(
+            [float(trend["total_revenue"]) for trend in monthly_trends]
+        ),
     }
 
     # Revenue sources for table
     all_revenue_sources = [
-        {'name': 'Pharmacy', 'revenue': comprehensive_data['pharmacy_revenue']['total_revenue'], 'icon': 'fas fa-pills', 'color': 'primary', 'transactions': comprehensive_data['pharmacy_revenue']['total_payments']},
-        {'name': 'Laboratory', 'revenue': comprehensive_data['laboratory_revenue']['total_revenue'], 'icon': 'fas fa-microscope', 'color': 'success', 'transactions': comprehensive_data['laboratory_revenue']['total_payments']},
-        {'name': 'Consultations', 'revenue': comprehensive_data['consultation_revenue']['total_revenue'], 'icon': 'fas fa-stethoscope', 'color': 'info', 'transactions': comprehensive_data['consultation_revenue']['total_payments']},
-        {'name': 'Theatre', 'revenue': comprehensive_data['theatre_revenue']['total_revenue'], 'icon': 'fas fa-procedures', 'color': 'warning', 'transactions': comprehensive_data['theatre_revenue']['total_payments']},
-        {'name': 'Admissions', 'revenue': comprehensive_data['admission_revenue']['total_revenue'], 'icon': 'fas fa-bed', 'color': 'danger', 'transactions': comprehensive_data['admission_revenue']['total_payments']},
-        {'name': 'General & Others', 'revenue': comprehensive_data['general_revenue']['total_revenue'], 'icon': 'fas fa-receipt', 'color': 'secondary', 'transactions': comprehensive_data['general_revenue']['total_payments']},
-        {'name': 'Wallet', 'revenue': comprehensive_data['wallet_revenue']['total_revenue'], 'icon': 'fas fa-wallet', 'color': 'dark', 'transactions': comprehensive_data['wallet_revenue']['total_transactions']},
+        {
+            "name": "Pharmacy",
+            "revenue": comprehensive_data["pharmacy_revenue"]["total_revenue"],
+            "icon": "fas fa-pills",
+            "color": "primary",
+            "transactions": comprehensive_data["pharmacy_revenue"]["total_payments"],
+        },
+        {
+            "name": "Laboratory",
+            "revenue": comprehensive_data["laboratory_revenue"]["total_revenue"],
+            "icon": "fas fa-microscope",
+            "color": "success",
+            "transactions": comprehensive_data["laboratory_revenue"]["total_payments"],
+        },
+        {
+            "name": "Consultations",
+            "revenue": comprehensive_data["consultation_revenue"]["total_revenue"],
+            "icon": "fas fa-stethoscope",
+            "color": "info",
+            "transactions": comprehensive_data["consultation_revenue"][
+                "total_payments"
+            ],
+        },
+        {
+            "name": "Theatre",
+            "revenue": comprehensive_data["theatre_revenue"]["total_revenue"],
+            "icon": "fas fa-procedures",
+            "color": "warning",
+            "transactions": comprehensive_data["theatre_revenue"]["total_payments"],
+        },
+        {
+            "name": "Admissions",
+            "revenue": comprehensive_data["admission_revenue"]["total_revenue"],
+            "icon": "fas fa-bed",
+            "color": "danger",
+            "transactions": comprehensive_data["admission_revenue"]["total_payments"],
+        },
+        {
+            "name": "General & Others",
+            "revenue": comprehensive_data["general_revenue"]["total_revenue"],
+            "icon": "fas fa-receipt",
+            "color": "secondary",
+            "transactions": comprehensive_data["general_revenue"]["total_payments"],
+        },
+        {
+            "name": "Wallet",
+            "revenue": comprehensive_data["wallet_revenue"]["total_revenue"],
+            "icon": "fas fa-wallet",
+            "color": "dark",
+            "transactions": comprehensive_data["wallet_revenue"]["total_transactions"],
+        },
     ]
 
     # Filter revenue sources based on search query
     if search_query:
-        revenue_sources = [source for source in all_revenue_sources
-                          if search_query in source['name'].lower()]
+        revenue_sources = [
+            source
+            for source in all_revenue_sources
+            if search_query in source["name"].lower()
+        ]
     else:
         revenue_sources = all_revenue_sources
 
     # Recalculate total revenue based on filtered sources
     if search_query:
-        total_revenue = sum(source['revenue'] for source in revenue_sources)
+        total_revenue = sum(source["revenue"] for source in revenue_sources)
 
     # Performance metrics
     performance_metrics = {
-        'total_transactions': sum([
-            comprehensive_data['pharmacy_revenue']['total_payments'],
-            comprehensive_data['laboratory_revenue']['total_payments'],
-            comprehensive_data['consultation_revenue']['total_payments'],
-            comprehensive_data['theatre_revenue']['total_payments'],
-            comprehensive_data['admission_revenue']['total_payments'],
-            comprehensive_data['general_revenue']['total_payments'],
-            comprehensive_data['wallet_revenue']['total_transactions']
-        ]),
-        'average_transaction_value': total_revenue / max(1, sum([
-            comprehensive_data['pharmacy_revenue']['total_payments'],
-            comprehensive_data['laboratory_revenue']['total_payments'],
-            comprehensive_data['consultation_revenue']['total_payments'],
-            comprehensive_data['theatre_revenue']['total_payments'],
-            comprehensive_data['admission_revenue']['total_payments'],
-            comprehensive_data['general_revenue']['total_payments'],
-            comprehensive_data['wallet_revenue']['total_transactions']
-        ])),
-        'days_in_period': (end_date - start_date).days + 1,
-        'daily_average': total_revenue / max(1, (end_date - start_date).days + 1)
+        "total_transactions": sum(
+            [
+                comprehensive_data["pharmacy_revenue"]["total_payments"],
+                comprehensive_data["laboratory_revenue"]["total_payments"],
+                comprehensive_data["consultation_revenue"]["total_payments"],
+                comprehensive_data["theatre_revenue"]["total_payments"],
+                comprehensive_data["admission_revenue"]["total_payments"],
+                comprehensive_data["general_revenue"]["total_payments"],
+                comprehensive_data["wallet_revenue"]["total_transactions"],
+            ]
+        ),
+        "average_transaction_value": total_revenue
+        / max(
+            1,
+            sum(
+                [
+                    comprehensive_data["pharmacy_revenue"]["total_payments"],
+                    comprehensive_data["laboratory_revenue"]["total_payments"],
+                    comprehensive_data["consultation_revenue"]["total_payments"],
+                    comprehensive_data["theatre_revenue"]["total_payments"],
+                    comprehensive_data["admission_revenue"]["total_payments"],
+                    comprehensive_data["general_revenue"]["total_payments"],
+                    comprehensive_data["wallet_revenue"]["total_transactions"],
+                ]
+            ),
+        ),
+        "days_in_period": (end_date - start_date).days + 1,
+        "daily_average": total_revenue / max(1, (end_date - start_date).days + 1),
     }
 
     context = {
-        'start_date': start_date,
-        'end_date': end_date,
-        'total_revenue': total_revenue,
-        'revenue_sources': revenue_sources,
-        'chart_data': chart_data,
-        'performance_metrics': performance_metrics,
-        'page_title': 'Revenue Statistics',
-        'active_nav': 'pharmacy',
-        'search_query': search_query,  # Add search query to context
-        'start_date_str': start_date_str,  # Add date strings to context
-        'end_date_str': end_date_str,
-
+        "start_date": start_date,
+        "end_date": end_date,
+        "total_revenue": total_revenue,
+        "revenue_sources": revenue_sources,
+        "chart_data": chart_data,
+        "performance_metrics": performance_metrics,
+        "page_title": "Revenue Statistics",
+        "active_nav": "pharmacy",
+        "search_query": search_query,  # Add search query to context
+        "start_date_str": start_date_str,  # Add date strings to context
+        "end_date_str": end_date_str,
         # Individual department data for backward compatibility with template
-        'pharmacy_revenue': comprehensive_data['pharmacy_revenue'],
-        'lab_revenue': comprehensive_data['laboratory_revenue'],
-        'consultation_revenue': comprehensive_data['consultation_revenue'],
-        'theatre_revenue': comprehensive_data['theatre_revenue'],
-        'admission_revenue': comprehensive_data['admission_revenue'],
-        'general_revenue': comprehensive_data['general_revenue'],
-        'wallet_revenue': comprehensive_data['wallet_revenue'],
+        "pharmacy_revenue": comprehensive_data["pharmacy_revenue"],
+        "lab_revenue": comprehensive_data["laboratory_revenue"],
+        "consultation_revenue": comprehensive_data["consultation_revenue"],
+        "theatre_revenue": comprehensive_data["theatre_revenue"],
+        "admission_revenue": comprehensive_data["admission_revenue"],
+        "general_revenue": comprehensive_data["general_revenue"],
+        "wallet_revenue": comprehensive_data["wallet_revenue"],
     }
 
-    return render(request, 'pharmacy/simple_revenue_statistics.html', context)
+    return render(request, "pharmacy/simple_revenue_statistics.html", context)
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def pharmacy_dispensary_revenue(request):
     """
     Pharmacy-specific revenue statistics with breakdown by dispensary
@@ -1475,14 +1723,14 @@ def pharmacy_dispensary_revenue(request):
     from datetime import timedelta
 
     # Handle date range parameters
-    start_date_str = request.GET.get('start_date', '')
-    end_date_str = request.GET.get('end_date', '')
-    search_query = request.GET.get('search', '').strip().lower()
+    start_date_str = request.GET.get("start_date", "")
+    end_date_str = request.GET.get("end_date", "")
+    search_query = request.GET.get("search", "").strip().lower()
 
     # Parse dates if provided, otherwise use current month
     try:
         if start_date_str:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
         else:
             # Get first day of current month
             today = timezone.now().date()
@@ -1494,7 +1742,7 @@ def pharmacy_dispensary_revenue(request):
 
     try:
         if end_date_str:
-            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
         else:
             # Get last day of current month
             today = timezone.now().date()
@@ -1518,44 +1766,50 @@ def pharmacy_dispensary_revenue(request):
         start_date, end_date = end_date, start_date
 
     # Get all active dispensaries
-    all_dispensaries = Dispensary.objects.filter(is_active=True).order_by('name')
+    all_dispensaries = Dispensary.objects.filter(is_active=True).order_by("name")
 
     # Calculate revenue per dispensary from DispensingLog
     dispensary_data = []
-    total_pharmacy_revenue = Decimal('0.00')
+    total_pharmacy_revenue = Decimal("0.00")
     total_transactions = 0
     total_medications_dispensed = 0
 
     for dispensary in all_dispensaries:
         # Get dispensing logs for this dispensary in the date range
         logs = DispensingLog.objects.filter(
-            dispensary=dispensary,
-            dispensed_date__date__range=[start_date, end_date]
+            dispensary=dispensary, dispensed_date__date__range=[start_date, end_date]
         ).aggregate(
-            total_revenue=Sum('total_price_for_this_log'),
-            total_logs=Count('id'),
-            total_quantity=Sum('dispensed_quantity')
+            total_revenue=Sum("total_price_for_this_log"),
+            total_logs=Count("id"),
+            total_quantity=Sum("dispensed_quantity"),
         )
 
-        revenue = logs['total_revenue'] or Decimal('0.00')
-        transactions = logs['total_logs'] or 0
-        quantity_dispensed = logs['total_quantity'] or 0
+        revenue = logs["total_revenue"] or Decimal("0.00")
+        transactions = logs["total_logs"] or 0
+        quantity_dispensed = logs["total_quantity"] or 0
 
         # Get unique prescriptions count
-        prescriptions_count = DispensingLog.objects.filter(
-            dispensary=dispensary,
-            dispensed_date__date__range=[start_date, end_date]
-        ).values('prescription_item__prescription').distinct().count()
+        prescriptions_count = (
+            DispensingLog.objects.filter(
+                dispensary=dispensary,
+                dispensed_date__date__range=[start_date, end_date],
+            )
+            .values("prescription_item__prescription")
+            .distinct()
+            .count()
+        )
 
         # Only add to list if there's revenue or if no search filter
         if not search_query or search_query in dispensary.name.lower():
-            dispensary_data.append({
-                'dispensary': dispensary,
-                'revenue': revenue,
-                'transactions': transactions,
-                'quantity_dispensed': quantity_dispensed,
-                'prescriptions_count': prescriptions_count,
-            })
+            dispensary_data.append(
+                {
+                    "dispensary": dispensary,
+                    "revenue": revenue,
+                    "transactions": transactions,
+                    "quantity_dispensed": quantity_dispensed,
+                    "prescriptions_count": prescriptions_count,
+                }
+            )
 
             total_pharmacy_revenue += revenue
             total_transactions += transactions
@@ -1563,34 +1817,40 @@ def pharmacy_dispensary_revenue(request):
 
     # Handle dispensing logs without dispensary assigned (legacy data)
     unassigned_logs = DispensingLog.objects.filter(
-        dispensary__isnull=True,
-        dispensed_date__date__range=[start_date, end_date]
+        dispensary__isnull=True, dispensed_date__date__range=[start_date, end_date]
     ).aggregate(
-        total_revenue=Sum('total_price_for_this_log'),
-        total_logs=Count('id'),
-        total_quantity=Sum('dispensed_quantity')
+        total_revenue=Sum("total_price_for_this_log"),
+        total_logs=Count("id"),
+        total_quantity=Sum("dispensed_quantity"),
     )
 
-    if unassigned_logs['total_revenue']:
-        unassigned_prescriptions = DispensingLog.objects.filter(
-            dispensary__isnull=True,
-            dispensed_date__date__range=[start_date, end_date]
-        ).values('prescription_item__prescription').distinct().count()
+    if unassigned_logs["total_revenue"]:
+        unassigned_prescriptions = (
+            DispensingLog.objects.filter(
+                dispensary__isnull=True,
+                dispensed_date__date__range=[start_date, end_date],
+            )
+            .values("prescription_item__prescription")
+            .distinct()
+            .count()
+        )
 
-        dispensary_data.append({
-            'dispensary': None,
-            'revenue': unassigned_logs['total_revenue'] or Decimal('0.00'),
-            'transactions': unassigned_logs['total_logs'] or 0,
-            'quantity_dispensed': unassigned_logs['total_quantity'] or 0,
-            'prescriptions_count': unassigned_prescriptions,
-        })
+        dispensary_data.append(
+            {
+                "dispensary": None,
+                "revenue": unassigned_logs["total_revenue"] or Decimal("0.00"),
+                "transactions": unassigned_logs["total_logs"] or 0,
+                "quantity_dispensed": unassigned_logs["total_quantity"] or 0,
+                "prescriptions_count": unassigned_prescriptions,
+            }
+        )
 
-        total_pharmacy_revenue += unassigned_logs['total_revenue'] or Decimal('0.00')
-        total_transactions += unassigned_logs['total_logs'] or 0
-        total_medications_dispensed += unassigned_logs['total_quantity'] or 0
+        total_pharmacy_revenue += unassigned_logs["total_revenue"] or Decimal("0.00")
+        total_transactions += unassigned_logs["total_logs"] or 0
+        total_medications_dispensed += unassigned_logs["total_quantity"] or 0
 
     # Sort by revenue (highest first)
-    dispensary_data.sort(key=lambda x: x['revenue'], reverse=True)
+    dispensary_data.sort(key=lambda x: x["revenue"], reverse=True)
 
     # Calculate monthly trends per dispensary (last 6 months for better visualization)
     monthly_trends = []
@@ -1601,7 +1861,7 @@ def pharmacy_dispensary_revenue(request):
         # User selected custom filters, use expanded version of selected range
         trend_end_date = end_date
         trend_start_date = start_date
-        
+
         # Expand range to minimum 3 months for meaningful trends, max 12 months
         current_range_days = (end_date - start_date).days + 1
         if current_range_days < 90:  # Less than 3 months
@@ -1614,7 +1874,9 @@ def pharmacy_dispensary_revenue(request):
     else:
         # Default view - show last 6 months from today
         trend_end_date = timezone.now().date()
-        trend_start_date = trend_end_date - timedelta(days=180)  # Approximately 6 months
+        trend_start_date = trend_end_date - timedelta(
+            days=180
+        )  # Approximately 6 months
 
     current_date = trend_start_date.replace(day=1)  # Start from first of the month
     months_list = []
@@ -1622,74 +1884,72 @@ def pharmacy_dispensary_revenue(request):
     while current_date <= trend_end_date:
         # Calculate next month
         if current_date.month == 12:
-            next_month = current_date.replace(year=current_date.year + 1, month=1, day=1)
+            next_month = current_date.replace(
+                year=current_date.year + 1, month=1, day=1
+            )
         else:
             next_month = current_date.replace(month=current_date.month + 1, day=1)
 
         month_end = min(next_month - timedelta(days=1), trend_end_date)
-        month_label = current_date.strftime('%b %Y')
+        month_label = current_date.strftime("%b %Y")
         months_list.append(month_label)
 
-        month_total = Decimal('0.00')
+        month_total = Decimal("0.00")
 
         # Get revenue for each dispensary in this month
         for dispensary in all_dispensaries:
             monthly_logs = DispensingLog.objects.filter(
                 dispensary=dispensary,
-                dispensed_date__date__range=[current_date, month_end]
-            ).aggregate(
-                total_revenue=Sum('total_price_for_this_log')
-            )
+                dispensed_date__date__range=[current_date, month_end],
+            ).aggregate(total_revenue=Sum("total_price_for_this_log"))
 
-            revenue = monthly_logs['total_revenue'] or Decimal('0.00')
+            revenue = monthly_logs["total_revenue"] or Decimal("0.00")
             dispensary_monthly_data[dispensary.name].append(float(revenue))
             month_total += revenue
 
-        monthly_trends.append({
-            'month': month_label,
-            'total': float(month_total)
-        })
+        monthly_trends.append({"month": month_label, "total": float(month_total)})
 
         current_date = next_month
 
     # Prepare chart data
-    chart_data = {
-        'months': json.dumps(months_list),
-        'dispensaries': {}
-    }
+    chart_data = {"months": json.dumps(months_list), "dispensaries": {}}
 
     # Add each dispensary's monthly data to chart
     for dispensary_name, revenues in dispensary_monthly_data.items():
-        chart_data['dispensaries'][dispensary_name] = json.dumps(revenues)
+        chart_data["dispensaries"][dispensary_name] = json.dumps(revenues)
 
     # Total monthly revenue
-    chart_data['total'] = json.dumps([trend['total'] for trend in monthly_trends])
+    chart_data["total"] = json.dumps([trend["total"] for trend in monthly_trends])
 
     # Performance metrics
     performance_metrics = {
-        'total_transactions': total_transactions,
-        'total_medications_dispensed': total_medications_dispensed,
-        'average_transaction_value': total_pharmacy_revenue / max(1, total_transactions),
-        'days_in_period': (end_date - start_date).days + 1,
-        'daily_average': total_pharmacy_revenue / max(1, (end_date - start_date).days + 1),
-        'dispensaries_count': len([d for d in dispensary_data if d['dispensary'] is not None])
+        "total_transactions": total_transactions,
+        "total_medications_dispensed": total_medications_dispensed,
+        "average_transaction_value": total_pharmacy_revenue
+        / max(1, total_transactions),
+        "days_in_period": (end_date - start_date).days + 1,
+        "daily_average": total_pharmacy_revenue
+        / max(1, (end_date - start_date).days + 1),
+        "dispensaries_count": len(
+            [d for d in dispensary_data if d["dispensary"] is not None]
+        ),
     }
 
     context = {
-        'start_date': start_date,
-        'end_date': end_date,
-        'start_date_str': start_date_str,
-        'end_date_str': end_date_str,
-        'search_query': search_query,
-        'total_pharmacy_revenue': total_pharmacy_revenue,
-        'dispensary_data': dispensary_data,
-        'chart_data': chart_data,
-        'performance_metrics': performance_metrics,
-        'page_title': 'Pharmacy Dispensary Revenue',
-        'active_nav': 'pharmacy',
+        "start_date": start_date,
+        "end_date": end_date,
+        "start_date_str": start_date_str,
+        "end_date_str": end_date_str,
+        "search_query": search_query,
+        "total_pharmacy_revenue": total_pharmacy_revenue,
+        "dispensary_data": dispensary_data,
+        "chart_data": chart_data,
+        "performance_metrics": performance_metrics,
+        "page_title": "Pharmacy Dispensary Revenue",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/pharmacy_dispensary_revenue.html', context)
+    return render(request, "pharmacy/pharmacy_dispensary_revenue.html", context)
 
 
 def comprehensive_revenue_analysis_debug(request):
@@ -1697,21 +1957,23 @@ def comprehensive_revenue_analysis_debug(request):
     from django.shortcuts import redirect
     from django.urls import reverse
 
-    target = reverse('pharmacy:simple_revenue_statistics')
-    query = request.META.get('QUERY_STRING', '')
+    target = reverse("pharmacy:simple_revenue_statistics")
+    query = request.META.get("QUERY_STRING", "")
     if query:
         return redirect(f"{target}?{query}")
     return redirect(target)
+
+
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def api_suppliers(request):
     """API endpoint for suppliers"""
-    suppliers = Supplier.objects.filter(is_active=True).values('id', 'name')
+    suppliers = Supplier.objects.filter(is_active=True).values("id", "name")
     return JsonResponse(list(suppliers), safe=False)
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def bulk_store_dashboard(request):
     """View for the bulk store dashboard with comprehensive statistics"""
     from django.db.models import Sum, Count, Q, F
@@ -1721,116 +1983,140 @@ def bulk_store_dashboard(request):
     bulk_stores = BulkStore.objects.filter(is_active=True)
 
     # Get total inventory statistics
-    total_medications = BulkStoreInventory.objects.values('medication').distinct().count()
-    total_stock_quantity = BulkStoreInventory.objects.aggregate(
-        total=Sum('stock_quantity')
-    )['total'] or 0
+    total_medications = (
+        BulkStoreInventory.objects.values("medication").distinct().count()
+    )
+    total_stock_quantity = (
+        BulkStoreInventory.objects.aggregate(total=Sum("stock_quantity"))["total"] or 0
+    )
 
     # Get low stock items (stock_quantity < reorder_level)
-    low_stock_items = BulkStoreInventory.objects.filter(
-        stock_quantity__gt=0
-    ).select_related('medication', 'bulk_store').order_by('medication__name')
-    
+    low_stock_items = (
+        BulkStoreInventory.objects.filter(stock_quantity__gt=0)
+        .select_related("medication", "bulk_store")
+        .order_by("medication__name")
+    )
+
     # Filter manually for low stock
     low_stock_list = []
     for item in low_stock_items:
         if item.stock_quantity <= item.medication.reorder_level:
             low_stock_list.append(item)
-    
+
     low_stock_count = len(low_stock_list)  # Get count before limiting
     low_stock_items = low_stock_list[:10]  # Limit to first 10
 
     # Get out of stock items
-    out_of_stock_count = BulkStoreInventory.objects.filter(
-        stock_quantity=0
-    ).count()
+    out_of_stock_count = BulkStoreInventory.objects.filter(stock_quantity=0).count()
 
     # Get expiring medications (expiring within 30 days)
     thirty_days_from_now = date.today() + timedelta(days=30)
-    expiring_soon_queryset = BulkStoreInventory.objects.filter(
-        expiry_date__lte=thirty_days_from_now,
-        expiry_date__gte=date.today(),
-        stock_quantity__gt=0
-    ).select_related('medication', 'bulk_store').order_by('expiry_date')
+    expiring_soon_queryset = (
+        BulkStoreInventory.objects.filter(
+            expiry_date__lte=thirty_days_from_now,
+            expiry_date__gte=date.today(),
+            stock_quantity__gt=0,
+        )
+        .select_related("medication", "bulk_store")
+        .order_by("expiry_date")
+    )
     expiring_soon_count = expiring_soon_queryset.count()
     expiring_soon = expiring_soon_queryset[:10]
 
     # Get expired medications
-    expired_items_queryset = BulkStoreInventory.objects.filter(
-        expiry_date__lt=date.today(),
-        stock_quantity__gt=0
-    ).select_related('medication', 'bulk_store').order_by('expiry_date')
+    expired_items_queryset = (
+        BulkStoreInventory.objects.filter(
+            expiry_date__lt=date.today(), stock_quantity__gt=0
+        )
+        .select_related("medication", "bulk_store")
+        .order_by("expiry_date")
+    )
     expired_count = expired_items_queryset.count()
     expired_items = expired_items_queryset[:10]
 
     # Get pending transfers
-    pending_transfers_queryset = MedicationTransfer.objects.filter(
-        status='pending'
-    ).select_related('medication', 'from_bulk_store', 'to_active_store', 'requested_by').order_by('-requested_at')
+    pending_transfers_queryset = (
+        MedicationTransfer.objects.filter(status="pending")
+        .select_related(
+            "medication", "from_bulk_store", "to_active_store", "requested_by"
+        )
+        .order_by("-requested_at")
+    )
     pending_transfers_count = pending_transfers_queryset.count()
     pending_transfers = pending_transfers_queryset[:10]
 
     # Get recent transfers (last 10) - including delivered
-    recent_transfers = MedicationTransfer.objects.filter(
-        status__in=['completed', 'delivered', 'in_transit']
-    ).select_related('medication', 'from_bulk_store', 'to_active_store').order_by('-requested_at')[:10]
+    recent_transfers = (
+        MedicationTransfer.objects.filter(
+            status__in=["completed", "delivered", "in_transit"]
+        )
+        .select_related("medication", "from_bulk_store", "to_active_store")
+        .order_by("-requested_at")[:10]
+    )
 
     # Calculate total value (approximate)
-    total_value = BulkStoreInventory.objects.aggregate(
-        total=Sum(F('stock_quantity') * F('unit_cost'))
-    )['total'] or 0
-    
+    total_value = (
+        BulkStoreInventory.objects.aggregate(
+            total=Sum(F("stock_quantity") * F("unit_cost"))
+        )["total"]
+        or 0
+    )
+
     # Get all dispensaries for the transfer modal
-    dispensaries = Dispensary.objects.filter(is_active=True).select_related('active_store', 'manager')
-    
+    dispensaries = Dispensary.objects.filter(is_active=True).select_related(
+        "active_store", "manager"
+    )
+
     # Get bulk inventory for the transfer modal
-    bulk_inventory = BulkStoreInventory.objects.filter(
-        stock_quantity__gt=0
-    ).select_related('medication', 'bulk_store', 'supplier').order_by('medication__name')
+    bulk_inventory = (
+        BulkStoreInventory.objects.filter(stock_quantity__gt=0)
+        .select_related("medication", "bulk_store", "supplier")
+        .order_by("medication__name")
+    )
 
     context = {
-        'bulk_stores': bulk_stores,
-        'total_medications': total_medications,
-        'total_stock_quantity': total_stock_quantity,
-        'total_value': total_value,
-        'total_stock_value': total_value,  # Add the variable expected by template
-        'low_stock_items': low_stock_items,
-        'low_stock_count': low_stock_count,
-        'out_of_stock_count': out_of_stock_count,
-        'expiring_soon': expiring_soon,
-        'expiring_soon_count': expiring_soon_count,
-        'expired_items': expired_items,
-        'expired_count': expired_count,
-        'pending_transfers': pending_transfers,
-        'pending_transfers_count': pending_transfers_count,
-        'recent_transfers': recent_transfers,
-        'dispensaries': dispensaries,  # Add for the transfer modal
-        'bulk_inventory': bulk_inventory,  # Add for the transfer modal
-        'title': 'Bulk Store Dashboard',
-        'active_nav': 'pharmacy',
+        "bulk_stores": bulk_stores,
+        "total_medications": total_medications,
+        "total_stock_quantity": total_stock_quantity,
+        "total_value": total_value,
+        "total_stock_value": total_value,  # Add the variable expected by template
+        "low_stock_items": low_stock_items,
+        "low_stock_count": low_stock_count,
+        "out_of_stock_count": out_of_stock_count,
+        "expiring_soon": expiring_soon,
+        "expiring_soon_count": expiring_soon_count,
+        "expired_items": expired_items,
+        "expired_count": expired_count,
+        "pending_transfers": pending_transfers,
+        "pending_transfers_count": pending_transfers_count,
+        "recent_transfers": recent_transfers,
+        "dispensaries": dispensaries,  # Add for the transfer modal
+        "bulk_inventory": bulk_inventory,  # Add for the transfer modal
+        "title": "Bulk Store Dashboard",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/bulk_store_dashboard.html', context)
+    return render(request, "pharmacy/bulk_store_dashboard.html", context)
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def active_store_detail(request, dispensary_id):
     """View for displaying active store details and managing transfers"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
-    active_store = getattr(dispensary, 'active_store', None)
+    active_store = getattr(dispensary, "active_store", None)
 
     if not active_store:
-        messages.error(request, f'No active store found for {dispensary.name}.')
-        return redirect('pharmacy:dispensary_list')
+        messages.error(request, f"No active store found for {dispensary.name}.")
+        return redirect("pharmacy:dispensary_list")
 
     # Get inventory items in the active store
     inventory_items = ActiveStoreInventory.objects.filter(
         active_store=active_store
-    ).select_related('medication', 'active_store')
+    ).select_related("medication", "active_store")
 
     # Handle search query
-    search_query = request.GET.get('search', '').strip()
+    search_query = request.GET.get("search", "").strip()
     if search_query:
         inventory_items = inventory_items.filter(
             medication__name__icontains=search_query
@@ -1838,11 +2124,12 @@ def active_store_detail(request, dispensary_id):
 
     # Calculate total stock value
     from decimal import Decimal
+
     total_stock_value = sum(
         (item.stock_quantity * item.unit_cost)
         for item in inventory_items
         if item.unit_cost is not None
-    ) or Decimal('0.00')
+    ) or Decimal("0.00")
 
     # Get bulk stores for transfer
     bulk_stores = BulkStore.objects.filter(is_active=True)
@@ -1850,53 +2137,62 @@ def active_store_detail(request, dispensary_id):
     # Get medications available in bulk stores for transfer
     available_bulk_medications = []
     for bulk_store in bulk_stores:
-        medications = BulkStoreInventory.objects.filter(
-            bulk_store=bulk_store,
-            stock_quantity__gt=0
-        ).select_related('medication').order_by('medication__name')
+        medications = (
+            BulkStoreInventory.objects.filter(
+                bulk_store=bulk_store, stock_quantity__gt=0
+            )
+            .select_related("medication")
+            .order_by("medication__name")
+        )
         if medications:
-            available_bulk_medications.append({
-                'bulk_store': bulk_store,
-                'medications': medications
-            })
-    
+            available_bulk_medications.append(
+                {"bulk_store": bulk_store, "medications": medications}
+            )
+
     # Create JSON-serializable version for JavaScript
     import json
+
     available_bulk_medications_json = []
     for bulk_store_data in available_bulk_medications:
-        bulk_store = bulk_store_data['bulk_store']
+        bulk_store = bulk_store_data["bulk_store"]
         medications_data = []
-        
-        for med_inventory in bulk_store_data['medications']:
-            medications_data.append({
-                'medication': {
-                    'id': med_inventory.medication.id,
-                    'name': med_inventory.medication.name
-                },
-                'batch_number': med_inventory.batch_number or '',
-                'stock_quantity': med_inventory.stock_quantity,
-                'unit_cost': float(med_inventory.unit_cost) if med_inventory.unit_cost else 0.00
-            })
-        
-        available_bulk_medications_json.append({
-            'bulk_store': {
-                'id': bulk_store.id,
-                'name': bulk_store.name
-            },
-            'medications': medications_data
-        })
+
+        for med_inventory in bulk_store_data["medications"]:
+            medications_data.append(
+                {
+                    "medication": {
+                        "id": med_inventory.medication.id,
+                        "name": med_inventory.medication.name,
+                    },
+                    "batch_number": med_inventory.batch_number or "",
+                    "stock_quantity": med_inventory.stock_quantity,
+                    "unit_cost": float(med_inventory.unit_cost)
+                    if med_inventory.unit_cost
+                    else 0.00,
+                }
+            )
+
+        available_bulk_medications_json.append(
+            {
+                "bulk_store": {"id": bulk_store.id, "name": bulk_store.name},
+                "medications": medications_data,
+            }
+        )
 
     # Handle active store to dispensary transfer
     dispensary_transfer_form = None
-    if request.method == 'POST' and 'dispensary_transfer' in request.POST:
+    if request.method == "POST" and "dispensary_transfer" in request.POST:
         from .dispensary_transfer_forms import DispensaryTransferForm
-        dispensary_transfer_form = DispensaryTransferForm(active_store=active_store, data=request.POST)
+
+        dispensary_transfer_form = DispensaryTransferForm(
+            active_store=active_store, data=request.POST
+        )
         if dispensary_transfer_form.is_valid():
             try:
                 # Process dispensary transfer
-                medication_id = request.POST.get('medication')
-                quantity = int(request.POST.get('quantity'))
-                notes = request.POST.get('notes', '')
+                medication_id = request.POST.get("medication")
+                quantity = int(request.POST.get("quantity"))
+                notes = request.POST.get("notes", "")
 
                 medication = get_object_or_404(Medication, id=medication_id)
 
@@ -1907,34 +2203,44 @@ def active_store_detail(request, dispensary_id):
                     to_dispensary=dispensary,
                     quantity=quantity,
                     requested_by=request.user,
-                    notes=notes
+                    notes=notes,
                 )
 
-                messages.success(request, f'Successfully created dispensary transfer request for {quantity} units of {medication.name}.')
-                return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+                messages.success(
+                    request,
+                    f"Successfully created dispensary transfer request for {quantity} units of {medication.name}.",
+                )
+                return redirect(
+                    "pharmacy:active_store_detail", dispensary_id=dispensary_id
+                )
 
             except ValueError as e:
                 messages.error(request, str(e))
             except Exception as e:
-                messages.error(request, f'Error creating dispensary transfer: {str(e)}')
+                messages.error(request, f"Error creating dispensary transfer: {str(e)}")
         else:
-            messages.error(request, 'Invalid form data. Please check your selections.')
+            messages.error(request, "Invalid form data. Please check your selections.")
 
     # Handle bulk transfer form
     bulk_transfer_form = None
-    if request.method == 'POST' and 'bulk_transfer' in request.POST:
+    if request.method == "POST" and "bulk_transfer" in request.POST:
         from .forms import BulkStoreTransferForm
+
         bulk_transfer_form = BulkStoreTransferForm(request.POST)
         if bulk_transfer_form.is_valid():
             try:
                 # Process bulk transfer
-                bulk_store = bulk_transfer_form.cleaned_data['bulk_store']
-                transfer_medications = request.POST.getlist('transfer_medications')
+                bulk_store = bulk_transfer_form.cleaned_data["bulk_store"]
+                transfer_medications = request.POST.getlist("transfer_medications")
 
                 # Validate that we have medications to transfer
                 if not transfer_medications:
-                    messages.error(request, 'Please select at least one medication to transfer.')
-                    return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+                    messages.error(
+                        request, "Please select at least one medication to transfer."
+                    )
+                    return redirect(
+                        "pharmacy:active_store_detail", dispensary_id=dispensary_id
+                    )
 
                 transfers_created = 0
                 errors = []
@@ -1944,37 +2250,54 @@ def active_store_detail(request, dispensary_id):
                         if medication_id:
                             try:
                                 # Get quantity from medication-specific field
-                                quantity_field_name = f'transfer_quantity_{medication_id}'
-                                quantity_value = request.POST.get(quantity_field_name, '')
+                                quantity_field_name = (
+                                    f"transfer_quantity_{medication_id}"
+                                )
+                                quantity_value = request.POST.get(
+                                    quantity_field_name, ""
+                                )
 
                                 if not quantity_value:
-                                    errors.append(f'No quantity specified for medication ID {medication_id}')
+                                    errors.append(
+                                        f"No quantity specified for medication ID {medication_id}"
+                                    )
                                     continue
 
                                 quantity = int(quantity_value)
                                 if quantity <= 0:
-                                    errors.append(f'Invalid quantity for medication ID {medication_id}')
+                                    errors.append(
+                                        f"Invalid quantity for medication ID {medication_id}"
+                                    )
                                     continue
 
                                 # Get bulk inventory with validation
                                 bulk_inventory = BulkStoreInventory.objects.filter(
-                                    bulk_store=bulk_store,
-                                    medication_id=medication_id
+                                    bulk_store=bulk_store, medication_id=medication_id
                                 ).first()
 
                                 if not bulk_inventory:
-                                    errors.append(f'Medication ID {medication_id} not found in bulk store')
+                                    errors.append(
+                                        f"Medication ID {medication_id} not found in bulk store"
+                                    )
                                     continue
 
                                 # Check if medication is expired
                                 from datetime import date
-                                if bulk_inventory.expiry_date and bulk_inventory.expiry_date < date.today():
-                                    errors.append(f'{bulk_inventory.medication.name}: Cannot transfer expired medication (Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date})')
+
+                                if (
+                                    bulk_inventory.expiry_date
+                                    and bulk_inventory.expiry_date < date.today()
+                                ):
+                                    errors.append(
+                                        f"{bulk_inventory.medication.name}: Cannot transfer expired medication (Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date})"
+                                    )
                                     continue
 
                                 # Check if sufficient stock
                                 if bulk_inventory.stock_quantity < quantity:
-                                    errors.append(f'{bulk_inventory.medication.name}: Insufficient stock (requested: {quantity}, available: {bulk_inventory.stock_quantity})')
+                                    errors.append(
+                                        f"{bulk_inventory.medication.name}: Insufficient stock (requested: {quantity}, available: {bulk_inventory.stock_quantity})"
+                                    )
                                     continue
 
                                 # Create transfer
@@ -1987,83 +2310,100 @@ def active_store_detail(request, dispensary_id):
                                     expiry_date=bulk_inventory.expiry_date,
                                     unit_cost=bulk_inventory.unit_cost,
                                     requested_by=request.user,
-                                    status='pending'
+                                    status="pending",
                                 )
                                 transfers_created += 1
                             except ValueError as e:
-                                errors.append(f'Invalid quantity for medication ID {medication_id}: {str(e)}')
+                                errors.append(
+                                    f"Invalid quantity for medication ID {medication_id}: {str(e)}"
+                                )
                             except Exception as e:
-                                errors.append(f'Error processing medication ID {medication_id}: {str(e)}')
+                                errors.append(
+                                    f"Error processing medication ID {medication_id}: {str(e)}"
+                                )
 
                 # Show results
                 if transfers_created > 0:
-                    messages.success(request, f'Successfully created {transfers_created} transfer request(s).')
+                    messages.success(
+                        request,
+                        f"Successfully created {transfers_created} transfer request(s).",
+                    )
 
                 if errors:
                     for error in errors:
                         messages.warning(request, error)
 
                 if transfers_created == 0 and not errors:
-                    messages.error(request, 'No transfers were created. Please check your selections.')
+                    messages.error(
+                        request,
+                        "No transfers were created. Please check your selections.",
+                    )
 
-                return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+                return redirect(
+                    "pharmacy:active_store_detail", dispensary_id=dispensary_id
+                )
             except Exception as e:
-                messages.error(request, f'Error creating transfers: {str(e)}')
+                messages.error(request, f"Error creating transfers: {str(e)}")
                 import logging
+
                 logger = logging.getLogger(__name__)
-                logger.error(f'Bulk transfer error: {str(e)}', exc_info=True)
+                logger.error(f"Bulk transfer error: {str(e)}", exc_info=True)
         else:
-            messages.error(request, 'Invalid form data. Please check your selections.')
+            messages.error(request, "Invalid form data. Please check your selections.")
     else:
         from .forms import BulkStoreTransferForm
+
         bulk_transfer_form = BulkStoreTransferForm()
 
     # Create dispensary transfer form
     from .dispensary_transfer_forms import DispensaryTransferForm
+
     dispensary_transfer_form = DispensaryTransferForm(active_store=active_store)
 
     # Get pending dispensary transfers for this active store
     pending_dispensary_transfers = DispensaryTransfer.objects.filter(
-        from_active_store=active_store,
-        status='pending'
-    ).select_related('medication', 'to_dispensary', 'requested_by')
+        from_active_store=active_store, status="pending"
+    ).select_related("medication", "to_dispensary", "requested_by")
 
     # Get pending bulk store transfers (medication transfers) for this active store
-    pending_medication_transfers = MedicationTransfer.objects.filter(
-        to_active_store=active_store,
-        status='pending'
-    ).select_related('medication', 'from_bulk_store', 'requested_by').order_by('-created_at')
+    pending_medication_transfers = (
+        MedicationTransfer.objects.filter(
+            to_active_store=active_store, status="pending"
+        )
+        .select_related("medication", "from_bulk_store", "requested_by")
+        .order_by("-created_at")
+    )
 
     context = {
-        'active_store': active_store,
-        'dispensary': dispensary,
-        'inventory_items': inventory_items,
-        'total_stock_value': total_stock_value,
-        'bulk_stores': bulk_stores,
-        'available_bulk_medications': available_bulk_medications,
-        'available_bulk_medications_json': json.dumps(available_bulk_medications_json),
-        'bulk_transfer_form': bulk_transfer_form,
-        'dispensary_transfer_form': dispensary_transfer_form,
-        'pending_dispensary_transfers': pending_dispensary_transfers,
-        'pending_medication_transfers': pending_medication_transfers,
-        'search_query': search_query,
-        'page_title': f'Active Store - {active_store.name}',
-        'active_nav': 'pharmacy',
+        "active_store": active_store,
+        "dispensary": dispensary,
+        "inventory_items": inventory_items,
+        "total_stock_value": total_stock_value,
+        "bulk_stores": bulk_stores,
+        "available_bulk_medications": available_bulk_medications,
+        "available_bulk_medications_json": json.dumps(available_bulk_medications_json),
+        "bulk_transfer_form": bulk_transfer_form,
+        "dispensary_transfer_form": dispensary_transfer_form,
+        "pending_dispensary_transfers": pending_dispensary_transfers,
+        "pending_medication_transfers": pending_medication_transfers,
+        "search_query": search_query,
+        "page_title": f"Active Store - {active_store.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/active_store_detail.html', context)
+    return render(request, "pharmacy/active_store_detail.html", context)
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def active_store_bulk_transfers(request, dispensary_id):
     """View for managing bulk store to active store transfers"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
-    active_store = getattr(dispensary, 'active_store', None)
+    active_store = getattr(dispensary, "active_store", None)
 
     if not active_store:
-        messages.error(request, f'No active store found for {dispensary.name}.')
-        return redirect('pharmacy:dispensary_list')
+        messages.error(request, f"No active store found for {dispensary.name}.")
+        return redirect("pharmacy:dispensary_list")
 
     # Get bulk stores for transfer
     bulk_stores = BulkStore.objects.filter(is_active=True)
@@ -2071,72 +2411,94 @@ def active_store_bulk_transfers(request, dispensary_id):
     # Get medications available in bulk stores for transfer
     available_bulk_medications = []
     for bulk_store in bulk_stores:
-        medications = BulkStoreInventory.objects.filter(
-            bulk_store=bulk_store,
-            stock_quantity__gt=0
-        ).select_related('medication').order_by('medication__name')
+        medications = (
+            BulkStoreInventory.objects.filter(
+                bulk_store=bulk_store, stock_quantity__gt=0
+            )
+            .select_related("medication")
+            .order_by("medication__name")
+        )
         if medications:
-            available_bulk_medications.append({
-                'bulk_store': bulk_store,
-                'medications': medications
-            })
+            available_bulk_medications.append(
+                {"bulk_store": bulk_store, "medications": medications}
+            )
 
     # Debug logging
     import logging
+
     logger = logging.getLogger(__name__)
     logger.info(f"=== BULK TRANSFER DEBUG ===")
     logger.info(f"Bulk stores count: {bulk_stores.count()}")
     logger.info(f"Available bulk medications groups: {len(available_bulk_medications)}")
     for item in available_bulk_medications:
-        logger.info(f"  - {item['bulk_store'].name}: {item['medications'].count()} medications")
+        logger.info(
+            f"  - {item['bulk_store'].name}: {item['medications'].count()} medications"
+        )
 
     # Handle bulk transfer form submission
-    if request.method == 'POST' and 'bulk_transfer' in request.POST:
+    if request.method == "POST" and "bulk_transfer" in request.POST:
         from .forms import BulkStoreTransferForm
+
         bulk_transfer_form = BulkStoreTransferForm(request.POST)
         if bulk_transfer_form.is_valid():
             try:
                 # Process bulk transfer
-                bulk_store = bulk_transfer_form.cleaned_data['bulk_store']
-                transfer_medications = request.POST.getlist('transfer_medications')
+                bulk_store = bulk_transfer_form.cleaned_data["bulk_store"]
+                transfer_medications = request.POST.getlist("transfer_medications")
 
                 if not transfer_medications:
-                    messages.error(request, 'Please select at least one medication to transfer.')
-                    return redirect('pharmacy:active_store_bulk_transfers', dispensary_id=dispensary_id)
+                    messages.error(
+                        request, "Please select at least one medication to transfer."
+                    )
+                    return redirect(
+                        "pharmacy:active_store_bulk_transfers",
+                        dispensary_id=dispensary_id,
+                    )
 
                 transfers_created = 0
                 errors = []
 
                 for medication_id in transfer_medications:
-                    quantity_key = f'transfer_quantity_{medication_id}'
+                    quantity_key = f"transfer_quantity_{medication_id}"
                     quantity_value = request.POST.get(quantity_key)
 
                     if quantity_value:
                         try:
                             quantity = int(quantity_value)
                             if quantity <= 0:
-                                errors.append(f'Invalid quantity for medication ID {medication_id}')
+                                errors.append(
+                                    f"Invalid quantity for medication ID {medication_id}"
+                                )
                                 continue
 
                             # Get bulk inventory with validation
                             bulk_inventory = BulkStoreInventory.objects.filter(
-                                bulk_store=bulk_store,
-                                medication_id=medication_id
+                                bulk_store=bulk_store, medication_id=medication_id
                             ).first()
 
                             if not bulk_inventory:
-                                errors.append(f'Medication ID {medication_id} not found in bulk store')
+                                errors.append(
+                                    f"Medication ID {medication_id} not found in bulk store"
+                                )
                                 continue
 
                             # Check if medication is expired
                             from datetime import date
-                            if bulk_inventory.expiry_date and bulk_inventory.expiry_date < date.today():
-                                errors.append(f'{bulk_inventory.medication.name}: Cannot transfer expired medication (Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date})')
+
+                            if (
+                                bulk_inventory.expiry_date
+                                and bulk_inventory.expiry_date < date.today()
+                            ):
+                                errors.append(
+                                    f"{bulk_inventory.medication.name}: Cannot transfer expired medication (Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date})"
+                                )
                                 continue
 
                             # Check if sufficient stock
                             if bulk_inventory.stock_quantity < quantity:
-                                errors.append(f'{bulk_inventory.medication.name}: Insufficient stock (requested: {quantity}, available: {bulk_inventory.stock_quantity})')
+                                errors.append(
+                                    f"{bulk_inventory.medication.name}: Insufficient stock (requested: {quantity}, available: {bulk_inventory.stock_quantity})"
+                                )
                                 continue
 
                             # Create transfer
@@ -2149,96 +2511,127 @@ def active_store_bulk_transfers(request, dispensary_id):
                                 expiry_date=bulk_inventory.expiry_date,
                                 unit_cost=bulk_inventory.unit_cost,
                                 requested_by=request.user,
-                                status='pending'
+                                status="pending",
                             )
                             transfers_created += 1
                         except ValueError as e:
-                            errors.append(f'Invalid quantity for medication ID {medication_id}: {str(e)}')
+                            errors.append(
+                                f"Invalid quantity for medication ID {medication_id}: {str(e)}"
+                            )
                         except Exception as e:
-                            errors.append(f'Error processing medication ID {medication_id}: {str(e)}')
+                            errors.append(
+                                f"Error processing medication ID {medication_id}: {str(e)}"
+                            )
 
                 # Show results
                 if transfers_created > 0:
-                    messages.success(request, f'Successfully created {transfers_created} transfer request(s).')
+                    messages.success(
+                        request,
+                        f"Successfully created {transfers_created} transfer request(s).",
+                    )
 
                 if errors:
                     for error in errors:
                         messages.warning(request, error)
 
                 if transfers_created == 0 and not errors:
-                    messages.error(request, 'No transfers were created. Please check your selections.')
+                    messages.error(
+                        request,
+                        "No transfers were created. Please check your selections.",
+                    )
 
-                return redirect('pharmacy:active_store_bulk_transfers', dispensary_id=dispensary_id)
+                return redirect(
+                    "pharmacy:active_store_bulk_transfers", dispensary_id=dispensary_id
+                )
             except Exception as e:
-                messages.error(request, f'Error creating transfers: {str(e)}')
+                messages.error(request, f"Error creating transfers: {str(e)}")
                 import logging
+
                 logger = logging.getLogger(__name__)
-                logger.error(f'Bulk transfer error: {str(e)}', exc_info=True)
+                logger.error(f"Bulk transfer error: {str(e)}", exc_info=True)
         else:
-            messages.error(request, 'Invalid form data. Please check your selections.')
+            messages.error(request, "Invalid form data. Please check your selections.")
 
     # Create bulk transfer form for GET requests
     from .forms import BulkStoreTransferForm
+
     bulk_transfer_form = BulkStoreTransferForm()
 
     # Get pending transfers
-    pending_transfers = MedicationTransfer.objects.filter(
-        to_active_store=active_store,
-        status='pending'
-    ).select_related('medication', 'from_bulk_store', 'requested_by').order_by('-created_at')
+    pending_transfers = (
+        MedicationTransfer.objects.filter(
+            to_active_store=active_store, status="pending"
+        )
+        .select_related("medication", "from_bulk_store", "requested_by")
+        .order_by("-created_at")
+    )
 
     # Get recent transfers
-    recent_transfers = MedicationTransfer.objects.filter(
-        to_active_store=active_store,
-        status='delivered'
-    ).select_related('medication', 'from_bulk_store', 'requested_by').order_by('-delivered_at')[:10]
+    recent_transfers = (
+        MedicationTransfer.objects.filter(
+            to_active_store=active_store, status="delivered"
+        )
+        .select_related("medication", "from_bulk_store", "requested_by")
+        .order_by("-delivered_at")[:10]
+    )
 
     # Get transfer statistics
-    pending_count = MedicationTransfer.objects.filter(to_active_store=active_store, status='pending').count()
-    in_transit_count = MedicationTransfer.objects.filter(to_active_store=active_store, status='in_transit').count()
-    delivered_count = MedicationTransfer.objects.filter(to_active_store=active_store, status='delivered').count()
-    cancelled_count = MedicationTransfer.objects.filter(to_active_store=active_store, status='cancelled').count()
+    pending_count = MedicationTransfer.objects.filter(
+        to_active_store=active_store, status="pending"
+    ).count()
+    in_transit_count = MedicationTransfer.objects.filter(
+        to_active_store=active_store, status="in_transit"
+    ).count()
+    delivered_count = MedicationTransfer.objects.filter(
+        to_active_store=active_store, status="delivered"
+    ).count()
+    cancelled_count = MedicationTransfer.objects.filter(
+        to_active_store=active_store, status="cancelled"
+    ).count()
 
     context = {
-        'active_store': active_store,
-        'dispensary': dispensary,
-        'bulk_stores': bulk_stores,
-        'available_bulk_medications': available_bulk_medications,
-        'bulk_transfer_form': bulk_transfer_form,
-        'pending_transfers': pending_transfers,
-        'recent_transfers': recent_transfers,
-        'pending_count': pending_count,
-        'in_transit_count': in_transit_count,
-        'delivered_count': delivered_count,
-        'cancelled_count': cancelled_count,
-        'page_title': f'Bulk Store Transfers - {active_store.name}',
-        'active_nav': 'pharmacy',
+        "active_store": active_store,
+        "dispensary": dispensary,
+        "bulk_stores": bulk_stores,
+        "available_bulk_medications": available_bulk_medications,
+        "bulk_transfer_form": bulk_transfer_form,
+        "pending_transfers": pending_transfers,
+        "recent_transfers": recent_transfers,
+        "pending_count": pending_count,
+        "in_transit_count": in_transit_count,
+        "delivered_count": delivered_count,
+        "cancelled_count": cancelled_count,
+        "page_title": f"Bulk Store Transfers - {active_store.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/active_store_bulk_transfers.html', context)
+    return render(request, "pharmacy/active_store_bulk_transfers.html", context)
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def active_store_dispensary_transfers(request, dispensary_id):
     """View for managing active store to dispensary transfers"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
-    active_store = getattr(dispensary, 'active_store', None)
+    active_store = getattr(dispensary, "active_store", None)
 
     if not active_store:
-        messages.error(request, f'No active store found for {dispensary.name}.')
-        return redirect('pharmacy:dispensary_list')
+        messages.error(request, f"No active store found for {dispensary.name}.")
+        return redirect("pharmacy:dispensary_list")
 
     # Handle dispensary transfer form submission
-    if request.method == 'POST' and 'dispensary_transfer' in request.POST:
+    if request.method == "POST" and "dispensary_transfer" in request.POST:
         from .dispensary_transfer_forms import DispensaryTransferForm
-        dispensary_transfer_form = DispensaryTransferForm(active_store=active_store, data=request.POST)
+
+        dispensary_transfer_form = DispensaryTransferForm(
+            active_store=active_store, data=request.POST
+        )
         if dispensary_transfer_form.is_valid():
             try:
                 # Process dispensary transfer
-                medication_id = request.POST.get('medication')
-                quantity = int(request.POST.get('quantity'))
-                notes = request.POST.get('notes', '')
+                medication_id = request.POST.get("medication")
+                quantity = int(request.POST.get("quantity"))
+                notes = request.POST.get("notes", "")
 
                 medication = get_object_or_404(Medication, id=medication_id)
 
@@ -2249,100 +2642,134 @@ def active_store_dispensary_transfers(request, dispensary_id):
                     to_dispensary=dispensary,
                     quantity=quantity,
                     requested_by=request.user,
-                    notes=notes
+                    notes=notes,
                 )
 
-                messages.success(request, f'Successfully created dispensary transfer request for {quantity} units of {medication.name}.')
-                return redirect('pharmacy:active_store_dispensary_transfers', dispensary_id=dispensary_id)
+                messages.success(
+                    request,
+                    f"Successfully created dispensary transfer request for {quantity} units of {medication.name}.",
+                )
+                return redirect(
+                    "pharmacy:active_store_dispensary_transfers",
+                    dispensary_id=dispensary_id,
+                )
 
             except ValueError as e:
                 messages.error(request, str(e))
             except Exception as e:
-                messages.error(request, f'Error creating dispensary transfer: {str(e)}')
+                messages.error(request, f"Error creating dispensary transfer: {str(e)}")
         else:
-            messages.error(request, 'Invalid form data. Please check your selections.')
+            messages.error(request, "Invalid form data. Please check your selections.")
 
     # Create dispensary transfer form for GET requests
     from .dispensary_transfer_forms import DispensaryTransferForm
+
     dispensary_transfer_form = DispensaryTransferForm(active_store=active_store)
 
     # Get pending transfers
-    pending_dispensary_transfers = DispensaryTransfer.objects.filter(
-        from_active_store=active_store,
-        status='pending'
-    ).select_related('medication', 'to_dispensary', 'requested_by').order_by('-created_at')
+    pending_dispensary_transfers = (
+        DispensaryTransfer.objects.filter(
+            from_active_store=active_store, status="pending"
+        )
+        .select_related("medication", "to_dispensary", "requested_by")
+        .order_by("-created_at")
+    )
 
     # Get in-transit transfers
-    in_transit_transfers = DispensaryTransfer.objects.filter(
-        from_active_store=active_store,
-        status='in_transit'
-    ).select_related('medication', 'to_dispensary', 'requested_by', 'approved_by').order_by('-approved_at')[:10]
+    in_transit_transfers = (
+        DispensaryTransfer.objects.filter(
+            from_active_store=active_store, status="in_transit"
+        )
+        .select_related("medication", "to_dispensary", "requested_by", "approved_by")
+        .order_by("-approved_at")[:10]
+    )
 
     # Get completed transfers
-    completed_transfers = DispensaryTransfer.objects.filter(
-        from_active_store=active_store,
-        status='completed'
-    ).select_related('medication', 'to_dispensary', 'requested_by', 'approved_by').order_by('-transferred_at')[:10]
+    completed_transfers = (
+        DispensaryTransfer.objects.filter(
+            from_active_store=active_store, status="completed"
+        )
+        .select_related("medication", "to_dispensary", "requested_by", "approved_by")
+        .order_by("-transferred_at")[:10]
+    )
 
     # Get transfer statistics
-    pending_count = DispensaryTransfer.objects.filter(from_active_store=active_store, status='pending').count()
-    in_transit_count = DispensaryTransfer.objects.filter(from_active_store=active_store, status='in_transit').count()
-    completed_count = DispensaryTransfer.objects.filter(from_active_store=active_store, status='completed').count()
-    cancelled_count = DispensaryTransfer.objects.filter(from_active_store=active_store, status='cancelled').count()
+    pending_count = DispensaryTransfer.objects.filter(
+        from_active_store=active_store, status="pending"
+    ).count()
+    in_transit_count = DispensaryTransfer.objects.filter(
+        from_active_store=active_store, status="in_transit"
+    ).count()
+    completed_count = DispensaryTransfer.objects.filter(
+        from_active_store=active_store, status="completed"
+    ).count()
+    cancelled_count = DispensaryTransfer.objects.filter(
+        from_active_store=active_store, status="cancelled"
+    ).count()
 
     context = {
-        'active_store': active_store,
-        'dispensary': dispensary,
-        'dispensary_transfer_form': dispensary_transfer_form,
-        'pending_dispensary_transfers': pending_dispensary_transfers,
-        'in_transit_transfers': in_transit_transfers,
-        'completed_transfers': completed_transfers,
-        'pending_count': pending_count,
-        'in_transit_count': in_transit_count,
-        'completed_count': completed_count,
-        'cancelled_count': cancelled_count,
-        'page_title': f'Dispensary Transfers - {active_store.name}',
-        'active_nav': 'pharmacy',
+        "active_store": active_store,
+        "dispensary": dispensary,
+        "dispensary_transfer_form": dispensary_transfer_form,
+        "pending_dispensary_transfers": pending_dispensary_transfers,
+        "in_transit_transfers": in_transit_transfers,
+        "completed_transfers": completed_transfers,
+        "pending_count": pending_count,
+        "in_transit_count": in_transit_count,
+        "completed_count": completed_count,
+        "cancelled_count": cancelled_count,
+        "page_title": f"Dispensary Transfers - {active_store.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/active_store_dispensary_transfers.html', context)
+    return render(request, "pharmacy/active_store_dispensary_transfers.html", context)
 
 
 @login_required
-@permission_required('pharmacy.create')
+@permission_required("pharmacy.create")
 def request_medication_transfer(request):
     """View for requesting medication transfer from bulk store to active store"""
-    if request.method == 'POST':
+    if request.method == "POST":
         # Handle transfer request
         try:
-            medication_id = request.POST.get('medication')
-            active_store_id = request.POST.get('active_store')
-            quantity = int(request.POST.get('quantity'))
-            notes = request.POST.get('notes', '').strip()
-            
+            medication_id = request.POST.get("medication")
+            active_store_id = request.POST.get("active_store")
+            quantity = int(request.POST.get("quantity"))
+            notes = request.POST.get("notes", "").strip()
+
             if not medication_id or not active_store_id or not quantity:
-                messages.error(request, 'Please fill in all required fields.')
-                return redirect('pharmacy:bulk_store_dashboard')
-                
+                messages.error(request, "Please fill in all required fields.")
+                return redirect("pharmacy:bulk_store_dashboard")
+
             medication = get_object_or_404(Medication, id=medication_id)
             active_store = get_object_or_404(ActiveStore, id=active_store_id)
-            
+
             # Find available bulk inventory for this medication
             from datetime import date
-            bulk_inventory = BulkStoreInventory.objects.filter(
-                medication=medication,
-                stock_quantity__gte=quantity
-            ).select_related('bulk_store').order_by('expiry_date').first()
-            
+
+            bulk_inventory = (
+                BulkStoreInventory.objects.filter(
+                    medication=medication, stock_quantity__gte=quantity
+                )
+                .select_related("bulk_store")
+                .order_by("expiry_date")
+                .first()
+            )
+
             if not bulk_inventory:
-                messages.error(request, f'Insufficient stock in bulk store for {medication.name}.')
-                return redirect('pharmacy:bulk_store_dashboard')
-                
+                messages.error(
+                    request, f"Insufficient stock in bulk store for {medication.name}."
+                )
+                return redirect("pharmacy:bulk_store_dashboard")
+
             # Check if medication is expired
             if bulk_inventory.expiry_date and bulk_inventory.expiry_date < date.today():
-                messages.error(request, f'Cannot transfer expired medication. Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date}.')
-                return redirect('pharmacy:bulk_store_dashboard')
-                
+                messages.error(
+                    request,
+                    f"Cannot transfer expired medication. Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date}.",
+                )
+                return redirect("pharmacy:bulk_store_dashboard")
+
             # Create transfer request
             transfer = MedicationTransfer.objects.create(
                 medication=medication,
@@ -2353,95 +2780,112 @@ def request_medication_transfer(request):
                 expiry_date=bulk_inventory.expiry_date,
                 unit_cost=bulk_inventory.unit_cost,
                 notes=notes,
-                status='pending',
-                requested_by=request.user
+                status="pending",
+                requested_by=request.user,
             )
-            messages.success(request, f'Transfer request #{transfer.id} created successfully.')
-            return redirect('pharmacy:bulk_store_dashboard')
+            messages.success(
+                request, f"Transfer request #{transfer.id} created successfully."
+            )
+            return redirect("pharmacy:bulk_store_dashboard")
         except Exception as e:
-            messages.error(request, f'Error creating transfer request: {str(e)}')
-            return redirect('pharmacy:bulk_store_dashboard')
+            messages.error(request, f"Error creating transfer request: {str(e)}")
+            return redirect("pharmacy:bulk_store_dashboard")
 
     # GET request - show form
-    medications = Medication.objects.filter(is_active=True).order_by('name')
+    medications = Medication.objects.filter(is_active=True).order_by("name")
     bulk_stores = BulkStore.objects.filter(is_active=True)
     active_stores = ActiveStore.objects.filter(is_active=True)
 
     context = {
-        'medications': medications,
-        'bulk_stores': bulk_stores,
-        'active_stores': active_stores,
-        'page_title': 'Request Medication Transfer',
-        'active_nav': 'pharmacy',
+        "medications": medications,
+        "bulk_stores": bulk_stores,
+        "active_stores": active_stores,
+        "page_title": "Request Medication Transfer",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/request_transfer.html', context)
+    return render(request, "pharmacy/request_transfer.html", context)
 
 
 @login_required
-@permission_required('pharmacy.create')
+@permission_required("pharmacy.create")
 def instant_medication_transfer(request):
     """View for instant medication transfer from bulk store to active store"""
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             # Check if this is an instant transfer for an existing transfer
-            transfer_id = request.POST.get('transfer_id')
+            transfer_id = request.POST.get("transfer_id")
             if transfer_id:
                 # Handle instant transfer of existing pending transfer
                 transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
-                if transfer.status not in ['pending']:
-                    messages.error(request, 'Only pending transfers can be executed instantly.')
-                    return redirect('pharmacy:bulk_store_dashboard')
+                if transfer.status not in ["pending"]:
+                    messages.error(
+                        request, "Only pending transfers can be executed instantly."
+                    )
+                    return redirect("pharmacy:bulk_store_dashboard")
 
                 # Execute the transfer
                 # First set to in_transit status so execute_transfer() can run
                 transfer.approved_by = request.user
                 transfer.approved_at = timezone.now()
-                transfer.status = 'in_transit'
+                transfer.status = "in_transit"
                 transfer.save()
 
                 # Execute the actual stock transfer (this sets status to 'completed')
                 transfer.execute_transfer(request.user)
 
                 # Now mark as delivered after successful execution
-                transfer.status = 'delivered'
+                transfer.status = "delivered"
                 transfer.delivered_by = request.user
                 transfer.delivered_at = timezone.now()
                 transfer.transferred_by = request.user
                 transfer.transferred_at = timezone.now()
                 transfer.save()
 
-                messages.success(request, f'✅ Instant transfer #{transfer.id} completed and delivered successfully!')
-                return redirect('pharmacy:bulk_store_dashboard')
+                messages.success(
+                    request,
+                    f"✅ Instant transfer #{transfer.id} completed and delivered successfully!",
+                )
+                return redirect("pharmacy:bulk_store_dashboard")
 
             # Handle new instant transfer from form
-            medication_id = request.POST.get('medication')
-            active_store_id = request.POST.get('active_store')
-            quantity = int(request.POST.get('quantity'))
-            notes = request.POST.get('notes', '').strip()
+            medication_id = request.POST.get("medication")
+            active_store_id = request.POST.get("active_store")
+            quantity = int(request.POST.get("quantity"))
+            notes = request.POST.get("notes", "").strip()
 
             if not medication_id or not active_store_id or not quantity:
-                messages.error(request, 'Please fill in all required fields.')
-                return redirect('pharmacy:bulk_store_dashboard')
+                messages.error(request, "Please fill in all required fields.")
+                return redirect("pharmacy:bulk_store_dashboard")
 
             medication = get_object_or_404(Medication, id=medication_id)
             active_store = get_object_or_404(ActiveStore, id=active_store_id)
 
             # Find available bulk inventory for this medication
             from datetime import date
-            bulk_inventory = BulkStoreInventory.objects.filter(
-                medication=medication,
-                stock_quantity__gte=quantity
-            ).select_related('bulk_store').order_by('expiry_date').first()
+
+            bulk_inventory = (
+                BulkStoreInventory.objects.filter(
+                    medication=medication, stock_quantity__gte=quantity
+                )
+                .select_related("bulk_store")
+                .order_by("expiry_date")
+                .first()
+            )
 
             if not bulk_inventory:
-                messages.error(request, f'Insufficient stock in bulk store for {medication.name}.')
-                return redirect('pharmacy:bulk_store_dashboard')
+                messages.error(
+                    request, f"Insufficient stock in bulk store for {medication.name}."
+                )
+                return redirect("pharmacy:bulk_store_dashboard")
 
             # Check if medication is expired
             if bulk_inventory.expiry_date and bulk_inventory.expiry_date < date.today():
-                messages.error(request, f'Cannot transfer expired medication. Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date}.')
-                return redirect('pharmacy:bulk_store_dashboard')
+                messages.error(
+                    request,
+                    f"Cannot transfer expired medication. Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date}.",
+                )
+                return redirect("pharmacy:bulk_store_dashboard")
 
             # Create and execute transfer instantly
             # First create with in_transit status so execute_transfer() can run
@@ -2454,17 +2898,17 @@ def instant_medication_transfer(request):
                 expiry_date=bulk_inventory.expiry_date,
                 unit_cost=bulk_inventory.unit_cost,
                 notes=notes,
-                status='in_transit',
+                status="in_transit",
                 requested_by=request.user,
                 approved_by=request.user,
-                approved_at=timezone.now()
+                approved_at=timezone.now(),
             )
 
             # Execute the actual stock transfer (this sets status to 'completed')
             transfer.execute_transfer(request.user)
 
             # Now mark as delivered after successful execution
-            transfer.status = 'delivered'
+            transfer.status = "delivered"
             transfer.delivered_by = request.user
             transfer.delivered_at = timezone.now()
             transfer.transferred_by = request.user
@@ -2473,35 +2917,37 @@ def instant_medication_transfer(request):
 
             messages.success(
                 request,
-                f'✅ Instant transfer #{transfer.id} completed and delivered successfully! '
-                f'{quantity} units of {medication.name} moved to {active_store.dispensary.name}.'
+                f"✅ Instant transfer #{transfer.id} completed and delivered successfully! "
+                f"{quantity} units of {medication.name} moved to {active_store.dispensary.name}.",
             )
-            return redirect('pharmacy:bulk_store_dashboard')
-            
+            return redirect("pharmacy:bulk_store_dashboard")
+
         except Exception as e:
-            messages.error(request, f'Error executing instant transfer: {str(e)}')
-            return redirect('pharmacy:bulk_store_dashboard')
-    
+            messages.error(request, f"Error executing instant transfer: {str(e)}")
+            return redirect("pharmacy:bulk_store_dashboard")
+
     # For GET request, redirect to bulk store dashboard
-    return redirect('pharmacy:bulk_store_dashboard')
+    return redirect("pharmacy:bulk_store_dashboard")
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def approve_medication_transfer(request, transfer_id):
     """View for approving and automatically executing a medication transfer"""
     transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             if not transfer.can_approve():
-                messages.error(request, 'Transfer cannot be approved in current status.')
-                return redirect('pharmacy:bulk_store_dashboard')
+                messages.error(
+                    request, "Transfer cannot be approved in current status."
+                )
+                return redirect("pharmacy:bulk_store_dashboard")
 
             # Approve the transfer
             transfer.approved_by = request.user
             transfer.approved_at = timezone.now()
-            transfer.status = 'in_transit'
+            transfer.status = "in_transit"
             transfer.save()
 
             # Automatically execute the transfer immediately after approval
@@ -2510,183 +2956,212 @@ def approve_medication_transfer(request, transfer_id):
                 transfer.execute_transfer(request.user)
 
                 # Mark as delivered
-                transfer.status = 'delivered'
+                transfer.status = "delivered"
                 transfer.delivered_by = request.user
                 transfer.delivered_at = timezone.now()
                 transfer.save()
 
                 messages.success(
                     request,
-                    f'✅ Transfer #{transfer.id} approved and delivered successfully! '
-                    f'{transfer.quantity} units of {transfer.medication.name} moved to {transfer.to_active_store.dispensary.name}.'
+                    f"✅ Transfer #{transfer.id} approved and delivered successfully! "
+                    f"{transfer.quantity} units of {transfer.medication.name} moved to {transfer.to_active_store.dispensary.name}.",
                 )
             except ValueError as ve:
                 # Handle insufficient stock or other validation errors
-                messages.error(request, f'Transfer approved but could not be executed: {str(ve)}')
+                messages.error(
+                    request, f"Transfer approved but could not be executed: {str(ve)}"
+                )
                 # Keep transfer as in_transit for manual resolution
             except Exception as e:
                 # Handle unexpected errors during execution
-                messages.error(request, f'Transfer approved but execution failed: {str(e)}')
+                messages.error(
+                    request, f"Transfer approved but execution failed: {str(e)}"
+                )
                 # Keep transfer as in_transit for manual resolution
 
-            return redirect('pharmacy:bulk_store_dashboard')
+            return redirect("pharmacy:bulk_store_dashboard")
 
         except Exception as e:
-            messages.error(request, f'Error approving transfer: {str(e)}')
-            return redirect('pharmacy:bulk_store_dashboard')
+            messages.error(request, f"Error approving transfer: {str(e)}")
+            return redirect("pharmacy:bulk_store_dashboard")
 
     # For GET requests, redirect to bulk store dashboard
     # The approve action can be done via POST from the dashboard
-    return redirect('pharmacy:bulk_store_dashboard')
+    return redirect("pharmacy:bulk_store_dashboard")
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def execute_medication_transfer(request, transfer_id):
     """View for executing a medication transfer and completing delivery process"""
     transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             if not transfer.can_execute():
-                messages.error(request, 'Transfer cannot be executed in current status.')
-                return redirect('pharmacy:bulk_store_dashboard')
+                messages.error(
+                    request, "Transfer cannot be executed in current status."
+                )
+                return redirect("pharmacy:bulk_store_dashboard")
 
             # Execute the transfer
             transfer.execute_transfer(request.user)
 
             # Update transfer status to delivered to complete the delivery process
-            transfer.status = 'delivered'
+            transfer.status = "delivered"
             transfer.delivered_by = request.user
             transfer.delivered_at = timezone.now()
             transfer.save()
 
-            messages.success(request, f'Transfer #{transfer.id} executed and delivered successfully.')
-            return redirect('pharmacy:bulk_store_dashboard')
+            messages.success(
+                request, f"Transfer #{transfer.id} executed and delivered successfully."
+            )
+            return redirect("pharmacy:bulk_store_dashboard")
 
         except Exception as e:
-            messages.error(request, f'Error executing transfer: {str(e)}')
-            return redirect('pharmacy:bulk_store_dashboard')
+            messages.error(request, f"Error executing transfer: {str(e)}")
+            return redirect("pharmacy:bulk_store_dashboard")
 
     # For GET requests, redirect to bulk store dashboard
     # The execute action can be done via POST from the dashboard
-    return redirect('pharmacy:bulk_store_dashboard')
+    return redirect("pharmacy:bulk_store_dashboard")
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def cancel_medication_transfer(request, transfer_id):
     """View for cancelling a medication transfer"""
     transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
-            if transfer.status == 'completed':
-                messages.error(request, 'Cannot cancel a completed transfer.')
-                return redirect('pharmacy:bulk_store_dashboard')
+            if transfer.status == "completed":
+                messages.error(request, "Cannot cancel a completed transfer.")
+                return redirect("pharmacy:bulk_store_dashboard")
 
-            if transfer.status == 'cancelled':
-                messages.error(request, 'Transfer is already cancelled.')
-                return redirect('pharmacy:bulk_store_dashboard')
+            if transfer.status == "cancelled":
+                messages.error(request, "Transfer is already cancelled.")
+                return redirect("pharmacy:bulk_store_dashboard")
 
             # Cancel the transfer
-            transfer.status = 'cancelled'
+            transfer.status = "cancelled"
             transfer.save()
 
-            messages.success(request, f'Transfer #{transfer.id} has been cancelled successfully.')
-            return redirect('pharmacy:bulk_store_dashboard')
+            messages.success(
+                request, f"Transfer #{transfer.id} has been cancelled successfully."
+            )
+            return redirect("pharmacy:bulk_store_dashboard")
 
         except Exception as e:
-            messages.error(request, f'Error cancelling transfer: {str(e)}')
-            return redirect('pharmacy:bulk_store_dashboard')
+            messages.error(request, f"Error cancelling transfer: {str(e)}")
+            return redirect("pharmacy:bulk_store_dashboard")
 
     # For GET requests, redirect to bulk store dashboard
     # The cancel action can be done via POST from the dashboard
-    return redirect('pharmacy:bulk_store_dashboard')
+    return redirect("pharmacy:bulk_store_dashboard")
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def get_bulk_batch_info(request, medication_id):
     """API endpoint to get batch information for a medication in bulk store"""
     try:
         from datetime import date
 
         # Find available bulk inventory for this medication (FIFO - earliest expiry first)
-        bulk_inventory = BulkStoreInventory.objects.filter(
-            medication_id=medication_id,
-            stock_quantity__gt=0
-        ).select_related('bulk_store').order_by('expiry_date').first()
+        bulk_inventory = (
+            BulkStoreInventory.objects.filter(
+                medication_id=medication_id, stock_quantity__gt=0
+            )
+            .select_related("bulk_store")
+            .order_by("expiry_date")
+            .first()
+        )
 
         if not bulk_inventory:
-            return JsonResponse({
-                'success': False,
-                'message': 'No stock available for this medication in bulk store.'
-            })
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "No stock available for this medication in bulk store.",
+                }
+            )
 
         # Check if medication is expired
-        is_expired = bulk_inventory.expiry_date and bulk_inventory.expiry_date < date.today()
+        is_expired = (
+            bulk_inventory.expiry_date and bulk_inventory.expiry_date < date.today()
+        )
 
-        return JsonResponse({
-            'success': True,
-            'batch_number': bulk_inventory.batch_number,
-            'expiry_date': bulk_inventory.expiry_date.strftime('%Y-%m-%d') if bulk_inventory.expiry_date else 'N/A',
-            'available_stock': bulk_inventory.stock_quantity,
-            'unit_cost': str(bulk_inventory.unit_cost),
-            'bulk_store_name': bulk_inventory.bulk_store.name,
-            'is_expired': is_expired,
-            'warning': 'This medication is expired!' if is_expired else None
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "batch_number": bulk_inventory.batch_number,
+                "expiry_date": bulk_inventory.expiry_date.strftime("%Y-%m-%d")
+                if bulk_inventory.expiry_date
+                else "N/A",
+                "available_stock": bulk_inventory.stock_quantity,
+                "unit_cost": str(bulk_inventory.unit_cost),
+                "bulk_store_name": bulk_inventory.bulk_store.name,
+                "is_expired": is_expired,
+                "warning": "This medication is expired!" if is_expired else None,
+            }
+        )
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Error fetching batch information: {str(e)}'
-        })
+        return JsonResponse(
+            {"success": False, "message": f"Error fetching batch information: {str(e)}"}
+        )
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def manage_transfers(request):
     """View for managing all types of transfers - redirects to enhanced transfer dashboard"""
     # Redirect to the enhanced transfer dashboard which has comprehensive transfer management
-    return redirect('pharmacy:enhanced_transfer_dashboard')
+    return redirect("pharmacy:enhanced_transfer_dashboard")
 
 
 @login_required
-@permission_required('pharmacy.create')
+@permission_required("pharmacy.create")
 def transfer_to_dispensary(request, dispensary_id):
     """View for transferring medications from active store to dispensary"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
-    active_store = getattr(dispensary, 'active_store', None)
+    active_store = getattr(dispensary, "active_store", None)
 
     if not active_store:
-        messages.error(request, f'No active store found for {dispensary.name}.')
-        return redirect('pharmacy:dispensary_list')
+        messages.error(request, f"No active store found for {dispensary.name}.")
+        return redirect("pharmacy:dispensary_list")
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             # Get form data with validation
-            medication_id = request.POST.get('medication_id')
-            batch_number = request.POST.get('batch_number')
-            quantity_str = request.POST.get('quantity')
+            medication_id = request.POST.get("medication_id")
+            batch_number = request.POST.get("batch_number")
+            quantity_str = request.POST.get("quantity")
 
             # Validate inputs
             if not medication_id:
-                messages.error(request, 'Medication ID is required.')
-                return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+                messages.error(request, "Medication ID is required.")
+                return redirect(
+                    "pharmacy:active_store_detail", dispensary_id=dispensary_id
+                )
 
             if not quantity_str:
-                messages.error(request, 'Quantity is required.')
-                return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+                messages.error(request, "Quantity is required.")
+                return redirect(
+                    "pharmacy:active_store_detail", dispensary_id=dispensary_id
+                )
 
             try:
                 quantity = int(quantity_str)
                 if quantity <= 0:
-                    messages.error(request, 'Quantity must be greater than 0.')
-                    return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+                    messages.error(request, "Quantity must be greater than 0.")
+                    return redirect(
+                        "pharmacy:active_store_detail", dispensary_id=dispensary_id
+                    )
             except ValueError:
-                messages.error(request, 'Invalid quantity value.')
-                return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+                messages.error(request, "Invalid quantity value.")
+                return redirect(
+                    "pharmacy:active_store_detail", dispensary_id=dispensary_id
+                )
 
             # Get the medication
             medication = get_object_or_404(Medication, id=medication_id)
@@ -2696,17 +3171,27 @@ def transfer_to_dispensary(request, dispensary_id):
                 medication=medication,
                 active_store=active_store,
                 batch_number=batch_number,
-                stock_quantity__gte=quantity
+                stock_quantity__gte=quantity,
             ).first()
 
             if not active_inventory:
-                messages.error(request, f'Insufficient stock in active store for {medication.name}. Requested: {quantity}, Available: 0')
-                return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+                messages.error(
+                    request,
+                    f"Insufficient stock in active store for {medication.name}. Requested: {quantity}, Available: 0",
+                )
+                return redirect(
+                    "pharmacy:active_store_detail", dispensary_id=dispensary_id
+                )
 
             # Double-check quantity
             if active_inventory.stock_quantity < quantity:
-                messages.error(request, f'Insufficient stock in active store for {medication.name}. Requested: {quantity}, Available: {active_inventory.stock_quantity}')
-                return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+                messages.error(
+                    request,
+                    f"Insufficient stock in active store for {medication.name}. Requested: {quantity}, Available: {active_inventory.stock_quantity}",
+                )
+                return redirect(
+                    "pharmacy:active_store_detail", dispensary_id=dispensary_id
+                )
 
             # Use transaction to ensure atomicity
             with transaction.atomic():
@@ -2719,72 +3204,86 @@ def transfer_to_dispensary(request, dispensary_id):
                     batch_number=batch_number,
                     expiry_date=active_inventory.expiry_date,
                     unit_cost=active_inventory.unit_cost,
-                    status='pending',
-                    requested_by=request.user
+                    status="pending",
+                    requested_by=request.user,
                 )
 
                 # Approve and execute transfer immediately
                 dispensary_transfer.approved_by = request.user
                 dispensary_transfer.approved_at = timezone.now()
-                dispensary_transfer.status = 'in_transit'
+                dispensary_transfer.status = "in_transit"
                 dispensary_transfer.save()
 
                 # Execute the transfer
                 dispensary_transfer.execute_transfer(request.user)
 
-                messages.success(request, f'Successfully transferred {quantity} units of {medication.name} to {dispensary.name}.')
+                messages.success(
+                    request,
+                    f"Successfully transferred {quantity} units of {medication.name} to {dispensary.name}.",
+                )
 
         except Medication.DoesNotExist:
-            messages.error(request, 'Medication not found.')
+            messages.error(request, "Medication not found.")
         except ValueError as e:
-            messages.error(request, f'Invalid data: {str(e)}')
+            messages.error(request, f"Invalid data: {str(e)}")
         except Exception as e:
-            messages.error(request, f'Error processing transfer: {str(e)}')
+            messages.error(request, f"Error processing transfer: {str(e)}")
             # Log the error for debugging
             import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f'Transfer error: {str(e)}', exc_info=True)
 
-        return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+            logger = logging.getLogger(__name__)
+            logger.error(f"Transfer error: {str(e)}", exc_info=True)
+
+        return redirect("pharmacy:active_store_detail", dispensary_id=dispensary_id)
 
     # GET request - redirect to active store detail
-    return redirect('pharmacy:active_store_detail', dispensary_id=dispensary_id)
+    return redirect("pharmacy:active_store_detail", dispensary_id=dispensary_id)
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def active_store_inventory_ajax(request, dispensary_id):
     """AJAX endpoint for getting active store inventory for a dispensary - Supports HTMX"""
     # Check if this is an HTMX request
-    is_htmx = request.headers.get('HX-Request') == 'true'
+    is_htmx = request.headers.get("HX-Request") == "true"
 
     # Check if this is a regular AJAX request
-    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
     if is_ajax or is_htmx:
         try:
             dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
-            active_store = getattr(dispensary, 'active_store', None)
+            active_store = getattr(dispensary, "active_store", None)
 
             if not active_store:
                 if is_htmx:
                     # Return HTML fragment for HTMX
                     from django.template.loader import render_to_string
-                    html = render_to_string('pharmacy/partials/active_store_inventory_rows.html', {
-                        'error': 'No active store found for this dispensary.',
-                        'inventory_items': [],
-                        'search_query': ''
-                    }, request=request)
+
+                    html = render_to_string(
+                        "pharmacy/partials/active_store_inventory_rows.html",
+                        {
+                            "error": "No active store found for this dispensary.",
+                            "inventory_items": [],
+                            "search_query": "",
+                        },
+                        request=request,
+                    )
                     return HttpResponse(html)
-                return JsonResponse({'success': False, 'error': 'No active store found for this dispensary.'})
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": "No active store found for this dispensary.",
+                    }
+                )
 
             # Get inventory items in the active store
             inventory_items = ActiveStoreInventory.objects.filter(
                 active_store=active_store
-            ).select_related('medication', 'active_store')
+            ).select_related("medication", "active_store")
 
             # Handle search query
-            search_query = request.GET.get('search', '').strip()
+            search_query = request.GET.get("search", "").strip()
             if search_query:
                 inventory_items = inventory_items.filter(
                     medication__name__icontains=search_query
@@ -2792,220 +3291,272 @@ def active_store_inventory_ajax(request, dispensary_id):
 
             # Calculate total stock value
             from decimal import Decimal
+
             total_stock_value = sum(
                 (item.stock_quantity * item.unit_cost)
                 for item in inventory_items
                 if item.unit_cost is not None
-            ) or Decimal('0.00')
+            ) or Decimal("0.00")
 
             if is_htmx:
                 # Return HTML fragment for HTMX
                 from django.template.loader import render_to_string
-                html = render_to_string('pharmacy/partials/active_store_inventory_rows.html', {
-                    'inventory_items': inventory_items,
-                    'search_query': search_query,
-                    'total_stock_value': total_stock_value,
-                    'dispensary': dispensary,
-                }, request=request)
+
+                html = render_to_string(
+                    "pharmacy/partials/active_store_inventory_rows.html",
+                    {
+                        "inventory_items": inventory_items,
+                        "search_query": search_query,
+                        "total_stock_value": total_stock_value,
+                        "dispensary": dispensary,
+                    },
+                    request=request,
+                )
                 return HttpResponse(html)
 
             # Return JSON for regular AJAX
             inventory_data = []
             for item in inventory_items:
-                inventory_data.append({
-                    'medication_id': item.medication.id,
-                    'medication_name': item.medication.name,
-                    'batch_number': item.batch_number,
-                    'expiry_date': item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else '',
-                    'stock_quantity': item.stock_quantity,
-                })
+                inventory_data.append(
+                    {
+                        "medication_id": item.medication.id,
+                        "medication_name": item.medication.name,
+                        "batch_number": item.batch_number,
+                        "expiry_date": item.expiry_date.strftime("%Y-%m-%d")
+                        if item.expiry_date
+                        else "",
+                        "stock_quantity": item.stock_quantity,
+                    }
+                )
 
-            return JsonResponse({'success': True, 'inventory': inventory_data})
+            return JsonResponse({"success": True, "inventory": inventory_data})
 
         except Exception as e:
             if is_htmx:
                 # Return HTML fragment for HTMX error
                 from django.template.loader import render_to_string
-                html = render_to_string('pharmacy/partials/active_store_inventory_rows.html', {
-                    'error': str(e),
-                    'inventory_items': [],
-                    'search_query': ''
-                }, request=request)
+
+                html = render_to_string(
+                    "pharmacy/partials/active_store_inventory_rows.html",
+                    {"error": str(e), "inventory_items": [], "search_query": ""},
+                    request=request,
+                )
                 return HttpResponse(html)
-            return JsonResponse({'success': False, 'error': str(e)})
+            return JsonResponse({"success": False, "error": str(e)})
 
     # If not AJAX request, redirect to dispensary list
-    return redirect('pharmacy:dispensary_list')
+    return redirect("pharmacy:dispensary_list")
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def active_store_inventory_detail_ajax(request, dispensary_id, medication_id):
     """AJAX endpoint to get specific active store inventory data for dispensary transfer"""
-    if request.method == 'GET':
+    if request.method == "GET":
         try:
             dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
-            active_store = getattr(dispensary, 'active_store', None)
+            active_store = getattr(dispensary, "active_store", None)
 
             if not active_store:
-                return JsonResponse({'error': 'No active store found'}, status=404)
+                return JsonResponse({"error": "No active store found"}, status=404)
 
-            inventory_item = ActiveStoreInventory.objects.filter(
-                active_store=active_store,
-                medication_id=medication_id
-            ).select_related('medication').first()
+            inventory_item = (
+                ActiveStoreInventory.objects.filter(
+                    active_store=active_store, medication_id=medication_id
+                )
+                .select_related("medication")
+                .first()
+            )
 
             if inventory_item:
-                return JsonResponse({
-                    'stock_quantity': inventory_item.stock_quantity,
-                    'batch_number': inventory_item.batch_number,
-                    'expiry_date': inventory_item.expiry_date.strftime('%Y-%m-%d') if inventory_item.expiry_date else None,
-                    'unit_cost': str(inventory_item.unit_cost),
-                    'reorder_level': inventory_item.reorder_level,
-                    'medication_name': inventory_item.medication.name
-                })
+                return JsonResponse(
+                    {
+                        "stock_quantity": inventory_item.stock_quantity,
+                        "batch_number": inventory_item.batch_number,
+                        "expiry_date": inventory_item.expiry_date.strftime("%Y-%m-%d")
+                        if inventory_item.expiry_date
+                        else None,
+                        "unit_cost": str(inventory_item.unit_cost),
+                        "reorder_level": inventory_item.reorder_level,
+                        "medication_name": inventory_item.medication.name,
+                    }
+                )
             else:
-                return JsonResponse({
-                    'stock_quantity': 0,
-                    'batch_number': None,
-                    'expiry_date': None,
-                    'unit_cost': '0.00',
-                    'reorder_level': 0,
-                    'medication_name': 'Unknown'
-                })
+                return JsonResponse(
+                    {
+                        "stock_quantity": 0,
+                        "batch_number": None,
+                        "expiry_date": None,
+                        "unit_cost": "0.00",
+                        "reorder_level": 0,
+                        "medication_name": "Unknown",
+                    }
+                )
 
         except Dispensary.DoesNotExist:
-            return JsonResponse({'error': 'Dispensary not found'}, status=404)
+            return JsonResponse({"error": "Dispensary not found"}, status=404)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            return JsonResponse({"error": str(e)}, status=500)
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def approve_dispensary_transfer(request, transfer_id):
     """Approve and execute a dispensary transfer"""
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             transfer = DispensaryTransfer.objects.get(id=transfer_id)
 
             if not transfer.can_approve():
-                messages.error(request, 'This transfer cannot be approved.')
-                return redirect('pharmacy:active_store_detail', dispensary_id=transfer.from_active_store.dispensary.id)
+                messages.error(request, "This transfer cannot be approved.")
+                return redirect(
+                    "pharmacy:active_store_detail",
+                    dispensary_id=transfer.from_active_store.dispensary.id,
+                )
 
             # Approve and execute transfer
             transfer.approved_by = request.user
             transfer.approved_at = timezone.now()
-            transfer.status = 'in_transit'
+            transfer.status = "in_transit"
             transfer.save()
 
             # Execute the transfer
             transfer.execute_transfer(request.user)
 
-            messages.success(request, f'Dispensary transfer #{transfer.id} approved and executed successfully.')
+            messages.success(
+                request,
+                f"Dispensary transfer #{transfer.id} approved and executed successfully.",
+            )
 
         except DispensaryTransfer.DoesNotExist:
-            messages.error(request, 'Transfer not found.')
+            messages.error(request, "Transfer not found.")
         except Exception as e:
-            messages.error(request, f'Error approving transfer: {str(e)}')
+            messages.error(request, f"Error approving transfer: {str(e)}")
 
-    return redirect('pharmacy:active_store_detail', dispensary_id=DispensaryTransfer.objects.get(id=transfer_id).from_active_store.dispensary.id)
+    return redirect(
+        "pharmacy:active_store_detail",
+        dispensary_id=DispensaryTransfer.objects.get(
+            id=transfer_id
+        ).from_active_store.dispensary.id,
+    )
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def cancel_dispensary_transfer(request, transfer_id):
     """Cancel a dispensary transfer"""
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             transfer = DispensaryTransfer.objects.get(id=transfer_id)
 
-            if transfer.status not in ['pending', 'in_transit']:
-                messages.error(request, 'This transfer cannot be cancelled.')
-                return redirect('pharmacy:active_store_detail', dispensary_id=transfer.from_active_store.dispensary.id)
+            if transfer.status not in ["pending", "in_transit"]:
+                messages.error(request, "This transfer cannot be cancelled.")
+                return redirect(
+                    "pharmacy:active_store_detail",
+                    dispensary_id=transfer.from_active_store.dispensary.id,
+                )
 
             # Cancel the transfer
-            transfer.status = 'cancelled'
+            transfer.status = "cancelled"
             transfer.save()
 
-            messages.success(request, f'Dispensary transfer #{transfer.id} cancelled successfully.')
+            messages.success(
+                request, f"Dispensary transfer #{transfer.id} cancelled successfully."
+            )
 
         except DispensaryTransfer.DoesNotExist:
-            messages.error(request, 'Transfer not found.')
+            messages.error(request, "Transfer not found.")
         except Exception as e:
-            messages.error(request, f'Error cancelling transfer: {str(e)}')
+            messages.error(request, f"Error cancelling transfer: {str(e)}")
 
-    return redirect('pharmacy:active_store_detail', dispensary_id=DispensaryTransfer.objects.get(id=transfer_id).from_active_store.dispensary.id)
+    return redirect(
+        "pharmacy:active_store_detail",
+        dispensary_id=DispensaryTransfer.objects.get(
+            id=transfer_id
+        ).from_active_store.dispensary.id,
+    )
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def deliver_dispensary_transfer(request, transfer_id):
     """Mark a dispensary transfer as delivered"""
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             transfer = DispensaryTransfer.objects.get(id=transfer_id)
 
             if not transfer.can_deliver():
-                messages.error(request, 'This transfer cannot be marked as delivered.')
-                return redirect('pharmacy:active_store_detail', dispensary_id=transfer.from_active_store.dispensary.id)
+                messages.error(request, "This transfer cannot be marked as delivered.")
+                return redirect(
+                    "pharmacy:active_store_detail",
+                    dispensary_id=transfer.from_active_store.dispensary.id,
+                )
 
             # Mark as delivered
             transfer.deliver_transfer(request.user)
 
-            messages.success(request, f'Dispensary transfer #{transfer.id} marked as delivered successfully.')
+            messages.success(
+                request,
+                f"Dispensary transfer #{transfer.id} marked as delivered successfully.",
+            )
 
         except DispensaryTransfer.DoesNotExist:
-            messages.error(request, 'Transfer not found.')
+            messages.error(request, "Transfer not found.")
         except Exception as e:
-            messages.error(request, f'Error marking transfer as delivered: {str(e)}')
+            messages.error(request, f"Error marking transfer as delivered: {str(e)}")
 
-    return redirect('pharmacy:active_store_detail', dispensary_id=DispensaryTransfer.objects.get(id=transfer_id).from_active_store.dispensary.id)
+    return redirect(
+        "pharmacy:active_store_detail",
+        dispensary_id=DispensaryTransfer.objects.get(
+            id=transfer_id
+        ).from_active_store.dispensary.id,
+    )
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def manage_purchases(request):
     """View for managing purchases"""
     # Get all purchases
-    purchases = Purchase.objects.select_related('supplier').order_by('-purchase_date')
+    purchases = Purchase.objects.select_related("supplier").order_by("-purchase_date")
 
     # Search functionality
-    search_query = request.GET.get('search', '')
+    search_query = request.GET.get("search", "")
     if search_query:
         purchases = purchases.filter(
-            Q(invoice_number__icontains=search_query) |
-            Q(supplier__name__icontains=search_query) |
-            Q(notes__icontains=search_query)
+            Q(invoice_number__icontains=search_query)
+            | Q(supplier__name__icontains=search_query)
+            | Q(notes__icontains=search_query)
         )
 
     # Filter by status
-    status = request.GET.get('status', '')
+    status = request.GET.get("status", "")
     if status:
         purchases = purchases.filter(approval_status=status)
 
     # Pagination
     paginator = Paginator(purchases, 10)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
     context = {
-        'purchases': page_obj,  # Template expects 'purchases'
-        'page_obj': page_obj,  # Keep for pagination
-        'search_query': search_query,
-        'status': status,
-        'payment_status': request.GET.get('payment_status', ''),
-        'title': 'Manage Purchases',
-        'active_nav': 'pharmacy',
+        "purchases": page_obj,  # Template expects 'purchases'
+        "page_obj": page_obj,  # Keep for pagination
+        "search_query": search_query,
+        "status": status,
+        "payment_status": request.GET.get("payment_status", ""),
+        "title": "Manage Purchases",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/manage_purchases.html', context)
+    return render(request, "pharmacy/manage_purchases.html", context)
 
 
 @login_required
-@permission_required('pharmacy.create')
+@permission_required("pharmacy.create")
 def add_purchase(request):
     """View for adding a new purchase"""
-    if request.method == 'POST':
+    if request.method == "POST":
         form = PurchaseForm(request.POST)
         if form.is_valid():
             # Save with commit=False so required fields added by the model (total_amount)
@@ -3013,24 +3564,34 @@ def add_purchase(request):
             purchase = form.save(commit=False)
             # Ensure total_amount is set to a safe initial value (items will update it)
             from decimal import Decimal
-            purchase.total_amount = Decimal('0.00')
+
+            purchase.total_amount = Decimal("0.00")
             # Set creator if available
-            if hasattr(request, 'user') and request.user.is_authenticated:
+            if hasattr(request, "user") and request.user.is_authenticated:
                 purchase.created_by = request.user
 
             # Try to assign dispensary
             # 1. Check if dispensary_id provided in request
-            dispensary_id = request.POST.get('dispensary') or request.GET.get('dispensary')
+            dispensary_id = request.POST.get("dispensary") or request.GET.get(
+                "dispensary"
+            )
             if dispensary_id:
                 try:
                     from .models import Dispensary
-                    purchase.dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
+
+                    purchase.dispensary = Dispensary.objects.get(
+                        id=dispensary_id, is_active=True
+                    )
                 except Dispensary.DoesNotExist:
                     pass
 
             # 2. If user manages a dispensary, use that
-            if not purchase.dispensary and hasattr(request.user, 'managed_dispensaries'):
-                managed = request.user.managed_dispensaries.filter(is_active=True).first()
+            if not purchase.dispensary and hasattr(
+                request.user, "managed_dispensaries"
+            ):
+                managed = request.user.managed_dispensaries.filter(
+                    is_active=True
+                ).first()
                 if managed:
                     purchase.dispensary = managed
 
@@ -3038,67 +3599,88 @@ def add_purchase(request):
                 with transaction.atomic():
                     purchase.save()
                     # If save succeeded
-                    messages.success(request, f'Purchase #{purchase.invoice_number or "No Invoice"} created successfully.')
-                    return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+                    messages.success(
+                        request,
+                        f"Purchase #{purchase.invoice_number or 'No Invoice'} created successfully.",
+                    )
+                    return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
             except IntegrityError:
                 # Likely duplicate invoice_number (unique constraint). Add a form error and re-render.
-                form.add_error('invoice_number', 'This invoice number already exists. Please enter a unique invoice number.')
+                form.add_error(
+                    "invoice_number",
+                    "This invoice number already exists. Please enter a unique invoice number.",
+                )
                 # Fall through to render the form with errors
     else:
         form = PurchaseForm()
 
     # Get active dispensaries for selection
     from .models import Dispensary
-    dispensaries = Dispensary.objects.filter(is_active=True).order_by('name')
+
+    dispensaries = Dispensary.objects.filter(is_active=True).order_by("name")
 
     context = {
-        'form': form,
-        'dispensaries': dispensaries,
-        'title': 'Add Purchase',
-        'active_nav': 'pharmacy',
+        "form": form,
+        "dispensaries": dispensaries,
+        "title": "Add Purchase",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/add_purchase.html', context)
+    return render(request, "pharmacy/add_purchase.html", context)
 
 
 @login_required
-@permission_required('pharmacy.view')
+@permission_required("pharmacy.view")
 def purchase_detail(request, purchase_id):
     """View for displaying purchase details"""
     purchase = get_object_or_404(Purchase, id=purchase_id)
 
     # Get purchase items
-    purchase_items = purchase.items.select_related('medication')
+    purchase_items = purchase.items.select_related("medication")
 
     # Initialize the item form for the modal
     from .forms import PurchaseItemForm
+
     item_form = PurchaseItemForm()
 
     # Check permissions
-    can_approve = request.user.is_superuser or request.user.has_perm('pharmacy.can_approve_purchases')
-    can_pay = request.user.is_superuser or request.user.has_perm('pharmacy.can_process_payments')
+    can_approve = request.user.is_superuser or request.user.has_perm(
+        "pharmacy.can_approve_purchases"
+    )
+    can_pay = request.user.is_superuser or request.user.has_perm(
+        "pharmacy.can_process_payments"
+    )
 
     # Get approval history
     from .models import PurchaseApproval, PurchasePayment
-    approval_history = PurchaseApproval.objects.filter(purchase=purchase).select_related('approver').order_by('-decided_at')
+
+    approval_history = (
+        PurchaseApproval.objects.filter(purchase=purchase)
+        .select_related("approver")
+        .order_by("-decided_at")
+    )
 
     # Get payment history
-    payments = PurchasePayment.objects.filter(purchase=purchase).select_related('received_by').order_by('-payment_date')
+    payments = (
+        PurchasePayment.objects.filter(purchase=purchase)
+        .select_related("received_by")
+        .order_by("-payment_date")
+    )
 
     context = {
-        'purchase': purchase,
-        'purchase_items': purchase_items,
-        'item_form': item_form,
-        'can_approve': can_approve,
-        'can_pay': can_pay,
-        'approval_history': approval_history,
-        'payments': payments,
-        'all_medications': Medication.objects.filter(is_active=True).order_by('name'),
-        'page_title': f'Purchase Details - #{purchase.invoice_number}',
-        'active_nav': 'pharmacy',
+        "purchase": purchase,
+        "purchase_items": purchase_items,
+        "item_form": item_form,
+        "can_approve": can_approve,
+        "can_pay": can_pay,
+        "approval_history": approval_history,
+        "payments": payments,
+        "all_medications": Medication.objects.filter(is_active=True).order_by("name"),
+        "page_title": f"Purchase Details - #{purchase.invoice_number}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/purchase_detail.html', context)
+    return render(request, "pharmacy/purchase_detail.html", context)
 
 
 from django.contrib.auth.decorators import login_required
@@ -3111,7 +3693,7 @@ from pharmacy.models import Patient, Prescription, PrescriptionItem, Purchase
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def process_purchase_payment(request, purchase_id):
     """View for processing purchase payment"""
     from django.db import transaction
@@ -3121,45 +3703,52 @@ def process_purchase_payment(request, purchase_id):
     purchase = get_object_or_404(Purchase, id=purchase_id)
 
     # Check permissions
-    if not (request.user.is_superuser or request.user.has_perm('pharmacy.can_process_payments')):
-        messages.error(request, 'You do not have permission to process payments.')
-        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    if not (
+        request.user.is_superuser
+        or request.user.has_perm("pharmacy.can_process_payments")
+    ):
+        messages.error(request, "You do not have permission to process payments.")
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     # Check if purchase can be paid
-    if purchase.approval_status != 'approved':
-        messages.error(request, 'Only approved purchases can be paid.')
-        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    if purchase.approval_status != "approved":
+        messages.error(request, "Only approved purchases can be paid.")
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
-    if purchase.payment_status == 'paid':
-        messages.warning(request, 'This purchase has already been paid.')
-        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    if purchase.payment_status == "paid":
+        messages.warning(request, "This purchase has already been paid.")
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
-    if request.method == 'POST':
-        payment_amount = request.POST.get('payment_amount')
-        payment_method = request.POST.get('payment_method')
-        payment_reference = request.POST.get('payment_reference', '')
-        payment_notes = request.POST.get('payment_notes', '')
+    if request.method == "POST":
+        payment_amount = request.POST.get("payment_amount")
+        payment_method = request.POST.get("payment_method")
+        payment_reference = request.POST.get("payment_reference", "")
+        payment_notes = request.POST.get("payment_notes", "")
 
         try:
             payment_amount = float(payment_amount)
 
             # Validate payment amount
             if payment_amount <= 0:
-                messages.error(request, 'Payment amount must be greater than zero.')
-                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+                messages.error(request, "Payment amount must be greater than zero.")
+                return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
             if payment_amount != float(purchase.total_amount):
-                messages.error(request, f'Payment amount must match the total amount (₦{purchase.total_amount}).')
-                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+                messages.error(
+                    request,
+                    f"Payment amount must match the total amount (₦{purchase.total_amount}).",
+                )
+                return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
             with transaction.atomic():
                 # Update purchase payment status
-                purchase.payment_status = 'paid'
+                purchase.payment_status = "paid"
                 purchase.payment_date = timezone.now()
                 purchase.save()
 
                 # Create payment record
                 from .models import PurchasePayment
+
                 PurchasePayment.objects.create(
                     purchase=purchase,
                     amount=payment_amount,
@@ -3167,32 +3756,35 @@ def process_purchase_payment(request, purchase_id):
                     transaction_id=payment_reference,
                     notes=payment_notes,
                     received_by=request.user,
-                    payment_date=timezone.now()
+                    payment_date=timezone.now(),
                 )
 
-                messages.success(request, f'Payment of ₦{payment_amount:,.2f} processed successfully for Purchase #{purchase.invoice_number}.')
-                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+                messages.success(
+                    request,
+                    f"Payment of ₦{payment_amount:,.2f} processed successfully for Purchase #{purchase.invoice_number}.",
+                )
+                return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
         except ValueError:
-            messages.error(request, 'Invalid payment amount.')
-            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+            messages.error(request, "Invalid payment amount.")
+            return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
         except Exception as e:
-            messages.error(request, f'Error processing payment: {str(e)}')
-            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+            messages.error(request, f"Error processing payment: {str(e)}")
+            return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     # GET request - should not happen as we use modal
-    return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def add_purchase_item(request, purchase_id):
     """View for adding a new item to an existing purchase"""
     from django.http import JsonResponse
 
     purchase = get_object_or_404(Purchase, id=purchase_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = PurchaseItemForm(request.POST)
         if form.is_valid():
             # Create purchase item
@@ -3204,49 +3796,53 @@ def add_purchase_item(request, purchase_id):
             purchase.update_total_amount()
 
             # Handle AJAX request
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Item "{item.medication.name}" added to purchase successfully.',
-                    'item': {
-                        'id': item.id,
-                        'medication_name': item.medication.name,
-                        'quantity': item.quantity,
-                        'unit_price': str(item.unit_price),
-                        'total_price': str(item.total_price),
-                        'batch_number': item.batch_number or 'N/A',
-                        'expiry_date': item.expiry_date.strftime('%Y-%m-%d'),
-                    },
-                    'purchase_total': str(purchase.total_amount)
-                })
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse(
+                    {
+                        "success": True,
+                        "message": f'Item "{item.medication.name}" added to purchase successfully.',
+                        "item": {
+                            "id": item.id,
+                            "medication_name": item.medication.name,
+                            "quantity": item.quantity,
+                            "unit_price": str(item.unit_price),
+                            "total_price": str(item.total_price),
+                            "batch_number": item.batch_number or "N/A",
+                            "expiry_date": item.expiry_date.strftime("%Y-%m-%d"),
+                        },
+                        "purchase_total": str(purchase.total_amount),
+                    }
+                )
 
-            messages.success(request, f'Item "{item.medication.name}" added to purchase successfully.')
-            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+            messages.success(
+                request,
+                f'Item "{item.medication.name}" added to purchase successfully.',
+            )
+            return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
         else:
             # Handle AJAX validation errors
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': False,
-                    'errors': form.errors
-                }, status=400)
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse(
+                    {"success": False, "errors": form.errors}, status=400
+                )
     else:
         form = PurchaseItemForm()
 
     # Get all active medications for dropdown
-    all_medications = Medication.objects.filter(is_active=True).order_by('name')
+    all_medications = Medication.objects.filter(is_active=True).order_by("name")
 
     context = {
-        'form': form,
-        'purchase': purchase,
-        'all_medications': all_medications,
-        'page_title': f'Add Item - Purchase #{purchase.invoice_number}',
-        'active_nav': 'pharmacy',
+        "form": form,
+        "purchase": purchase,
+        "all_medications": all_medications,
+        "page_title": f"Add Item - Purchase #{purchase.invoice_number}",
+        "active_nav": "pharmacy",
     }
-    return render(request, 'pharmacy/add_purchase_item.html', context)
+    return render(request, "pharmacy/add_purchase_item.html", context)
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def edit_purchase_item(request, item_id):
     """View for editing a purchase item"""
     from django.http import JsonResponse
@@ -3256,16 +3852,19 @@ def edit_purchase_item(request, item_id):
     purchase = item.purchase
 
     # Check if purchase is in draft status
-    if purchase.approval_status not in ['draft', 'pending']:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': False,
-                'message': 'Cannot edit items in approved or rejected purchases.'
-            }, status=400)
-        messages.error(request, 'Cannot edit items in approved or rejected purchases.')
-        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    if purchase.approval_status not in ["draft", "pending"]:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "Cannot edit items in approved or rejected purchases.",
+                },
+                status=400,
+            )
+        messages.error(request, "Cannot edit items in approved or rejected purchases.")
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = PurchaseItemForm(request.POST, instance=item)
         if form.is_valid():
             try:
@@ -3276,57 +3875,68 @@ def edit_purchase_item(request, item_id):
                     purchase.update_total_amount()
 
                     # Handle AJAX request
-                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                        return JsonResponse({
-                            'success': True,
-                            'message': f'Item "{updated_item.medication.name}" updated successfully.',
-                            'item': {
-                                'id': updated_item.id,
-                                'medication_name': updated_item.medication.name,
-                                'quantity': updated_item.quantity,
-                                'unit_price': str(updated_item.unit_price),
-                                'total_price': str(updated_item.total_price),
-                                'batch_number': updated_item.batch_number or 'N/A',
-                                'expiry_date': updated_item.expiry_date.strftime('%Y-%m-%d'),
-                            },
-                            'new_total': str(purchase.total_amount)
-                        })
+                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                        return JsonResponse(
+                            {
+                                "success": True,
+                                "message": f'Item "{updated_item.medication.name}" updated successfully.',
+                                "item": {
+                                    "id": updated_item.id,
+                                    "medication_name": updated_item.medication.name,
+                                    "quantity": updated_item.quantity,
+                                    "unit_price": str(updated_item.unit_price),
+                                    "total_price": str(updated_item.total_price),
+                                    "batch_number": updated_item.batch_number or "N/A",
+                                    "expiry_date": updated_item.expiry_date.strftime(
+                                        "%Y-%m-%d"
+                                    ),
+                                },
+                                "new_total": str(purchase.total_amount),
+                            }
+                        )
 
-                    messages.success(request, f'Item "{updated_item.medication.name}" updated successfully.')
-                    return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+                    messages.success(
+                        request,
+                        f'Item "{updated_item.medication.name}" updated successfully.',
+                    )
+                    return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
             except Exception as e:
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        'success': False,
-                        'message': f'Error updating item: {str(e)}'
-                    }, status=500)
-                messages.error(request, f'Error updating item: {str(e)}')
-                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return JsonResponse(
+                        {"success": False, "message": f"Error updating item: {str(e)}"},
+                        status=500,
+                    )
+                messages.error(request, f"Error updating item: {str(e)}")
+                return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
         else:
             # Form validation errors
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Form validation failed',
-                    'errors': form.errors
-                }, status=400)
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "message": "Form validation failed",
+                        "errors": form.errors,
+                    },
+                    status=400,
+                )
     else:
         form = PurchaseItemForm(instance=item)
 
     # GET request or form errors - show edit page
     context = {
-        'form': form,
-        'item': item,
-        'purchase': purchase,
-        'title': f'Edit Purchase Item - {item.medication.name}',
-        'active_nav': 'pharmacy',
+        "form": form,
+        "item": item,
+        "purchase": purchase,
+        "title": f"Edit Purchase Item - {item.medication.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/edit_purchase_item.html', context)
+    return render(request, "pharmacy/edit_purchase_item.html", context)
+
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def delete_purchase_item(request, item_id):
     """View for deleting a purchase item"""
     from django.http import JsonResponse
@@ -3336,16 +3946,21 @@ def delete_purchase_item(request, item_id):
     purchase = item.purchase
 
     # Check if purchase is in draft status
-    if purchase.approval_status not in ['draft', 'pending']:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': False,
-                'message': 'Cannot delete items from approved or rejected purchases.'
-            }, status=400)
-        messages.error(request, 'Cannot delete items from approved or rejected purchases.')
-        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    if purchase.approval_status not in ["draft", "pending"]:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "Cannot delete items from approved or rejected purchases.",
+                },
+                status=400,
+            )
+        messages.error(
+            request, "Cannot delete items from approved or rejected purchases."
+        )
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             with transaction.atomic():
                 medication_name = item.medication.name
@@ -3355,38 +3970,42 @@ def delete_purchase_item(request, item_id):
                 purchase.update_total_amount()
 
                 # Handle AJAX request
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        'success': True,
-                        'message': f'Item "{medication_name}" deleted successfully.',
-                        'new_total': str(purchase.total_amount)
-                    })
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return JsonResponse(
+                        {
+                            "success": True,
+                            "message": f'Item "{medication_name}" deleted successfully.',
+                            "new_total": str(purchase.total_amount),
+                        }
+                    )
 
-                messages.success(request, f'Item "{medication_name}" deleted successfully.')
-                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+                messages.success(
+                    request, f'Item "{medication_name}" deleted successfully.'
+                )
+                return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
         except Exception as e:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': False,
-                    'message': f'Error deleting item: {str(e)}'
-                }, status=500)
-            messages.error(request, f'Error deleting item: {str(e)}')
-            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse(
+                    {"success": False, "message": f"Error deleting item: {str(e)}"},
+                    status=500,
+                )
+            messages.error(request, f"Error deleting item: {str(e)}")
+            return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     # GET request - show confirmation page
     context = {
-        'item': item,
-        'purchase': purchase,
-        'title': f'Delete Purchase Item - {item.medication.name}',
-        'active_nav': 'pharmacy',
+        "item": item,
+        "purchase": purchase,
+        "title": f"Delete Purchase Item - {item.medication.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/confirm_delete_purchase_item.html', context)
+    return render(request, "pharmacy/confirm_delete_purchase_item.html", context)
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def submit_purchase_for_approval(request, purchase_id):
     """View for submitting purchase for approval"""
     from django.db import transaction
@@ -3395,28 +4014,30 @@ def submit_purchase_for_approval(request, purchase_id):
     purchase = get_object_or_404(Purchase, id=purchase_id)
 
     # Check if purchase can be submitted
-    if purchase.approval_status != 'draft':
-        messages.error(request, 'This purchase has already been submitted or processed.')
-        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    if purchase.approval_status != "draft":
+        messages.error(
+            request, "This purchase has already been submitted or processed."
+        )
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     if not purchase.items.exists():
-        messages.error(request, 'Cannot submit purchase without items.')
-        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+        messages.error(request, "Cannot submit purchase without items.")
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     if purchase.total_amount <= 0:
-        messages.error(request, 'Cannot submit purchase with zero total amount.')
-        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+        messages.error(request, "Cannot submit purchase with zero total amount.")
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             with transaction.atomic():
                 # Get form data
-                approval_notes = request.POST.get('approval_notes', '').strip()
-                priority_level = request.POST.get('priority_level', 'normal')
-                expected_delivery_date = request.POST.get('expected_delivery_date')
+                approval_notes = request.POST.get("approval_notes", "").strip()
+                priority_level = request.POST.get("priority_level", "normal")
+                expected_delivery_date = request.POST.get("expected_delivery_date")
 
                 # Update purchase
-                purchase.approval_status = 'pending'
+                purchase.approval_status = "pending"
                 purchase.approval_updated_at = timezone.now()
                 purchase.submitted_for_approval_at = timezone.now()
                 purchase.approval_notes = approval_notes
@@ -3425,32 +4046,40 @@ def submit_purchase_for_approval(request, purchase_id):
                 # Set expected delivery date if provided
                 if expected_delivery_date:
                     from datetime import datetime
+
                     try:
-                        purchase.expected_delivery_date = datetime.strptime(expected_delivery_date, '%Y-%m-%d').date()
+                        purchase.expected_delivery_date = datetime.strptime(
+                            expected_delivery_date, "%Y-%m-%d"
+                        ).date()
                     except ValueError:
                         pass  # Invalid date format, skip
 
                 purchase.save()
 
-                messages.success(request, f'Purchase #{purchase.invoice_number} submitted for approval successfully.')
-                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+                messages.success(
+                    request,
+                    f"Purchase #{purchase.invoice_number} submitted for approval successfully.",
+                )
+                return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
         except Exception as e:
-            messages.error(request, f'Error submitting purchase: {str(e)}')
-            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+            messages.error(request, f"Error submitting purchase: {str(e)}")
+            return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     # GET request - show confirmation page
     context = {
-        'purchase': purchase,
-        'title': f'Submit Purchase #{purchase.invoice_number} for Approval',
-        'active_nav': 'pharmacy',
+        "purchase": purchase,
+        "title": f"Submit Purchase #{purchase.invoice_number} for Approval",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/confirm_submit_purchase_for_approval.html', context)
+    return render(
+        request, "pharmacy/confirm_submit_purchase_for_approval.html", context
+    )
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def approve_purchase(request, purchase_id):
     """View for approving a purchase"""
     from django.db import transaction
@@ -3459,21 +4088,26 @@ def approve_purchase(request, purchase_id):
     purchase = get_object_or_404(Purchase, id=purchase_id)
 
     # Check permissions
-    if not (request.user.is_superuser or request.user.has_perm('pharmacy.can_approve_purchases')):
-        messages.error(request, 'You do not have permission to approve purchases.')
-        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    if not (
+        request.user.is_superuser
+        or request.user.has_perm("pharmacy.can_approve_purchases")
+    ):
+        messages.error(request, "You do not have permission to approve purchases.")
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     # Check if purchase can be approved
     if not purchase.can_be_approved():
-        messages.error(request, 'This purchase cannot be approved in its current status.')
-        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+        messages.error(
+            request, "This purchase cannot be approved in its current status."
+        )
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
-    if request.method == 'POST':
-        approval_notes = request.POST.get('approval_notes', '')
+    if request.method == "POST":
+        approval_notes = request.POST.get("approval_notes", "")
 
         try:
             with transaction.atomic():
-                purchase.approval_status = 'approved'
+                purchase.approval_status = "approved"
                 purchase.current_approver = request.user
                 purchase.approval_notes = approval_notes
                 purchase.approval_updated_at = timezone.now()
@@ -3481,34 +4115,38 @@ def approve_purchase(request, purchase_id):
 
                 # Create approval record
                 from .models import PurchaseApproval
+
                 PurchaseApproval.objects.create(
                     purchase=purchase,
                     approver=request.user,
-                    status='approved',
+                    status="approved",
                     comments=approval_notes,
                     decided_at=timezone.now(),
-                    step_order=1
+                    step_order=1,
                 )
 
-                messages.success(request, f'Purchase #{purchase.invoice_number} approved successfully.')
-                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+                messages.success(
+                    request,
+                    f"Purchase #{purchase.invoice_number} approved successfully.",
+                )
+                return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
         except Exception as e:
-            messages.error(request, f'Error approving purchase: {str(e)}')
-            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+            messages.error(request, f"Error approving purchase: {str(e)}")
+            return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     # GET request - show confirmation page
     context = {
-        'purchase': purchase,
-        'title': f'Approve Purchase #{purchase.invoice_number}',
-        'active_nav': 'pharmacy',
+        "purchase": purchase,
+        "title": f"Approve Purchase #{purchase.invoice_number}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/confirm_approve_purchase.html', context)
+    return render(request, "pharmacy/confirm_approve_purchase.html", context)
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def reject_purchase(request, purchase_id):
     """View for rejecting a purchase"""
     from django.db import transaction
@@ -3517,25 +4155,30 @@ def reject_purchase(request, purchase_id):
     purchase = get_object_or_404(Purchase, id=purchase_id)
 
     # Check permissions
-    if not (request.user.is_superuser or request.user.has_perm('pharmacy.can_approve_purchases')):
-        messages.error(request, 'You do not have permission to reject purchases.')
-        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    if not (
+        request.user.is_superuser
+        or request.user.has_perm("pharmacy.can_approve_purchases")
+    ):
+        messages.error(request, "You do not have permission to reject purchases.")
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     # Check if purchase can be rejected
-    if purchase.approval_status not in ['pending', 'draft']:
-        messages.error(request, 'This purchase cannot be rejected in its current status.')
-        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    if purchase.approval_status not in ["pending", "draft"]:
+        messages.error(
+            request, "This purchase cannot be rejected in its current status."
+        )
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
-    if request.method == 'POST':
-        rejection_reason = request.POST.get('rejection_reason', '')
+    if request.method == "POST":
+        rejection_reason = request.POST.get("rejection_reason", "")
 
         if not rejection_reason:
-            messages.error(request, 'Please provide a reason for rejection.')
-            return redirect('pharmacy:reject_purchase', purchase_id=purchase.id)
+            messages.error(request, "Please provide a reason for rejection.")
+            return redirect("pharmacy:reject_purchase", purchase_id=purchase.id)
 
         try:
             with transaction.atomic():
-                purchase.approval_status = 'rejected'
+                purchase.approval_status = "rejected"
                 purchase.current_approver = request.user
                 purchase.approval_notes = rejection_reason
                 purchase.approval_updated_at = timezone.now()
@@ -3543,107 +4186,124 @@ def reject_purchase(request, purchase_id):
 
                 # Create approval record
                 from .models import PurchaseApproval
+
                 PurchaseApproval.objects.create(
                     purchase=purchase,
                     approver=request.user,
-                    status='rejected',
+                    status="rejected",
                     comments=rejection_reason,
                     decided_at=timezone.now(),
-                    step_order=1
+                    step_order=1,
                 )
 
-                messages.success(request, f'Purchase #{purchase.invoice_number} rejected.')
-                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+                messages.success(
+                    request, f"Purchase #{purchase.invoice_number} rejected."
+                )
+                return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
         except Exception as e:
-            messages.error(request, f'Error rejecting purchase: {str(e)}')
-            return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+            messages.error(request, f"Error rejecting purchase: {str(e)}")
+            return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     # GET request - show confirmation page
     context = {
-        'purchase': purchase,
-        'title': f'Reject Purchase #{purchase.invoice_number}',
-        'active_nav': 'pharmacy',
+        "purchase": purchase,
+        "title": f"Reject Purchase #{purchase.invoice_number}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/confirm_reject_purchase.html', context)
+    return render(request, "pharmacy/confirm_reject_purchase.html", context)
 
 
 @login_required
-@permission_required('pharmacy.edit')
+@permission_required("pharmacy.edit")
 def edit_purchase_delivery_date(request, purchase_id):
     """View for editing the expected delivery date of a purchase"""
     from django.http import JsonResponse
     from django.utils import timezone
 
     purchase = get_object_or_404(Purchase, id=purchase_id)
-    
+
     # Allow editing for draft, pending, approved, and paid purchases
-    if purchase.approval_status not in ['draft', 'pending', 'approved', 'paid']:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': False,
-                'message': 'Cannot edit delivery date for rejected or cancelled purchases.'
-            }, status=400)
-        messages.error(request, 'Cannot edit delivery date for rejected or cancelled purchases.')
-        return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
-    
-    if request.method == 'POST':
-        new_delivery_date = request.POST.get('expected_delivery_date')
-        
+    if purchase.approval_status not in ["draft", "pending", "approved", "paid"]:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "Cannot edit delivery date for rejected or cancelled purchases.",
+                },
+                status=400,
+            )
+        messages.error(
+            request, "Cannot edit delivery date for rejected or cancelled purchases."
+        )
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
+
+    if request.method == "POST":
+        new_delivery_date = request.POST.get("expected_delivery_date")
+
         if new_delivery_date:
             try:
                 # Parse and validate the date
                 from datetime import datetime
-                parsed_date = datetime.strptime(new_delivery_date, '%Y-%m-%d').date()
-                
+
+                parsed_date = datetime.strptime(new_delivery_date, "%Y-%m-%d").date()
+
                 # Update the purchase
                 purchase.expected_delivery_date = parsed_date
-                purchase.save(update_fields=['expected_delivery_date'])
-                
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        'success': True,
-                        'message': 'Delivery date updated successfully.',
-                        'delivery_date': parsed_date.strftime('%B %d, %Y')
-                    })
-                
-                messages.success(request, 'Delivery date updated successfully.')
-                return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
-                
+                purchase.save(update_fields=["expected_delivery_date"])
+
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return JsonResponse(
+                        {
+                            "success": True,
+                            "message": "Delivery date updated successfully.",
+                            "delivery_date": parsed_date.strftime("%B %d, %Y"),
+                        }
+                    )
+
+                messages.success(request, "Delivery date updated successfully.")
+                return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
+
             except ValueError:
-                error_msg = 'Invalid date format. Please enter a valid date.'
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        'success': False,
-                        'message': error_msg
-                    }, status=400)
+                error_msg = "Invalid date format. Please enter a valid date."
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return JsonResponse(
+                        {"success": False, "message": error_msg}, status=400
+                    )
                 messages.error(request, error_msg)
         else:
-            error_msg = 'Please provide a delivery date.'
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': False,
-                    'message': error_msg
-                }, status=400)
+            error_msg = "Please provide a delivery date."
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse(
+                    {"success": False, "message": error_msg}, status=400
+                )
             messages.error(request, error_msg)
-    
+
     # For GET request, return current delivery date
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({
-            'success': True,
-            'delivery_date': purchase.expected_delivery_date.strftime('%Y-%m-%d') if purchase.expected_delivery_date else ''
-        })
-    
-    return redirect('pharmacy:purchase_detail', purchase_id=purchase.id)
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse(
+            {
+                "success": True,
+                "delivery_date": purchase.expected_delivery_date.strftime("%Y-%m-%d")
+                if purchase.expected_delivery_date
+                else "",
+            }
+        )
+
+    return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
 
 @login_required
-@permission_required('prescriptions.view')
+@permission_required("prescriptions.view")
 def prescription_list(request):
     """View for listing prescriptions with enhanced search and filtering"""
     # Get all prescriptions with prefetch for efficient dispensing status calculation
-    prescriptions = Prescription.objects.select_related('patient', 'doctor').prefetch_related('items').order_by('-created_at')
+    prescriptions = (
+        Prescription.objects.select_related("patient", "doctor")
+        .prefetch_related("items")
+        .order_by("-created_at")
+    )
 
     # Initialize the search form
     search_form = PrescriptionSearchForm(request.GET)
@@ -3651,35 +4311,41 @@ def prescription_list(request):
     # Apply filters if form is valid
     if search_form.is_valid():
         # Get cleaned data from form
-        search_query = search_form.cleaned_data.get('search')
-        patient_number = search_form.cleaned_data.get('patient_number')
-        medication_name = search_form.cleaned_data.get('medication_name')
-        status = search_form.cleaned_data.get('status')
-        payment_status = search_form.cleaned_data.get('payment_status')
-        doctor = search_form.cleaned_data.get('doctor')
-        date_from = search_form.cleaned_data.get('date_from')
-        date_to = search_form.cleaned_data.get('date_to')
+        search_query = search_form.cleaned_data.get("search")
+        patient_number = search_form.cleaned_data.get("patient_number")
+        medication_name = search_form.cleaned_data.get("medication_name")
+        status = search_form.cleaned_data.get("status")
+        payment_status = search_form.cleaned_data.get("payment_status")
+        doctor = search_form.cleaned_data.get("doctor")
+        date_from = search_form.cleaned_data.get("date_from")
+        date_to = search_form.cleaned_data.get("date_to")
 
         # Apply search filter
         if search_query:
             prescriptions = prescriptions.filter(
-                Q(patient__first_name__icontains=search_query) |
-                Q(patient__last_name__icontains=search_query) |
-                Q(patient__patient_id__icontains=search_query) |
-                Q(patient__phone_number__icontains=search_query) |
-                Q(patient__retainership_info__retainership_reg_number__icontains=search_query) |
-                Q(doctor__first_name__icontains=search_query) |
-                Q(doctor__last_name__icontains=search_query) |
-                Q(diagnosis__icontains=search_query)
+                Q(patient__first_name__icontains=search_query)
+                | Q(patient__last_name__icontains=search_query)
+                | Q(patient__patient_id__icontains=search_query)
+                | Q(patient__phone_number__icontains=search_query)
+                | Q(
+                    patient__retainership_info__retainership_reg_number__icontains=search_query
+                )
+                | Q(doctor__first_name__icontains=search_query)
+                | Q(doctor__last_name__icontains=search_query)
+                | Q(diagnosis__icontains=search_query)
             )
 
         # Apply patient number filter
         if patient_number:
-            prescriptions = prescriptions.filter(patient__patient_id__icontains=patient_number)
+            prescriptions = prescriptions.filter(
+                patient__patient_id__icontains=patient_number
+            )
 
         # Apply medication name filter
         if medication_name:
-            prescriptions = prescriptions.filter(items__medication__name__icontains=medication_name)
+            prescriptions = prescriptions.filter(
+                items__medication__name__icontains=medication_name
+            )
 
         # Apply status filter
         if status:
@@ -3701,53 +4367,57 @@ def prescription_list(request):
 
     # Get statistics for the dashboard cards
     total_prescriptions = prescriptions.count()
-    pending_count = prescriptions.filter(status='pending').count()
-    processing_count = prescriptions.filter(status__in=['approved', 'partially_dispensed']).count()
-    completed_count = prescriptions.filter(status='dispensed').count()
+    pending_count = prescriptions.filter(status="pending").count()
+    processing_count = prescriptions.filter(
+        status__in=["approved", "partially_dispensed"]
+    ).count()
+    completed_count = prescriptions.filter(status="dispensed").count()
 
     # Add dispensing statistics
     prescriptions_list = list(prescriptions.distinct())
     dispensing_stats = {
-        'fully_dispensed': 0,
-        'partially_dispensed': 0,
-        'not_dispensed': 0
+        "fully_dispensed": 0,
+        "partially_dispensed": 0,
+        "not_dispensed": 0,
     }
 
     for prescription in prescriptions_list:
         dispensing_status = prescription.get_dispensing_status()
-        if dispensing_status == 'fully_dispensed':
-            dispensing_stats['fully_dispensed'] += 1
-        elif dispensing_status == 'partially_dispensed':
-            dispensing_stats['partially_dispensed'] += 1
+        if dispensing_status == "fully_dispensed":
+            dispensing_stats["fully_dispensed"] += 1
+        elif dispensing_status == "partially_dispensed":
+            dispensing_stats["partially_dispensed"] += 1
         else:
-            dispensing_stats['not_dispensed'] += 1
+            dispensing_stats["not_dispensed"] += 1
 
     # Pagination
     paginator = Paginator(prescriptions_list, 10)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
     # Add title to context for template
     title = "Prescription Management"
 
     context = {
-        'page_obj': page_obj,
-        'form': search_form,
-        'total_prescriptions': total_prescriptions,
-        'pending_count': pending_count,
-        'processing_count': processing_count,
-        'completed_count': completed_count,
-        'dispensing_stats': dispensing_stats,
-        'page_title': 'Prescription List',
-        'active_nav': 'pharmacy',
-        'title': title,
+        "page_obj": page_obj,
+        "form": search_form,
+        "total_prescriptions": total_prescriptions,
+        "pending_count": pending_count,
+        "processing_count": processing_count,
+        "completed_count": completed_count,
+        "dispensing_stats": dispensing_stats,
+        "page_title": "Prescription List",
+        "active_nav": "pharmacy",
+        "title": title,
     }
 
     # If this is an HTMX request, return only the table partial
-    if request.headers.get('HX-Request'):
-        return render(request, 'pharmacy/prescription_table.html', context)
+    if request.headers.get("HX-Request"):
+        return render(request, "pharmacy/prescription_table.html", context)
 
-    return render(request, 'pharmacy/prescription_list.html', context)
+    return render(request, "pharmacy/prescription_list.html", context)
+
+
 import datetime
 
 from django.core.paginator import Paginator
@@ -3758,61 +4428,69 @@ from .models import Patient, Prescription
 
 
 @login_required
-@permission_required('prescriptions.view')
+@permission_required("prescriptions.view")
 def patient_prescriptions(request, patient_id):
     """View for listing prescriptions for a patient"""
     # Get the patient
     patient = get_object_or_404(Patient, id=patient_id)
 
     # Get prescriptions for this patient
-    prescriptions = Prescription.objects.filter(patient=patient).select_related('doctor').order_by('-created_at')
+    prescriptions = (
+        Prescription.objects.filter(patient=patient)
+        .select_related("doctor")
+        .order_by("-created_at")
+    )
 
     # Pagination
     paginator = Paginator(prescriptions, 10)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
     context = {
-        'patient': patient,
-        'page_obj': page_obj,
-        'page_title': f'Prescriptions for {patient.get_full_name()}',
-        'active_nav': 'pharmacy',
+        "patient": patient,
+        "page_obj": page_obj,
+        "page_title": f"Prescriptions for {patient.get_full_name()}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/prescription_list.html', context)
+    return render(request, "pharmacy/prescription_list.html", context)
 
 
 @login_required
-@permission_required('prescriptions.create')
+@permission_required("prescriptions.create")
 def create_prescription(request, patient_id=None):
     """View for creating a prescription"""
-    if request.method == 'POST':
+    if request.method == "POST":
         form = PrescriptionForm(request.POST, request=request)
         if form.is_valid():
             prescription = form.save()
-            messages.success(request, f'Prescription #{prescription.id} created successfully.')
-            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+            messages.success(
+                request, f"Prescription #{prescription.id} created successfully."
+            )
+            return redirect(
+                "pharmacy:prescription_detail", prescription_id=prescription.id
+            )
     else:
         # Preselect patient if patient_id is provided
         initial_data = {}
         if patient_id:
-            initial_data['patient'] = patient_id
+            initial_data["patient"] = patient_id
         form = PrescriptionForm(request=request, initial=initial_data)
 
     context = {
-        'form': form,
-        'title': 'Create Prescription',
-        'active_nav': 'pharmacy',
+        "form": form,
+        "title": "Create Prescription",
+        "active_nav": "pharmacy",
         # Ensure templates have access to the patient when preselected
-        'selected_patient': getattr(form.fields.get('patient'), 'initial', None),
-        'patient': getattr(form.fields.get('patient'), 'initial', None),
+        "selected_patient": getattr(form.fields.get("patient"), "initial", None),
+        "patient": getattr(form.fields.get("patient"), "initial", None),
     }
 
-    return render(request, 'pharmacy/prescription_form.html', context)
+    return render(request, "pharmacy/prescription_form.html", context)
 
 
 @login_required
-@permission_required('prescriptions.create')
+@permission_required("prescriptions.create")
 def pharmacy_create_prescription(request, patient_id=None):
     """View for pharmacy creating a prescription"""
     # Initialize preselected_patient at the beginning to avoid UnboundLocalError
@@ -3823,16 +4501,22 @@ def pharmacy_create_prescription(request, patient_id=None):
         except Patient.DoesNotExist:
             preselected_patient = None
 
-    if request.method == 'POST':
-        form = PrescriptionForm(request.POST, request=request, current_user=request.user)
+    if request.method == "POST":
+        form = PrescriptionForm(
+            request.POST, request=request, current_user=request.user
+        )
         if form.is_valid():
             prescription = form.save(commit=False)
             # Set the current user as the doctor/prescriber
             prescription.doctor = request.user
             prescription.save()
             form.save_m2m()  # Save many-to-many relationships if any
-            messages.success(request, f'Prescription #{prescription.id} created successfully.')
-            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+            messages.success(
+                request, f"Prescription #{prescription.id} created successfully."
+            )
+            return redirect(
+                "pharmacy:prescription_detail", prescription_id=prescription.id
+            )
         # If form is not valid, we need to reinitialize it with the same parameters
         # to ensure the hidden fields and patient selection are preserved
         else:
@@ -3846,27 +4530,32 @@ def pharmacy_create_prescription(request, patient_id=None):
                 request.POST,
                 request=request,
                 current_user=request.user,
-                preselected_patient=preselected_patient
+                preselected_patient=preselected_patient,
             )
     else:
         # Preselect patient if patient_id is provided
-        initial_data = {'doctor': request.user}  # Set current user as doctor
+        initial_data = {"doctor": request.user}  # Set current user as doctor
         if preselected_patient:
-            initial_data['patient'] = preselected_patient
+            initial_data["patient"] = preselected_patient
         elif patient_id:
-            initial_data['patient'] = patient_id
-        form = PrescriptionForm(request=request, initial=initial_data, preselected_patient=preselected_patient, current_user=request.user)
+            initial_data["patient"] = patient_id
+        form = PrescriptionForm(
+            request=request,
+            initial=initial_data,
+            preselected_patient=preselected_patient,
+            current_user=request.user,
+        )
 
     context = {
-        'form': form,
-        'title': 'Create Prescription (Pharmacy)',
-        'active_nav': 'pharmacy',
-        'selected_patient': preselected_patient,
-        'patient': preselected_patient,
-        'current_user': request.user,  # Add current user to context
+        "form": form,
+        "title": "Create Prescription (Pharmacy)",
+        "active_nav": "pharmacy",
+        "selected_patient": preselected_patient,
+        "patient": preselected_patient,
+        "current_user": request.user,  # Add current user to context
     }
 
-    return render(request, 'pharmacy/prescription_form.html', context)
+    return render(request, "pharmacy/prescription_form.html", context)
 
 
 @login_required
@@ -3875,7 +4564,7 @@ def prescription_detail(request, prescription_id):
     prescription = get_object_or_404(Prescription, id=prescription_id)
 
     # Get prescription items
-    prescription_items = prescription.items.select_related('medication')
+    prescription_items = prescription.items.select_related("medication")
     # Provide an empty form for the "Add Medication" modal
     item_form = PrescriptionItemForm()
 
@@ -3883,69 +4572,81 @@ def prescription_detail(request, prescription_id):
     pharmacy_invoice = None
     try:
         from pharmacy_billing.models import Invoice as PharmacyInvoice
+
         pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
     except PharmacyInvoice.DoesNotExist:
         pharmacy_invoice = None
 
     # Get active or paid cart for quick access
     from pharmacy.cart_models import PrescriptionCart
-    active_cart = PrescriptionCart.objects.filter(
-        prescription=prescription,
-        status__in=['active', 'invoiced', 'paid', 'partially_dispensed']
-    ).order_by('-created_at').first()
+
+    active_cart = (
+        PrescriptionCart.objects.filter(
+            prescription=prescription,
+            status__in=["active", "invoiced", "paid", "partially_dispensed"],
+        )
+        .order_by("-created_at")
+        .first()
+    )
 
     # Enhanced NHIA pricing breakdown
     pricing_breakdown = prescription.get_pricing_breakdown()
 
     # Calculate detailed item-level pricing for NHIA display
     items_with_pricing = []
-    total_patient_pays = Decimal('0.00')
-    total_nhia_covers = Decimal('0.00')
-    total_medication_cost = Decimal('0.00')
+    total_patient_pays = Decimal("0.00")
+    total_nhia_covers = Decimal("0.00")
+    total_medication_cost = Decimal("0.00")
 
     for item in prescription_items:
         item_total_cost = item.medication.price * item.quantity
         total_medication_cost += item_total_cost
 
-        if pricing_breakdown['is_nhia_patient']:
-            item_patient_pays = item_total_cost * Decimal('0.10')  # 10% patient portion
-            item_nhia_covers = item_total_cost * Decimal('0.90')   # 90% NHIA portion
+        if pricing_breakdown["is_nhia_patient"]:
+            item_patient_pays = item_total_cost * Decimal("0.10")  # 10% patient portion
+            item_nhia_covers = item_total_cost * Decimal("0.90")  # 90% NHIA portion
         else:
             item_patient_pays = item_total_cost  # 100% patient pays
-            item_nhia_covers = Decimal('0.00')   # NHIA covers nothing
+            item_nhia_covers = Decimal("0.00")  # NHIA covers nothing
 
         total_patient_pays += item_patient_pays
         total_nhia_covers += item_nhia_covers
 
-        items_with_pricing.append({
-            'item': item,
-            'total_cost': item_total_cost,
-            'patient_pays': item_patient_pays,
-            'nhia_covers': item_nhia_covers,
-            'patient_percentage': '10%' if pricing_breakdown['is_nhia_patient'] else '100%',
-            'nhia_percentage': '90%' if pricing_breakdown['is_nhia_patient'] else '0%',
-        })
+        items_with_pricing.append(
+            {
+                "item": item,
+                "total_cost": item_total_cost,
+                "patient_pays": item_patient_pays,
+                "nhia_covers": item_nhia_covers,
+                "patient_percentage": "10%"
+                if pricing_breakdown["is_nhia_patient"]
+                else "100%",
+                "nhia_percentage": "90%"
+                if pricing_breakdown["is_nhia_patient"]
+                else "0%",
+            }
+        )
 
     context = {
-        'prescription': prescription,
-        'prescription_items': prescription_items,
-        'item_form': item_form,
-        'pharmacy_invoice': pharmacy_invoice,
-        'active_cart': active_cart,  # Add cart for quick access
-        'page_title': f'Prescription Details - #{prescription.id}',
-        'active_nav': 'pharmacy',
+        "prescription": prescription,
+        "prescription_items": prescription_items,
+        "item_form": item_form,
+        "pharmacy_invoice": pharmacy_invoice,
+        "active_cart": active_cart,  # Add cart for quick access
+        "page_title": f"Prescription Details - #{prescription.id}",
+        "active_nav": "pharmacy",
         # Enhanced NHIA context
-        'pricing_breakdown': pricing_breakdown,
-        'items_with_pricing': items_with_pricing,
-        'total_medication_cost': total_medication_cost,
-        'total_patient_pays': total_patient_pays,
-        'total_nhia_covers': total_nhia_covers,
-        'is_nhia_patient': pricing_breakdown['is_nhia_patient'],
-        'patient_percentage': '10%' if pricing_breakdown['is_nhia_patient'] else '100%',
-        'nhia_percentage': '90%' if pricing_breakdown['is_nhia_patient'] else '0%',
+        "pricing_breakdown": pricing_breakdown,
+        "items_with_pricing": items_with_pricing,
+        "total_medication_cost": total_medication_cost,
+        "total_patient_pays": total_patient_pays,
+        "total_nhia_covers": total_nhia_covers,
+        "is_nhia_patient": pricing_breakdown["is_nhia_patient"],
+        "patient_percentage": "10%" if pricing_breakdown["is_nhia_patient"] else "100%",
+        "nhia_percentage": "90%" if pricing_breakdown["is_nhia_patient"] else "0%",
     }
 
-    return render(request, 'pharmacy/prescription_detail.html', context)
+    return render(request, "pharmacy/prescription_detail.html", context)
 
 
 @login_required
@@ -3953,29 +4654,32 @@ def update_prescription_status(request, prescription_id):
     """View for updating prescription status"""
     prescription = get_object_or_404(Prescription, id=prescription_id)
 
-    if request.method == 'POST':
-        new_status = request.POST.get('status')
+    if request.method == "POST":
+        new_status = request.POST.get("status")
         # Validate status
         valid_statuses = dict(Prescription.STATUS_CHOICES).keys()
         if new_status in valid_statuses:
             prescription.status = new_status
             prescription.save()
-            messages.success(request, f'Prescription status updated to {prescription.get_status_display()}.')
+            messages.success(
+                request,
+                f"Prescription status updated to {prescription.get_status_display()}.",
+            )
         else:
-            messages.error(request, 'Invalid status.')
-        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+            messages.error(request, "Invalid status.")
+        return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
     # For GET requests, show the update form
     status_choices = Prescription.STATUS_CHOICES
 
     context = {
-        'prescription': prescription,
-        'status_choices': status_choices,
-        'title': f'Update Status for Prescription #{prescription.id}',
-        'active_nav': 'pharmacy',
+        "prescription": prescription,
+        "status_choices": status_choices,
+        "title": f"Update Status for Prescription #{prescription.id}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/update_prescription_status.html', context)
+    return render(request, "pharmacy/update_prescription_status.html", context)
 
 
 @login_required
@@ -3987,160 +4691,194 @@ def dispense_prescription(request, prescription_id):
     can_dispense, message = prescription.can_be_dispensed()
     if not can_dispense:
         # Enhanced message styling for dispensed prescriptions
-        if prescription.status == 'dispensed':
-            messages.success(request, f'✅ {message} - This prescription has already been fully dispensed.', extra_tags='dispensed-status')
-        elif prescription.status == 'cancelled':
-            messages.warning(request, f'⚠️ {message}', extra_tags='cancelled-status')
+        if prescription.status == "dispensed":
+            messages.success(
+                request,
+                f"✅ {message} - This prescription has already been fully dispensed.",
+                extra_tags="dispensed-status",
+            )
+        elif prescription.status == "cancelled":
+            messages.warning(request, f"⚠️ {message}", extra_tags="cancelled-status")
         else:
-            messages.error(request, f'❌ {message}', extra_tags='error-status')
-        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+            messages.error(request, f"❌ {message}", extra_tags="error-status")
+        return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
     # Prepare prescription items for dispensing
-    prescription_items = list(prescription.items.select_related('medication'))
+    prescription_items = list(prescription.items.select_related("medication"))
 
     # Build a formset class that uses our BaseDispenseItemFormSet
-    DispenseFormSet = formset_factory(DispenseItemForm, formset=BaseDispenseItemFormSet, extra=0)
+    DispenseFormSet = formset_factory(
+        DispenseItemForm, formset=BaseDispenseItemFormSet, extra=0
+    )
 
     # Selected dispensary handling (optional pre-selection)
     selected_dispensary = None
     dispensary_id = None
 
     # Check if a dispensary was selected
-    if request.method == 'POST':
-        dispensary_id = request.POST.get('dispensary_select') or request.POST.get('dispensary_id') or request.POST.get('selected_dispensary')
+    if request.method == "POST":
+        dispensary_id = (
+            request.POST.get("dispensary_select")
+            or request.POST.get("dispensary_id")
+            or request.POST.get("selected_dispensary")
+        )
         if dispensary_id:
             try:
-                selected_dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
+                selected_dispensary = Dispensary.objects.get(
+                    id=dispensary_id, is_active=True
+                )
             except (Dispensary.DoesNotExist, ValueError):
                 selected_dispensary = None
     else:
         # Check GET parameters for dispensary_id
-        dispensary_id = request.GET.get('dispensary_id')
+        dispensary_id = request.GET.get("dispensary_id")
         if dispensary_id:
             try:
-                selected_dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
+                selected_dispensary = Dispensary.objects.get(
+                    id=dispensary_id, is_active=True
+                )
             except (Dispensary.DoesNotExist, ValueError):
                 selected_dispensary = None
 
     # Check if this is just a form refresh (not a dispense action)
-    if request.method == 'POST' and 'refresh_form' in request.POST:
+    if request.method == "POST" and "refresh_form" in request.POST:
         # Just refresh the form with the selected dispensary
         initial_data = []
         for p_item in prescription_items:
-            initial_data.append({
-                'item_id': p_item.id,
-                'dispense_this_item': False,
-                'quantity_to_dispense': 0,
-                'dispensary': selected_dispensary.id if selected_dispensary else None,
-                'stock_quantity_display': ''
-            })
+            initial_data.append(
+                {
+                    "item_id": p_item.id,
+                    "dispense_this_item": False,
+                    "quantity_to_dispense": 0,
+                    "dispensary": selected_dispensary.id
+                    if selected_dispensary
+                    else None,
+                    "stock_quantity_display": "",
+                }
+            )
 
-        formset = DispenseFormSet(initial=initial_data, prefix='form', prescription_items_qs=prescription_items, form_kwargs={'selected_dispensary': selected_dispensary})
+        formset = DispenseFormSet(
+            initial=initial_data,
+            prefix="form",
+            prescription_items_qs=prescription_items,
+            form_kwargs={"selected_dispensary": selected_dispensary},
+        )
 
         # Enhanced NHIA pricing breakdown
         pricing_breakdown = prescription.get_pricing_breakdown()
 
         # Calculate detailed item-level pricing for NHIA display
         items_with_pricing = []
-        total_patient_pays = Decimal('0.00')
-        total_nhia_covers = Decimal('0.00')
-        total_medication_cost = Decimal('0.00')
+        total_patient_pays = Decimal("0.00")
+        total_nhia_covers = Decimal("0.00")
+        total_medication_cost = Decimal("0.00")
 
         for item in prescription_items:
             item_total_cost = item.medication.price * item.quantity
             total_medication_cost += item_total_cost
 
-            if pricing_breakdown['is_nhia_patient']:
-                item_patient_pays = item_total_cost * Decimal('0.10')
-                item_nhia_covers = item_total_cost * Decimal('0.90')
+            if pricing_breakdown["is_nhia_patient"]:
+                item_patient_pays = item_total_cost * Decimal("0.10")
+                item_nhia_covers = item_total_cost * Decimal("0.90")
             else:
                 item_patient_pays = item_total_cost
-                item_nhia_covers = Decimal('0.00')
+                item_nhia_covers = Decimal("0.00")
 
             total_patient_pays += item_patient_pays
             total_nhia_covers += item_nhia_covers
 
-            items_with_pricing.append({
-                'item': item,
-                'total_cost': item_total_cost,
-                'patient_pays': item_patient_pays,
-                'nhia_covers': item_nhia_covers,
-            })
+            items_with_pricing.append(
+                {
+                    "item": item,
+                    "total_cost": item_total_cost,
+                    "patient_pays": item_patient_pays,
+                    "nhia_covers": item_nhia_covers,
+                }
+            )
 
         context = {
-            'prescription': prescription,
-            'page_title': f'Dispense Prescription - #{prescription.id}',
-            'title': f'Dispense Prescription - #{prescription.id}',
-            'dispensaries': Dispensary.objects.filter(is_active=True),
-            'formset': formset,
-            'selected_dispensary': selected_dispensary,
-            'dispensary_id': dispensary_id,
-            'pricing_breakdown': pricing_breakdown,
-            'items_with_pricing': items_with_pricing,
-            'total_medication_cost': total_medication_cost,
-            'total_patient_pays': total_patient_pays,
-            'total_nhia_covers': total_nhia_covers,
-            'is_nhia_patient': pricing_breakdown['is_nhia_patient'],
+            "prescription": prescription,
+            "page_title": f"Dispense Prescription - #{prescription.id}",
+            "title": f"Dispense Prescription - #{prescription.id}",
+            "dispensaries": Dispensary.objects.filter(is_active=True),
+            "formset": formset,
+            "selected_dispensary": selected_dispensary,
+            "dispensary_id": dispensary_id,
+            "pricing_breakdown": pricing_breakdown,
+            "items_with_pricing": items_with_pricing,
+            "total_medication_cost": total_medication_cost,
+            "total_patient_pays": total_patient_pays,
+            "total_nhia_covers": total_nhia_covers,
+            "is_nhia_patient": pricing_breakdown["is_nhia_patient"],
         }
-        return render(request, 'pharmacy/dispense_prescription.html', context)
+        return render(request, "pharmacy/dispense_prescription.html", context)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         # Instantiate formset with POST data and bind prescription items
-        formset = DispenseFormSet(request.POST, prefix='form', prescription_items_qs=prescription_items, form_kwargs={'selected_dispensary': selected_dispensary})
+        formset = DispenseFormSet(
+            request.POST,
+            prefix="form",
+            prescription_items_qs=prescription_items,
+            form_kwargs={"selected_dispensary": selected_dispensary},
+        )
 
         # Get the selected medication index from radio button (single selection)
-        selected_medication_index = request.POST.get('selected_medication')
+        selected_medication_index = request.POST.get("selected_medication")
 
         # If user attempted to dispense items but didn't pick a dispensary, show a clear message
         if not selected_dispensary and selected_medication_index is not None:
-            messages.error(request, 'Please select a dispensary before dispensing items.')
+            messages.error(
+                request, "Please select a dispensary before dispensing items."
+            )
 
             # Enhanced NHIA pricing breakdown
             pricing_breakdown = prescription.get_pricing_breakdown()
 
             # Calculate detailed item-level pricing for NHIA display
             items_with_pricing = []
-            total_patient_pays = Decimal('0.00')
-            total_nhia_covers = Decimal('0.00')
-            total_medication_cost = Decimal('0.00')
+            total_patient_pays = Decimal("0.00")
+            total_nhia_covers = Decimal("0.00")
+            total_medication_cost = Decimal("0.00")
 
             for item in prescription_items:
                 item_total_cost = item.medication.price * item.quantity
                 total_medication_cost += item_total_cost
 
-                if pricing_breakdown['is_nhia_patient']:
-                    item_patient_pays = item_total_cost * Decimal('0.10')
-                    item_nhia_covers = item_total_cost * Decimal('0.90')
+                if pricing_breakdown["is_nhia_patient"]:
+                    item_patient_pays = item_total_cost * Decimal("0.10")
+                    item_nhia_covers = item_total_cost * Decimal("0.90")
                 else:
                     item_patient_pays = item_total_cost
-                    item_nhia_covers = Decimal('0.00')
+                    item_nhia_covers = Decimal("0.00")
 
                 total_patient_pays += item_patient_pays
                 total_nhia_covers += item_nhia_covers
 
-                items_with_pricing.append({
-                    'item': item,
-                    'total_cost': item_total_cost,
-                    'patient_pays': item_patient_pays,
-                    'nhia_covers': item_nhia_covers,
-                })
+                items_with_pricing.append(
+                    {
+                        "item": item,
+                        "total_cost": item_total_cost,
+                        "patient_pays": item_patient_pays,
+                        "nhia_covers": item_nhia_covers,
+                    }
+                )
 
             context = {
-                'prescription': prescription,
-                'page_title': f'Dispense Prescription - #{prescription.id}',
-                'title': f'Dispense Prescription - #{prescription.id}',
-                'dispensaries': Dispensary.objects.filter(is_active=True),
-                'formset': formset,
-                'selected_dispensary': selected_dispensary,
-                'dispensary_id': dispensary_id,
-                'pricing_breakdown': pricing_breakdown,
-                'items_with_pricing': items_with_pricing,
-                'total_medication_cost': total_medication_cost,
-                'total_patient_pays': total_patient_pays,
-                'total_nhia_covers': total_nhia_covers,
-                'is_nhia_patient': pricing_breakdown['is_nhia_patient'],
+                "prescription": prescription,
+                "page_title": f"Dispense Prescription - #{prescription.id}",
+                "title": f"Dispense Prescription - #{prescription.id}",
+                "dispensaries": Dispensary.objects.filter(is_active=True),
+                "formset": formset,
+                "selected_dispensary": selected_dispensary,
+                "dispensary_id": dispensary_id,
+                "pricing_breakdown": pricing_breakdown,
+                "items_with_pricing": items_with_pricing,
+                "total_medication_cost": total_medication_cost,
+                "total_patient_pays": total_patient_pays,
+                "total_nhia_covers": total_nhia_covers,
+                "is_nhia_patient": pricing_breakdown["is_nhia_patient"],
             }
-            return render(request, 'pharmacy/dispense_prescription.html', context)
+            return render(request, "pharmacy/dispense_prescription.html", context)
 
         # The selected dispensary will be handled in form validation
         # No need to modify form data here as it can cause AttributeError
@@ -4151,10 +4889,10 @@ def dispense_prescription(request, prescription_id):
             skipped_items = []
 
             # Get the selected medication index from radio button
-            selected_medication_index = request.POST.get('selected_medication')
+            selected_medication_index = request.POST.get("selected_medication")
 
             if selected_medication_index is None:
-                messages.error(request, 'Please select a medication to dispense.')
+                messages.error(request, "Please select a medication to dispense.")
             else:
                 try:
                     selected_index = int(selected_medication_index)
@@ -4162,16 +4900,24 @@ def dispense_prescription(request, prescription_id):
                         form = formset.forms[selected_index]
 
                         # Check if form has cleaned_data attribute before accessing it
-                        if not hasattr(form, 'cleaned_data') or not form.cleaned_data:
-                            messages.error(request, 'Invalid form data. Please try again.')
+                        if not hasattr(form, "cleaned_data") or not form.cleaned_data:
+                            messages.error(
+                                request, "Invalid form data. Please try again."
+                            )
                         else:
-                            qty = form.cleaned_data.get('quantity_to_dispense') or 0
-                            dispensary = form.cleaned_data.get('dispensary') or selected_dispensary
+                            qty = form.cleaned_data.get("quantity_to_dispense") or 0
+                            dispensary = (
+                                form.cleaned_data.get("dispensary")
+                                or selected_dispensary
+                            )
 
                             # Ensure we have a dispensary for dispensing
                             if qty > 0:
                                 if not dispensary:
-                                    messages.error(request, f'No dispensary selected for medication item.')
+                                    messages.error(
+                                        request,
+                                        f"No dispensary selected for medication item.",
+                                    )
                                 else:
                                     # Continue with dispensing logic
                                     prescription_item = form.prescription_item
@@ -4181,40 +4927,54 @@ def dispense_prescription(request, prescription_id):
                                     if prescription_item.is_dispensed:
                                         # Collect for a single warning later
                                         skipped_items.append(prescription_item)
-                                        messages.warning(request, f'{medication.name} is already fully dispensed.')
+                                        messages.warning(
+                                            request,
+                                            f"{medication.name} is already fully dispensed.",
+                                        )
                                     else:
                                         # Check inventory in the selected dispensary
                                         # First check ActiveStoreInventory (new system)
                                         med_inventory = None
                                         try:
-                                            active_store = getattr(dispensary, 'active_store', None)
+                                            active_store = getattr(
+                                                dispensary, "active_store", None
+                                            )
                                             if active_store:
                                                 # Handle multiple inventory records by getting the first one with sufficient stock
-                                                med_inventory = ActiveStoreInventory.objects.filter(
-                                                    medication=medication,
-                                                    active_store=active_store,
-                                                    stock_quantity__gte=qty
-                                                ).first()
+                                                med_inventory = (
+                                                    ActiveStoreInventory.objects.filter(
+                                                        medication=medication,
+                                                        active_store=active_store,
+                                                        stock_quantity__gte=qty,
+                                                    ).first()
+                                                )
                                         except Exception as e:
                                             pass  # Continue to legacy inventory check
 
                                         # If not found in active store, try legacy MedicationInventory (backward compatibility)
                                         if med_inventory is None:
                                             try:
-                                                med_inventory = MedicationInventory.objects.filter(
-                                                    medication=medication,
-                                                    dispensary=dispensary,
-                                                    stock_quantity__gte=qty
-                                                ).first()
+                                                med_inventory = (
+                                                    MedicationInventory.objects.filter(
+                                                        medication=medication,
+                                                        dispensary=dispensary,
+                                                        stock_quantity__gte=qty,
+                                                    ).first()
+                                                )
                                             except Exception as e:
                                                 pass  # med_inventory remains None
 
                                         # If no inventory found with sufficient stock, show error
                                         if med_inventory is None:
-                                            messages.error(request, f'Insufficient stock for {medication.name} at {dispensary.name}.')
+                                            messages.error(
+                                                request,
+                                                f"Insufficient stock for {medication.name} at {dispensary.name}.",
+                                            )
                                         else:
                                             # Create dispensing log
-                                            unit_price = medication.price or Decimal('0.00')
+                                            unit_price = medication.price or Decimal(
+                                                "0.00"
+                                            )
                                             total_price = unit_price * qty
                                             dispensing_log = DispensingLog.objects.create(
                                                 prescription_item=prescription_item,
@@ -4222,12 +4982,17 @@ def dispense_prescription(request, prescription_id):
                                                 dispensed_quantity=qty,
                                                 unit_price_at_dispense=unit_price,
                                                 total_price_for_this_log=total_price,
-                                                dispensary=dispensary
+                                                dispensary=dispensary,
                                             )
 
                                             # Update inventory (update the correct inventory model)
-                                            if hasattr(med_inventory, 'stock_quantity') and med_inventory.stock_quantity >= qty:
-                                                if isinstance(med_inventory, ActiveStoreInventory):
+                                            if (
+                                                hasattr(med_inventory, "stock_quantity")
+                                                and med_inventory.stock_quantity >= qty
+                                            ):
+                                                if isinstance(
+                                                    med_inventory, ActiveStoreInventory
+                                                ):
                                                     # Update active store inventory
                                                     med_inventory.stock_quantity -= qty
                                                     med_inventory.save()
@@ -4236,50 +5001,73 @@ def dispense_prescription(request, prescription_id):
                                                     med_inventory.stock_quantity -= qty
                                                     med_inventory.save()
                                             else:
-                                                messages.error(request, f'Insufficient stock for {medication.name}. Available: {getattr(med_inventory, "stock_quantity", 0)}, Required: {qty}')
+                                                messages.error(
+                                                    request,
+                                                    f"Insufficient stock for {medication.name}. Available: {getattr(med_inventory, 'stock_quantity', 0)}, Required: {qty}",
+                                                )
 
                                             # Update prescription item quantities
                                             prescription_item.quantity_dispensed_so_far += qty
-                                            if prescription_item.quantity_dispensed_so_far >= prescription_item.quantity:
+                                            if (
+                                                prescription_item.quantity_dispensed_so_far
+                                                >= prescription_item.quantity
+                                            ):
                                                 prescription_item.is_dispensed = True
-                                                prescription_item.dispensed_at = timezone.now()
+                                                prescription_item.dispensed_at = (
+                                                    timezone.now()
+                                                )
                                             prescription_item.save()
 
                                             any_dispensed = True
                             else:
-                                messages.error(request, f'Quantity for {medication.name} must be greater than zero.')
+                                messages.error(
+                                    request,
+                                    f"Quantity for {medication.name} must be greater than zero.",
+                                )
                     else:
-                        messages.error(request, 'Invalid medication selection.')
+                        messages.error(request, "Invalid medication selection.")
                 except (ValueError, IndexError):
-                    messages.error(request, 'Invalid medication selection.')
+                    messages.error(request, "Invalid medication selection.")
 
             if any_dispensed:
                 # Update prescription status based on dispensing progress
                 total_items = prescription.items.count()
-                fully_dispensed_items = prescription.items.filter(is_dispensed=True).count()
+                fully_dispensed_items = prescription.items.filter(
+                    is_dispensed=True
+                ).count()
                 partially_dispensed_items = prescription.items.filter(
-                    is_dispensed=False,
-                    quantity_dispensed_so_far__gt=0
+                    is_dispensed=False, quantity_dispensed_so_far__gt=0
                 ).count()
 
                 # Determine the correct status
                 if fully_dispensed_items == total_items:
                     # All items fully dispensed
-                    prescription.status = 'dispensed'
-                    prescription.save(update_fields=['status'])
-                    messages.success(request, f'All medications dispensed successfully. Prescription marked as fully dispensed.')
+                    prescription.status = "dispensed"
+                    prescription.save(update_fields=["status"])
+                    messages.success(
+                        request,
+                        f"All medications dispensed successfully. Prescription marked as fully dispensed.",
+                    )
                 elif fully_dispensed_items > 0 or partially_dispensed_items > 0:
                     # Some items dispensed (fully or partially)
-                    prescription.status = 'partially_dispensed'
-                    prescription.save(update_fields=['status'])
-                    messages.success(request, f'Selected medications dispensed successfully. {fully_dispensed_items} of {total_items} items fully dispensed.')
+                    prescription.status = "partially_dispensed"
+                    prescription.save(update_fields=["status"])
+                    messages.success(
+                        request,
+                        f"Selected medications dispensed successfully. {fully_dispensed_items} of {total_items} items fully dispensed.",
+                    )
                 else:
                     # This shouldn't happen if any_dispensed is True, but handle it
-                    messages.success(request, 'Selected medications dispensed successfully.')
+                    messages.success(
+                        request, "Selected medications dispensed successfully."
+                    )
 
                 if skipped_items:
-                    names = ', '.join([s.medication.name for s in skipped_items])
-                    messages.warning(request, f'Some items were skipped because they are already fully dispensed: {names}')
+                    names = ", ".join([s.medication.name for s in skipped_items])
+                    messages.warning(
+                        request,
+                        f"Some items were skipped because they are already fully dispensed: {names}",
+                    )
 
                 # Create invoice based on dispensed quantities
                 from pharmacy_billing.models import Invoice as PharmacyInvoice
@@ -4287,56 +5075,81 @@ def dispense_prescription(request, prescription_id):
 
                 # Check if invoice already exists
                 try:
-                    pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
-                    messages.info(request, 'Invoice already exists for this prescription.')
+                    pharmacy_invoice = PharmacyInvoice.objects.get(
+                        prescription=prescription
+                    )
+                    messages.info(
+                        request, "Invoice already exists for this prescription."
+                    )
                 except PharmacyInvoice.DoesNotExist:
                     # Calculate total based on dispensed quantities
-                    dispensed_total = Decimal('0.00')
-                    for log in DispensingLog.objects.filter(prescription_item__prescription=prescription):
+                    dispensed_total = Decimal("0.00")
+                    for log in DispensingLog.objects.filter(
+                        prescription_item__prescription=prescription
+                    ):
                         dispensed_total += log.total_price_for_this_log
 
                     # Apply NHIA discount if applicable
                     if prescription.patient.is_nhia_patient():
                         # Patient pays 10%, NHIA covers 90%
-                        patient_payable = dispensed_total * Decimal('0.10')
+                        patient_payable = dispensed_total * Decimal("0.10")
                     else:
                         # Patient pays 100%
                         patient_payable = dispensed_total
 
                     # Create invoice
-                    pharmacy_invoice = create_pharmacy_invoice(request, prescription, patient_payable)
+                    pharmacy_invoice = create_pharmacy_invoice(
+                        request, prescription, patient_payable
+                    )
 
                     if pharmacy_invoice:
-                        messages.success(request, f'Invoice created successfully. Total: ₦{patient_payable:.2f}')
+                        messages.success(
+                            request,
+                            f"Invoice created successfully. Total: ₦{patient_payable:.2f}",
+                        )
                     else:
-                        messages.error(request, 'Failed to create invoice. Please contact billing.')
+                        messages.error(
+                            request, "Failed to create invoice. Please contact billing."
+                        )
 
                 # Find appropriate cart for redirect
                 from pharmacy.cart_models import PrescriptionCart
-                cart = PrescriptionCart.objects.filter(
-                    prescription=prescription,
-                    status__in=['paid', 'invoiced', 'partially_dispensed']
-                ).order_by('-created_at').first()
+
+                cart = (
+                    PrescriptionCart.objects.filter(
+                        prescription=prescription,
+                        status__in=["paid", "invoiced", "partially_dispensed"],
+                    )
+                    .order_by("-created_at")
+                    .first()
+                )
 
                 if cart:
-                    messages.info(request, '💊 Medications dispensed successfully! Redirecting to cart.')
-                    return redirect('pharmacy:view_cart', cart_id=cart.id)
+                    messages.info(
+                        request,
+                        "💊 Medications dispensed successfully! Redirecting to cart.",
+                    )
+                    return redirect("pharmacy:view_cart", cart_id=cart.id)
                 else:
-                    messages.info(request, '💊 Medications dispensed successfully!')
-                    return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+                    messages.info(request, "💊 Medications dispensed successfully!")
+                    return redirect(
+                        "pharmacy:prescription_detail", prescription_id=prescription.id
+                    )
             else:
-                messages.warning(request, 'No medications were selected for dispensing.')
+                messages.warning(
+                    request, "No medications were selected for dispensing."
+                )
         else:
             # Collect detailed form/formset errors for display
             form_errors = []
-            if hasattr(formset, 'non_form_errors') and formset.non_form_errors():
+            if hasattr(formset, "non_form_errors") and formset.non_form_errors():
                 form_errors.append(formset.non_form_errors())
             for idx, form in enumerate(formset.forms):
                 if form.errors:
-                    form_errors.append({f'form_index_{idx}': form.errors})
+                    form_errors.append({f"form_index_{idx}": form.errors})
 
             # Add messages for each error bundle
-            messages.error(request, 'Please correct the errors in the form.')
+            messages.error(request, "Please correct the errors in the form.")
             for err in form_errors:
                 messages.error(request, str(err))
 
@@ -4346,113 +5159,130 @@ def dispense_prescription(request, prescription_id):
 
             # Calculate detailed item-level pricing for NHIA display
             items_with_pricing = []
-            total_patient_pays = Decimal('0.00')
-            total_nhia_covers = Decimal('0.00')
-            total_medication_cost = Decimal('0.00')
+            total_patient_pays = Decimal("0.00")
+            total_nhia_covers = Decimal("0.00")
+            total_medication_cost = Decimal("0.00")
 
             for item in prescription_items:
                 item_total_cost = item.medication.price * item.quantity
                 total_medication_cost += item_total_cost
 
-                if pricing_breakdown['is_nhia_patient']:
-                    item_patient_pays = item_total_cost * Decimal('0.10')
-                    item_nhia_covers = item_total_cost * Decimal('0.90')
+                if pricing_breakdown["is_nhia_patient"]:
+                    item_patient_pays = item_total_cost * Decimal("0.10")
+                    item_nhia_covers = item_total_cost * Decimal("0.90")
                 else:
                     item_patient_pays = item_total_cost
-                    item_nhia_covers = Decimal('0.00')
+                    item_nhia_covers = Decimal("0.00")
 
                 total_patient_pays += item_patient_pays
                 total_nhia_covers += item_nhia_covers
 
-                items_with_pricing.append({
-                    'item': item,
-                    'total_cost': item_total_cost,
-                    'patient_pays': item_patient_pays,
-                    'nhia_covers': item_nhia_covers,
-                })
+                items_with_pricing.append(
+                    {
+                        "item": item,
+                        "total_cost": item_total_cost,
+                        "patient_pays": item_patient_pays,
+                        "nhia_covers": item_nhia_covers,
+                    }
+                )
 
             context = {
-                'prescription': prescription,
-                'page_title': f'Dispense Prescription - #{prescription.id}',
-                'title': f'Dispense Prescription - #{prescription.id}',
-                'dispensaries': Dispensary.objects.filter(is_active=True),
-                'formset': formset,
-                'selected_dispensary': selected_dispensary,
-                'dispensary_id': dispensary_id,
-                'pricing_breakdown': pricing_breakdown,
-                'items_with_pricing': items_with_pricing,
-                'total_medication_cost': total_medication_cost,
-                'total_patient_pays': total_patient_pays,
-                'total_nhia_covers': total_nhia_covers,
-                'is_nhia_patient': pricing_breakdown['is_nhia_patient'],
+                "prescription": prescription,
+                "page_title": f"Dispense Prescription - #{prescription.id}",
+                "title": f"Dispense Prescription - #{prescription.id}",
+                "dispensaries": Dispensary.objects.filter(is_active=True),
+                "formset": formset,
+                "selected_dispensary": selected_dispensary,
+                "dispensary_id": dispensary_id,
+                "pricing_breakdown": pricing_breakdown,
+                "items_with_pricing": items_with_pricing,
+                "total_medication_cost": total_medication_cost,
+                "total_patient_pays": total_patient_pays,
+                "total_nhia_covers": total_nhia_covers,
+                "is_nhia_patient": pricing_breakdown["is_nhia_patient"],
             }
-            return render(request, 'pharmacy/dispense_prescription.html', context)
+            return render(request, "pharmacy/dispense_prescription.html", context)
 
     else:
         # GET request - build empty formset with initial data bound to prescription items
         initial_data = []
         for p_item in prescription_items:
-            initial_data.append({
-                'item_id': p_item.id,
-                'dispense_this_item': False,
-                'quantity_to_dispense': 0,
-                'dispensary': selected_dispensary.id if selected_dispensary else None,
-                'stock_quantity_display': ''
-            })
+            initial_data.append(
+                {
+                    "item_id": p_item.id,
+                    "dispense_this_item": False,
+                    "quantity_to_dispense": 0,
+                    "dispensary": selected_dispensary.id
+                    if selected_dispensary
+                    else None,
+                    "stock_quantity_display": "",
+                }
+            )
 
-        formset = DispenseFormSet(initial=initial_data, prefix='form', prescription_items_qs=prescription_items, form_kwargs={'selected_dispensary': selected_dispensary})
+        formset = DispenseFormSet(
+            initial=initial_data,
+            prefix="form",
+            prescription_items_qs=prescription_items,
+            form_kwargs={"selected_dispensary": selected_dispensary},
+        )
 
     # Enhanced NHIA pricing breakdown
     pricing_breakdown = prescription.get_pricing_breakdown()
 
     # Calculate detailed item-level pricing for NHIA display
     items_with_pricing = []
-    total_patient_pays = Decimal('0.00')
-    total_nhia_covers = Decimal('0.00')
-    total_medication_cost = Decimal('0.00')
+    total_patient_pays = Decimal("0.00")
+    total_nhia_covers = Decimal("0.00")
+    total_medication_cost = Decimal("0.00")
 
     for item in prescription_items:
         item_total_cost = item.medication.price * item.quantity
         total_medication_cost += item_total_cost
 
-        if pricing_breakdown['is_nhia_patient']:
-            item_patient_pays = item_total_cost * Decimal('0.10')  # 10% patient portion
-            item_nhia_covers = item_total_cost * Decimal('0.90')   # 90% NHIA portion
+        if pricing_breakdown["is_nhia_patient"]:
+            item_patient_pays = item_total_cost * Decimal("0.10")  # 10% patient portion
+            item_nhia_covers = item_total_cost * Decimal("0.90")  # 90% NHIA portion
         else:
             item_patient_pays = item_total_cost  # 100% patient pays
-            item_nhia_covers = Decimal('0.00')   # NHIA covers nothing
+            item_nhia_covers = Decimal("0.00")  # NHIA covers nothing
 
         total_patient_pays += item_patient_pays
         total_nhia_covers += item_nhia_covers
 
-        items_with_pricing.append({
-            'item': item,
-            'total_cost': item_total_cost,
-            'patient_pays': item_patient_pays,
-            'nhia_covers': item_nhia_covers,
-            'patient_percentage': '10%' if pricing_breakdown['is_nhia_patient'] else '100%',
-            'nhia_percentage': '90%' if pricing_breakdown['is_nhia_patient'] else '0%',
-        })
+        items_with_pricing.append(
+            {
+                "item": item,
+                "total_cost": item_total_cost,
+                "patient_pays": item_patient_pays,
+                "nhia_covers": item_nhia_covers,
+                "patient_percentage": "10%"
+                if pricing_breakdown["is_nhia_patient"]
+                else "100%",
+                "nhia_percentage": "90%"
+                if pricing_breakdown["is_nhia_patient"]
+                else "0%",
+            }
+        )
 
     context = {
-        'prescription': prescription,
-        'page_title': f'Dispense Prescription - #{prescription.id}',
-        'title': f'Dispense Prescription - #{prescription.id}',
-        'dispensaries': Dispensary.objects.filter(is_active=True),
-        'formset': formset,
-        'selected_dispensary': selected_dispensary,
-        'dispensary_id': dispensary_id,
+        "prescription": prescription,
+        "page_title": f"Dispense Prescription - #{prescription.id}",
+        "title": f"Dispense Prescription - #{prescription.id}",
+        "dispensaries": Dispensary.objects.filter(is_active=True),
+        "formset": formset,
+        "selected_dispensary": selected_dispensary,
+        "dispensary_id": dispensary_id,
         # Enhanced NHIA context
-        'pricing_breakdown': pricing_breakdown,
-        'items_with_pricing': items_with_pricing,
-        'total_medication_cost': total_medication_cost,
-        'total_patient_pays': total_patient_pays,
-        'total_nhia_covers': total_nhia_covers,
-        'is_nhia_patient': pricing_breakdown['is_nhia_patient'],
-        'patient_percentage': '10%' if pricing_breakdown['is_nhia_patient'] else '100%',
-        'nhia_percentage': '90%' if pricing_breakdown['is_nhia_patient'] else '0%',
+        "pricing_breakdown": pricing_breakdown,
+        "items_with_pricing": items_with_pricing,
+        "total_medication_cost": total_medication_cost,
+        "total_patient_pays": total_patient_pays,
+        "total_nhia_covers": total_nhia_covers,
+        "is_nhia_patient": pricing_breakdown["is_nhia_patient"],
+        "patient_percentage": "10%" if pricing_breakdown["is_nhia_patient"] else "100%",
+        "nhia_percentage": "90%" if pricing_breakdown["is_nhia_patient"] else "0%",
     }
-    return render(request, 'pharmacy/dispense_prescription.html', context)
+    return render(request, "pharmacy/dispense_prescription.html", context)
 
 
 @login_required
@@ -4466,41 +5296,41 @@ def debug_dispense_prescription(request, prescription_id):
     # Check inventory for each dispensary
     inventory_info = []
     for dispensary in dispensaries:
-        dispensary_info = {
-            'dispensary': dispensary,
-            'medications': []
-        }
+        dispensary_info = {"dispensary": dispensary, "medications": []}
 
         # Check inventory for each medication in the prescription
         for item in prescription.items.all():
             try:
                 inventory = MedicationInventory.objects.get(
-                    medication=item.medication,
-                    dispensary=dispensary
+                    medication=item.medication, dispensary=dispensary
                 )
-                dispensary_info['medications'].append({
-                    'medication': item.medication,
-                    'in_inventory': True,
-                    'stock_quantity': inventory.stock_quantity,
-                    'reorder_level': inventory.reorder_level
-                })
+                dispensary_info["medications"].append(
+                    {
+                        "medication": item.medication,
+                        "in_inventory": True,
+                        "stock_quantity": inventory.stock_quantity,
+                        "reorder_level": inventory.reorder_level,
+                    }
+                )
             except MedicationInventory.DoesNotExist:
-                dispensary_info['medications'].append({
-                    'medication': item.medication,
-                    'in_inventory': False,
-                    'stock_quantity': 0,
-                    'reorder_level': 0
-                })
+                dispensary_info["medications"].append(
+                    {
+                        "medication": item.medication,
+                        "in_inventory": False,
+                        "stock_quantity": 0,
+                        "reorder_level": 0,
+                    }
+                )
 
         inventory_info.append(dispensary_info)
 
     context = {
-        'prescription': prescription,
-        'inventory_info': inventory_info,
-        'page_title': f'Debug Dispense Prescription - #{prescription.id}'
+        "prescription": prescription,
+        "inventory_info": inventory_info,
+        "page_title": f"Debug Dispense Prescription - #{prescription.id}",
     }
 
-    return render(request, 'pharmacy/debug_dispense_prescription.html', context)
+    return render(request, "pharmacy/debug_dispense_prescription.html", context)
 
 
 @login_required
@@ -4509,22 +5339,20 @@ def prescription_dispensing_history(request, prescription_id):
     prescription = get_object_or_404(Prescription, id=prescription_id)
 
     # Get all dispensing logs for this prescription's items
-    dispensing_logs = DispensingLog.objects.filter(
-        prescription_item__prescription=prescription
-    ).select_related(
-        'prescription_item__medication',
-        'dispensed_by',
-        'dispensary'
-    ).order_by('-dispensed_date')
+    dispensing_logs = (
+        DispensingLog.objects.filter(prescription_item__prescription=prescription)
+        .select_related("prescription_item__medication", "dispensed_by", "dispensary")
+        .order_by("-dispensed_date")
+    )
 
     context = {
-        'prescription': prescription,
-        'dispensing_logs': dispensing_logs,
-        'page_title': f'Dispensing History - Prescription #{prescription.id}',
-        'active_nav': 'pharmacy',
+        "prescription": prescription,
+        "dispensing_logs": dispensing_logs,
+        "page_title": f"Dispensing History - Prescription #{prescription.id}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/prescription_dispensing_history.html', context)
+    return render(request, "pharmacy/prescription_dispensing_history.html", context)
 
 
 @login_required
@@ -4532,7 +5360,7 @@ def add_prescription_item(request, prescription_id):
     """View for adding a prescription item"""
     prescription = get_object_or_404(Prescription, id=prescription_id)
     # Handle POST from the modal form. On success redirect back to the prescription detail.
-    if request.method == 'POST':
+    if request.method == "POST":
         form = PrescriptionItemForm(request.POST)
         if form.is_valid():
             item = form.save(commit=False)
@@ -4543,25 +5371,27 @@ def add_prescription_item(request, prescription_id):
                 item.quantity = 1
             # Initialize quantity_dispensed_so_far to 0 for new items
             # This field may not be in the model but is expected by the database
-            if hasattr(item, 'quantity_dispensed_so_far'):
+            if hasattr(item, "quantity_dispensed_so_far"):
                 item.quantity_dispensed_so_far = 0
             item.save()
-            messages.success(request, 'Medication added to prescription.')
-            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+            messages.success(request, "Medication added to prescription.")
+            return redirect(
+                "pharmacy:prescription_detail", prescription_id=prescription.id
+            )
         else:
             # Re-render the prescription detail with form errors so the modal can show feedback
-            prescription_items = prescription.items.select_related('medication')
+            prescription_items = prescription.items.select_related("medication")
             context = {
-                'prescription': prescription,
-                'prescription_items': prescription_items,
-                'item_form': form,
-                'page_title': f'Prescription Details - #{prescription.id}',
-                'active_nav': 'pharmacy',
+                "prescription": prescription,
+                "prescription_items": prescription_items,
+                "item_form": form,
+                "page_title": f"Prescription Details - #{prescription.id}",
+                "active_nav": "pharmacy",
             }
-            return render(request, 'pharmacy/prescription_detail.html', context)
+            return render(request, "pharmacy/prescription_detail.html", context)
 
     # For non-POST requests, send user back to the prescription detail
-    return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
 
 @login_required
@@ -4570,34 +5400,44 @@ def delete_prescription_item(request, item_id):
     item = get_object_or_404(PrescriptionItem, id=item_id)
     prescription = item.prescription
 
-    if request.method == 'POST':
+    if request.method == "POST":
         # Check if the item has been dispensed (only on POST to allow viewing confirmation)
         if item.is_dispensed or item.quantity_dispensed_so_far > 0:
-            messages.error(request, f'Cannot delete {item.medication.name} - it has already been dispensed.')
-            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+            messages.error(
+                request,
+                f"Cannot delete {item.medication.name} - it has already been dispensed.",
+            )
+            return redirect(
+                "pharmacy:prescription_detail", prescription_id=prescription.id
+            )
 
         # Safe to delete
         medication_name = item.medication.name
         item.delete()
-        messages.success(request, f'Successfully removed {medication_name} from prescription.')
-        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+        messages.success(
+            request, f"Successfully removed {medication_name} from prescription."
+        )
+        return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
     # For GET requests, always show confirmation page (with warnings if applicable)
     context = {
-        'item': item,
-        'prescription': prescription,
-        'title': f'Delete Prescription Item - {item.medication.name}',
-        'active_nav': 'pharmacy',
-        'can_delete': not item.is_dispensed and item.quantity_dispensed_so_far == 0,
+        "item": item,
+        "prescription": prescription,
+        "title": f"Delete Prescription Item - {item.medication.name}",
+        "active_nav": "pharmacy",
+        "can_delete": not item.is_dispensed and item.quantity_dispensed_so_far == 0,
     }
 
-    return render(request, 'pharmacy/delete_prescription_item.html', context)
+    return render(request, "pharmacy/delete_prescription_item.html", context)
 
 
 @login_required
 def prescription_payment(request, prescription_id):
     """View for prescription payment - patient wallet focused"""
-    from pharmacy_billing.models import Invoice as PharmacyInvoice, Payment as PharmacyPayment
+    from pharmacy_billing.models import (
+        Invoice as PharmacyInvoice,
+        Payment as PharmacyPayment,
+    )
     from pharmacy_billing.utils import create_pharmacy_invoice
     from patients.models import PatientWallet
     from .forms import PrescriptionPaymentForm
@@ -4615,10 +5455,14 @@ def prescription_payment(request, prescription_id):
         # Create invoice using the utility function
         # Use patient payable amount (10% for NHIA patients, 100% for others)
         patient_payable_amount = prescription.get_patient_payable_amount()
-        pharmacy_invoice = create_pharmacy_invoice(request, prescription, patient_payable_amount)
+        pharmacy_invoice = create_pharmacy_invoice(
+            request, prescription, patient_payable_amount
+        )
         if not pharmacy_invoice:
-            messages.error(request, 'Failed to create invoice for this prescription.')
-            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+            messages.error(request, "Failed to create invoice for this prescription.")
+            return redirect(
+                "pharmacy:prescription_detail", prescription_id=prescription.id
+            )
 
     # Get patient wallet
     patient_wallet = None
@@ -4627,32 +5471,31 @@ def prescription_payment(request, prescription_id):
     except PatientWallet.DoesNotExist:
         # Create wallet if it doesn't exist
         patient_wallet = PatientWallet.objects.create(
-            patient=prescription.patient,
-            balance=0
+            patient=prescription.patient, balance=0
         )
 
     remaining_amount = pharmacy_invoice.get_balance()
 
     if remaining_amount <= 0:
-        messages.info(request, 'This prescription has already been fully paid.')
-        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+        messages.info(request, "This prescription has already been fully paid.")
+        return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = PrescriptionPaymentForm(
             request.POST,
             invoice=pharmacy_invoice,
             prescription=prescription,
-            patient_wallet=patient_wallet
+            patient_wallet=patient_wallet,
         )
         if form.is_valid():
             try:
                 with transaction.atomic():
                     # Use .get() method instead of direct dictionary access to avoid KeyError
-                    amount = form.cleaned_data.get('amount', 0)
-                    payment_method = form.cleaned_data.get('payment_method', '')
-                    payment_source = form.cleaned_data.get('payment_source', '')
-                    transaction_id = form.cleaned_data.get('transaction_id', '')
-                    notes = form.cleaned_data.get('notes', '')
+                    amount = form.cleaned_data.get("amount", 0)
+                    payment_method = form.cleaned_data.get("payment_method", "")
+                    payment_source = form.cleaned_data.get("payment_source", "")
+                    transaction_id = form.cleaned_data.get("transaction_id", "")
+                    notes = form.cleaned_data.get("notes", "")
 
                     # Create payment record using pharmacy billing system
                     payment = PharmacyPayment.objects.create(
@@ -4660,85 +5503,107 @@ def prescription_payment(request, prescription_id):
                         amount=amount,
                         payment_method=payment_method,
                         transaction_id=transaction_id,
-                        notes=notes + f' (Payment source: {payment_source})',
-                        received_by=request.user
+                        notes=notes + f" (Payment source: {payment_source})",
+                        received_by=request.user,
                     )
 
                     # Handle wallet payment
-                    if payment_source == 'patient_wallet':
+                    if payment_source == "patient_wallet":
                         # Use wallet's debit method to ensure proper transaction creation
                         patient_wallet.debit(
                             amount=amount,
-                            description=f'Payment for prescription #{prescription.id}',
-                            transaction_type='pharmacy_payment',
-                            user=request.user
+                            description=f"Payment for prescription #{prescription.id}",
+                            transaction_type="pharmacy_payment",
+                            user=request.user,
                         )
 
                     # Update invoice
                     pharmacy_invoice.amount_paid += amount
                     if pharmacy_invoice.amount_paid >= pharmacy_invoice.total_amount:
-                        pharmacy_invoice.status = 'paid'
-                        prescription.payment_status = 'paid'
-                        prescription.save(update_fields=['payment_status'])
+                        pharmacy_invoice.status = "paid"
+                        prescription.payment_status = "paid"
+                        prescription.save(update_fields=["payment_status"])
 
                         # Update cart status to 'paid' if invoice is fully paid - treat each cart independently
                         from pharmacy.cart_models import PrescriptionCart
+
                         carts = PrescriptionCart.objects.filter(
-                            invoice=pharmacy_invoice,
-                            status='invoiced'
+                            invoice=pharmacy_invoice, status="invoiced"
                         )
                         for cart in carts:
                             # Check if this individual cart can be marked as paid
-                            if cart.can_generate_invoice()[0]:  # Verify cart is in valid state for payment
-                                cart.status = 'paid'
-                                cart.save(update_fields=['status'])
+                            if cart.can_generate_invoice()[
+                                0
+                            ]:  # Verify cart is in valid state for payment
+                                cart.status = "paid"
+                                cart.save(update_fields=["status"])
                     else:
-                        pharmacy_invoice.status = 'partially_paid'
+                        pharmacy_invoice.status = "partially_paid"
 
                     pharmacy_invoice.save()
 
                     # Audit log
                     log_audit_action(
                         request.user,
-                        'create',
+                        "create",
                         payment,
-                        f'Recorded {payment_source} payment of ₦{amount:.2f} for prescription #{prescription.id}'
+                        f"Recorded {payment_source} payment of ₦{amount:.2f} for prescription #{prescription.id}",
                     )
 
                     # Notification
                     if prescription.doctor:
                         InternalNotification.objects.create(
                             user=prescription.doctor,
-                            message=f'Payment of ₦{amount:.2f} recorded for prescription #{prescription.id} via {payment_source}'
+                            message=f"Payment of ₦{amount:.2f} recorded for prescription #{prescription.id} via {payment_source}",
                         )
 
-                    messages.success(request, f'✅ Payment of ₦{amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.')
+                    messages.success(
+                        request,
+                        f"✅ Payment of ₦{amount:.2f} recorded successfully via {payment_source.replace('_', ' ').title()}.",
+                    )
 
                     # Find appropriate cart for redirect after successful payment
                     from pharmacy.cart_models import PrescriptionCart
-                    cart = PrescriptionCart.objects.filter(
-                        invoice=pharmacy_invoice,
-                        status__in=['paid', 'invoiced', 'partially_dispensed']
-                    ).order_by('-created_at').first()
 
-                    if pharmacy_invoice.status == 'paid':
+                    cart = (
+                        PrescriptionCart.objects.filter(
+                            invoice=pharmacy_invoice,
+                            status__in=["paid", "invoiced", "partially_dispensed"],
+                        )
+                        .order_by("-created_at")
+                        .first()
+                    )
+
+                    if pharmacy_invoice.status == "paid":
                         if cart:
-                            messages.info(request, '💊 Payment complete! Redirecting to cart for dispensing.')
-                            return redirect('pharmacy:view_cart', cart_id=cart.id)
+                            messages.info(
+                                request,
+                                "💊 Payment complete! Redirecting to cart for dispensing.",
+                            )
+                            return redirect("pharmacy:view_cart", cart_id=cart.id)
                         else:
-                            messages.info(request, '💊 Payment complete!')
-                            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+                            messages.info(request, "💊 Payment complete!")
+                            return redirect(
+                                "pharmacy:prescription_detail",
+                                prescription_id=prescription.id,
+                            )
 
                     # For partial payments, also redirect to cart if available
                     if cart:
-                        messages.info(request, '💊 Partial payment recorded. Redirecting to cart for dispensing.')
-                        return redirect('pharmacy:view_cart', cart_id=cart.id)
+                        messages.info(
+                            request,
+                            "💊 Partial payment recorded. Redirecting to cart for dispensing.",
+                        )
+                        return redirect("pharmacy:view_cart", cart_id=cart.id)
                     else:
-                        messages.info(request, '💊 Partial payment recorded.')
-                        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+                        messages.info(request, "💊 Partial payment recorded.")
+                        return redirect(
+                            "pharmacy:prescription_detail",
+                            prescription_id=prescription.id,
+                        )
 
             except Exception as e:
-                messages.error(request, f'Error processing payment: {str(e)}')
+                messages.error(request, f"Error processing payment: {str(e)}")
     else:
         # Pre-fill form with remaining amount and wallet payment as default
         form = PrescriptionPaymentForm(
@@ -4746,27 +5611,27 @@ def prescription_payment(request, prescription_id):
             prescription=prescription,
             patient_wallet=patient_wallet,
             initial={
-                'amount': remaining_amount,
-                'payment_method': 'wallet',
-                'payment_source': 'patient_wallet'
-            }
+                "amount": remaining_amount,
+                "payment_method": "wallet",
+                "payment_source": "patient_wallet",
+            },
         )
 
     # Get carts with status 'invoiced' or 'paid'
-    invoiced_or_paid_carts = prescription.carts.filter(status__in=['invoiced', 'paid'])
+    invoiced_or_paid_carts = prescription.carts.filter(status__in=["invoiced", "paid"])
 
     context = {
-        'form': form,
-        'prescription': prescription,
-        'pharmacy_invoice': pharmacy_invoice,
-        'invoice': pharmacy_invoice,  # Template expects 'invoice'
-        'patient_wallet': patient_wallet,
-        'remaining_amount': remaining_amount,
-        'invoiced_or_paid_carts': invoiced_or_paid_carts,
-        'title': f'Prescription Payment - #{prescription.id}'
+        "form": form,
+        "prescription": prescription,
+        "pharmacy_invoice": pharmacy_invoice,
+        "invoice": pharmacy_invoice,  # Template expects 'invoice'
+        "patient_wallet": patient_wallet,
+        "remaining_amount": remaining_amount,
+        "invoiced_or_paid_carts": invoiced_or_paid_carts,
+        "title": f"Prescription Payment - #{prescription.id}",
     }
 
-    return render(request, 'pharmacy/prescription_payment.html', context)
+    return render(request, "pharmacy/prescription_payment.html", context)
 
 
 @login_required
@@ -4785,92 +5650,100 @@ def process_outstanding_wallet_payment(request, prescription_id):
     try:
         pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
     except PharmacyInvoice.DoesNotExist:
-        messages.error(request, 'No invoice found for this prescription.')
-        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+        messages.error(request, "No invoice found for this prescription.")
+        return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
     # Get patient wallet
     patient_wallet = None
     try:
         patient_wallet = PatientWallet.objects.get(patient=prescription.patient)
     except PatientWallet.DoesNotExist:
-        messages.error(request, 'Patient does not have a wallet.')
-        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+        messages.error(request, "Patient does not have a wallet.")
+        return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
     remaining_amount = pharmacy_invoice.get_balance()
 
     if remaining_amount <= 0:
-        messages.info(request, 'This prescription has already been fully paid.')
-        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+        messages.info(request, "This prescription has already been fully paid.")
+        return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
     # Check if user has permission to process wallet payments
     # Only billing staff and pharmacists should be able to process wallet payments
-    user_roles = [r.lower() for r in request.user.roles.values_list('name', flat=True)]
-    profile_role = getattr(getattr(request.user, 'profile', None), 'role', None)
+    user_roles = [r.lower() for r in request.user.roles.values_list("name", flat=True)]
+    profile_role = getattr(getattr(request.user, "profile", None), "role", None)
     if profile_role and profile_role.lower() not in user_roles:
         user_roles.append(profile_role.lower())
-    
+
     can_process_wallet = (
-        any(role in ['billing_staff', 'pharmacist', 'admin'] for role in user_roles) or
-        request.user.has_perm('billing.process_payment') or
-        request.user.has_perm('patients.wallet_manage')
+        any(role in ["billing_staff", "pharmacist", "admin"] for role in user_roles)
+        or request.user.has_perm("billing.process_payment")
+        or request.user.has_perm("patients.wallet_manage")
     )
-    
+
     if not can_process_wallet:
-        messages.error(request, 'You do not have permission to process wallet payments.')
-        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+        messages.error(
+            request, "You do not have permission to process wallet payments."
+        )
+        return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
-
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             with transaction.atomic():
                 # Process payment from wallet
                 patient_wallet.debit(
                     amount=remaining_amount,
-                    description=f'Payment for outstanding prescription #{prescription.id}',
-                    transaction_type='pharmacy_payment',
-                    user=request.user
+                    description=f"Payment for outstanding prescription #{prescription.id}",
+                    transaction_type="pharmacy_payment",
+                    user=request.user,
                 )
 
                 # Update invoice
                 pharmacy_invoice.amount_paid += remaining_amount
-                pharmacy_invoice.status = 'paid'
+                pharmacy_invoice.status = "paid"
                 pharmacy_invoice.save()
 
                 # Update prescription payment status
-                prescription.payment_status = 'paid'
-                prescription.save(update_fields=['payment_status'])
+                prescription.payment_status = "paid"
+                prescription.save(update_fields=["payment_status"])
 
                 # Audit log
                 log_audit_action(
                     request.user,
-                    'create',
+                    "create",
                     pharmacy_invoice,
-                    f'Processed outstanding payment of ₦{remaining_amount:.2f} from wallet for prescription #{prescription.id}'
+                    f"Processed outstanding payment of ₦{remaining_amount:.2f} from wallet for prescription #{prescription.id}",
                 )
 
                 # Notification
                 if prescription.doctor:
                     InternalNotification.objects.create(
                         user=prescription.doctor,
-                        message=f'Outstanding payment of ₦{remaining_amount:.2f} processed from wallet for prescription #{prescription.id}'
+                        message=f"Outstanding payment of ₦{remaining_amount:.2f} processed from wallet for prescription #{prescription.id}",
                     )
 
-                messages.success(request, f'Outstanding payment of ₦{remaining_amount:.2f} processed successfully from patient wallet.')
-                return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+                messages.success(
+                    request,
+                    f"Outstanding payment of ₦{remaining_amount:.2f} processed successfully from patient wallet.",
+                )
+                return redirect(
+                    "pharmacy:prescription_detail", prescription_id=prescription.id
+                )
 
         except Exception as e:
-            messages.error(request, f'Error processing payment: {str(e)}')
-            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+            messages.error(request, f"Error processing payment: {str(e)}")
+            return redirect(
+                "pharmacy:prescription_detail", prescription_id=prescription.id
+            )
 
     context = {
-        'prescription': prescription,
-        'pharmacy_invoice': pharmacy_invoice,
-        'patient_wallet': patient_wallet,
-        'remaining_amount': remaining_amount,
-        'title': f'Process Outstanding Payment - #{prescription.id}'
+        "prescription": prescription,
+        "pharmacy_invoice": pharmacy_invoice,
+        "patient_wallet": patient_wallet,
+        "remaining_amount": remaining_amount,
+        "title": f"Process Outstanding Payment - #{prescription.id}",
     }
 
-    return render(request, 'pharmacy/process_outstanding_payment.html', context)
+    return render(request, "pharmacy/process_outstanding_payment.html", context)
 
 
 @login_required
@@ -4879,30 +5752,34 @@ def print_prescription(request, prescription_id):
     prescription = get_object_or_404(Prescription, id=prescription_id)
 
     # Get prescription items
-    prescription_items = prescription.items.select_related('medication')
+    prescription_items = prescription.items.select_related("medication")
 
     # Get pharmacy invoice if exists
     pharmacy_invoice = None
     try:
         from pharmacy_billing.models import Invoice as PharmacyInvoice
+
         pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
     except PharmacyInvoice.DoesNotExist:
         pharmacy_invoice = None
 
     context = {
-        'prescription': prescription,
-        'prescription_items': prescription_items,
-        'pharmacy_invoice': pharmacy_invoice,
-        'title': f'Print Prescription - #{prescription.id}'
+        "prescription": prescription,
+        "prescription_items": prescription_items,
+        "pharmacy_invoice": pharmacy_invoice,
+        "title": f"Print Prescription - #{prescription.id}",
     }
 
-    return render(request, 'pharmacy/print_prescription.html', context)
+    return render(request, "pharmacy/print_prescription.html", context)
 
 
 @login_required
 def billing_office_medication_payment(request, prescription_id):
     """View for billing office medication payment - dual payment source support"""
-    from pharmacy_billing.models import Invoice as PharmacyInvoice, Payment as PharmacyPayment
+    from pharmacy_billing.models import (
+        Invoice as PharmacyInvoice,
+        Payment as PharmacyPayment,
+    )
     from pharmacy_billing.utils import create_pharmacy_invoice
     from patients.models import PatientWallet
     from django.db import transaction
@@ -4919,10 +5796,14 @@ def billing_office_medication_payment(request, prescription_id):
         # Create invoice using the utility function
         # Use patient payable amount (10% for NHIA patients, 100% for others)
         patient_payable_amount = prescription.get_patient_payable_amount()
-        pharmacy_invoice = create_pharmacy_invoice(request, prescription, patient_payable_amount)
+        pharmacy_invoice = create_pharmacy_invoice(
+            request, prescription, patient_payable_amount
+        )
         if not pharmacy_invoice:
-            messages.error(request, 'Failed to create invoice for this prescription.')
-            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+            messages.error(request, "Failed to create invoice for this prescription.")
+            return redirect(
+                "pharmacy:prescription_detail", prescription_id=prescription.id
+            )
 
     # Get patient wallet
     patient_wallet = None
@@ -4931,37 +5812,45 @@ def billing_office_medication_payment(request, prescription_id):
     except PatientWallet.DoesNotExist:
         # Create wallet if it doesn't exist
         patient_wallet = PatientWallet.objects.create(
-            patient=prescription.patient,
-            balance=0
+            patient=prescription.patient, balance=0
         )
 
     remaining_amount = pharmacy_invoice.get_balance()
 
     if remaining_amount <= 0:
-        messages.info(request, 'This prescription has already been fully paid.')
-        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+        messages.info(request, "This prescription has already been fully paid.")
+        return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
-    if request.method == 'POST':
-        payment_source = request.POST.get('payment_source', 'billing_office')
-        amount = request.POST.get('amount')
-        payment_method = request.POST.get('payment_method', 'cash')
-        transaction_id = request.POST.get('transaction_id', '')
-        notes = request.POST.get('notes', '')
+    if request.method == "POST":
+        payment_source = request.POST.get("payment_source", "billing_office")
+        amount = request.POST.get("amount")
+        payment_method = request.POST.get("payment_method", "cash")
+        transaction_id = request.POST.get("transaction_id", "")
+        notes = request.POST.get("notes", "")
 
         try:
             amount = Decimal(amount)
             if amount <= 0:
-                messages.error(request, 'Payment amount must be greater than zero.')
-                return redirect('pharmacy:billing_office_medication_payment', prescription_id=prescription.id)
+                messages.error(request, "Payment amount must be greater than zero.")
+                return redirect(
+                    "pharmacy:billing_office_medication_payment",
+                    prescription_id=prescription.id,
+                )
 
             if amount > pharmacy_invoice.get_balance():
-                messages.error(request, f'Payment amount cannot exceed the remaining balance of ₦{pharmacy_invoice.get_balance():.2f}.')
-                return redirect('pharmacy:billing_office_medication_payment', prescription_id=prescription.id)
+                messages.error(
+                    request,
+                    f"Payment amount cannot exceed the remaining balance of ₦{pharmacy_invoice.get_balance():.2f}.",
+                )
+                return redirect(
+                    "pharmacy:billing_office_medication_payment",
+                    prescription_id=prescription.id,
+                )
 
             with transaction.atomic():
                 # Force wallet payment method for wallet payments
-                if payment_source == 'patient_wallet':
-                    payment_method = 'wallet'
+                if payment_source == "patient_wallet":
+                    payment_method = "wallet"
 
                 # Create payment record using pharmacy billing system
                 payment = PharmacyPayment.objects.create(
@@ -4969,126 +5858,142 @@ def billing_office_medication_payment(request, prescription_id):
                     amount=amount,
                     payment_method=payment_method,
                     transaction_id=transaction_id,
-                    notes=notes + f' (Billing office - {payment_source})',
-                    received_by=request.user
+                    notes=notes + f" (Billing office - {payment_source})",
+                    received_by=request.user,
                 )
 
                 # Handle wallet payment
-                if payment_source == 'patient_wallet':
+                if payment_source == "patient_wallet":
                     # Use wallet's debit method to ensure proper transaction creation
                     patient_wallet.debit(
                         amount=amount,
-                        description=f'Payment for prescription #{prescription.id} (Billing office)',
-                        transaction_type='pharmacy_payment',
-                        user=request.user
+                        description=f"Payment for prescription #{prescription.id} (Billing office)",
+                        transaction_type="pharmacy_payment",
+                        user=request.user,
                     )
 
                 # Update invoice
                 pharmacy_invoice.amount_paid += amount
                 if pharmacy_invoice.amount_paid >= pharmacy_invoice.total_amount:
-                    pharmacy_invoice.status = 'paid'
+                    pharmacy_invoice.status = "paid"
                     # Mark that this is a manual payment processed by billing staff
                     pharmacy_invoice._manual_payment_processed = True
-                    prescription.payment_status = 'paid'
-                    prescription.save(update_fields=['payment_status'])
+                    prescription.payment_status = "paid"
+                    prescription.save(update_fields=["payment_status"])
 
                     # Update cart status to 'paid' if invoice is fully paid - treat each cart independently
                     from pharmacy.cart_models import PrescriptionCart
+
                     carts = PrescriptionCart.objects.filter(
-                        invoice=pharmacy_invoice,
-                        status='invoiced'
+                        invoice=pharmacy_invoice, status="invoiced"
                     )
                     for cart in carts:
                         # Check if this individual cart can be marked as paid
-                        if cart.can_generate_invoice()[0]:  # Verify cart is in valid state for payment
-                            cart.status = 'paid'
-                            cart.save(update_fields=['status'])
+                        if cart.can_generate_invoice()[
+                            0
+                        ]:  # Verify cart is in valid state for payment
+                            cart.status = "paid"
+                            cart.save(update_fields=["status"])
                 else:
-                    pharmacy_invoice.status = 'partially_paid'
+                    pharmacy_invoice.status = "partially_paid"
 
                 pharmacy_invoice.save()
 
                 # Audit log
                 log_audit_action(
                     request.user,
-                    'create',
+                    "create",
                     payment,
-                    f'Billing office recorded {payment_source} payment of ₦{amount:.2f} for prescription #{prescription.id}'
+                    f"Billing office recorded {payment_source} payment of ₦{amount:.2f} for prescription #{prescription.id}",
                 )
 
                 # Notification
                 if prescription.doctor:
                     InternalNotification.objects.create(
                         user=prescription.doctor,
-                        message=f'Billing office recorded payment of ₦{amount:.2f} for prescription #{prescription.id} via {payment_source}'
+                        message=f"Billing office recorded payment of ₦{amount:.2f} for prescription #{prescription.id} via {payment_source}",
                     )
 
-                messages.success(request, f'✅ Payment of ₦{amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.')
+                messages.success(
+                    request,
+                    f"✅ Payment of ₦{amount:.2f} recorded successfully via {payment_source.replace('_', ' ').title()}.",
+                )
 
                 # Redirect to cart if payment is complete and cart exists
-                if pharmacy_invoice.status == 'paid':
+                if pharmacy_invoice.status == "paid":
                     # Find the cart associated with this invoice
                     from pharmacy.cart_models import PrescriptionCart
+
                     cart = PrescriptionCart.objects.filter(
-                        invoice=pharmacy_invoice,
-                        status__in=['paid', 'invoiced']
+                        invoice=pharmacy_invoice, status__in=["paid", "invoiced"]
                     ).first()
 
                     if cart:
-                        messages.info(request, '💊 Payment complete! Redirecting to cart for dispensing.')
-                        return redirect('pharmacy:view_cart', cart_id=cart.id)
+                        messages.info(
+                            request,
+                            "💊 Payment complete! Redirecting to cart for dispensing.",
+                        )
+                        return redirect("pharmacy:view_cart", cart_id=cart.id)
 
                 # Fallback to prescription detail if no cart found
-                return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+                return redirect(
+                    "pharmacy:prescription_detail", prescription_id=prescription.id
+                )
 
         except (ValueError, TypeError):
-            messages.error(request, 'Invalid payment amount.')
+            messages.error(request, "Invalid payment amount.")
         except Exception as e:
-            messages.error(request, f'Error processing payment: {str(e)}')
+            messages.error(request, f"Error processing payment: {str(e)}")
 
     # Get payment history
-    payments = pharmacy_invoice.payments.all().order_by('-payment_date')
+    payments = pharmacy_invoice.payments.all().order_by("-payment_date")
 
     # Get pricing breakdown for enhanced NHIA display
     pricing_breakdown = prescription.get_pricing_breakdown()
 
     # Calculate item-level pricing for detailed display
-    prescription_items = prescription.items.all().select_related('medication')
+    prescription_items = prescription.items.all().select_related("medication")
     items_with_pricing = []
     for item in prescription_items:
         item_total = item.medication.price * item.quantity
-        if pricing_breakdown['is_nhia_patient']:
-            patient_pays = item_total * Decimal('0.10')
-            nhia_covers = item_total * Decimal('0.90')
+        if pricing_breakdown["is_nhia_patient"]:
+            patient_pays = item_total * Decimal("0.10")
+            nhia_covers = item_total * Decimal("0.90")
         else:
             patient_pays = item_total
-            nhia_covers = Decimal('0.00')
+            nhia_covers = Decimal("0.00")
 
-        items_with_pricing.append({
-            'item': item,
-            'total_cost': item_total,
-            'patient_pays': patient_pays,
-            'nhia_covers': nhia_covers
-        })
+        items_with_pricing.append(
+            {
+                "item": item,
+                "total_cost": item_total,
+                "patient_pays": patient_pays,
+                "nhia_covers": nhia_covers,
+            }
+        )
 
     context = {
-        'prescription': prescription,
-        'pharmacy_invoice': pharmacy_invoice,
-        'patient_wallet': patient_wallet,
-        'remaining_amount': remaining_amount,
-        'payments': payments,
-        'title': f'Billing Office - Medication Payment #{prescription.id}',
+        "prescription": prescription,
+        "pharmacy_invoice": pharmacy_invoice,
+        "patient_wallet": patient_wallet,
+        "remaining_amount": remaining_amount,
+        "payments": payments,
+        "title": f"Billing Office - Medication Payment #{prescription.id}",
         # Enhanced NHIA context
-        'pricing_breakdown': pricing_breakdown,
-        'prescription_items': prescription_items,
-        'items_with_pricing': items_with_pricing,
-        'nhia_patient_pays_percentage': '10%' if pricing_breakdown['is_nhia_patient'] else '100%',
-        'nhia_covers_percentage': '90%' if pricing_breakdown['is_nhia_patient'] else '0%',
-        'patient_payment_amount': pricing_breakdown['patient_portion'],
-        'total_medication_cost': pricing_breakdown['total_medication_cost'],
+        "pricing_breakdown": pricing_breakdown,
+        "prescription_items": prescription_items,
+        "items_with_pricing": items_with_pricing,
+        "nhia_patient_pays_percentage": "10%"
+        if pricing_breakdown["is_nhia_patient"]
+        else "100%",
+        "nhia_covers_percentage": "90%"
+        if pricing_breakdown["is_nhia_patient"]
+        else "0%",
+        "patient_payment_amount": pricing_breakdown["patient_portion"],
+        "total_medication_cost": pricing_breakdown["total_medication_cost"],
     }
 
-    return render(request, 'pharmacy/billing_office_medication_payment.html', context)
+    return render(request, "pharmacy/billing_office_medication_payment.html", context)
 
 
 @login_required
@@ -5097,20 +6002,24 @@ def create_prescription_invoice(request, prescription_id):
     prescription = get_object_or_404(Prescription, id=prescription_id)
     # Use the centralized utility to create the invoice so behavior is consistent
     try:
-        from core.prescription_utils import create_prescription_invoice as util_create_invoice
+        from core.prescription_utils import (
+            create_prescription_invoice as util_create_invoice,
+        )
 
         invoice = util_create_invoice(prescription)
         if invoice:
-            messages.success(request, f'Invoice #{invoice.invoice_number} created successfully.')
+            messages.success(
+                request, f"Invoice #{invoice.invoice_number} created successfully."
+            )
             # Redirect to the billing invoice detail view
-            return redirect('billing:detail', invoice.id)
+            return redirect("billing:detail", invoice.id)
         else:
-            messages.error(request, 'Failed to create invoice for this prescription.')
+            messages.error(request, "Failed to create invoice for this prescription.")
     except Exception as e:
-        messages.error(request, f'Error creating invoice: {str(e)}')
+        messages.error(request, f"Error creating invoice: {str(e)}")
 
     # On error, redirect back to the prescription detail page
-    return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+    return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
 
 @login_required
@@ -5125,43 +6034,43 @@ def check_medication_availability(request):
 
     try:
         data = json.loads(request.body)
-        dispensary_id = data.get('dispensary_id')
-        medications = data.get('medications', [])
+        dispensary_id = data.get("dispensary_id")
+        medications = data.get("medications", [])
 
         if not dispensary_id:
-            return JsonResponse({'error': 'Dispensary ID required'}, status=400)
+            return JsonResponse({"error": "Dispensary ID required"}, status=400)
 
         dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
-        active_store = getattr(dispensary, 'active_store', None)
+        active_store = getattr(dispensary, "active_store", None)
 
         results = []
 
         for med_data in medications:
-            item_id = med_data.get('item_id')
-            medication_id = med_data.get('medication_id')
-            requested_quantity = Decimal(str(med_data.get('quantity', 0)))
+            item_id = med_data.get("item_id")
+            medication_id = med_data.get("medication_id")
+            requested_quantity = Decimal(str(med_data.get("quantity", 0)))
 
             # Get medication
             medication = get_object_or_404(Medication, id=medication_id)
 
             # Check availability
-            available_quantity = Decimal('0')
+            available_quantity = Decimal("0")
 
             # Check ActiveStoreInventory
             if active_store:
                 inventory_items = ActiveStoreInventory.objects.filter(
                     medication=medication,
                     active_store=active_store,
-                    stock_quantity__gt=0
+                    stock_quantity__gt=0,
                 )
-                available_quantity += sum(Decimal(str(inv.stock_quantity)) for inv in inventory_items)
+                available_quantity += sum(
+                    Decimal(str(inv.stock_quantity)) for inv in inventory_items
+                )
 
             # Check legacy inventory
             try:
                 legacy_inv = MedicationInventory.objects.filter(
-                    medication=medication,
-                    dispensary=dispensary,
-                    stock_quantity__gt=0
+                    medication=medication, dispensary=dispensary, stock_quantity__gt=0
                 ).first()
                 if legacy_inv:
                     available_quantity += Decimal(str(legacy_inv.stock_quantity))
@@ -5169,29 +6078,32 @@ def check_medication_availability(request):
                 pass
 
             # Calculate price
-            unit_price = medication.selling_price if hasattr(medication, 'selling_price') else medication.price
+            unit_price = (
+                medication.selling_price
+                if hasattr(medication, "selling_price")
+                else medication.price
+            )
             total_price = unit_price * requested_quantity
 
             is_available = available_quantity >= requested_quantity
 
-            results.append({
-                'item_id': item_id,
-                'medication_id': medication_id,
-                'medication_name': medication.name,
-                'quantity': float(requested_quantity),
-                'stock_available': float(available_quantity),
-                'available': is_available,
-                'unit_price': float(unit_price),
-                'total_price': float(total_price)
-            })
+            results.append(
+                {
+                    "item_id": item_id,
+                    "medication_id": medication_id,
+                    "medication_name": medication.name,
+                    "quantity": float(requested_quantity),
+                    "stock_available": float(available_quantity),
+                    "available": is_available,
+                    "unit_price": float(unit_price),
+                    "total_price": float(total_price),
+                }
+            )
 
-        return JsonResponse({
-            'success': True,
-            'medications': results
-        })
+        return JsonResponse({"success": True, "medications": results})
 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({"error": str(e)}, status=500)
 
 
 @login_required
@@ -5212,46 +6124,53 @@ def pharmacist_generate_invoice(request, prescription_id):
     # Check if invoice already exists
     try:
         existing_invoice = PharmacyInvoice.objects.get(prescription=prescription)
-        messages.warning(request, f'Invoice already exists for this prescription.')
-        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+        messages.warning(request, f"Invoice already exists for this prescription.")
+        return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
     except PharmacyInvoice.DoesNotExist:
         pass
 
     # Get all dispensaries
     dispensaries = Dispensary.objects.filter(is_active=True)
 
-    if request.method == 'POST':
-        dispensary_id = request.POST.get('dispensary_id')
+    if request.method == "POST":
+        dispensary_id = request.POST.get("dispensary_id")
         if not dispensary_id:
-            messages.error(request, 'Please select a dispensary.')
-            return redirect('pharmacy:pharmacist_generate_invoice', prescription_id=prescription.id)
+            messages.error(request, "Please select a dispensary.")
+            return redirect(
+                "pharmacy:pharmacist_generate_invoice", prescription_id=prescription.id
+            )
 
         dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
 
         # Get availability data from form
-        availability_data_str = request.POST.get('availability_data')
+        availability_data_str = request.POST.get("availability_data")
 
         try:
             with transaction.atomic():
                 # Parse availability data
                 if availability_data_str:
                     availability_data = json.loads(availability_data_str)
-                    medications_data = availability_data.get('medications', [])
+                    medications_data = availability_data.get("medications", [])
                 else:
-                    messages.error(request, 'Please check availability before generating invoice.')
-                    return redirect('pharmacy:pharmacist_generate_invoice', prescription_id=prescription.id)
+                    messages.error(
+                        request, "Please check availability before generating invoice."
+                    )
+                    return redirect(
+                        "pharmacy:pharmacist_generate_invoice",
+                        prescription_id=prescription.id,
+                    )
 
                 # Get prescription items
                 prescription_items = prescription.items.all()
                 available_items = []
                 unavailable_items = []
-                total_available_amount = Decimal('0.00')
+                total_available_amount = Decimal("0.00")
 
                 # Process each medication based on availability check
                 for med_data in medications_data:
-                    item_id = med_data.get('item_id')
-                    is_available = med_data.get('available', False)
-                    quantity = Decimal(str(med_data.get('quantity', 0)))
+                    item_id = med_data.get("item_id")
+                    is_available = med_data.get("available", False)
+                    quantity = Decimal(str(med_data.get("quantity", 0)))
 
                     # Get the prescription item
                     try:
@@ -5260,9 +6179,11 @@ def pharmacist_generate_invoice(request, prescription_id):
                         continue
 
                     # Get custom quantity from form if provided
-                    custom_quantity_key = f'quantity_{item_id}'
+                    custom_quantity_key = f"quantity_{item_id}"
                     if custom_quantity_key in request.POST:
-                        quantity = Decimal(str(request.POST.get(custom_quantity_key, quantity)))
+                        quantity = Decimal(
+                            str(request.POST.get(custom_quantity_key, quantity))
+                        )
 
                     if quantity <= 0:
                         continue
@@ -5270,63 +6191,82 @@ def pharmacist_generate_invoice(request, prescription_id):
                     medication = item.medication
 
                     if is_available:
-                        available_items.append({
-                            'item': item,
-                            'quantity': quantity,
-                            'status': 'available'
-                        })
+                        available_items.append(
+                            {"item": item, "quantity": quantity, "status": "available"}
+                        )
 
                         # Calculate amount based on NHIA status
-                        unit_price = medication.selling_price if hasattr(medication, 'selling_price') else medication.price
+                        unit_price = (
+                            medication.selling_price
+                            if hasattr(medication, "selling_price")
+                            else medication.price
+                        )
                         item_cost = unit_price * quantity
 
                         if prescription.patient.is_nhia_patient():
                             # NHIA patients pay 10%
-                            total_available_amount += item_cost * Decimal('0.10')
+                            total_available_amount += item_cost * Decimal("0.10")
                         else:
                             total_available_amount += item_cost
                     else:
-                        unavailable_items.append({
-                            'item': item,
-                            'quantity': quantity,
-                            'status': 'insufficient'
-                        })
+                        unavailable_items.append(
+                            {
+                                "item": item,
+                                "quantity": quantity,
+                                "status": "insufficient",
+                            }
+                        )
 
                 # If no items are available, show error
                 if not available_items:
-                    messages.error(request, 'No medications are available in the selected dispensary. Cannot generate invoice.')
-                    return redirect('pharmacy:pharmacist_generate_invoice', prescription_id=prescription.id)
+                    messages.error(
+                        request,
+                        "No medications are available in the selected dispensary. Cannot generate invoice.",
+                    )
+                    return redirect(
+                        "pharmacy:pharmacist_generate_invoice",
+                        prescription_id=prescription.id,
+                    )
 
                 # Create pharmacy invoice for available items only
-                pharmacy_invoice = create_pharmacy_invoice(request, prescription, total_available_amount)
+                pharmacy_invoice = create_pharmacy_invoice(
+                    request, prescription, total_available_amount
+                )
 
                 if pharmacy_invoice:
                     # Log audit action
                     log_audit_action(
                         request.user,
-                        'create',
+                        "create",
                         pharmacy_invoice,
-                        f'Generated invoice for prescription #{prescription.id} at {dispensary.name}. '
-                        f'Available items: {len(available_items)}, Unavailable items: {len(unavailable_items)}'
+                        f"Generated invoice for prescription #{prescription.id} at {dispensary.name}. "
+                        f"Available items: {len(available_items)}, Unavailable items: {len(unavailable_items)}",
                     )
 
-                    success_msg = f'Invoice generated successfully for {len(available_items)} available medication(s).'
+                    success_msg = f"Invoice generated successfully for {len(available_items)} available medication(s)."
                     if unavailable_items:
-                        success_msg += f' Note: {len(unavailable_items)} medication(s) are not available in {dispensary.name}.'
+                        success_msg += f" Note: {len(unavailable_items)} medication(s) are not available in {dispensary.name}."
 
                     messages.success(request, success_msg)
-                    return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+                    return redirect(
+                        "pharmacy:prescription_detail", prescription_id=prescription.id
+                    )
                 else:
-                    messages.error(request, 'Failed to create invoice.')
-                    return redirect('pharmacy:pharmacist_generate_invoice', prescription_id=prescription.id)
+                    messages.error(request, "Failed to create invoice.")
+                    return redirect(
+                        "pharmacy:pharmacist_generate_invoice",
+                        prescription_id=prescription.id,
+                    )
 
         except Exception as e:
-            messages.error(request, f'Error generating invoice: {str(e)}')
-            return redirect('pharmacy:pharmacist_generate_invoice', prescription_id=prescription.id)
+            messages.error(request, f"Error generating invoice: {str(e)}")
+            return redirect(
+                "pharmacy:pharmacist_generate_invoice", prescription_id=prescription.id
+            )
 
     # GET request - show availability check page
     # Check availability for all items across all dispensaries
-    prescription_items = prescription.items.select_related('medication')
+    prescription_items = prescription.items.select_related("medication")
     items_availability = []
 
     for item in prescription_items:
@@ -5335,49 +6275,46 @@ def pharmacist_generate_invoice(request, prescription_id):
         dispensary_stock = []
 
         for dispensary in dispensaries:
-            active_store = getattr(dispensary, 'active_store', None)
+            active_store = getattr(dispensary, "active_store", None)
             available_quantity = 0
 
             if active_store:
                 inventory_items = ActiveStoreInventory.objects.filter(
                     medication=medication,
                     active_store=active_store,
-                    stock_quantity__gt=0
+                    stock_quantity__gt=0,
                 )
                 available_quantity = sum(inv.stock_quantity for inv in inventory_items)
 
             # Also check legacy inventory
             try:
                 legacy_inv = MedicationInventory.objects.filter(
-                    medication=medication,
-                    dispensary=dispensary,
-                    stock_quantity__gt=0
+                    medication=medication, dispensary=dispensary, stock_quantity__gt=0
                 ).first()
                 if legacy_inv:
                     available_quantity += legacy_inv.stock_quantity
             except:
                 pass
 
-            dispensary_stock.append({
-                'dispensary': dispensary,
-                'available': available_quantity,
-                'sufficient': available_quantity >= quantity
-            })
+            dispensary_stock.append(
+                {
+                    "dispensary": dispensary,
+                    "available": available_quantity,
+                    "sufficient": available_quantity >= quantity,
+                }
+            )
 
-        items_availability.append({
-            'item': item,
-            'dispensary_stock': dispensary_stock
-        })
+        items_availability.append({"item": item, "dispensary_stock": dispensary_stock})
 
     context = {
-        'prescription': prescription,
-        'items_availability': items_availability,
-        'dispensaries': dispensaries,
-        'page_title': f'Generate Invoice - Prescription #{prescription.id}',
-        'active_nav': 'pharmacy',
+        "prescription": prescription,
+        "items_availability": items_availability,
+        "dispensaries": dispensaries,
+        "page_title": f"Generate Invoice - Prescription #{prescription.id}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/pharmacist_generate_invoice.html', context)
+    return render(request, "pharmacy/pharmacist_generate_invoice.html", context)
 
 
 @login_required
@@ -5386,20 +6323,22 @@ def medication_api(request):
     from django.http import JsonResponse
 
     # Get all active medications
-    medications = Medication.objects.filter(is_active=True).select_related('category')
+    medications = Medication.objects.filter(is_active=True).select_related("category")
 
     # Build response data
     data = []
     for med in medications:
-        data.append({
-            'id': med.id,
-            'name': med.name,
-            'generic_name': med.generic_name,
-            'category': med.category.name if med.category else None,
-            'price': float(med.price),
-            'dosage_form': med.dosage_form,
-            'strength': med.strength,
-        })
+        data.append(
+            {
+                "id": med.id,
+                "name": med.name,
+                "generic_name": med.generic_name,
+                "category": med.category.name if med.category else None,
+                "price": float(med.price),
+                "dosage_form": med.dosage_form,
+                "strength": med.strength,
+            }
+        )
 
     return JsonResponse(data, safe=False)
 
@@ -5411,42 +6350,51 @@ def expiring_medications_report(request):
     from datetime import timedelta
 
     # Get medications expiring within 90 days (changed from 30 days)
-    expiring_soon = ActiveStoreInventory.objects.filter(
-        expiry_date__lte=timezone.now().date() + timedelta(days=90),
-        expiry_date__gte=timezone.now().date()
-    ).select_related('medication', 'active_store__dispensary').order_by('expiry_date')
+    expiring_soon = (
+        ActiveStoreInventory.objects.filter(
+            expiry_date__lte=timezone.now().date() + timedelta(days=90),
+            expiry_date__gte=timezone.now().date(),
+        )
+        .select_related("medication", "active_store__dispensary")
+        .order_by("expiry_date")
+    )
 
     # Get already expired medications
-    expired = ActiveStoreInventory.objects.filter(
-        expiry_date__lt=timezone.now().date()
-    ).select_related('medication', 'active_store__dispensary').order_by('expiry_date')
+    expired = (
+        ActiveStoreInventory.objects.filter(expiry_date__lt=timezone.now().date())
+        .select_related("medication", "active_store__dispensary")
+        .order_by("expiry_date")
+    )
 
     context = {
-        'expiring_soon': expiring_soon,
-        'expired': expired,
-        'title': 'Expiring Medications Report',
-        'active_nav': 'pharmacy',
+        "expiring_soon": expiring_soon,
+        "expired": expired,
+        "title": "Expiring Medications Report",
+        "active_nav": "pharmacy",
     }
-    return render(request, 'pharmacy/reports/expiring_medications_report.html', context)
+    return render(request, "pharmacy/reports/expiring_medications_report.html", context)
 
 
 @login_required
 def low_stock_medications_report(request):
     """View for low stock medications report"""
     # Get low stock items
-    low_stock_items = ActiveStoreInventory.objects.filter(
-        stock_quantity__lte=models.F('reorder_level')
-    ).select_related('medication', 'active_store__dispensary').order_by('stock_quantity')
+    low_stock_items = (
+        ActiveStoreInventory.objects.filter(
+            stock_quantity__lte=models.F("reorder_level")
+        )
+        .select_related("medication", "active_store__dispensary")
+        .order_by("stock_quantity")
+    )
 
     context = {
-        'low_stock_items': low_stock_items,
-        'title': 'Low Stock Medications Report',
-        'active_nav': 'pharmacy',
+        "low_stock_items": low_stock_items,
+        "title": "Low Stock Medications Report",
+        "active_nav": "pharmacy",
     }
-    return render(request, 'pharmacy/reports/low_stock_medications_report.html', context)
-
-
-
+    return render(
+        request, "pharmacy/reports/low_stock_medications_report.html", context
+    )
 
 
 @login_required
@@ -5463,63 +6411,69 @@ def dispensed_items_tracker(request):
 
     # Get all dispensing logs
     dispensing_logs = DispensingLog.objects.select_related(
-        'prescription_item__medication',
-        'prescription_item__prescription__patient',
-        'dispensed_by',
-        'dispensary'
-    ).order_by('-dispensed_date')
+        "prescription_item__medication",
+        "prescription_item__prescription__patient",
+        "dispensed_by",
+        "dispensary",
+    ).order_by("-dispensed_date")
 
     # Search functionality
-    search_query = request.GET.get('search', '')
+    search_query = request.GET.get("search", "")
     if search_query:
         dispensing_logs = dispensing_logs.filter(
-            Q(prescription_item__medication__name__icontains=search_query) |
-            Q(prescription_item__prescription__patient__first_name__icontains=search_query) |
-            Q(prescription_item__prescription__patient__last_name__icontains=search_query)
+            Q(prescription_item__medication__name__icontains=search_query)
+            | Q(
+                prescription_item__prescription__patient__first_name__icontains=search_query
+            )
+            | Q(
+                prescription_item__prescription__patient__last_name__icontains=search_query
+            )
         )
 
     # Filter by date range
-    date_from = request.GET.get('date_from', '')
+    date_from = request.GET.get("date_from", "")
     if date_from:
         try:
-            date_from = timezone.datetime.strptime(date_from, '%Y-%m-%d').date()
-            dispensing_logs = dispensing_logs.filter(dispensed_date__date__gte=date_from)
+            date_from = timezone.datetime.strptime(date_from, "%Y-%m-%d").date()
+            dispensing_logs = dispensing_logs.filter(
+                dispensed_date__date__gte=date_from
+            )
         except ValueError:
             pass
 
-    date_to = request.GET.get('date_to', '')
+    date_to = request.GET.get("date_to", "")
     if date_to:
         try:
-            date_to = timezone.datetime.strptime(date_to, '%Y-%m-%d').date()
+            date_to = timezone.datetime.strptime(date_to, "%Y-%m-%d").date()
             dispensing_logs = dispensing_logs.filter(dispensed_date__date__lte=date_to)
         except ValueError:
             pass
 
     # Filter by dispensary
-    dispensary_id = request.GET.get('dispensary', '')
+    dispensary_id = request.GET.get("dispensary", "")
     if dispensary_id:
         dispensing_logs = dispensing_logs.filter(dispensary_id=dispensary_id)
 
     # Pagination
     paginator = Paginator(dispensing_logs, 20)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
     # Get dispensaries for filter dropdown
     dispensaries = Dispensary.objects.filter(is_active=True)
 
     context = {
-        'page_obj': page_obj,
-        'dispensaries': dispensaries,
-        'search_query': search_query,
-        'date_from': date_from,
-        'date_to': date_to,
-        'dispensary_id': dispensary_id,
-        'page_title': 'Dispensed Items Tracker',
-        'active_nav': 'pharmacy',
+        "page_obj": page_obj,
+        "dispensaries": dispensaries,
+        "search_query": search_query,
+        "date_from": date_from,
+        "date_to": date_to,
+        "dispensary_id": dispensary_id,
+        "page_title": "Dispensed Items Tracker",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/dispensed_items_tracker.html', context)
+    return render(request, "pharmacy/dispensed_items_tracker.html", context)
 
 
 @login_required
@@ -5530,22 +6484,22 @@ def dispensed_item_detail(request, log_id):
     # Get the dispensing log
     dispensing_log = get_object_or_404(
         DispensingLog.objects.select_related(
-            'prescription_item__medication',
-            'prescription_item__prescription__patient',
-            'prescription_item__prescription__doctor',
-            'dispensed_by',
-            'dispensary'
+            "prescription_item__medication",
+            "prescription_item__prescription__patient",
+            "prescription_item__prescription__doctor",
+            "dispensed_by",
+            "dispensary",
         ),
-        id=log_id
+        id=log_id,
     )
 
     context = {
-        'dispensing_log': dispensing_log,
-        'page_title': f'Dispensed Item Detail - {dispensing_log.prescription_item.medication.name}',
-        'active_nav': 'pharmacy',
+        "dispensing_log": dispensing_log,
+        "page_title": f"Dispensed Item Detail - {dispensing_log.prescription_item.medication.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/dispensed_item_detail.html', context)
+    return render(request, "pharmacy/dispensed_item_detail.html", context)
 
 
 @login_required
@@ -5557,35 +6511,47 @@ def dispensed_items_export(request):
 
     # Get all dispensing logs
     dispensing_logs = DispensingLog.objects.select_related(
-        'prescription_item__medication',
-        'prescription_item__prescription__patient',
-        'dispensed_by',
-        'dispensary'
-    ).order_by('-dispensed_date')
+        "prescription_item__medication",
+        "prescription_item__prescription__patient",
+        "dispensed_by",
+        "dispensary",
+    ).order_by("-dispensed_date")
 
     # Create the HttpResponse object with CSV header
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="dispensed_items.csv"'
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="dispensed_items.csv"'
 
     writer = csv.writer(response)
-    writer.writerow([
-        'Medication', 'Strength', 'Patient', 'Quantity',
-        'Unit Price', 'Total Price', 'Dispensed By',
-        'Dispensary', 'Date'
-    ])
+    writer.writerow(
+        [
+            "Medication",
+            "Strength",
+            "Patient",
+            "Quantity",
+            "Unit Price",
+            "Total Price",
+            "Dispensed By",
+            "Dispensary",
+            "Date",
+        ]
+    )
 
     for log in dispensing_logs:
-        writer.writerow([
-            log.prescription_item.medication.name,
-            log.prescription_item.medication.strength,
-            log.prescription_item.prescription.patient.get_full_name(),
-            log.dispensed_quantity,
-            log.unit_price_at_dispense,
-            log.total_price_for_this_log,
-            log.dispensed_by.get_full_name() if log.dispensed_by else log.dispensed_by.username,
-            log.dispensary.name if log.dispensary else 'N/A',
-            log.dispensed_date.strftime('%Y-%m-%d %H:%M')
-        ])
+        writer.writerow(
+            [
+                log.prescription_item.medication.name,
+                log.prescription_item.medication.strength,
+                log.prescription_item.prescription.patient.get_full_name(),
+                log.dispensed_quantity,
+                log.unit_price_at_dispense,
+                log.total_price_for_this_log,
+                log.dispensed_by.get_full_name()
+                if log.dispensed_by
+                else log.dispensed_by.username,
+                log.dispensary.name if log.dispensary else "N/A",
+                log.dispensed_date.strftime("%Y-%m-%d %H:%M"),
+            ]
+        )
 
     return response
 
@@ -5597,14 +6563,19 @@ def user_has_dispensary_edit_permission(user, dispensary=None):
         return True
 
     # Check for specific permission
-    if user.has_perm('pharmacy.change_dispensary') or user.has_perm('pharmacy.add_dispensary'):
+    if user.has_perm("pharmacy.change_dispensary") or user.has_perm(
+        "pharmacy.add_dispensary"
+    ):
         return True
 
     # Check if user has admin role
-    user_roles = [r.lower() for r in user.roles.values_list('name', flat=True)] if hasattr(user, 'roles') else []
-    if 'admin' in user_roles:
+    user_roles = (
+        [r.lower() for r in user.roles.values_list("name", flat=True)]
+        if hasattr(user, "roles")
+        else []
+    )
+    if "admin" in user_roles:
         return True
-
 
     # If checking specific dispensary, check if user is the manager
     if dispensary and dispensary.manager == user:
@@ -5638,74 +6609,78 @@ def dispensary_list(request):
         cleaned_data = search_form.cleaned_data
 
         # General search (name, location, manager name)
-        search_term = cleaned_data.get('search')
+        search_term = cleaned_data.get("search")
         if search_term:
             dispensaries = dispensaries.filter(
-                models.Q(name__icontains=search_term) |
-                models.Q(location__icontains=search_term) |
-                models.Q(manager__first_name__icontains=search_term) |
-                models.Q(manager__last_name__icontains=search_term) |
-                models.Q(manager__username__icontains=search_term) |
-                models.Q(description__icontains=search_term)
+                models.Q(name__icontains=search_term)
+                | models.Q(location__icontains=search_term)
+                | models.Q(manager__first_name__icontains=search_term)
+                | models.Q(manager__last_name__icontains=search_term)
+                | models.Q(manager__username__icontains=search_term)
+                | models.Q(description__icontains=search_term)
             )
 
         # Manager filter
-        manager = cleaned_data.get('manager')
+        manager = cleaned_data.get("manager")
         if manager:
             dispensaries = dispensaries.filter(manager=manager)
 
         # Status filter
-        is_active = cleaned_data.get('is_active')
+        is_active = cleaned_data.get("is_active")
         if is_active:
-            dispensaries = dispensaries.filter(is_active=(is_active == 'true'))
+            dispensaries = dispensaries.filter(is_active=(is_active == "true"))
 
         # Active store filter
-        has_active_store = cleaned_data.get('has_active_store')
+        has_active_store = cleaned_data.get("has_active_store")
         if has_active_store:
-            if has_active_store == 'true':
+            if has_active_store == "true":
                 dispensaries = dispensaries.filter(active_store__isnull=False)
             else:
                 dispensaries = dispensaries.filter(active_store__isnull=True)
 
         # Location filter
-        location = cleaned_data.get('location')
+        location = cleaned_data.get("location")
         if location:
             dispensaries = dispensaries.filter(location__icontains=location)
 
         # Date range filters
-        created_date_from = cleaned_data.get('created_date_from')
+        created_date_from = cleaned_data.get("created_date_from")
         if created_date_from:
             dispensaries = dispensaries.filter(created_at__date__gte=created_date_from)
 
-        created_date_to = cleaned_data.get('created_date_to')
+        created_date_to = cleaned_data.get("created_date_to")
         if created_date_to:
             dispensaries = dispensaries.filter(created_at__date__lte=created_date_to)
 
     # Order by name
-    dispensaries = dispensaries.order_by('name')
+    dispensaries = dispensaries.order_by("name")
 
     # Check edit permissions for template
     can_edit = user_has_dispensary_edit_permission(request.user)
-    can_view_all = can_edit or request.user.is_staff  # Staff can view, managers can edit their assigned
+    can_view_all = (
+        can_edit or request.user.is_staff
+    )  # Staff can view, managers can edit their assigned
 
     # Pre-calculate individual permissions for each dispensary
     dispensary_permissions = {}
     for dispensary in dispensaries:
-        dispensary_permissions[dispensary.id] = user_can_edit_dispensary(request.user, dispensary)
+        dispensary_permissions[dispensary.id] = user_can_edit_dispensary(
+            request.user, dispensary
+        )
 
     context = {
-        'dispensaries': dispensaries,
-        'page_title': 'Dispensary List',
-        'active_nav': 'pharmacy',
-        'can_edit': can_edit,
-        'can_view_all': can_view_all,
-        'current_user': request.user,
-        'dispensary_permissions': dispensary_permissions,
-        'search_form': search_form,
-        'search_params': request.GET.urlencode(),  # For maintaining search in pagination
+        "dispensaries": dispensaries,
+        "page_title": "Dispensary List",
+        "active_nav": "pharmacy",
+        "can_edit": can_edit,
+        "can_view_all": can_view_all,
+        "current_user": request.user,
+        "dispensary_permissions": dispensary_permissions,
+        "search_form": search_form,
+        "search_params": request.GET.urlencode(),  # For maintaining search in pagination
     }
 
-    return render(request, 'pharmacy/dispensary_list.html', context)
+    return render(request, "pharmacy/dispensary_list.html", context)
 
 
 @login_required
@@ -5715,13 +6690,13 @@ def edit_dispensary(request, dispensary_id):
 
     # Check permission
     if not user_can_edit_dispensary(request.user, dispensary):
-        messages.error(request, 'You do not have permission to edit this dispensary.')
-        return redirect('pharmacy:dispensary_list')
+        messages.error(request, "You do not have permission to edit this dispensary.")
+        return redirect("pharmacy:dispensary_list")
 
     # Get or create the associated active store
-    active_store = getattr(dispensary, 'active_store', None)
+    active_store = getattr(dispensary, "active_store", None)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = DispensaryForm(request.POST, instance=dispensary)
         if form.is_valid():
             with transaction.atomic():
@@ -5737,31 +6712,37 @@ def edit_dispensary(request, dispensary_id):
                         location=dispensary.location or "Same as dispensary",
                         description=f"Active storage area for {dispensary.name}",
                         capacity=1000,  # Default capacity
-                        is_active=dispensary.is_active
+                        is_active=dispensary.is_active,
                     )
-                    messages.success(request, f'Created active store for {dispensary.name}.')
+                    messages.success(
+                        request, f"Created active store for {dispensary.name}."
+                    )
                 else:
                     # Update existing active store to match dispensary
                     active_store.name = f"Active Store - {dispensary.name}"
                     active_store.location = dispensary.location or active_store.location
                     active_store.is_active = dispensary.is_active
                     active_store.save()
-                    messages.success(request, f'Updated active store for {dispensary.name}.')
+                    messages.success(
+                        request, f"Updated active store for {dispensary.name}."
+                    )
 
-                messages.success(request, f'Dispensary {dispensary.name} updated successfully.')
-                return redirect('pharmacy:dispensary_list')
+                messages.success(
+                    request, f"Dispensary {dispensary.name} updated successfully."
+                )
+                return redirect("pharmacy:dispensary_list")
     else:
         form = DispensaryForm(instance=dispensary)
 
     context = {
-        'form': form,
-        'dispensary': dispensary,
-        'active_store': active_store,
-        'page_title': f'Edit Dispensary - {dispensary.name}',
-        'active_nav': 'pharmacy',
+        "form": form,
+        "dispensary": dispensary,
+        "active_store": active_store,
+        "page_title": f"Edit Dispensary - {dispensary.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/edit_dispensary.html', context)
+    return render(request, "pharmacy/edit_dispensary.html", context)
 
 
 @login_required
@@ -5769,27 +6750,30 @@ def add_dispensary(request):
     """View for adding a new dispensary with automatic active store creation"""
     # Check permission - only admins and superusers can add dispensaries
     if not user_has_dispensary_edit_permission(request.user):
-        messages.error(request, 'You do not have permission to add dispensaries.')
-        return redirect('pharmacy:dispensary_list')
+        messages.error(request, "You do not have permission to add dispensaries.")
+        return redirect("pharmacy:dispensary_list")
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = DispensaryForm(request.POST)
         if form.is_valid():
             # Save dispensary - ActiveStore will be created automatically by signal
             dispensary = form.save()
 
-            messages.success(request, f'Dispensary {dispensary.name} created successfully with active store.')
-            return redirect('pharmacy:dispensary_list')
+            messages.success(
+                request,
+                f"Dispensary {dispensary.name} created successfully with active store.",
+            )
+            return redirect("pharmacy:dispensary_list")
     else:
         form = DispensaryForm()
 
     context = {
-        'form': form,
-        'page_title': 'Add Dispensary',
-        'active_nav': 'pharmacy',
+        "form": form,
+        "page_title": "Add Dispensary",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/add_dispensary.html', context)
+    return render(request, "pharmacy/add_dispensary.html", context)
 
 
 @login_required
@@ -5799,22 +6783,24 @@ def delete_dispensary(request, dispensary_id):
 
     # Check permission
     if not user_can_edit_dispensary(request.user, dispensary):
-        messages.error(request, 'You do not have permission to delete this dispensary.')
-        return redirect('pharmacy:dispensary_list')
+        messages.error(request, "You do not have permission to delete this dispensary.")
+        return redirect("pharmacy:dispensary_list")
 
-    if request.method == 'POST':
+    if request.method == "POST":
         dispensary.is_active = False
         dispensary.save()
-        messages.success(request, f'Dispensary {dispensary.name} deactivated successfully.')
-        return redirect('pharmacy:dispensary_list')
+        messages.success(
+            request, f"Dispensary {dispensary.name} deactivated successfully."
+        )
+        return redirect("pharmacy:dispensary_list")
 
     context = {
-        'dispensary': dispensary,
-        'page_title': f'Delete Dispensary - {dispensary.name}',
-        'active_nav': 'pharmacy',
+        "dispensary": dispensary,
+        "page_title": f"Delete Dispensary - {dispensary.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/delete_dispensary.html', context)
+    return render(request, "pharmacy/delete_dispensary.html", context)
 
 
 @login_required
@@ -5823,9 +6809,14 @@ def dispensary_inventory(request, dispensary_id):
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
 
     # Check permission for viewing inventory (viewership is more permissive than editing)
-    if not (user_has_inventory_edit_permission(request.user, dispensary) or request.user.is_staff):
-        messages.error(request, 'You do not have permission to view this dispensary inventory.')
-        return redirect('pharmacy:dispensary_list')
+    if not (
+        user_has_inventory_edit_permission(request.user, dispensary)
+        or request.user.is_staff
+    ):
+        messages.error(
+            request, "You do not have permission to view this dispensary inventory."
+        )
+        return redirect("pharmacy:dispensary_list")
 
     # Check edit permissions for template
     can_edit_inventory = user_has_inventory_edit_permission(request.user, dispensary)
@@ -5833,87 +6824,113 @@ def dispensary_inventory(request, dispensary_id):
     # Get inventory items from ActiveStoreInventory (new) and MedicationInventory (legacy)
     active_store_items = ActiveStoreInventory.objects.filter(
         active_store__dispensary=dispensary
-    ).select_related('medication', 'active_store')
+    ).select_related("medication", "active_store")
 
     legacy_items = MedicationInventory.objects.filter(
         dispensary=dispensary
-    ).select_related('medication', 'dispensary')
+    ).select_related("medication", "dispensary")
 
     # Merge duplicate medications from both sources
     # Create a dictionary keyed by medication_id to merge quantities
     medication_inventory = {}
-    
+
     # Process active store items
     for item in active_store_items:
         med_id = item.medication.id
         if med_id not in medication_inventory:
             medication_inventory[med_id] = {
-                'medication': item.medication,
-                'stock_quantity': item.stock_quantity,
-                'reorder_level': getattr(item, 'reorder_level', None),
-                'last_restock_date': getattr(item, 'last_restock_date', None),
-                'sources': ['active_store'],
-                'ids': [item.id],
-                'objects': [item],
-                'batch_number': getattr(item, 'batch_number', None),
-                'expiry_date': getattr(item, 'expiry_date', None),
+                "medication": item.medication,
+                "stock_quantity": item.stock_quantity,
+                "reorder_level": getattr(item, "reorder_level", None),
+                "last_restock_date": getattr(item, "last_restock_date", None),
+                "sources": ["active_store"],
+                "ids": [item.id],
+                "objects": [item],
+                "batch_number": getattr(item, "batch_number", None),
+                "expiry_date": getattr(item, "expiry_date", None),
             }
         else:
             # Merge quantities
-            medication_inventory[med_id]['stock_quantity'] += item.stock_quantity
-            medication_inventory[med_id]['sources'].append('active_store')
-            medication_inventory[med_id]['ids'].append(item.id)
-            medication_inventory[med_id]['objects'].append(item)
+            medication_inventory[med_id]["stock_quantity"] += item.stock_quantity
+            medication_inventory[med_id]["sources"].append("active_store")
+            medication_inventory[med_id]["ids"].append(item.id)
+            medication_inventory[med_id]["objects"].append(item)
             # Use the most recent restock date
-            if item.last_restock_date and medication_inventory[med_id]['last_restock_date']:
-                if item.last_restock_date > medication_inventory[med_id]['last_restock_date']:
-                    medication_inventory[med_id]['last_restock_date'] = item.last_restock_date
+            if (
+                item.last_restock_date
+                and medication_inventory[med_id]["last_restock_date"]
+            ):
+                if (
+                    item.last_restock_date
+                    > medication_inventory[med_id]["last_restock_date"]
+                ):
+                    medication_inventory[med_id]["last_restock_date"] = (
+                        item.last_restock_date
+                    )
             elif item.last_restock_date:
-                medication_inventory[med_id]['last_restock_date'] = item.last_restock_date
+                medication_inventory[med_id]["last_restock_date"] = (
+                    item.last_restock_date
+                )
 
     # Process legacy items
     for item in legacy_items:
         med_id = item.medication.id
         if med_id not in medication_inventory:
             medication_inventory[med_id] = {
-                'medication': item.medication,
-                'stock_quantity': item.stock_quantity,
-                'reorder_level': getattr(item, 'reorder_level', None),
-                'last_restock_date': item.last_restock_date,
-                'sources': ['legacy'],
-                'ids': [item.id],
-                'objects': [item],
-                'batch_number': getattr(item, 'batch_number', None),
-                'expiry_date': getattr(item, 'expiry_date', None),
+                "medication": item.medication,
+                "stock_quantity": item.stock_quantity,
+                "reorder_level": getattr(item, "reorder_level", None),
+                "last_restock_date": item.last_restock_date,
+                "sources": ["legacy"],
+                "ids": [item.id],
+                "objects": [item],
+                "batch_number": getattr(item, "batch_number", None),
+                "expiry_date": getattr(item, "expiry_date", None),
             }
         else:
             # Merge quantities
-            medication_inventory[med_id]['stock_quantity'] += item.stock_quantity
-            medication_inventory[med_id]['sources'].append('legacy')
-            medication_inventory[med_id]['ids'].append(item.id)
-            medication_inventory[med_id]['objects'].append(item)
+            medication_inventory[med_id]["stock_quantity"] += item.stock_quantity
+            medication_inventory[med_id]["sources"].append("legacy")
+            medication_inventory[med_id]["ids"].append(item.id)
+            medication_inventory[med_id]["objects"].append(item)
             # Use the most recent restock date
-            if item.last_restock_date and medication_inventory[med_id]['last_restock_date']:
-                if item.last_restock_date > medication_inventory[med_id]['last_restock_date']:
-                    medication_inventory[med_id]['last_restock_date'] = item.last_restock_date
+            if (
+                item.last_restock_date
+                and medication_inventory[med_id]["last_restock_date"]
+            ):
+                if (
+                    item.last_restock_date
+                    > medication_inventory[med_id]["last_restock_date"]
+                ):
+                    medication_inventory[med_id]["last_restock_date"] = (
+                        item.last_restock_date
+                    )
             elif item.last_restock_date:
-                medication_inventory[med_id]['last_restock_date'] = item.last_restock_date
+                medication_inventory[med_id]["last_restock_date"] = (
+                    item.last_restock_date
+                )
 
     # Convert to list for template
     inventory_items = list(medication_inventory.values())
-    
+
     # Sort by medication name for consistent display
-    inventory_items.sort(key=lambda x: (x['medication'].name.lower() if x['medication'] and x['medication'].name else ''))
+    inventory_items.sort(
+        key=lambda x: (
+            x["medication"].name.lower()
+            if x["medication"] and x["medication"].name
+            else ""
+        )
+    )
 
     # Calculate inventory statistics
     total_items = len(inventory_items)
-    in_stock_count = sum(1 for item in inventory_items if item['stock_quantity'] > 0)
+    in_stock_count = sum(1 for item in inventory_items if item["stock_quantity"] > 0)
     low_stock_count = 0
     out_of_stock_count = 0
 
     for item in inventory_items:
-        stock_qty = item['stock_quantity']
-        reorder_level = item['reorder_level'] or 10  # Default to 10 if not set
+        stock_qty = item["stock_quantity"]
+        reorder_level = item["reorder_level"] or 10  # Default to 10 if not set
 
         if stock_qty == 0:
             out_of_stock_count += 1
@@ -5921,21 +6938,21 @@ def dispensary_inventory(request, dispensary_id):
             low_stock_count += 1
 
     context = {
-        'dispensary': dispensary,
-        'inventory_items': inventory_items,
-        'title': f'{dispensary.name} Inventory',
-        'page_title': f'{dispensary.name} Inventory',
-        'active_nav': 'pharmacy',
-        'can_edit_inventory': can_edit_inventory,
-        'current_user': request.user,
-        'total_items': total_items,
-        'in_stock_count': in_stock_count,
-        'low_stock_count': low_stock_count,
-        'out_of_stock_count': out_of_stock_count,
-        'today': timezone.now().date(),
+        "dispensary": dispensary,
+        "inventory_items": inventory_items,
+        "title": f"{dispensary.name} Inventory",
+        "page_title": f"{dispensary.name} Inventory",
+        "active_nav": "pharmacy",
+        "can_edit_inventory": can_edit_inventory,
+        "current_user": request.user,
+        "total_items": total_items,
+        "in_stock_count": in_stock_count,
+        "low_stock_count": low_stock_count,
+        "out_of_stock_count": out_of_stock_count,
+        "today": timezone.now().date(),
     }
 
-    return render(request, 'pharmacy/dispensary_inventory.html', context)
+    return render(request, "pharmacy/dispensary_inventory.html", context)
 
 
 @login_required
@@ -5945,12 +6962,15 @@ def add_dispensary_inventory_item(request, dispensary_id):
 
     # Check permission
     if not user_has_inventory_edit_permission(request.user, dispensary):
-        messages.error(request, 'You do not have permission to add inventory items to this dispensary.')
-        return redirect('pharmacy:dispensary_inventory', dispensary_id=dispensary.id)
+        messages.error(
+            request,
+            "You do not have permission to add inventory items to this dispensary.",
+        )
+        return redirect("pharmacy:dispensary_inventory", dispensary_id=dispensary.id)
 
     # Prefer creating an ActiveStoreInventory tied to the dispensary's active store if present
-    active_store = getattr(dispensary, 'active_store', None)
-    if request.method == 'POST':
+    active_store = getattr(dispensary, "active_store", None)
+    if request.method == "POST":
         if active_store:
             form = ActiveStoreInventoryForm(request.POST)
         else:
@@ -5961,30 +6981,32 @@ def add_dispensary_inventory_item(request, dispensary_id):
             # If using legacy MedicationInventory form and dispensary provided, ensure association
             if isinstance(new_item, MedicationInventory) or not active_store:
                 # Ensure dispensary set for legacy model
-                if hasattr(new_item, 'dispensary'):
+                if hasattr(new_item, "dispensary"):
                     new_item.dispensary = dispensary
             else:
                 # For ActiveStoreInventory, set active_store if not provided
-                if hasattr(new_item, 'active_store') and not new_item.active_store:
+                if hasattr(new_item, "active_store") and not new_item.active_store:
                     new_item.active_store = active_store
 
             new_item.save()
-            messages.success(request, 'Inventory item added successfully.')
-            return redirect('pharmacy:dispensary_inventory', dispensary_id=dispensary.id)
+            messages.success(request, "Inventory item added successfully.")
+            return redirect(
+                "pharmacy:dispensary_inventory", dispensary_id=dispensary.id
+            )
     else:
         # Prepopulate forms
         if active_store:
-            form = ActiveStoreInventoryForm(initial={'active_store': active_store.id})
+            form = ActiveStoreInventoryForm(initial={"active_store": active_store.id})
         else:
-            form = MedicationInventoryForm(initial={'dispensary': dispensary.id})
+            form = MedicationInventoryForm(initial={"dispensary": dispensary.id})
 
     context = {
-        'form': form,
-        'dispensary': dispensary,
-        'page_title': f'Add Inventory Item - {dispensary.name}',
-        'active_nav': 'pharmacy',
+        "form": form,
+        "dispensary": dispensary,
+        "page_title": f"Add Inventory Item - {dispensary.name}",
+        "active_nav": "pharmacy",
     }
-    return render(request, 'pharmacy/add_dispensary_inventory_item.html', context)
+    return render(request, "pharmacy/add_dispensary_inventory_item.html", context)
 
 
 @login_required
@@ -5994,47 +7016,54 @@ def edit_dispensary_inventory_item(request, dispensary_id, inventory_item_id):
 
     # Check permission
     if not user_has_inventory_edit_permission(request.user, dispensary):
-        messages.error(request, 'You do not have permission to edit inventory items in this dispensary.')
-        return redirect('pharmacy:dispensary_inventory', dispensary_id=dispensary.id)
+        messages.error(
+            request,
+            "You do not have permission to edit inventory items in this dispensary.",
+        )
+        return redirect("pharmacy:dispensary_inventory", dispensary_id=dispensary.id)
 
     # Support both ActiveStoreInventory (new) and MedicationInventory (legacy)
     inventory_item = None
     source = None
     try:
         inventory_item = ActiveStoreInventory.objects.get(id=inventory_item_id)
-        source = 'active_store'
+        source = "active_store"
     except ActiveStoreInventory.DoesNotExist:
         try:
             inventory_item = MedicationInventory.objects.get(id=inventory_item_id)
-            source = 'legacy'
+            source = "legacy"
         except MedicationInventory.DoesNotExist:
-            messages.error(request, 'Inventory item not found.')
-            return redirect('pharmacy:dispensary_inventory', dispensary_id=dispensary.id)
+            messages.error(request, "Inventory item not found.")
+            return redirect(
+                "pharmacy:dispensary_inventory", dispensary_id=dispensary.id
+            )
 
-    if source == 'active_store':
+    if source == "active_store":
         form_class = ActiveStoreInventoryForm
         instance = inventory_item
     else:
         form_class = MedicationInventoryForm
         instance = inventory_item
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = form_class(request.POST, instance=instance)
         if form.is_valid():
             obj = form.save()
-            messages.success(request, 'Inventory item updated successfully.')
-            return redirect('pharmacy:dispensary_inventory', dispensary_id=dispensary.id)
+            messages.success(request, "Inventory item updated successfully.")
+            return redirect(
+                "pharmacy:dispensary_inventory", dispensary_id=dispensary.id
+            )
     else:
         form = form_class(instance=instance)
 
     context = {
-        'form': form,
-        'dispensary': dispensary,
-        'inventory_item': inventory_item,
-        'page_title': f'Edit Inventory Item - {dispensary.name}',
-        'active_nav': 'pharmacy',
+        "form": form,
+        "dispensary": dispensary,
+        "inventory_item": inventory_item,
+        "page_title": f"Edit Inventory Item - {dispensary.name}",
+        "active_nav": "pharmacy",
     }
-    return render(request, 'pharmacy/edit_dispensary_inventory_item.html', context)
+    return render(request, "pharmacy/edit_dispensary_inventory_item.html", context)
 
 
 @login_required
@@ -6044,39 +7073,41 @@ def delete_dispensary_inventory_item(request, dispensary_id, inventory_item_id):
 
     # Check permission
     if not user_has_inventory_edit_permission(request.user, dispensary):
-        messages.error(request, 'You do not have permission to delete inventory items in this dispensary.')
-        return redirect('pharmacy:dispensary_inventory', dispensary_id=dispensary.id)
+        messages.error(
+            request,
+            "You do not have permission to delete inventory items in this dispensary.",
+        )
+        return redirect("pharmacy:dispensary_inventory", dispensary_id=dispensary.id)
 
     # Support both ActiveStoreInventory (new) and MedicationInventory (legacy)
     inventory_item = None
     source = None
     try:
         inventory_item = ActiveStoreInventory.objects.get(id=inventory_item_id)
-        source = 'active_store'
+        source = "active_store"
     except ActiveStoreInventory.DoesNotExist:
         try:
             inventory_item = MedicationInventory.objects.get(id=inventory_item_id)
-            source = 'legacy'
+            source = "legacy"
         except MedicationInventory.DoesNotExist:
-            messages.error(request, 'Inventory item not found.')
-            return redirect('pharmacy:dispensary_inventory', dispensary_id=dispensary.id)
+            messages.error(request, "Inventory item not found.")
+            return redirect(
+                "pharmacy:dispensary_inventory", dispensary_id=dispensary.id
+            )
 
-    if request.method == 'POST':
+    if request.method == "POST":
         inventory_item.delete()
-        messages.success(request, 'Inventory item deleted successfully.')
-        return redirect('pharmacy:dispensary_inventory', dispensary_id=dispensary.id)
+        messages.success(request, "Inventory item deleted successfully.")
+        return redirect("pharmacy:dispensary_inventory", dispensary_id=dispensary.id)
 
     context = {
-        'dispensary': dispensary,
-        'inventory_item': inventory_item,
-        'source': source,
-        'page_title': f'Delete Inventory Item - {dispensary.name}',
-        'active_nav': 'pharmacy',
+        "dispensary": dispensary,
+        "inventory_item": inventory_item,
+        "source": source,
+        "page_title": f"Delete Inventory Item - {dispensary.name}",
+        "active_nav": "pharmacy",
     }
-    return render(request, 'pharmacy/delete_dispensary_inventory_item.html', context)
-
-
-
+    return render(request, "pharmacy/delete_dispensary_inventory_item.html", context)
 
 
 @login_required
@@ -6084,23 +7115,29 @@ def add_medication_stock(request):
     """View for adding medication stock"""
     # Implementation for adding medication stock
     pass
+
+
 @login_required
 def quick_add_stock(request):
     """View for quick adding stock via AJAX"""
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'error': 'Only POST method allowed'}, status=405)
+    if request.method != "POST":
+        return JsonResponse(
+            {"success": False, "error": "Only POST method allowed"}, status=405
+        )
 
     try:
         data = json.loads(request.body)
-        medication_id = data.get('medication_id')
-        dispensary_id = data.get('dispensary_id')
-        quantity_to_add = data.get('quantity_to_add')
+        medication_id = data.get("medication_id")
+        dispensary_id = data.get("dispensary_id")
+        quantity_to_add = data.get("quantity_to_add")
 
         if not all([medication_id, dispensary_id, quantity_to_add]):
-            return JsonResponse({'success': False, 'error': 'Missing required fields'})
+            return JsonResponse({"success": False, "error": "Missing required fields"})
 
         if quantity_to_add <= 0:
-            return JsonResponse({'success': False, 'error': 'Quantity must be greater than 0'})
+            return JsonResponse(
+                {"success": False, "error": "Quantity must be greater than 0"}
+            )
 
         # Get medication and dispensary
         medication = get_object_or_404(Medication, id=medication_id)
@@ -6110,18 +7147,19 @@ def quick_add_stock(request):
         try:
             # Try MedicationInventory first (legacy)
             inventory = MedicationInventory.objects.get(
-                medication=medication,
-                dispensary=dispensary
+                medication=medication, dispensary=dispensary
             )
             inventory.stock_quantity += quantity_to_add
             inventory.last_restock_date = timezone.now()
             inventory.save()
 
-            return JsonResponse({
-                'success': True,
-                'new_stock_quantity': inventory.stock_quantity,
-                'message': f'Successfully added {quantity_to_add} units to {medication.name}'
-            })
+            return JsonResponse(
+                {
+                    "success": True,
+                    "new_stock_quantity": inventory.stock_quantity,
+                    "message": f"Successfully added {quantity_to_add} units to {medication.name}",
+                }
+            )
 
         except MedicationInventory.DoesNotExist:
             # Create new inventory record
@@ -6129,36 +7167,39 @@ def quick_add_stock(request):
                 medication=medication,
                 dispensary=dispensary,
                 stock_quantity=quantity_to_add,
-                last_restock_date=timezone.now()
+                last_restock_date=timezone.now(),
             )
 
-            return JsonResponse({
-                'success': True,
-                'new_stock_quantity': inventory.stock_quantity,
-                'message': f'Successfully added {quantity_to_add} units to {medication.name}'
-            })
+            return JsonResponse(
+                {
+                    "success": True,
+                    "new_stock_quantity": inventory.stock_quantity,
+                    "message": f"Successfully added {quantity_to_add} units to {medication.name}",
+                }
+            )
 
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'})
+        return JsonResponse({"success": False, "error": "Invalid JSON data"})
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+        return JsonResponse({"success": False, "error": str(e)})
 
 
 @login_required
 def medication_autocomplete(request):
     """API endpoint for medication autocomplete"""
-    term = request.GET.get('term', '')
-    medications = Medication.objects.filter(
-        name__icontains=term
-    )[:10]
+    term = request.GET.get("term", "")
+    medications = Medication.objects.filter(name__icontains=term)[:10]
 
-    data = [{
-        'id': med.id,
-        'name': med.name,
-        'generic_name': med.generic_name,
-        'dosage_form': med.dosage_form,
-        'strength': med.strength,
-    } for med in medications]
+    data = [
+        {
+            "id": med.id,
+            "name": med.name,
+            "generic_name": med.generic_name,
+            "dosage_form": med.dosage_form,
+            "strength": med.strength,
+        }
+        for med in medications
+    ]
 
     return JsonResponse(data, safe=False)
 
@@ -6167,60 +7208,65 @@ def medication_autocomplete(request):
 def get_stock_quantities(request, prescription_id):
     """AJAX endpoint to get stock quantities for prescription items at a given dispensary"""
     prescription = get_object_or_404(Prescription, id=prescription_id)
-    dispensary_id = request.GET.get('dispensary_id') or request.POST.get('dispensary_id')
+    dispensary_id = request.GET.get("dispensary_id") or request.POST.get(
+        "dispensary_id"
+    )
     response = {
-        'success': False,
-        'stock_quantities': [],
-        'dispensary': None,
-        'message': ''
+        "success": False,
+        "stock_quantities": [],
+        "dispensary": None,
+        "message": "",
     }
 
     if not dispensary_id:
-        response['message'] = 'No dispensary specified.'
+        response["message"] = "No dispensary specified."
         return JsonResponse(response, status=400)
 
     try:
         dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
     except Dispensary.DoesNotExist:
-        response['message'] = 'Dispensary not found.'
+        response["message"] = "Dispensary not found."
         return JsonResponse(response, status=404)
 
     # Build stock info for each prescription item
     stock_quantities = []
-    for p_item in prescription.items.select_related('medication'):
+    for p_item in prescription.items.select_related("medication"):
         # Check both inventory models
         stock_qty = 0
         try:
             # First try MedicationInventory (legacy)
-            med_inv = MedicationInventory.objects.get(medication=p_item.medication, dispensary=dispensary)
+            med_inv = MedicationInventory.objects.get(
+                medication=p_item.medication, dispensary=dispensary
+            )
             stock_qty = med_inv.stock_quantity
         except MedicationInventory.DoesNotExist:
             # If not found, try ActiveStoreInventory (new)
             try:
-                active_store = getattr(dispensary, 'active_store', None)
+                active_store = getattr(dispensary, "active_store", None)
                 if active_store:
                     # Handle multiple inventory records by summing all available stock
                     inventories = ActiveStoreInventory.objects.filter(
-                        medication=p_item.medication,
-                        active_store=active_store
+                        medication=p_item.medication, active_store=active_store
                     )
                     stock_qty = sum(inv.stock_quantity for inv in inventories)
             except Exception:
                 stock_qty = 0
 
-        stock_quantities.append({
-            'prescription_item_id': p_item.id,
-            'medication_id': p_item.medication.id,
-            'medication_name': p_item.medication.name,
-            'prescribed_quantity': p_item.quantity,
-            'quantity_dispensed_so_far': p_item.quantity_dispensed_so_far,
-            'remaining_to_dispense': p_item.remaining_quantity_to_dispense,
-            'stock_quantity': stock_qty,
-        })
+        stock_quantities.append(
+            {
+                "prescription_item_id": p_item.id,
+                "medication_id": p_item.medication.id,
+                "medication_name": p_item.medication.name,
+                "prescribed_quantity": p_item.quantity,
+                "quantity_dispensed_so_far": p_item.quantity_dispensed_so_far,
+                "remaining_to_dispense": p_item.remaining_quantity_to_dispense,
+                "stock_quantity": stock_qty,
+            }
+        )
 
-    response['success'] = True
-    response['stock_quantities'] = stock_quantities
-    response['dispensary'] = {'id': dispensary.id, 'name': dispensary.name}
+    response["success"] = True
+    response["stock_quantities"] = stock_quantities
+    response["dispensary"] = {"id": dispensary.id, "name": dispensary.name}
     return JsonResponse(response)
 
 
@@ -6229,34 +7275,37 @@ def low_stock_alerts(request):
     """View to display low stock medications and send alerts"""
     # Get all active store inventories that are low on stock
     low_stock_items = ActiveStoreInventory.objects.filter(
-        stock_quantity__lte=models.F('reorder_level')
-    ).select_related('medication', 'active_store__dispensary')
+        stock_quantity__lte=models.F("reorder_level")
+    ).select_related("medication", "active_store__dispensary")
 
     # Get expired medications
     from django.utils import timezone
+
     expired_items = ActiveStoreInventory.objects.filter(
         expiry_date__lte=timezone.now().date()
-    ).select_related('medication', 'active_store__dispensary')
+    ).select_related("medication", "active_store__dispensary")
 
     # Get medications expiring within 90 days (changed from 30 days)
     from datetime import timedelta
+
     near_expiry_items = ActiveStoreInventory.objects.filter(
         expiry_date__gt=timezone.now().date(),
-        expiry_date__lte=timezone.now().date() + timedelta(days=90)
-    ).select_related('medication', 'active_store__dispensary')
+        expiry_date__lte=timezone.now().date() + timedelta(days=90),
+    ).select_related("medication", "active_store__dispensary")
 
     context = {
-        'low_stock_items': low_stock_items,
-        'expired_items': expired_items,
-        'near_expiry_items': near_expiry_items,
-        'page_title': 'Pharmacy Alerts',
-        'active_nav': 'pharmacy',
+        "low_stock_items": low_stock_items,
+        "expired_items": expired_items,
+        "near_expiry_items": near_expiry_items,
+        "page_title": "Pharmacy Alerts",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/alerts.html', context)
+    return render(request, "pharmacy/alerts.html", context)
 
 
 # Medical Pack Management Views
+
 
 @login_required
 def medical_pack_list(request):
@@ -6266,44 +7315,44 @@ def medical_pack_list(request):
     form = PackFilterForm(request.GET)
     # Use proper prefetch for performance with the correct relationship
     try:
-        packs = MedicalPack.objects.prefetch_related('items__medication')
+        packs = MedicalPack.objects.prefetch_related("items__medication")
     except Exception as e:
-        messages.error(request, f'Error loading medical packs: {str(e)}')
+        messages.error(request, f"Error loading medical packs: {str(e)}")
         packs = MedicalPack.objects.none()
 
     # Apply filters
     if form.is_valid():
-        if form.cleaned_data.get('search'):
-            search = form.cleaned_data['search']
+        if form.cleaned_data.get("search"):
+            search = form.cleaned_data["search"]
             packs = packs.filter(
-                Q(name__icontains=search) |
-                Q(description__icontains=search) |
-                Q(items__medication__name__icontains=search)
+                Q(name__icontains=search)
+                | Q(description__icontains=search)
+                | Q(items__medication__name__icontains=search)
             ).distinct()
 
-        if form.cleaned_data.get('pack_type'):
-            packs = packs.filter(pack_type=form.cleaned_data['pack_type'])
+        if form.cleaned_data.get("pack_type"):
+            packs = packs.filter(pack_type=form.cleaned_data["pack_type"])
 
-        if form.cleaned_data.get('risk_level'):
-            packs = packs.filter(risk_level=form.cleaned_data['risk_level'])
+        if form.cleaned_data.get("risk_level"):
+            packs = packs.filter(risk_level=form.cleaned_data["risk_level"])
 
-        if form.cleaned_data.get('is_active'):
-            is_active = form.cleaned_data['is_active'] == 'true'
+        if form.cleaned_data.get("is_active"):
+            is_active = form.cleaned_data["is_active"] == "true"
             packs = packs.filter(is_active=is_active)
 
     # Pagination
     paginator = Paginator(packs, 12)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
     context = {
-        'form': form,
-        'page_obj': page_obj,
-        'page_title': 'Medical Packs',
-        'active_nav': 'pharmacy',
+        "form": form,
+        "page_obj": page_obj,
+        "page_title": "Medical Packs",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/medical_packs/pack_list.html', context)
+    return render(request, "pharmacy/medical_packs/pack_list.html", context)
 
 
 @login_required
@@ -6315,14 +7364,14 @@ def medical_pack_detail(request, pack_id):
     can_order, order_message = pack.can_be_ordered()
 
     context = {
-        'pack': pack,
-        'can_order': can_order,
-        'order_message': order_message,
-        'page_title': f'Pack Details - {pack.name}',
-        'active_nav': 'pharmacy',
+        "pack": pack,
+        "can_order": can_order,
+        "order_message": order_message,
+        "page_title": f"Pack Details - {pack.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/medical_packs/pack_detail.html', context)
+    return render(request, "pharmacy/medical_packs/pack_detail.html", context)
 
 
 @login_required
@@ -6330,24 +7379,26 @@ def create_medical_pack(request):
     """View for creating a new medical pack"""
     from .forms import MedicalPackForm
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = MedicalPackForm(request.POST)
         if form.is_valid():
             pack = form.save(commit=False)
             pack.created_by = request.user
             pack.save()
-            messages.success(request, f'Medical pack "{pack.name}" created successfully.')
-            return redirect('pharmacy:medical_pack_detail', pack_id=pack.id)
+            messages.success(
+                request, f'Medical pack "{pack.name}" created successfully.'
+            )
+            return redirect("pharmacy:medical_pack_detail", pack_id=pack.id)
     else:
         form = MedicalPackForm()
 
     context = {
-        'form': form,
-        'page_title': 'Create Medical Pack',
-        'active_nav': 'pharmacy',
+        "form": form,
+        "page_title": "Create Medical Pack",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/medical_packs/pack_form.html', context)
+    return render(request, "pharmacy/medical_packs/pack_form.html", context)
 
 
 @login_required
@@ -6357,23 +7408,25 @@ def edit_medical_pack(request, pack_id):
 
     pack = get_object_or_404(MedicalPack, id=pack_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = MedicalPackForm(request.POST, instance=pack)
         if form.is_valid():
             form.save()
-            messages.success(request, f'Medical pack "{pack.name}" updated successfully.')
-            return redirect('pharmacy:medical_pack_detail', pack_id=pack.id)
+            messages.success(
+                request, f'Medical pack "{pack.name}" updated successfully.'
+            )
+            return redirect("pharmacy:medical_pack_detail", pack_id=pack.id)
     else:
         form = MedicalPackForm(instance=pack)
 
     context = {
-        'form': form,
-        'pack': pack,
-        'page_title': f'Edit Pack - {pack.name}',
-        'active_nav': 'pharmacy',
+        "form": form,
+        "pack": pack,
+        "page_title": f"Edit Pack - {pack.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/medical_packs/pack_form.html', context)
+    return render(request, "pharmacy/medical_packs/pack_form.html", context)
 
 
 @login_required
@@ -6383,30 +7436,32 @@ def manage_pack_items(request, pack_id):
 
     pack = get_object_or_404(MedicalPack, id=pack_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = MedicalPackItemForm(request.POST)
         if form.is_valid():
             pack_item = form.save(commit=False)
             pack_item.pack = pack
             pack_item.save()
-            if hasattr(pack, 'update_total_cost'):
+            if hasattr(pack, "update_total_cost"):
                 pack.update_total_cost()
-            messages.success(request, f'Added {pack_item.medication.name} to pack.')
-            return redirect('pharmacy:manage_pack_items', pack_id=pack.id)
+            messages.success(request, f"Added {pack_item.medication.name} to pack.")
+            return redirect("pharmacy:manage_pack_items", pack_id=pack.id)
     else:
         form = MedicalPackItemForm()
 
-    pack_items = pack.items.select_related('medication').order_by('order', 'medication__name')
+    pack_items = pack.items.select_related("medication").order_by(
+        "order", "medication__name"
+    )
 
     context = {
-        'pack': pack,
-        'pack_items': pack_items,
-        'form': form,
-        'page_title': f'Manage Items - {pack.name}',
-        'active_nav': 'pharmacy',
+        "pack": pack,
+        "pack_items": pack_items,
+        "form": form,
+        "page_title": f"Manage Items - {pack.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/medical_packs/manage_pack_items.html', context)
+    return render(request, "pharmacy/medical_packs/manage_pack_items.html", context)
 
 
 @login_required
@@ -6415,22 +7470,22 @@ def delete_pack_item(request, pack_id, item_id):
     pack = get_object_or_404(MedicalPack, id=pack_id)
     pack_item = get_object_or_404(MedicalPackItem, id=item_id, pack=pack)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         medication_name = pack_item.medication.name
         pack_item.delete()
-        if hasattr(pack, 'update_total_cost'):
+        if hasattr(pack, "update_total_cost"):
             pack.update_total_cost()
-        messages.success(request, f'Removed {medication_name} from pack.')
-        return redirect('pharmacy:manage_pack_items', pack_id=pack.id)
+        messages.success(request, f"Removed {medication_name} from pack.")
+        return redirect("pharmacy:manage_pack_items", pack_id=pack.id)
 
     context = {
-        'pack': pack,
-        'pack_item': pack_item,
-        'page_title': f'Delete Item - {pack_item.medication.name}',
-        'active_nav': 'pharmacy',
+        "pack": pack,
+        "pack_item": pack_item,
+        "page_title": f"Delete Item - {pack_item.medication.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/medical_packs/confirm_delete_item.html', context)
+    return render(request, "pharmacy/medical_packs/confirm_delete_item.html", context)
 
 
 @login_required
@@ -6441,7 +7496,7 @@ def edit_pack_item(request, pack_id, item_id):
     pack = get_object_or_404(MedicalPack, id=pack_id)
     pack_item = get_object_or_404(MedicalPackItem, id=item_id, pack=pack)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = MedicalPackItemForm(request.POST, instance=pack_item)
         if form.is_valid():
             updated_item = form.save(commit=False)
@@ -6449,47 +7504,52 @@ def edit_pack_item(request, pack_id, item_id):
             updated_item.save()
 
             # Update pack total cost
-            if hasattr(pack, 'update_total_cost'):
+            if hasattr(pack, "update_total_cost"):
                 pack.update_total_cost()
 
-            messages.success(request, f'Updated {updated_item.medication.name} in pack.')
+            messages.success(
+                request, f"Updated {updated_item.medication.name} in pack."
+            )
 
             # Return JSON response for AJAX requests
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                 from django.http import JsonResponse
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Updated {updated_item.medication.name} successfully.',
-                    'item': {
-                        'id': updated_item.id,
-                        'medication_name': updated_item.medication.name,
-                        'quantity': updated_item.quantity,
-                        'total_cost': float(updated_item.get_total_cost()),
-                        'unit_price': float(updated_item.medication.price),
-                    }
-                })
 
-            return redirect('pharmacy:manage_pack_items', pack_id=pack.id)
+                return JsonResponse(
+                    {
+                        "success": True,
+                        "message": f"Updated {updated_item.medication.name} successfully.",
+                        "item": {
+                            "id": updated_item.id,
+                            "medication_name": updated_item.medication.name,
+                            "quantity": updated_item.quantity,
+                            "total_cost": float(updated_item.get_total_cost()),
+                            "unit_price": float(updated_item.medication.price),
+                        },
+                    }
+                )
+
+            return redirect("pharmacy:manage_pack_items", pack_id=pack.id)
         else:
             # Handle form errors for AJAX requests
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                 from django.http import JsonResponse
-                return JsonResponse({
-                    'success': False,
-                    'errors': form.errors
-                }, status=400)
+
+                return JsonResponse(
+                    {"success": False, "errors": form.errors}, status=400
+                )
     else:
         form = MedicalPackItemForm(instance=pack_item)
 
     context = {
-        'pack': pack,
-        'pack_item': pack_item,
-        'form': form,
-        'page_title': f'Edit Item - {pack_item.medication.name}',
-        'active_nav': 'pharmacy',
+        "pack": pack,
+        "pack_item": pack_item,
+        "form": form,
+        "page_title": f"Edit Item - {pack_item.medication.name}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/medical_packs/edit_pack_item.html', context)
+    return render(request, "pharmacy/medical_packs/edit_pack_item.html", context)
 
 
 @login_required
@@ -6503,9 +7563,9 @@ def create_pack_order(request, pack_id=None):
         pack = get_object_or_404(MedicalPack, id=pack_id)
 
     # Check for surgery or labor record context
-    surgery_id = request.GET.get('surgery_id')
-    labor_id = request.GET.get('labor_id')
-    patient_id = request.GET.get('patient_id')
+    surgery_id = request.GET.get("surgery_id")
+    labor_id = request.GET.get("labor_id")
+    patient_id = request.GET.get("patient_id")
 
     surgery = None
     labor_record = None
@@ -6514,40 +7574,42 @@ def create_pack_order(request, pack_id=None):
     if surgery_id:
         try:
             from theatre.models import Surgery
+
             surgery = Surgery.objects.get(id=surgery_id)
             patient = surgery.patient
         except Surgery.DoesNotExist:
-            messages.error(request, 'Surgery not found.')
-            return redirect('pharmacy:medical_pack_list')
+            messages.error(request, "Surgery not found.")
+            return redirect("pharmacy:medical_pack_list")
         except ImportError:
-            messages.error(request, 'Surgery module not available.')
-            return redirect('pharmacy:medical_pack_list')
+            messages.error(request, "Surgery module not available.")
+            return redirect("pharmacy:medical_pack_list")
 
     if labor_id:
         try:
             from labor.models import LaborRecord
+
             labor_record = LaborRecord.objects.get(id=labor_id)
             patient = labor_record.patient
         except LaborRecord.DoesNotExist:
-            messages.error(request, 'Labor record not found.')
-            return redirect('pharmacy:medical_pack_list')
+            messages.error(request, "Labor record not found.")
+            return redirect("pharmacy:medical_pack_list")
         except ImportError:
-            messages.error(request, 'Labor module not available.')
-            return redirect('pharmacy:medical_pack_list')
+            messages.error(request, "Labor module not available.")
+            return redirect("pharmacy:medical_pack_list")
 
     if patient_id and not patient:
         try:
             patient = Patient.objects.get(id=patient_id)
         except Patient.DoesNotExist:
-            messages.error(request, 'Patient not found.')
-            return redirect('pharmacy:medical_pack_list')
+            messages.error(request, "Patient not found.")
+            return redirect("pharmacy:medical_pack_list")
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = PackOrderForm(
             request.POST,
             preselected_patient=patient,
             surgery=surgery,
-            labor_record=labor_record
+            labor_record=labor_record,
         )
         if form.is_valid():
             pack_order = form.save(commit=False)
@@ -6560,98 +7622,107 @@ def create_pack_order(request, pack_id=None):
             selected_pack = pack_order.pack
 
             # Check if patient is NHIA
-            is_nhia = hasattr(selected_patient, 'patient_type') and selected_patient.patient_type == 'nhia'
+            is_nhia = (
+                hasattr(selected_patient, "patient_type")
+                and selected_patient.patient_type == "nhia"
+            )
             if is_nhia:
                 # NHIA patients require authorization code
                 if not pack_order.authorization_code:
                     messages.error(
                         request,
-                        'NHIA authorization code is required for NHIA patients. '
-                        'Please obtain authorization from desk office before creating this pack order.'
+                        "NHIA authorization code is required for NHIA patients. "
+                        "Please obtain authorization from desk office before creating this pack order.",
                     )
                     # Re-render form with error
                     context = {
-                        'form': form,
-                        'pack': pack,
-                        'surgery': surgery,
-                        'labor_record': labor_record,
-                        'patient': patient,
-                        'page_title': 'Create Pack Order',
-                        'active_nav': 'pharmacy',
+                        "form": form,
+                        "pack": pack,
+                        "surgery": surgery,
+                        "labor_record": labor_record,
+                        "patient": patient,
+                        "page_title": "Create Pack Order",
+                        "active_nav": "pharmacy",
                     }
-                    return render(request, 'pharmacy/pack_orders/pack_order_form.html', context)
+                    return render(
+                        request, "pharmacy/pack_orders/pack_order_form.html", context
+                    )
 
                 # Validate authorization code
-                if hasattr(pack_order.authorization_code, 'is_valid'):
+                if hasattr(pack_order.authorization_code, "is_valid"):
                     if not pack_order.authorization_code.is_valid():
                         messages.error(
                             request,
-                            f'Authorization code is {pack_order.authorization_code.status}. '
-                            'Please provide a valid authorization code.'
+                            f"Authorization code is {pack_order.authorization_code.status}. "
+                            "Please provide a valid authorization code.",
                         )
                         context = {
-                            'form': form,
-                            'pack': pack,
-                            'surgery': surgery,
-                            'labor_record': labor_record,
-                            'patient': patient,
-                            'page_title': 'Create Pack Order',
-                            'active_nav': 'pharmacy',
+                            "form": form,
+                            "pack": pack,
+                            "surgery": surgery,
+                            "labor_record": labor_record,
+                            "patient": patient,
+                            "page_title": "Create Pack Order",
+                            "active_nav": "pharmacy",
                         }
-                        return render(request, 'pharmacy/pack_orders/pack_order_form.html', context)
+                        return render(
+                            request,
+                            "pharmacy/pack_orders/pack_order_form.html",
+                            context,
+                        )
 
             pack_order.save()
 
             # Add pack costs to patient billing
-            _add_pack_to_patient_billing(pack_order.patient, pack_order, 'pharmacy')
+            _add_pack_to_patient_billing(pack_order.patient, pack_order, "pharmacy")
 
             # Automatically process the pack order to create prescription
             try:
                 prescription = pack_order.process_order(request.user)
                 messages.success(
                     request,
-                    f'Pack order for {pack_order.pack.name} created and processed successfully. Order ID: {pack_order.id}. '
-                    f'Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to patient billing. '
-                    f'Prescription #{prescription.id} has been created and sent to pharmacy for dispensing.'
+                    f"Pack order for {pack_order.pack.name} created and processed successfully. Order ID: {pack_order.id}. "
+                    f"Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to patient billing. "
+                    f"Prescription #{prescription.id} has been created and sent to pharmacy for dispensing.",
                 )
             except Exception as e:
                 # If processing fails, still create the order but notify user
                 messages.warning(
                     request,
-                    f'Pack order for {pack_order.pack.name} created successfully. Order ID: {pack_order.id}. '
-                    f'Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to patient billing. '
-                    f'However, there was an issue processing the order: {str(e)}. '
-                    f'Please contact pharmacy staff to complete the processing.'
+                    f"Pack order for {pack_order.pack.name} created successfully. Order ID: {pack_order.id}. "
+                    f"Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to patient billing. "
+                    f"However, there was an issue processing the order: {str(e)}. "
+                    f"Please contact pharmacy staff to complete the processing.",
                 )
                 # Send notification to pharmacy users
                 _notify_pharmacy_of_pack_order(pack_order, request.user)
 
-            return redirect('pharmacy:pack_order_detail', order_id=pack_order.id)
+            return redirect("pharmacy:pack_order_detail", order_id=pack_order.id)
     else:
         initial_data = {}
         if pack:
-            initial_data['pack'] = pack
+            initial_data["pack"] = pack
         if patient:
-            initial_data['patient'] = patient
+            initial_data["patient"] = patient
 
         form = PackOrderForm(
             initial=initial_data,
             preselected_patient=patient,
             surgery=surgery,
-            labor_record=labor_record
+            labor_record=labor_record,
         )
 
     context = {
-        'form': form,
-        'pack': pack,
-        'surgery': surgery,
-        'labor_record': labor_record,
-        'patient': patient,
-        'page_title': 'Create Pack Order',
-        'active_nav': 'pharmacy',
+        "form": form,
+        "pack": pack,
+        "surgery": surgery,
+        "labor_record": labor_record,
+        "patient": patient,
+        "page_title": "Create Pack Order",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/pack_orders/pack_order_form.html', context)
+    return render(request, "pharmacy/pack_orders/pack_order_form.html", context)
 
 
 @login_required
@@ -6662,65 +7733,71 @@ def pack_order_list(request):
     form = PackOrderFilterForm(request.GET)
 
     try:
-        orders = PackOrder.objects.select_related('pack', 'patient', 'ordered_by', 'processed_by').order_by('-ordered_at')
+        orders = PackOrder.objects.select_related(
+            "pack", "patient", "ordered_by", "processed_by"
+        ).order_by("-ordered_at")
     except Exception as e:
-        messages.error(request, f'Error loading pack orders: {str(e)}')
+        messages.error(request, f"Error loading pack orders: {str(e)}")
         orders = PackOrder.objects.none()
 
     # Apply filters
     if form.is_valid():
-        if form.cleaned_data.get('search'):
-            search = form.cleaned_data['search']
+        if form.cleaned_data.get("search"):
+            search = form.cleaned_data["search"]
             orders = orders.filter(
-                Q(pack__name__icontains=search) |
-                Q(patient__first_name__icontains=search) |
-                Q(patient__last_name__icontains=search) |
-                Q(patient__patient_id__icontains=search) |
-                Q(patient__retainership_info__retainership_reg_number__icontains=search)
+                Q(pack__name__icontains=search)
+                | Q(patient__first_name__icontains=search)
+                | Q(patient__last_name__icontains=search)
+                | Q(patient__patient_id__icontains=search)
+                | Q(
+                    patient__retainership_info__retainership_reg_number__icontains=search
+                )
             )
 
-        if form.cleaned_data.get('status'):
-            orders = orders.filter(status=form.cleaned_data['status'])
+        if form.cleaned_data.get("status"):
+            orders = orders.filter(status=form.cleaned_data["status"])
 
-        if form.cleaned_data.get('pack_type'):
-            orders = orders.filter(pack__pack_type=form.cleaned_data['pack_type'])
+        if form.cleaned_data.get("pack_type"):
+            orders = orders.filter(pack__pack_type=form.cleaned_data["pack_type"])
 
-        if form.cleaned_data.get('date_from'):
-            orders = orders.filter(ordered_at__date__gte=form.cleaned_data['date_from'])
+        if form.cleaned_data.get("date_from"):
+            orders = orders.filter(ordered_at__date__gte=form.cleaned_data["date_from"])
 
-        if form.cleaned_data.get('date_to'):
-            orders = orders.filter(ordered_at__date__lte=form.cleaned_data['date_to'])
+        if form.cleaned_data.get("date_to"):
+            orders = orders.filter(ordered_at__date__lte=form.cleaned_data["date_to"])
 
     # Pagination
     paginator = Paginator(orders, 15)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
     context = {
-        'form': form,
-        'page_obj': page_obj,
-        'page_title': 'Pack Orders',
-        'active_nav': 'pharmacy',
+        "form": form,
+        "page_obj": page_obj,
+        "page_title": "Pack Orders",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/pack_orders/pack_order_list.html', context)
+    return render(request, "pharmacy/pack_orders/pack_order_list.html", context)
 
 
 @login_required
 def pack_order_detail(request, order_id):
     """View for displaying pack order details"""
     pack_order = get_object_or_404(
-        PackOrder.objects.select_related('pack', 'patient', 'ordered_by', 'processed_by'),
-        id=order_id
+        PackOrder.objects.select_related(
+            "pack", "patient", "ordered_by", "processed_by"
+        ),
+        id=order_id,
     )
 
     context = {
-        'pack_order': pack_order,
-        'page_title': f'Pack Order #{pack_order.id}',
-        'active_nav': 'pharmacy',
+        "pack_order": pack_order,
+        "page_title": f"Pack Order #{pack_order.id}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/pack_orders/pack_order_detail.html', context)
+    return render(request, "pharmacy/pack_orders/pack_order_detail.html", context)
 
 
 @login_required
@@ -6728,17 +7805,19 @@ def approve_pack_order(request, order_id):
     """View for approving a pack order"""
     pack_order = get_object_or_404(PackOrder, id=order_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             # Get approval notes from form
-            approval_notes = request.POST.get('approval_notes', '').strip()
+            approval_notes = request.POST.get("approval_notes", "").strip()
 
             # Store approval notes in processing_notes field
             if approval_notes:
-                existing_notes = pack_order.processing_notes or ''
+                existing_notes = pack_order.processing_notes or ""
                 approval_note_entry = f"[APPROVAL - {timezone.now().strftime('%Y-%m-%d %H:%M')} by {request.user.get_full_name()}]: {approval_notes}"
                 if existing_notes:
-                    pack_order.processing_notes = f"{existing_notes}\n\n{approval_note_entry}"
+                    pack_order.processing_notes = (
+                        f"{existing_notes}\n\n{approval_note_entry}"
+                    )
                 else:
                     pack_order.processing_notes = approval_note_entry
                 pack_order.save()
@@ -6746,19 +7825,21 @@ def approve_pack_order(request, order_id):
             # Approve the order
             pack_order.approve_order(request.user)
 
-            messages.success(request, f'Pack order #{pack_order.id} approved successfully.')
+            messages.success(
+                request, f"Pack order #{pack_order.id} approved successfully."
+            )
         except ValueError as e:
             messages.error(request, str(e))
 
-        return redirect('pharmacy:pack_order_detail', order_id=pack_order.id)
+        return redirect("pharmacy:pack_order_detail", order_id=pack_order.id)
 
     context = {
-        'pack_order': pack_order,
-        'page_title': f'Approve Pack Order #{pack_order.id}',
-        'active_nav': 'pharmacy',
+        "pack_order": pack_order,
+        "page_title": f"Approve Pack Order #{pack_order.id}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/pack_orders/approve_pack_order.html', context)
+    return render(request, "pharmacy/pack_orders/approve_pack_order.html", context)
 
 
 @login_required
@@ -6766,25 +7847,27 @@ def process_pack_order(request, order_id):
     """View for processing a pack order (converting to prescription)"""
     pack_order = get_object_or_404(PackOrder, id=order_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             prescription = pack_order.process_order(request.user)
             messages.success(
                 request,
-                f'Pack order #{pack_order.id} processed successfully. Prescription #{prescription.id} created.'
+                f"Pack order #{pack_order.id} processed successfully. Prescription #{prescription.id} created.",
             )
-            return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+            return redirect(
+                "pharmacy:prescription_detail", prescription_id=prescription.id
+            )
         except ValueError as e:
             messages.error(request, str(e))
-            return redirect('pharmacy:pack_order_detail', order_id=pack_order.id)
+            return redirect("pharmacy:pack_order_detail", order_id=pack_order.id)
 
     context = {
-        'pack_order': pack_order,
-        'page_title': f'Process Pack Order #{pack_order.id}',
-        'active_nav': 'pharmacy',
+        "pack_order": pack_order,
+        "page_title": f"Process Pack Order #{pack_order.id}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/pack_orders/process_pack_order.html', context)
+    return render(request, "pharmacy/pack_orders/process_pack_order.html", context)
 
 
 @login_required
@@ -6793,7 +7876,10 @@ def pharmacy_payment_receipt(request, payment_id):
     Generate and display printable payment receipt for pharmacy payments.
     Works with both pharmacy_billing.Payment and billing.Payment models.
     """
-    from pharmacy_billing.models import Payment as PharmacyPayment, Invoice as PharmacyInvoice
+    from pharmacy_billing.models import (
+        Payment as PharmacyPayment,
+        Invoice as PharmacyInvoice,
+    )
     from billing.models import Payment as BillingPayment
     from django.utils import timezone
 
@@ -6804,7 +7890,7 @@ def pharmacy_payment_receipt(request, payment_id):
 
     try:
         payment = PharmacyPayment.objects.select_related(
-            'invoice', 'invoice__prescription', 'invoice__patient', 'received_by'
+            "invoice", "invoice__prescription", "invoice__patient", "received_by"
         ).get(id=payment_id)
         invoice = payment.invoice
         is_pharmacy_billing = True
@@ -6812,18 +7898,18 @@ def pharmacy_payment_receipt(request, payment_id):
         # Try billing.Payment
         try:
             payment = BillingPayment.objects.select_related(
-                'invoice', 'invoice__patient', 'received_by'
+                "invoice", "invoice__patient", "received_by"
             ).get(id=payment_id)
             invoice = payment.invoice
         except BillingPayment.DoesNotExist:
-            messages.error(request, 'Payment not found.')
-            return redirect('pharmacy:dashboard')
+            messages.error(request, "Payment not found.")
+            return redirect("pharmacy:dashboard")
 
     # Get prescription if available
     prescription = None
-    if hasattr(invoice, 'prescription') and invoice.prescription:
+    if hasattr(invoice, "prescription") and invoice.prescription:
         prescription = invoice.prescription
-    elif hasattr(invoice, 'prescription_invoice'):
+    elif hasattr(invoice, "prescription_invoice"):
         prescription = invoice.prescription_invoice
 
     # Build items list for receipt
@@ -6837,33 +7923,37 @@ def pharmacy_payment_receipt(request, payment_id):
             # Calculate based on NHIA status
             if prescription.patient.is_nhia_patient():
                 # NHIA patients pay 10%
-                unit_price = unit_price * Decimal('0.10')
+                unit_price = unit_price * Decimal("0.10")
 
-            items.append({
-                'description': f'{medication.name} ({medication.strength})',
-                'quantity': quantity,
-                'unit_price': unit_price,
-                'total': unit_price * quantity
-            })
+            items.append(
+                {
+                    "description": f"{medication.name} ({medication.strength})",
+                    "quantity": quantity,
+                    "unit_price": unit_price,
+                    "total": unit_price * quantity,
+                }
+            )
 
     # Prepare context
     context = {
-        'payment': payment,
-        'invoice': invoice,
-        'patient': invoice.patient if invoice else None,
-        'prescription': prescription,
-        'items': items,
-        'service_type': 'Pharmacy - Medication Dispensing',
-        'service_description': f'Prescription #{prescription.id}' if prescription else 'Medication Payment',
-        'receipt_number': f'PH-{payment.id}',
-        'hospital_name': 'Hospital Management System',
-        'hospital_address': '123 Medical Center Drive, City, State',
-        'hospital_phone': '(123) 456-7890',
-        'hospital_email': 'info@hospital.com',
-        'now': timezone.now(),
+        "payment": payment,
+        "invoice": invoice,
+        "patient": invoice.patient if invoice else None,
+        "prescription": prescription,
+        "items": items,
+        "service_type": "Pharmacy - Medication Dispensing",
+        "service_description": f"Prescription #{prescription.id}"
+        if prescription
+        else "Medication Payment",
+        "receipt_number": f"PH-{payment.id}",
+        "hospital_name": "Hospital Management System",
+        "hospital_address": "123 Medical Center Drive, City, State",
+        "hospital_phone": "(123) 456-7890",
+        "hospital_email": "info@hospital.com",
+        "now": timezone.now(),
     }
 
-    return render(request, 'payments/payment_receipt.html', context)
+    return render(request, "payments/payment_receipt.html", context)
 
 
 @login_required
@@ -6874,8 +7964,8 @@ def laboratory_payment_receipt(request, payment_id):
     from django.utils import timezone
 
     payment = get_object_or_404(
-        Payment.objects.select_related('invoice', 'invoice__patient', 'received_by'),
-        id=payment_id
+        Payment.objects.select_related("invoice", "invoice__patient", "received_by"),
+        id=payment_id,
     )
     invoice = payment.invoice
 
@@ -6890,30 +7980,34 @@ def laboratory_payment_receipt(request, payment_id):
     items = []
     if test_request:
         for test in test_request.tests.all():
-            items.append({
-                'description': test.name,
-                'quantity': 1,
-                'unit_price': test.price,
-                'total': test.price
-            })
+            items.append(
+                {
+                    "description": test.name,
+                    "quantity": 1,
+                    "unit_price": test.price,
+                    "total": test.price,
+                }
+            )
 
     context = {
-        'payment': payment,
-        'invoice': invoice,
-        'patient': invoice.patient,
-        'test_request': test_request,
-        'items': items,
-        'service_type': 'Laboratory Services',
-        'service_description': f'Test Request #{test_request.id}' if test_request else 'Laboratory Tests',
-        'receipt_number': f'LAB-{payment.id}',
-        'hospital_name': 'Hospital Management System',
-        'hospital_address': '123 Medical Center Drive, City, State',
-        'hospital_phone': '(123) 456-7890',
-        'hospital_email': 'info@hospital.com',
-        'now': timezone.now(),
+        "payment": payment,
+        "invoice": invoice,
+        "patient": invoice.patient,
+        "test_request": test_request,
+        "items": items,
+        "service_type": "Laboratory Services",
+        "service_description": f"Test Request #{test_request.id}"
+        if test_request
+        else "Laboratory Tests",
+        "receipt_number": f"LAB-{payment.id}",
+        "hospital_name": "Hospital Management System",
+        "hospital_address": "123 Medical Center Drive, City, State",
+        "hospital_phone": "(123) 456-7890",
+        "hospital_email": "info@hospital.com",
+        "now": timezone.now(),
     }
 
-    return render(request, 'payments/payment_receipt.html', context)
+    return render(request, "payments/payment_receipt.html", context)
 
 
 @login_required
@@ -6924,8 +8018,8 @@ def consultation_payment_receipt(request, payment_id):
     from django.utils import timezone
 
     payment = get_object_or_404(
-        Payment.objects.select_related('invoice', 'invoice__patient', 'received_by'),
-        id=payment_id
+        Payment.objects.select_related("invoice", "invoice__patient", "received_by"),
+        id=payment_id,
     )
     invoice = payment.invoice
 
@@ -6938,30 +8032,36 @@ def consultation_payment_receipt(request, payment_id):
         pass
 
     # Build items list
-    items = [{
-        'description': f'Consultation with Dr. {consultation.doctor.get_full_name()}' if consultation else 'Medical Consultation',
-        'quantity': 1,
-        'unit_price': payment.amount,
-        'total': payment.amount
-    }]
+    items = [
+        {
+            "description": f"Consultation with Dr. {consultation.doctor.get_full_name()}"
+            if consultation
+            else "Medical Consultation",
+            "quantity": 1,
+            "unit_price": payment.amount,
+            "total": payment.amount,
+        }
+    ]
 
     context = {
-        'payment': payment,
-        'invoice': invoice,
-        'patient': invoice.patient,
-        'consultation': consultation,
-        'items': items,
-        'service_type': 'Consultation Services',
-        'service_description': f'Consultation with Dr. {consultation.doctor.get_full_name()}' if consultation else 'Medical Consultation',
-        'receipt_number': f'CONS-{payment.id}',
-        'hospital_name': 'Hospital Management System',
-        'hospital_address': '123 Medical Center Drive, City, State',
-        'hospital_phone': '(123) 456-7890',
-        'hospital_email': 'info@hospital.com',
-        'now': timezone.now(),
+        "payment": payment,
+        "invoice": invoice,
+        "patient": invoice.patient,
+        "consultation": consultation,
+        "items": items,
+        "service_type": "Consultation Services",
+        "service_description": f"Consultation with Dr. {consultation.doctor.get_full_name()}"
+        if consultation
+        else "Medical Consultation",
+        "receipt_number": f"CONS-{payment.id}",
+        "hospital_name": "Hospital Management System",
+        "hospital_address": "123 Medical Center Drive, City, State",
+        "hospital_phone": "(123) 456-7890",
+        "hospital_email": "info@hospital.com",
+        "now": timezone.now(),
     }
 
-    return render(request, 'payments/payment_receipt.html', context)
+    return render(request, "payments/payment_receipt.html", context)
 
 
 @login_required
@@ -6972,8 +8072,8 @@ def admission_payment_receipt(request, payment_id):
     from django.utils import timezone
 
     payment = get_object_or_404(
-        Payment.objects.select_related('invoice', 'invoice__patient', 'received_by'),
-        id=payment_id
+        Payment.objects.select_related("invoice", "invoice__patient", "received_by"),
+        id=payment_id,
     )
     invoice = payment.invoice
 
@@ -6985,30 +8085,36 @@ def admission_payment_receipt(request, payment_id):
         pass
 
     # Build items list
-    items = [{
-        'description': f'Admission Fee - Ward: {admission.ward.name}' if admission and admission.ward else 'Admission Fee',
-        'quantity': 1,
-        'unit_price': payment.amount,
-        'total': payment.amount
-    }]
+    items = [
+        {
+            "description": f"Admission Fee - Ward: {admission.ward.name}"
+            if admission and admission.ward
+            else "Admission Fee",
+            "quantity": 1,
+            "unit_price": payment.amount,
+            "total": payment.amount,
+        }
+    ]
 
     context = {
-        'payment': payment,
-        'invoice': invoice,
-        'patient': invoice.patient,
-        'admission': admission,
-        'items': items,
-        'service_type': 'Admission Services',
-        'service_description': f'Admission to {admission.ward.name}' if admission and admission.ward else 'Hospital Admission',
-        'receipt_number': f'ADM-{payment.id}',
-        'hospital_name': 'Hospital Management System',
-        'hospital_address': '123 Medical Center Drive, City, State',
-        'hospital_phone': '(123) 456-7890',
-        'hospital_email': 'info@hospital.com',
-        'now': timezone.now(),
+        "payment": payment,
+        "invoice": invoice,
+        "patient": invoice.patient,
+        "admission": admission,
+        "items": items,
+        "service_type": "Admission Services",
+        "service_description": f"Admission to {admission.ward.name}"
+        if admission and admission.ward
+        else "Hospital Admission",
+        "receipt_number": f"ADM-{payment.id}",
+        "hospital_name": "Hospital Management System",
+        "hospital_address": "123 Medical Center Drive, City, State",
+        "hospital_phone": "(123) 456-7890",
+        "hospital_email": "info@hospital.com",
+        "now": timezone.now(),
     }
 
-    return render(request, 'payments/payment_receipt.html', context)
+    return render(request, "payments/payment_receipt.html", context)
 
 
 @login_required
@@ -7016,46 +8122,48 @@ def dispense_pack_order(request, order_id):
     """View for marking a pack order as dispensed"""
     pack_order = get_object_or_404(PackOrder, id=order_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             pack_order.dispense_order(request.user)
-            messages.success(request, f'Pack order #{pack_order.id} marked as dispensed.')
+            messages.success(
+                request, f"Pack order #{pack_order.id} marked as dispensed."
+            )
         except ValueError as e:
             messages.error(request, str(e))
 
-        return redirect('pharmacy:pack_order_detail', order_id=pack_order.id)
+        return redirect("pharmacy:pack_order_detail", order_id=pack_order.id)
 
     context = {
-        'pack_order': pack_order,
-        'page_title': f'Dispense Pack Order #{pack_order.id}',
-        'active_nav': 'pharmacy',
+        "pack_order": pack_order,
+        "page_title": f"Dispense Pack Order #{pack_order.id}",
+        "active_nav": "pharmacy",
     }
 
-    return render(request, 'pharmacy/pack_orders/dispense_pack_order.html', context)
+    return render(request, "pharmacy/pack_orders/dispense_pack_order.html", context)
 
 
-def _add_pack_to_patient_billing(patient, pack_order, source_context='pharmacy'):
+def _add_pack_to_patient_billing(patient, pack_order, source_context="pharmacy"):
     """Helper function to add pack costs to patient billing"""
 
     # Create or get invoice for patient
     invoice, created = Invoice.objects.get_or_create(
         patient=patient,
-        status='pending',
-        source_app='pharmacy',  # Using pharmacy as the source for pack orders
+        status="pending",
+        source_app="pharmacy",  # Using pharmacy as the source for pack orders
         defaults={
-            'invoice_date': timezone.now().date(),
-            'due_date': timezone.now().date() + timezone.timedelta(days=7),
-            'subtotal': Decimal('0.00'),
-            'tax_amount': Decimal('0.00'),
-            'total_amount': Decimal('0.00'),
-            'created_by': pack_order.ordered_by,
-        }
+            "invoice_date": timezone.now().date(),
+            "due_date": timezone.now().date() + timezone.timedelta(days=7),
+            "subtotal": Decimal("0.00"),
+            "tax_amount": Decimal("0.00"),
+            "total_amount": Decimal("0.00"),
+            "created_by": pack_order.ordered_by,
+        },
     )
 
     # Create or get medical pack service category
     pack_service_category, _ = ServiceCategory.objects.get_or_create(
         name="Medical Packs",
-        defaults={'description': 'Pre-packaged medical supplies and medications'}
+        defaults={"description": "Pre-packaged medical supplies and medications"},
     )
 
     # Create or get service for this specific pack
@@ -7063,10 +8171,10 @@ def _add_pack_to_patient_billing(patient, pack_order, source_context='pharmacy')
         name=f"Medical Pack: {pack_order.pack.name}",
         category=pack_service_category,
         defaults={
-            'price': pack_order.pack.get_total_cost(),
-            'description': f"Medical pack for {pack_order.pack.get_pack_type_display()}: {pack_order.pack.name}",
-            'tax_percentage': Decimal('0.00')  # Assuming no tax on medical packs
-        }
+            "price": pack_order.pack.get_total_cost(),
+            "description": f"Medical pack for {pack_order.pack.get_pack_type_display()}: {pack_order.pack.name}",
+            "tax_percentage": Decimal("0.00"),  # Assuming no tax on medical packs
+        },
     )
 
     # Add invoice item for the pack
@@ -7077,20 +8185,22 @@ def _add_pack_to_patient_billing(patient, pack_order, source_context='pharmacy')
         description=f"Medical Pack: {pack_order.pack.name} (Order #{pack_order.id}) - {source_context.title()}",
         quantity=1,
         unit_price=pack_cost,
-        tax_percentage=Decimal('0.00'),
-        tax_amount=Decimal('0.00'),
-        discount_amount=Decimal('0.00'),
-        total_amount=pack_cost
+        tax_percentage=Decimal("0.00"),
+        tax_amount=Decimal("0.00"),
+        discount_amount=Decimal("0.00"),
+        total_amount=pack_cost,
     )
 
     # Update invoice totals
-    invoice.subtotal = invoice.items.aggregate(
-        total=models.Sum('total_amount')
-    )['total'] or Decimal('0.00')
-    invoice.tax_amount = invoice.items.aggregate(
-        total=models.Sum('tax_amount')
-    )['total'] or Decimal('0.00')
-    invoice.total_amount = invoice.subtotal + invoice.tax_amount - invoice.discount_amount
+    invoice.subtotal = invoice.items.aggregate(total=models.Sum("total_amount"))[
+        "total"
+    ] or Decimal("0.00")
+    invoice.tax_amount = invoice.items.aggregate(total=models.Sum("tax_amount"))[
+        "total"
+    ] or Decimal("0.00")
+    invoice.total_amount = (
+        invoice.subtotal + invoice.tax_amount - invoice.discount_amount
+    )
     invoice.save()
 
     return invoice_item
@@ -7099,20 +8209,28 @@ def _add_pack_to_patient_billing(patient, pack_order, source_context='pharmacy')
 @login_required
 def create_dispensary_transfer(request):
     """Create a new dispensary transfer"""
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
-            from pharmacy.models import DispensaryTransfer, Medication, ActiveStore, Dispensary
+            from pharmacy.models import (
+                DispensaryTransfer,
+                Medication,
+                ActiveStore,
+                Dispensary,
+            )
 
-            medication_id = request.POST.get('medication_id')
-            from_store_id = request.POST.get('from_store_id')
-            to_dispensary_id = request.POST.get('to_dispensary_id')
-            quantity = int(request.POST.get('quantity', 0))
-            notes = request.POST.get('notes', '')
+            medication_id = request.POST.get("medication_id")
+            from_store_id = request.POST.get("from_store_id")
+            to_dispensary_id = request.POST.get("to_dispensary_id")
+            quantity = int(request.POST.get("quantity", 0))
+            notes = request.POST.get("notes", "")
 
             # Validate inputs
             if not all([medication_id, from_store_id, to_dispensary_id, quantity > 0]):
-                messages.error(request, 'All fields are required and quantity must be greater than 0')
-                return redirect('pharmacy:active_store_list')
+                messages.error(
+                    request,
+                    "All fields are required and quantity must be greater than 0",
+                )
+                return redirect("pharmacy:active_store_list")
 
             # Get objects
             medication = Medication.objects.get(id=medication_id)
@@ -7126,42 +8244,53 @@ def create_dispensary_transfer(request):
                 to_dispensary=to_dispensary,
                 quantity=quantity,
                 requested_by=request.user,
-                notes=notes
+                notes=notes,
             )
 
-            messages.success(request, f'Transfer created successfully: {quantity} units of {medication.name}')
+            messages.success(
+                request,
+                f"Transfer created successfully: {quantity} units of {medication.name}",
+            )
 
             # Execute the transfer immediately for now
             transfer.execute_transfer(request.user)
-            messages.success(request, f'Transfer executed: {quantity} units moved from {from_store.name} to {to_dispensary.name}')
+            messages.success(
+                request,
+                f"Transfer executed: {quantity} units moved from {from_store.name} to {to_dispensary.name}",
+            )
 
-            return redirect('pharmacy:active_store_list')
+            return redirect("pharmacy:active_store_list")
 
         except Exception as e:
-            messages.error(request, f'Error creating transfer: {str(e)}')
-            return redirect('pharmacy:active_store_list')
+            messages.error(request, f"Error creating transfer: {str(e)}")
+            return redirect("pharmacy:active_store_list")
 
     # This should not be reached as transfers are created via AJAX/POST
-    return redirect('pharmacy:active_store_list')
+    return redirect("pharmacy:active_store_list")
 
 
 @login_required
 def transfer_medication_to_dispensary(request):
     """AJAX endpoint to transfer medication from active store to dispensary"""
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             import json
-            from pharmacy.models import DispensaryTransfer, Medication, ActiveStore, Dispensary
+            from pharmacy.models import (
+                DispensaryTransfer,
+                Medication,
+                ActiveStore,
+                Dispensary,
+            )
 
             data = json.loads(request.body)
-            medication_id = data.get('medication_id')
-            from_store_id = data.get('from_store_id')
-            to_dispensary_id = data.get('to_dispensary_id')
-            quantity = int(data.get('quantity', 0))
+            medication_id = data.get("medication_id")
+            from_store_id = data.get("from_store_id")
+            to_dispensary_id = data.get("to_dispensary_id")
+            quantity = int(data.get("quantity", 0))
 
             # Validate inputs
             if not all([medication_id, from_store_id, to_dispensary_id, quantity > 0]):
-                return JsonResponse({'success': False, 'error': 'Invalid input data'})
+                return JsonResponse({"success": False, "error": "Invalid input data"})
 
             # Get objects
             medication = Medication.objects.get(id=medication_id)
@@ -7174,40 +8303,43 @@ def transfer_medication_to_dispensary(request):
                 from_active_store=from_store,
                 to_dispensary=to_dispensary,
                 quantity=quantity,
-                requested_by=request.user
+                requested_by=request.user,
             )
 
             # Execute immediately
             transfer.execute_transfer(request.user)
 
-            return JsonResponse({
-                'success': True,
-                'message': f'Successfully transferred {quantity} units of {medication.name} from {from_store.name} to {to_dispensary.name}'
-            })
+            return JsonResponse(
+                {
+                    "success": True,
+                    "message": f"Successfully transferred {quantity} units of {medication.name} from {from_store.name} to {to_dispensary.name}",
+                }
+            )
 
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
+            return JsonResponse({"success": False, "error": str(e)})
 
-    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    return JsonResponse({"success": False, "error": "Invalid request method"})
 
 
 # ============================================
 # MARKUP MANAGEMENT VIEWS
 # ============================================
 
+
 @login_required
 def bulk_apply_markup(request):
     """Apply markup percentage to multiple items in bulk store"""
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
-            markup_percentage = Decimal(request.POST.get('markup_percentage', '20'))
-            bulk_store_id = request.POST.get('bulk_store_id')
-            item_ids = request.POST.getlist('item_ids[]')
+            markup_percentage = Decimal(request.POST.get("markup_percentage", "20"))
+            bulk_store_id = request.POST.get("bulk_store_id")
+            item_ids = request.POST.getlist("item_ids[]")
 
             # Validate markup percentage
             if markup_percentage < 0 or markup_percentage > 100:
                 messages.error(request, "Markup percentage must be between 0 and 100")
-                return redirect('pharmacy:bulk_store_dashboard')
+                return redirect("pharmacy:bulk_store_dashboard")
 
             # Get items to update
             if item_ids:
@@ -7227,15 +8359,19 @@ def bulk_apply_markup(request):
                 item.save()  # save() will auto-calculate marked_up_cost
                 updated_count += 1
 
-            messages.success(request, f"Successfully applied {markup_percentage}% markup to {updated_count} items")
+            messages.success(
+                request,
+                f"Successfully applied {markup_percentage}% markup to {updated_count} items",
+            )
 
             # Create audit log
             try:
                 from core.models import AuditLog
+
                 AuditLog.objects.create(
                     user=request.user,
                     action="BULK_MARKUP_APPLIED",
-                    details=f"Applied {markup_percentage}% markup to {updated_count} bulk store items"
+                    details=f"Applied {markup_percentage}% markup to {updated_count} bulk store items",
                 )
             except ImportError:
                 pass
@@ -7243,16 +8379,16 @@ def bulk_apply_markup(request):
         except Exception as e:
             messages.error(request, f"Error applying markup: {str(e)}")
 
-        return redirect('pharmacy:bulk_store_dashboard')
+        return redirect("pharmacy:bulk_store_dashboard")
 
     # GET request - show form
     bulk_stores = BulkStore.objects.all()
     context = {
-        'bulk_stores': bulk_stores,
-        'title': 'Apply Bulk Markup',
-        'active_nav': 'pharmacy',
+        "bulk_stores": bulk_stores,
+        "title": "Apply Bulk Markup",
+        "active_nav": "pharmacy",
     }
-    return render(request, 'pharmacy/bulk_apply_markup.html', context)
+    return render(request, "pharmacy/bulk_apply_markup.html", context)
 
 
 @login_required
@@ -7260,16 +8396,21 @@ def update_item_markup(request, item_id):
     """Update markup for a single bulk store item"""
     item = get_object_or_404(BulkStoreInventory, id=item_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
-            markup_percentage = Decimal(request.POST.get('markup_percentage', '20'))
+            markup_percentage = Decimal(request.POST.get("markup_percentage", "20"))
 
             # Validate markup percentage
             if markup_percentage < 0 or markup_percentage > 100:
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({'success': False, 'error': 'Markup percentage must be between 0 and 100'})
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return JsonResponse(
+                        {
+                            "success": False,
+                            "error": "Markup percentage must be between 0 and 100",
+                        }
+                    )
                 messages.error(request, "Markup percentage must be between 0 and 100")
-                return redirect('pharmacy:bulk_store_dashboard')
+                return redirect("pharmacy:bulk_store_dashboard")
 
             # Update item
             old_markup = item.markup_percentage
@@ -7279,40 +8420,47 @@ def update_item_markup(request, item_id):
             # Create audit log
             try:
                 from core.models import AuditLog
+
                 AuditLog.objects.create(
                     user=request.user,
                     action="ITEM_MARKUP_UPDATED",
-                    details=f"Updated markup for {item.medication.name} (Batch: {item.batch_number}) from {old_markup}% to {markup_percentage}%"
+                    details=f"Updated markup for {item.medication.name} (Batch: {item.batch_number}) from {old_markup}% to {markup_percentage}%",
                 )
             except ImportError:
                 pass
 
             # Return JSON response for AJAX requests
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Markup updated to {markup_percentage}%',
-                    'marked_up_cost': float(item.marked_up_cost)
-                })
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse(
+                    {
+                        "success": True,
+                        "message": f"Markup updated to {markup_percentage}%",
+                        "marked_up_cost": float(item.marked_up_cost),
+                    }
+                )
 
-            messages.success(request, f"Successfully updated markup to {markup_percentage}%")
-            return redirect('pharmacy:bulk_store_dashboard')
+            messages.success(
+                request, f"Successfully updated markup to {markup_percentage}%"
+            )
+            return redirect("pharmacy:bulk_store_dashboard")
 
         except Exception as e:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'error': str(e)})
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse({"success": False, "error": str(e)})
             messages.error(request, f"Error updating markup: {str(e)}")
-            return redirect('pharmacy:bulk_store_dashboard')
+            return redirect("pharmacy:bulk_store_dashboard")
 
     # GET request - return item details for AJAX
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({
-            'id': item.id,
-            'medication_name': item.medication.name,
-            'batch_number': item.batch_number,
-            'unit_cost': float(item.unit_cost),
-            'markup_percentage': float(item.markup_percentage),
-            'marked_up_cost': float(item.marked_up_cost)
-        })
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse(
+            {
+                "id": item.id,
+                "medication_name": item.medication.name,
+                "batch_number": item.batch_number,
+                "unit_cost": float(item.unit_cost),
+                "markup_percentage": float(item.markup_percentage),
+                "marked_up_cost": float(item.marked_up_cost),
+            }
+        )
 
-    return redirect('pharmacy:bulk_store_dashboard')
+    return redirect("pharmacy:bulk_store_dashboard")
