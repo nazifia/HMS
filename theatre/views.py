@@ -5,6 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.db import transaction, models, DatabaseError, IntegrityError
 from django.contrib import messages
+from accounts.permissions import permission_required
 from django.utils import timezone
 from django.db.models import Count, Q
 from django.http import JsonResponse
@@ -894,6 +895,7 @@ class SurgeryReportView(LoginRequiredMixin, TemplateView):
 
 
 @login_required
+@permission_required('theatre.view')
 def theatre_statistics_report(request):
     """Comprehensive theatre statistics and reporting"""
     from django.db.models import Q, Sum, Count, Avg
@@ -1061,6 +1063,7 @@ def theatre_statistics_report(request):
 
 # Theatre Dashboard View
 @login_required
+@permission_required('theatre.view')
 def get_patient_surgery_history(request):
     """
     AJAX view to get patient's surgery history and suggest surgeons/anesthetists
@@ -1126,6 +1129,7 @@ def get_patient_surgery_history(request):
 
 
 @login_required
+@permission_required('theatre.create')
 def create_prescription_for_theatre(request, surgery_id):
     """Create a prescription for a theatre patient"""
     from .models import Surgery
@@ -1196,6 +1200,7 @@ def create_prescription_for_theatre(request, surgery_id):
 
 
 @login_required
+@permission_required('theatre.create')
 def order_medical_pack_for_surgery(request, surgery_id):
     """Order a medical pack for a specific surgery"""
     from .models import Surgery
@@ -1406,6 +1411,7 @@ def _add_pack_to_surgery_invoice(surgery, pack_order):
 
 
 @login_required
+@permission_required('theatre.edit')
 def request_surgery_authorization(request, surgery_id):
     """Request authorization from desk office for NHIA surgery"""
     surgery = get_object_or_404(Surgery, id=surgery_id)
@@ -1438,6 +1444,7 @@ def request_surgery_authorization(request, surgery_id):
 
 
 @login_required
+@permission_required('theatre.view')
 def get_surgery_type_equipment(request):
     """
     AJAX view to get required equipment for a surgery type.

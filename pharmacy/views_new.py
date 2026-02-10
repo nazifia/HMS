@@ -7,6 +7,7 @@ Handles all pharmacy operations including inventory, dispensing, prescriptions, 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from accounts.permissions import permission_required
 from django.db import transaction
 from django.http import JsonResponse
 from django.utils import timezone
@@ -30,24 +31,28 @@ def features_showcase(request):
     return render(request, 'pharmacy/features_showcase.html')
 
 @login_required
+@permission_required('pharmacy.view')
 def pharmacy_dashboard(request):
     """Main pharmacy dashboard"""
     context = {'active_nav': 'pharmacy'}
     return render(request, 'pharmacy/pharmacy_dashboard.html', context)
 
 @login_required
+@permission_required('pharmacy.view')
 def inventory_list(request):
     """List all medications in inventory"""
     medications = Medication.objects.all().order_by('name')
     return render(request, 'pharmacy/inventory_list.html', {'medications': medications, 'active_nav': 'pharmacy'})
 
 @login_required
+@permission_required('pharmacy.view')
 def medication_detail(request, medication_id):
     """Show details of a specific medication"""
     medication = get_object_or_404(Medication, id=medication_id)
     return render(request, 'pharmacy/medication_detail.html', {'medication': medication, 'active_nav': 'pharmacy'})
 
 @login_required
+@permission_required('pharmacy.create')
 def add_medication(request):
     """Add a new medication to inventory"""
     if request.method == 'POST':
@@ -61,6 +66,7 @@ def add_medication(request):
         return render(request, 'pharmacy/medication_form.html', {'form': form, 'active_nav': 'pharmacy'})
 
 @login_required
+@permission_required('pharmacy.edit')
 def edit_medication(request, medication_id):
     """Edit an existing medication"""
     medication = get_object_or_404(Medication, id=medication_id)
@@ -75,6 +81,7 @@ def edit_medication(request, medication_id):
         return render(request, 'pharmacy/medication_form.html', {'form': form, 'active_nav': 'pharmacy'})
 
 @login_required
+@permission_required('pharmacy.edit')
 def delete_medication(request, medication_id):
     """Delete a medication from inventory"""
     medication = get_object_or_404(Medication, id=medication_id)
@@ -86,12 +93,14 @@ def delete_medication(request, medication_id):
 
 # Supplier management
 @login_required
+@permission_required('pharmacy.view')
 def manage_suppliers(request):
     """Manage all suppliers"""
     suppliers = Supplier.objects.filter(is_active=True).order_by('name')
     return render(request, 'pharmacy/manage_suppliers.html', {'suppliers': suppliers, 'active_nav': 'pharmacy'})
 
 @login_required
+@permission_required('pharmacy.view')
 def supplier_detail(request, supplier_id):
     """Show details of a specific supplier"""
     supplier = get_object_or_404(Supplier, id=supplier_id)
@@ -104,6 +113,7 @@ def api_suppliers(request):
     return JsonResponse(list(suppliers), safe=False)
 
 @login_required
+@permission_required('pharmacy.create')
 def create_cart_from_prescription(request, prescription_id):
     """Create a new cart from prescription.
     Adds all prescription items to cart with prescribed quantities.
@@ -174,6 +184,7 @@ def create_cart_from_prescription(request, prescription_id):
         return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
 
 @login_required
+@permission_required('pharmacy.create')
 def create_procurement_request(request, medication_id):
     """View for creating a procurement request"""
     medication = get_object_or_404(Medication, id=medication_id)
@@ -194,6 +205,7 @@ def create_procurement_request(request, medication_id):
     return render(request, 'pharmacy/create_procurement_request.html', context)
 
 @login_required
+@permission_required('pharmacy.view')
 def api_suppliers(request):
     """API endpoint for suppliers"""
     suppliers = Supplier.objects.filter(is_active=True).values('id', 'name')
@@ -201,12 +213,14 @@ def api_suppliers(request):
 
 # Category management
 @login_required
+@permission_required('pharmacy.view')
 def manage_categories(request):
     """Manage all medication categories"""
     categories = MedicationCategory.objects.all().order_by('name')
     return render(request, 'pharmacy/manage_categories.html', {'categories': categories, 'active_nav': 'pharmacy'})
 
 @login_required
+@permission_required('pharmacy.edit')
 def edit_category(request, category_id):
     """View for editing a medication category"""
     category = get_object_or_404(MedicationCategory, id=category_id)
@@ -222,6 +236,7 @@ def edit_category(request, category_id):
         return render(request, 'pharmacy/add_edit_category.html', {'form': form, 'category': category, 'active_nav': 'pharmacy'})
 
 @login_required
+@permission_required('pharmacy.edit')
 def delete_category(request, category_id):
     """View for deleting a medication category"""
     category = get_object_or_404(MedicationCategory, id=category_id)

@@ -14,6 +14,7 @@ from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
 from pharmacy.models import Prescription
 from accounts.models import CustomUser, Department
+from accounts.permissions import permission_required
 from patients.models import Patient, Vitals, ClinicalNote
 from patients.utils import get_safe_vitals_for_patient, get_latest_safe_vitals_for_patient
 from appointments.models import Appointment
@@ -22,6 +23,7 @@ from core.models import send_notification_email, send_notification_sms, Internal
 
 
 @login_required
+@permission_required('consultations.view')
 def unified_dashboard(request):
     """Unified dashboard combining waiting list and consultations - Optimized"""
     # Superusers and admins see all consultations with select_related
@@ -78,6 +80,7 @@ def unified_dashboard(request):
     return render(request, 'consultations/unified_dashboard.html', context)
 
 @login_required
+@permission_required('consultations.view')
 def consultation_list(request):
     """View to list consultations for the logged-in doctor with waiting list integration - Optimized"""
     # Superusers and admins see all consultations with select_related
@@ -115,6 +118,7 @@ def consultation_list(request):
 
 
 @login_required
+@permission_required('consultations.create')
 def bulk_start_consultations(request):
     """Start multiple consultations from waiting list"""
     if request.method == 'GET':
@@ -202,6 +206,7 @@ def bulk_start_consultations(request):
 
 @require_http_methods(["POST"])
 @login_required
+@permission_required('consultations.edit')
 def update_consultation_status(request, consultation_id):
     """AJAX view to update consultation status"""
     consultation = get_object_or_404(Consultation, id=consultation_id)
@@ -259,6 +264,7 @@ def update_consultation_status(request, consultation_id):
 
 
 @login_required
+@permission_required('consultations.view')
 def consultation_detail(request, consultation_id):
     """View to display consultation details"""
     consultation = get_object_or_404(Consultation, id=consultation_id)
@@ -306,12 +312,14 @@ def consultation_detail(request, consultation_id):
 
 
 @login_required
+@permission_required('consultations.view')
 def doctor_consultation(request, consultation_id):
     """Doctor's view of a consultation"""
     return consultation_detail(request, consultation_id)
 
 
 @login_required
+@permission_required('consultations.create')
 def create_consultation_order(request, consultation_id):
     """View for creating orders from consultations"""
     consultation = get_object_or_404(Consultation, id=consultation_id)
@@ -376,6 +384,7 @@ def create_consultation_order(request, consultation_id):
 
 @require_http_methods(["POST"])
 @login_required
+@permission_required('consultations.create')
 def create_lab_order_ajax(request, consultation_id):
     """AJAX view for creating lab orders"""
     consultation = get_object_or_404(Consultation, id=consultation_id)
@@ -403,6 +412,7 @@ def create_lab_order_ajax(request, consultation_id):
 
 @require_http_methods(["POST"])
 @login_required
+@permission_required('consultations.create')
 def create_radiology_order_ajax(request, consultation_id):
     """AJAX view for creating radiology orders"""
     consultation = get_object_or_404(Consultation, id=consultation_id)
@@ -430,6 +440,7 @@ def create_radiology_order_ajax(request, consultation_id):
 
 @require_http_methods(["POST"])
 @login_required
+@permission_required('consultations.create')
 def create_prescription_ajax(request, consultation_id):
     """AJAX view for creating prescriptions"""
     consultation = get_object_or_404(Consultation, id=consultation_id)
@@ -456,6 +467,7 @@ def create_prescription_ajax(request, consultation_id):
 
 
 @login_required
+@permission_required('consultations.view')
 def consultation_orders(request, consultation_id):
     """View to display all orders for a consultation"""
     consultation = get_object_or_404(Consultation, id=consultation_id)
@@ -482,6 +494,7 @@ def consultation_orders(request, consultation_id):
 # For now, I'll provide stub implementations
 
 @login_required
+@permission_required('consultations.view')
 def doctor_dashboard(request):
     """Dashboard view for doctors showing assigned patients with vitals"""
     doctor = request.user
@@ -537,6 +550,7 @@ def doctor_dashboard(request):
     return render(request, 'consultations/doctor_dashboard.html', context)
 
 @login_required
+@permission_required('consultations.view')
 def patient_list(request):
     """View for doctors to see their patients - Optimized to avoid N+1 queries"""
     doctor = request.user
@@ -613,6 +627,7 @@ def patient_list(request):
     return render(request, 'consultations/patient_list_clean.html', context)
 
 @login_required
+@permission_required('consultations.view')
 def patient_detail(request, patient_id):
     """View for doctors to see patient details and vitals"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -644,6 +659,7 @@ def patient_detail(request, patient_id):
     return render(request, 'patients/patient_detail.html', context)
 
 @login_required
+@permission_required('consultations.edit')
 def edit_consultation(request, consultation_id):
     """View for editing a consultation"""
     consultation = get_object_or_404(Consultation, id=consultation_id)
@@ -683,6 +699,7 @@ def edit_consultation(request, consultation_id):
     return render(request, 'consultations/consultation_form.html', context)
 
 @login_required
+@permission_required('consultations.create')
 def create_consultation(request, patient_id):
     """View for creating a new consultation"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -768,6 +785,7 @@ def create_consultation(request, patient_id):
     return render(request, 'consultations/consultation_form.html', context)
 
 @login_required
+@permission_required('consultations.edit')
 def add_soap_note(request, consultation_id):
     """View for adding a SOAP note to a consultation"""
     consultation = get_object_or_404(Consultation, id=consultation_id)
@@ -804,6 +822,7 @@ def add_soap_note(request, consultation_id):
     return render(request, 'consultations/soap_note_form.html', context)
 
 @login_required
+@permission_required('referrals.view')
 def referral_list(request):
     """View for listing all referrals for a doctor with patient name and phone number search"""
     doctor = request.user
@@ -875,6 +894,7 @@ def referral_list(request):
     return render(request, 'consultations/referral_list.html', context)
 
 @login_required
+@permission_required('referrals.edit')
 def update_referral_status(request, referral_id):
     """View for updating referral status"""
     referral = get_object_or_404(Referral, id=referral_id)
@@ -912,6 +932,7 @@ def update_referral_status(request, referral_id):
     return redirect('consultations:referral_list')
 
 @login_required
+@permission_required('referrals.view')
 def referral_tracking(request):
     """Comprehensive referral tracking dashboard"""
     import logging
@@ -1004,6 +1025,7 @@ def referral_tracking(request):
     return render(request, 'consultations/referral_tracking.html', context)
 
 @login_required
+@permission_required('referrals.view')
 def referral_detail(request, referral_id):
     """Detailed view of a referral with comprehensive tracking"""
     referral = get_object_or_404(Referral, id=referral_id)
@@ -1045,6 +1067,7 @@ def referral_detail(request, referral_id):
     return render(request, 'consultations/referral_detail.html', context)
 
 @login_required
+@permission_required('referrals.edit')
 def update_referral_status_detailed(request, referral_id):
     """Enhanced referral status update with notes and tracking"""
     referral = get_object_or_404(Referral, id=referral_id)
@@ -1115,6 +1138,7 @@ def update_referral_status_detailed(request, referral_id):
 
 
 @login_required
+@permission_required('referrals.edit')
 def bulk_update_referral_status(request):
     """Bulk update status for multiple referrals"""
     if request.method == 'POST':
@@ -1214,6 +1238,7 @@ def bulk_update_referral_status(request):
     return redirect('consultations:referral_detail', referral_id=referral.id)
 
 @login_required
+@permission_required('referrals.edit')
 def reject_referral(request, referral_id):
     """
     View to reject a referral from the destination department.
@@ -1283,6 +1308,7 @@ def reject_referral(request, referral_id):
 
 
 @login_required
+@permission_required('referrals.edit')
 def complete_referral(request, referral_id):
     """
     View to mark a referral as completed.
@@ -1356,6 +1382,7 @@ def complete_referral(request, referral_id):
 
 
 @login_required
+@permission_required('referrals.create')
 def create_referral(request, patient_id=None):
     """View for creating a new referral directly from the patient detail page"""
     patient = None
@@ -1493,6 +1520,7 @@ def create_referral(request, patient_id=None):
     return render(request, 'consultations/referral_form.html', context)
 
 @login_required
+@permission_required('consultations.view')
 def consulting_room_list(request):
     """View for listing all consulting rooms"""
     consulting_rooms = ConsultingRoom.objects.all().order_by('room_number')
@@ -1536,6 +1564,7 @@ def consulting_room_list(request):
     return render(request, 'consultations/consulting_room_list.html', context)
 
 @login_required
+@permission_required('consultations.create')
 def create_consulting_room(request):
     """View for creating a new consulting room"""
     if request.method == 'POST':
@@ -1555,6 +1584,7 @@ def create_consulting_room(request):
     return render(request, 'consultations/consulting_room_form.html', context)
 
 @login_required
+@permission_required('consultations.edit')
 def edit_consulting_room(request, room_id):
     """View for editing a consulting room"""
     consulting_room = get_object_or_404(ConsultingRoom, id=room_id)
@@ -1577,6 +1607,7 @@ def edit_consulting_room(request, room_id):
     return render(request, 'consultations/consulting_room_form.html', context)
 
 @login_required
+@permission_required('consultations.edit')
 def delete_consulting_room(request, room_id):
     """View for deleting a consulting room"""
     consulting_room = get_object_or_404(ConsultingRoom, id=room_id)
@@ -1597,6 +1628,7 @@ def delete_consulting_room(request, room_id):
     return render(request, 'consultations/delete_consulting_room.html', context)
 
 @login_required
+@permission_required('consultations.view')
 def waiting_list(request):
     """View for displaying the patient waiting list"""
     waiting_entries = WaitingList.objects.filter(
@@ -1647,6 +1679,7 @@ def waiting_list(request):
     return render(request, 'consultations/waiting_list.html', context)
 
 @login_required
+@permission_required('consultations.create')
 def add_to_waiting_list(request, patient_id=None):
     """View for adding a patient to the waiting list"""
     initial_data = {}
@@ -1681,6 +1714,7 @@ def add_to_waiting_list(request, patient_id=None):
     return render(request, 'consultations/waiting_list_form.html', context)
 
 @login_required
+@permission_required('consultations.edit')
 def update_waiting_status(request, entry_id):
     """View for updating waiting list entry status"""
     waiting_entry = get_object_or_404(WaitingList, id=entry_id)
@@ -1724,6 +1758,7 @@ def update_waiting_status(request, entry_id):
         return redirect('consultations:waiting_list')
 
 @login_required
+@permission_required('consultations.view')
 def doctor_waiting_list(request):
     """View for doctors to see their waiting patients"""
     doctor = request.user
@@ -1754,6 +1789,7 @@ def doctor_waiting_list(request):
     return render(request, 'consultations/doctor_waiting_list.html', context)
 
 @login_required
+@permission_required('consultations.create')
 def start_consultation(request, entry_id):
     """View for starting a consultation from the waiting list"""
     waiting_entry = get_object_or_404(WaitingList, id=entry_id, doctor=request.user)
@@ -1787,6 +1823,7 @@ def start_consultation(request, entry_id):
     return redirect('consultations:doctor_consultation', consultation_id=consultation.id)
 
 @login_required
+@permission_required('consultations.create')
 def create_prescription(request, consultation_id):
     """View for creating a prescription from a consultation"""
     # Allow access to consultations without doctors or where current user is the doctor
@@ -1811,6 +1848,7 @@ def create_prescription(request, consultation_id):
     return redirect('pharmacy:edit_prescription', prescription_id=prescription.id)
 
 @login_required
+@permission_required('consultations.create')
 def create_lab_request(request, consultation_id):
     """View for creating a lab test request from a consultation"""
     consultation = get_object_or_404(Consultation, id=consultation_id, doctor=request.user)
@@ -1829,6 +1867,7 @@ def create_lab_request(request, consultation_id):
     return redirect('laboratory:edit_test_request', request_id=test_request.id)
 
 @login_required
+@permission_required('consultations.create')
 def create_radiology_order(request, consultation_id):
     """View for creating a radiology order from a consultation"""
     consultation = get_object_or_404(Consultation, id=consultation_id, doctor=request.user)
@@ -1848,6 +1887,7 @@ def create_radiology_order(request, consultation_id):
     return redirect('radiology:edit_order', order_id=radiology_order.id)
 
 @login_required
+@permission_required('referrals.create')
 def create_referral_from_consultation(request, consultation_id):
     """View for creating a referral from a consultation"""
     consultation = get_object_or_404(Consultation, id=consultation_id, doctor=request.user)
@@ -1875,6 +1915,7 @@ def create_referral_from_consultation(request, consultation_id):
 
 
 @login_required
+@permission_required('referrals.view')
 def department_referral_dashboard(request):
     """
     Dashboard for department staff to view referrals sent to their department.

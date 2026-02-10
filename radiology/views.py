@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
+from accounts.permissions import permission_required
 from .models import RadiologyCategory, RadiologyTest, RadiologyOrder, RadiologyResult
 from patients.models import Patient
 from django.contrib.auth.models import User
@@ -22,6 +23,7 @@ from core.department_dashboard_utils import (
 import json
 
 @login_required
+@permission_required('radiology.view')
 def index(request):
     """Enhanced Radiology dashboard with charts, metrics, and referral integration"""
     from django.db.models import Sum, Count, Avg, F, ExpressionWrapper, DurationField
@@ -205,6 +207,7 @@ def index(request):
     return render(request, 'radiology/index.html', context)
 
 @login_required
+@permission_required('radiology.create')
 def order_radiology(request, patient_id=None):
     """View to create a new radiology order"""
     from .models import RadiologyTest  # ensure import
@@ -322,6 +325,7 @@ def order_radiology(request, patient_id=None):
     return render(request, 'radiology/order_form.html', context)
 
 @login_required
+@permission_required('radiology.view')
 def order_detail(request, order_id):
     """View to show radiology order details"""
     order = None
@@ -343,6 +347,7 @@ def order_detail(request, order_id):
     return render(request, 'radiology/order_detail.html', context)
 
 @login_required
+@permission_required('radiology.edit')
 def edit_order(request, order_id):
     order = get_object_or_404(RadiologyOrder, pk=order_id)
     if request.method == 'POST':
@@ -357,6 +362,7 @@ def edit_order(request, order_id):
 
 @login_required
 @require_POST
+@permission_required('radiology.edit')
 def schedule_order(request, order_id):
     order = get_object_or_404(RadiologyOrder, pk=order_id)
 
@@ -374,6 +380,7 @@ def schedule_order(request, order_id):
 
 @login_required
 @require_POST
+@permission_required('radiology.edit')
 def mark_completed(request, order_id):
     order = get_object_or_404(RadiologyOrder, pk=order_id)
 
@@ -391,6 +398,7 @@ def mark_completed(request, order_id):
 
 @login_required
 @require_POST
+@permission_required('radiology.edit')
 def cancel_order(request, order_id):
     order = get_object_or_404(RadiologyOrder, pk=order_id)
     order.status = 'cancelled'
@@ -399,6 +407,7 @@ def cancel_order(request, order_id):
     return redirect('radiology:order_detail', order_id=order.id)
 
 @login_required
+@permission_required('radiology.create')
 def add_result(request, order_id):
     order = get_object_or_404(RadiologyOrder, pk=order_id)
 
@@ -433,6 +442,7 @@ def add_result(request, order_id):
     return render(request, 'radiology/result_form.html', {'form': form, 'order': order, 'result': result})
 
 @login_required
+@permission_required('radiology.view')
 def radiology_sales_report(request):
     """View for daily radiology tests by technician and total monthly radiology revenue."""
     from django.db.models import Sum, Count
@@ -469,6 +479,7 @@ def radiology_sales_report(request):
     return render(request, 'radiology/sales_report.html', context)
 
 @login_required
+@permission_required('radiology.view')
 def patient_radiology_results(request, patient_id):
     """View all radiology results for a given patient."""
     patient = get_object_or_404(Patient, pk=patient_id)
@@ -487,6 +498,7 @@ def patient_radiology_results(request, patient_id):
 
 
 @login_required
+@permission_required('radiology.view')
 def radiology_statistics_report(request):
     """Comprehensive radiology statistics and reporting"""
     from django.db.models import Q, Sum, Count, Avg

@@ -20,6 +20,7 @@ from patients.models import Patient, PatientWallet, WalletTransaction, ClinicalN
 from accounts.permissions import permission_required
 
 @login_required
+@permission_required('inpatient.view')
 def bed_dashboard(request):
     """Visual dashboard for bed management - Optimized to avoid N+1 queries"""
     beds_list = Bed.objects.select_related('ward').prefetch_related(
@@ -75,6 +76,7 @@ def bed_dashboard(request):
     return render(request, 'inpatient/bed_dashboard.html', context)
 
 @login_required
+@permission_required('inpatient.view')
 def patient_admissions(request, patient_id):
     """List of admissions for a specific patient."""
     try:
@@ -101,6 +103,7 @@ def patient_admissions(request, patient_id):
     return render(request, 'inpatient/patient_admissions.html', context)
 
 @login_required
+@permission_required('inpatient.view')
 def ward_list(request):
     """View for listing all wards"""
     wards = Ward.objects.all().order_by('name')
@@ -145,6 +148,7 @@ def ward_list(request):
     return render(request, 'inpatient/ward_list.html', context)
 
 @login_required
+@permission_required('inpatient.create')
 def add_ward(request):
     """View for adding a new ward"""
     if request.method == 'POST':
@@ -164,6 +168,7 @@ def add_ward(request):
     return render(request, 'inpatient/ward_form.html', context)
 
 @login_required
+@permission_required('inpatient.view')
 def ward_detail(request, ward_id):
     """View for displaying ward details - Optimized to avoid N+1 queries"""
     ward = get_object_or_404(Ward.objects.prefetch_related(
@@ -200,6 +205,7 @@ def ward_detail(request, ward_id):
     return render(request, 'inpatient/ward_detail.html', context)
 
 @login_required
+@permission_required('inpatient.edit')
 def edit_ward(request, ward_id):
     """View for editing a ward"""
     ward = get_object_or_404(Ward, id=ward_id)
@@ -222,6 +228,7 @@ def edit_ward(request, ward_id):
     return render(request, 'inpatient/ward_form.html', context)
 
 @login_required
+@permission_required('inpatient.edit')
 def delete_ward(request, ward_id):
     """View for deleting a ward"""
     ward = get_object_or_404(Ward, id=ward_id)
@@ -245,6 +252,7 @@ def delete_ward(request, ward_id):
     return render(request, 'inpatient/delete_ward.html', context)
 
 @login_required
+@permission_required('inpatient.view')
 def bed_list(request):
     """View for listing all beds - Optimized to avoid N+1 queries"""
     beds = Bed.objects.select_related('ward').prefetch_related(
@@ -302,6 +310,7 @@ def bed_list(request):
     return render(request, 'inpatient/bed_list.html', context)
 
 @login_required
+@permission_required('inpatient.create')
 def add_bed(request):
     """View for adding a new bed"""
     # Pre-fill ward_id if provided in GET parameters
@@ -336,6 +345,7 @@ def add_bed(request):
     return render(request, 'inpatient/bed_form.html', context)
 
 @login_required
+@permission_required('inpatient.edit')
 def edit_bed(request, bed_id):
     """View for editing a bed"""
     bed = get_object_or_404(Bed, id=bed_id)
@@ -358,6 +368,7 @@ def edit_bed(request, bed_id):
     return render(request, 'inpatient/bed_form.html', context)
 
 @login_required
+@permission_required('inpatient.edit')
 def delete_bed(request, bed_id):
     """View for deleting a bed"""
     bed = get_object_or_404(Bed, id=bed_id)
@@ -383,6 +394,7 @@ def delete_bed(request, bed_id):
     return render(request, 'inpatient/delete_bed.html', context)
 
 @login_required
+@permission_required('inpatient.view')
 def admission_list(request):
     """View for listing all admissions"""
     search_form = AdmissionSearchForm(request.GET)
@@ -466,6 +478,7 @@ def admission_list(request):
     return render(request, 'inpatient/admission_list.html', context)
 
 @login_required
+@permission_required('inpatient.view')
 def admission_detail(request, pk):
     """View for displaying admission details."""
     admission = get_object_or_404(Admission, pk=pk)
@@ -512,6 +525,7 @@ def admission_detail(request, pk):
     return render(request, 'inpatient/admission_detail.html', context)
 
 @login_required
+@permission_required('inpatient.create')
 def create_admission(request):
     """View for creating a new admission"""
     from django.db import transaction
@@ -721,6 +735,7 @@ def create_admission(request):
 
 
 @login_required
+@permission_required('inpatient.edit')
 def edit_admission(request, admission_id):
     """View for editing an admission"""
     admission = get_object_or_404(Admission, id=admission_id)
@@ -742,6 +757,7 @@ def edit_admission(request, admission_id):
 
 
 @login_required
+@permission_required('inpatient.edit')
 @require_http_methods(["GET"])
 def transfer_patient(request, admission_id):
     """Handles both bed and ward transfers for a patient."""
@@ -802,6 +818,7 @@ def transfer_patient(request, admission_id):
 
 
 @login_required
+@permission_required('inpatient.discharge')
 def discharge_patient(request, admission_id):
     """View for discharging a patient"""
     admission = get_object_or_404(Admission, id=admission_id)
@@ -835,6 +852,7 @@ def discharge_patient(request, admission_id):
     return render(request, 'inpatient/discharge_form.html', context)
 
 @login_required
+@permission_required('inpatient.create')
 def add_clinical_record(request, admission_id):
     """View for adding a clinical record to an admission"""
     admission = get_object_or_404(Admission, id=admission_id)
@@ -926,6 +944,7 @@ def bed_occupancy_report(request):
 
 
 @login_required
+@permission_required('inpatient.view')
 def admission_net_impact(request, pk):
     """View for analyzing admission net impact on patient wallet"""
     admission = get_object_or_404(Admission, pk=pk)
@@ -952,6 +971,7 @@ def admission_net_impact(request, pk):
 
 
 @login_required
+@permission_required('inpatient.discharge')
 def apply_admission_net_impact(request, pk):
     """View for applying admission net impact calculation to patient wallet"""
     admission = get_object_or_404(Admission, pk=pk)
@@ -983,6 +1003,7 @@ def apply_admission_net_impact(request, pk):
 
 
 @login_required
+@permission_required('inpatient.view')
 def load_beds(request):
     """AJAX view to load beds based on selected ward."""
     ward_id = request.GET.get('ward_id')

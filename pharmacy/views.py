@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
+from accounts.permissions import permission_required
 from django.contrib import messages
 from django.db.models import Q, Sum, F, Count, Avg, StdDev, Variance, Min, Max, Case, When, Value
 from django.db import models, transaction, IntegrityError
@@ -30,6 +31,7 @@ from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
 
 
 @login_required
+@permission_required('pharmacy.view')
 def select_dispensary(request):
     """View for pharmacists to select their working dispensary"""
     # Admins don't need to select dispensary
@@ -83,6 +85,7 @@ def select_dispensary(request):
 
 @login_required
 @require_http_methods(["POST"])
+@permission_required('pharmacy.view')
 def set_dispensary(request):
     """Endpoint to set the selected dispensary"""
     dispensary_id = request.POST.get('dispensary_id')
@@ -114,6 +117,7 @@ def set_dispensary(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def pharmacy_dashboard(request):
     """View for the pharmacy dashboard"""
     # Check if user needs to select dispensary (pharmacists only)
@@ -238,6 +242,7 @@ def pharmacy_dashboard(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def features_showcase(request):
     """View for showcasing pharmacy features"""
     return render(request, 'pharmacy/features.html')
@@ -245,6 +250,7 @@ def features_showcase(request):
 
 @never_cache
 @login_required
+@permission_required('pharmacy.view')
 def inventory_list(request):
     """View for listing pharmacy inventory - Optimized with select_related"""
     # Get all medications with optimized query
@@ -300,6 +306,7 @@ def inventory_list(request):
 
 
 @login_required
+@permission_required('pharmacy.create')
 def add_medication(request):
     """View for adding a new medication"""
     if request.method == 'POST':
@@ -322,6 +329,7 @@ def add_medication(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def medication_detail(request, medication_id):
     """View for displaying medication details"""
     medication = get_object_or_404(Medication, id=medication_id)
@@ -342,6 +350,7 @@ def medication_detail(request, medication_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def edit_medication(request, medication_id):
     """View for editing medication information"""
     medication = get_object_or_404(Medication, id=medication_id)
@@ -367,6 +376,7 @@ def edit_medication(request, medication_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def delete_medication(request, medication_id):
     """View for deleting a medication"""
     medication = get_object_or_404(Medication, id=medication_id)
@@ -387,6 +397,7 @@ def delete_medication(request, medication_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def manage_categories(request):
     """View for managing medication categories"""
     categories = MedicationCategory.objects.all().order_by('name')
@@ -409,6 +420,7 @@ def manage_categories(request):
 
 
 @login_required
+@permission_required('prescriptions.view')
 def patient_prescriptions(request, patient_id):
     """View for listing prescriptions for a patient"""
     # Get the patient
@@ -433,6 +445,7 @@ def patient_prescriptions(request, patient_id):
 
 
 @login_required
+@permission_required('prescriptions.create')
 def create_prescription(request, patient_id=None):
     """View for creating a prescription"""
     if request.method == 'POST':
@@ -493,6 +506,7 @@ def create_prescription(request, patient_id=None):
 
 
 @login_required
+@permission_required('prescriptions.create')
 def pharmacy_create_prescription(request, patient_id=None):
     """View for pharmacy creating a prescription"""
     # This is the same as create_prescription but might have different permissions or workflow
@@ -551,6 +565,7 @@ def pharmacy_create_prescription(request, patient_id=None):
 
 
 @login_required
+@permission_required('pharmacy.create')
 def create_procurement_request(request, medication_id):
     """View for creating a procurement request"""
     medication = get_object_or_404(Medication, id=medication_id)
@@ -575,6 +590,7 @@ def create_procurement_request(request, medication_id):
     return render(request, 'pharmacy/create_procurement_request.html', context)
 
 @login_required
+@permission_required('pharmacy.edit')
 def edit_category(request, category_id):
     """View for editing a medication category"""
     category = get_object_or_404(MedicationCategory, id=category_id)
@@ -600,6 +616,7 @@ def edit_category(request, category_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def delete_category(request, category_id):
     """View for deleting a medication category"""
     category = get_object_or_404(MedicationCategory, id=category_id)
@@ -620,6 +637,7 @@ def delete_category(request, category_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def manage_suppliers(request):
     """View for managing suppliers"""
     suppliers = Supplier.objects.filter(is_active=True).order_by('name')
@@ -644,6 +662,7 @@ def manage_suppliers(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def supplier_list(request):
     """View for listing suppliers"""
     suppliers = Supplier.objects.all().order_by('name')
@@ -684,6 +703,7 @@ def supplier_list(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def supplier_detail(request, supplier_id):
     """View for displaying supplier details"""
     supplier = get_object_or_404(Supplier, id=supplier_id)
@@ -704,6 +724,7 @@ def supplier_detail(request, supplier_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def edit_supplier(request, supplier_id):
     """View for editing supplier information"""
     supplier = get_object_or_404(Supplier, id=supplier_id)
@@ -728,6 +749,7 @@ def edit_supplier(request, supplier_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def delete_supplier(request, supplier_id):
     """View for deleting a supplier"""
     supplier = get_object_or_404(Supplier, id=supplier_id)
@@ -748,6 +770,7 @@ def delete_supplier(request, supplier_id):
 
 
 @login_required
+@permission_required('pharmacy.create')
 def quick_procurement(request, supplier_id):
     """View for deleting a supplier"""
     supplier = get_object_or_404(Supplier, id=supplier_id, is_active=True)
@@ -761,6 +784,7 @@ def quick_procurement(request, supplier_id):
 
 
 @login_required
+@permission_required('pharmacy.create')
 def quick_procurement(request, supplier_id):
     """View for quick procurement from a supplier"""
     supplier = get_object_or_404(Supplier, id=supplier_id, is_active=True)
@@ -786,6 +810,7 @@ def quick_procurement(request, supplier_id):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def procurement_dashboard(request):
     """View for the procurement dashboard"""
     # Get procurement statistics
@@ -808,6 +833,7 @@ def procurement_dashboard(request):
     return render(request, 'pharmacy/procurement_dashboard.html', context)
 
 @login_required
+@permission_required('pharmacy.view')
 def procurement_analytics(request):
     """View for procurement analytics"""
     # Implementation for procurement analytics
@@ -842,6 +868,7 @@ def procurement_analytics(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def automated_reorder_suggestions(request):
     """View for automated reorder suggestions"""
     # Implementation for automated reorder suggestions
@@ -878,6 +905,7 @@ def automated_reorder_suggestions(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def revenue_analysis(request):
     """View for revenue analysis"""
     # Backwards-compatibility redirect: the comprehensive implementation
@@ -894,6 +922,7 @@ def revenue_analysis(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def expense_analysis(request):
     """View for expense analysis with date, month, and year filtering"""
     from datetime import datetime, date
@@ -1280,6 +1309,7 @@ def _notify_pharmacy_of_pack_order(pack_order, ordered_by):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def simple_revenue_statistics(request):
     """Simple revenue statistics view showing department-wise revenue in a table and chart"""
     from .revenue_service import RevenueAggregationService, MonthFilterHelper
@@ -1431,6 +1461,7 @@ def simple_revenue_statistics(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def pharmacy_dispensary_revenue(request):
     """
     Pharmacy-specific revenue statistics with breakdown by dispensary
@@ -1672,6 +1703,7 @@ def comprehensive_revenue_analysis_debug(request):
         return redirect(f"{target}?{query}")
     return redirect(target)
 @login_required
+@permission_required('pharmacy.view')
 def api_suppliers(request):
     """API endpoint for suppliers"""
     suppliers = Supplier.objects.filter(is_active=True).values('id', 'name')
@@ -1679,6 +1711,7 @@ def api_suppliers(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def bulk_store_dashboard(request):
     """View for the bulk store dashboard with comprehensive statistics"""
     from django.db.models import Sum, Count, Q, F
@@ -1781,6 +1814,7 @@ def bulk_store_dashboard(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def active_store_detail(request, dispensary_id):
     """View for displaying active store details and managing transfers"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
@@ -2021,6 +2055,7 @@ def active_store_detail(request, dispensary_id):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def active_store_bulk_transfers(request, dispensary_id):
     """View for managing bulk store to active store transfers"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
@@ -2184,6 +2219,7 @@ def active_store_bulk_transfers(request, dispensary_id):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def active_store_dispensary_transfers(request, dispensary_id):
     """View for managing active store to dispensary transfers"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
@@ -2273,6 +2309,7 @@ def active_store_dispensary_transfers(request, dispensary_id):
 
 
 @login_required
+@permission_required('pharmacy.create')
 def request_medication_transfer(request):
     """View for requesting medication transfer from bulk store to active store"""
     if request.method == 'POST':
@@ -2342,6 +2379,7 @@ def request_medication_transfer(request):
 
 
 @login_required
+@permission_required('pharmacy.create')
 def instant_medication_transfer(request):
     """View for instant medication transfer from bulk store to active store"""
     if request.method == 'POST':
@@ -2449,6 +2487,7 @@ def instant_medication_transfer(request):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def approve_medication_transfer(request, transfer_id):
     """View for approving and automatically executing a medication transfer"""
     transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
@@ -2502,6 +2541,7 @@ def approve_medication_transfer(request, transfer_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def execute_medication_transfer(request, transfer_id):
     """View for executing a medication transfer and completing delivery process"""
     transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
@@ -2534,6 +2574,7 @@ def execute_medication_transfer(request, transfer_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def cancel_medication_transfer(request, transfer_id):
     """View for cancelling a medication transfer"""
     transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
@@ -2565,6 +2606,7 @@ def cancel_medication_transfer(request, transfer_id):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def get_bulk_batch_info(request, medication_id):
     """API endpoint to get batch information for a medication in bulk store"""
     try:
@@ -2603,6 +2645,7 @@ def get_bulk_batch_info(request, medication_id):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def manage_transfers(request):
     """View for managing all types of transfers - redirects to enhanced transfer dashboard"""
     # Redirect to the enhanced transfer dashboard which has comprehensive transfer management
@@ -2610,6 +2653,7 @@ def manage_transfers(request):
 
 
 @login_required
+@permission_required('pharmacy.create')
 def transfer_to_dispensary(request, dispensary_id):
     """View for transferring medications from active store to dispensary"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
@@ -2708,6 +2752,7 @@ def transfer_to_dispensary(request, dispensary_id):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def active_store_inventory_ajax(request, dispensary_id):
     """AJAX endpoint for getting active store inventory for a dispensary - Supports HTMX"""
     # Check if this is an HTMX request
@@ -2793,6 +2838,8 @@ def active_store_inventory_ajax(request, dispensary_id):
     return redirect('pharmacy:dispensary_list')
 
 
+@login_required
+@permission_required('pharmacy.view')
 def active_store_inventory_detail_ajax(request, dispensary_id, medication_id):
     """AJAX endpoint to get specific active store inventory data for dispensary transfer"""
     if request.method == 'GET':
@@ -2834,6 +2881,7 @@ def active_store_inventory_detail_ajax(request, dispensary_id, medication_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def approve_dispensary_transfer(request, transfer_id):
     """Approve and execute a dispensary transfer"""
     if request.method == 'POST':
@@ -2864,6 +2912,7 @@ def approve_dispensary_transfer(request, transfer_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def cancel_dispensary_transfer(request, transfer_id):
     """Cancel a dispensary transfer"""
     if request.method == 'POST':
@@ -2889,6 +2938,7 @@ def cancel_dispensary_transfer(request, transfer_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def deliver_dispensary_transfer(request, transfer_id):
     """Mark a dispensary transfer as delivered"""
     if request.method == 'POST':
@@ -2913,6 +2963,7 @@ def deliver_dispensary_transfer(request, transfer_id):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def manage_purchases(request):
     """View for managing purchases"""
     # Get all purchases
@@ -2951,6 +3002,7 @@ def manage_purchases(request):
 
 
 @login_required
+@permission_required('pharmacy.create')
 def add_purchase(request):
     """View for adding a new purchase"""
     if request.method == 'POST':
@@ -3010,6 +3062,7 @@ def add_purchase(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def purchase_detail(request, purchase_id):
     """View for displaying purchase details"""
     purchase = get_object_or_404(Purchase, id=purchase_id)
@@ -3058,6 +3111,7 @@ from pharmacy.models import Patient, Prescription, PrescriptionItem, Purchase
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def process_purchase_payment(request, purchase_id):
     """View for processing purchase payment"""
     from django.db import transaction
@@ -3131,6 +3185,7 @@ def process_purchase_payment(request, purchase_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def add_purchase_item(request, purchase_id):
     """View for adding a new item to an existing purchase"""
     from django.http import JsonResponse
@@ -3191,6 +3246,7 @@ def add_purchase_item(request, purchase_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def edit_purchase_item(request, item_id):
     """View for editing a purchase item"""
     from django.http import JsonResponse
@@ -3270,6 +3326,7 @@ def edit_purchase_item(request, item_id):
     return render(request, 'pharmacy/edit_purchase_item.html', context)
 
 @login_required
+@permission_required('pharmacy.edit')
 def delete_purchase_item(request, item_id):
     """View for deleting a purchase item"""
     from django.http import JsonResponse
@@ -3329,6 +3386,7 @@ def delete_purchase_item(request, item_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def submit_purchase_for_approval(request, purchase_id):
     """View for submitting purchase for approval"""
     from django.db import transaction
@@ -3392,6 +3450,7 @@ def submit_purchase_for_approval(request, purchase_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def approve_purchase(request, purchase_id):
     """View for approving a purchase"""
     from django.db import transaction
@@ -3449,6 +3508,7 @@ def approve_purchase(request, purchase_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def reject_purchase(request, purchase_id):
     """View for rejecting a purchase"""
     from django.db import transaction
@@ -3510,11 +3570,12 @@ def reject_purchase(request, purchase_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def edit_purchase_delivery_date(request, purchase_id):
     """View for editing the expected delivery date of a purchase"""
     from django.http import JsonResponse
     from django.utils import timezone
-    
+
     purchase = get_object_or_404(Purchase, id=purchase_id)
     
     # Allow editing for draft, pending, approved, and paid purchases
@@ -3578,6 +3639,7 @@ def edit_purchase_delivery_date(request, purchase_id):
 
 
 @login_required
+@permission_required('prescriptions.view')
 def prescription_list(request):
     """View for listing prescriptions with enhanced search and filtering"""
     # Get all prescriptions with prefetch for efficient dispensing status calculation
@@ -3696,6 +3758,7 @@ from .models import Patient, Prescription
 
 
 @login_required
+@permission_required('prescriptions.view')
 def patient_prescriptions(request, patient_id):
     """View for listing prescriptions for a patient"""
     # Get the patient
@@ -3720,6 +3783,7 @@ def patient_prescriptions(request, patient_id):
 
 
 @login_required
+@permission_required('prescriptions.create')
 def create_prescription(request, patient_id=None):
     """View for creating a prescription"""
     if request.method == 'POST':
@@ -3748,6 +3812,7 @@ def create_prescription(request, patient_id=None):
 
 
 @login_required
+@permission_required('prescriptions.create')
 def pharmacy_create_prescription(request, patient_id=None):
     """View for pharmacy creating a prescription"""
     # Initialize preselected_patient at the beginning to avoid UnboundLocalError

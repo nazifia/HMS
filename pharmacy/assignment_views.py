@@ -6,6 +6,7 @@ Provides a full UI interface for admins to manage assignments.
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from accounts.permissions import permission_required
 from django.utils import timezone
 from django.db.models import Count, Q
 from django.http import JsonResponse
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 @login_required
+@permission_required('pharmacy.manage_pharmacists')
 def manage_pharmacist_assignments(request):
     """
     Main view for managing pharmacist-dispensary assignments.
@@ -147,6 +149,7 @@ def manage_pharmacist_assignments(request):
 
 
 @login_required
+@permission_required('pharmacy.manage_pharmacists')
 def add_pharmacist_assignment(request):
     """
     Endpoint to add a new pharmacist-dispensary assignment.
@@ -229,6 +232,7 @@ def add_pharmacist_assignment(request):
 
 
 @login_required
+@permission_required('pharmacy.manage_pharmacists')
 def edit_pharmacist_assignment(request, assignment_id):
     """
     View to edit an existing pharmacist-dispensary assignment.
@@ -287,6 +291,7 @@ def edit_pharmacist_assignment(request, assignment_id):
 
 
 @login_required
+@permission_required('pharmacy.manage_pharmacists')
 def end_pharmacist_assignment(request, assignment_id):
     """
     End an active pharmacist assignment (set end date and inactive).
@@ -321,6 +326,7 @@ def end_pharmacist_assignment(request, assignment_id):
 
 
 @login_required
+@permission_required('pharmacy.manage_pharmacists')
 def delete_pharmacist_assignment(request, assignment_id):
     """
     Permanently delete a pharmacist assignment.
@@ -360,6 +366,7 @@ def delete_pharmacist_assignment(request, assignment_id):
 
 
 @login_required
+@permission_required('pharmacy.manage_pharmacists')
 def assignment_reports(request):
     """
     View for assignment reports and analytics.

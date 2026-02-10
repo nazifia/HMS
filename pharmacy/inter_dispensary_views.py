@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from accounts.permissions import permission_required
 from django.db.models import Q
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, DetailView
@@ -19,6 +20,7 @@ from .inter_dispensary_forms import (
 
 
 @login_required
+@permission_required('pharmacy.view')
 def inter_dispensary_transfer_list(request):
     """View for listing inter-dispensary transfers"""
     form = InterDispensaryTransferSearchForm(request.GET)
@@ -68,6 +70,7 @@ def inter_dispensary_transfer_list(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def inter_dispensary_transfer_detail(request, transfer_id):
     """View for transfer details"""
     transfer = get_object_or_404(
@@ -116,6 +119,7 @@ def inter_dispensary_transfer_detail(request, transfer_id):
 
 
 @login_required
+@permission_required('pharmacy.create')
 def create_inter_dispensary_transfer(request):
     """View for creating a new inter-dispensary transfer"""
     if request.method == 'POST':
@@ -153,6 +157,7 @@ def create_inter_dispensary_transfer(request):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def approve_inter_dispensary_transfer(request, transfer_id):
     """View for approving an inter-dispensary transfer"""
     transfer = get_object_or_404(InterDispensaryTransfer, id=transfer_id)
@@ -184,6 +189,7 @@ def approve_inter_dispensary_transfer(request, transfer_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def reject_inter_dispensary_transfer(request, transfer_id):
     """View for rejecting an inter-dispensary transfer"""
     transfer = get_object_or_404(InterDispensaryTransfer, id=transfer_id)
@@ -217,6 +223,7 @@ def reject_inter_dispensary_transfer(request, transfer_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def execute_inter_dispensary_transfer(request, transfer_id):
     """View for executing an approved inter-dispensary transfer"""
     transfer = get_object_or_404(InterDispensaryTransfer, id=transfer_id)
@@ -247,6 +254,7 @@ def execute_inter_dispensary_transfer(request, transfer_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def cancel_inter_dispensary_transfer(request, transfer_id):
     """View for cancelling a pending inter-dispensary transfer"""
     transfer = get_object_or_404(InterDispensaryTransfer, id=transfer_id)
@@ -276,6 +284,7 @@ def cancel_inter_dispensary_transfer(request, transfer_id):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def check_medication_inventory(request):
     """AJAX endpoint to check medication inventory availability"""
     medication_id = request.GET.get('medication_id')
@@ -328,6 +337,7 @@ def check_medication_inventory(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def transfer_statistics(request):
     """View for inter-dispensary transfer statistics"""
     today = timezone.now().date()

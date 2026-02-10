@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from accounts.permissions import permission_required
 from django.db.models import Q, Sum, F, Count
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, DetailView
@@ -29,6 +30,7 @@ from .enhanced_transfer_forms import (
 
 
 @login_required
+@permission_required('pharmacy.view')
 def enhanced_transfer_dashboard(request):
     """Main dashboard for medication transfers"""
     
@@ -72,6 +74,7 @@ def enhanced_transfer_dashboard(request):
 
 
 @login_required
+@permission_required('pharmacy.create')
 def create_single_transfer(request):
     """View for creating a single medication transfer"""
     
@@ -111,6 +114,7 @@ def create_single_transfer(request):
 
 
 @login_required
+@permission_required('pharmacy.create')
 def create_bulk_transfer(request):
     """View for creating bulk medication transfers"""
     
@@ -167,6 +171,7 @@ def create_bulk_transfer(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def enhanced_transfer_list(request):
     """Enhanced view for listing transfers with advanced filtering"""
     
@@ -232,6 +237,7 @@ def enhanced_transfer_list(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def enhanced_transfer_detail(request, transfer_id):
     """Enhanced view for transfer details with audit trail"""
     
@@ -289,6 +295,7 @@ def enhanced_transfer_detail(request, transfer_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 @require_POST
 def approve_transfer(request, transfer_id):
     """Approve a transfer"""
@@ -313,6 +320,7 @@ def approve_transfer(request, transfer_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 @require_POST
 def reject_transfer(request, transfer_id):
     """Reject a transfer"""
@@ -337,6 +345,7 @@ def reject_transfer(request, transfer_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 @require_POST
 def execute_transfer(request, transfer_id):
     """Execute an approved transfer"""
@@ -356,6 +365,7 @@ def execute_transfer(request, transfer_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 @csrf_exempt
 @require_POST
 def approve_bulk_transfers(request):
@@ -391,6 +401,7 @@ def approve_bulk_transfers(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 @csrf_exempt
 def check_inventory_api(request):
     """API endpoint to check inventory availability"""
@@ -434,6 +445,7 @@ def check_inventory_api(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 @csrf_exempt
 def get_medication_inventory_ajax(request):
     """AJAX endpoint to get medication inventory for a specific dispensary"""
@@ -487,6 +499,7 @@ def get_medication_inventory_ajax(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def transfer_reports(request):
     """Generate transfer reports and statistics"""
     

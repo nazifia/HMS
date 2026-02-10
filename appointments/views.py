@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from accounts.models import CustomUser
+from accounts.permissions import permission_required
 from django.contrib import messages
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
@@ -16,6 +17,7 @@ from patients.models import Patient
 from core.utils import send_notification_email, send_sms_notification
 
 @login_required
+@permission_required('appointments.view')
 def appointment_list(request):
     """View for listing all appointments with search and filter functionality"""
     search_form = AppointmentSearchForm(request.GET)
@@ -98,6 +100,7 @@ def appointment_list(request):
     return render(request, 'appointments/appointment_list.html', context)
 
 @login_required
+@permission_required('appointments.create')
 def create_appointment(request):
     """View for creating a new appointment"""
     # Pre-fill patient_id and doctor_id if provided in GET parameters
@@ -162,6 +165,7 @@ def create_appointment(request):
     return render(request, 'appointments/appointment_form.html', context)
 
 @login_required
+@permission_required('appointments.view')
 def appointment_detail(request, appointment_id):
     """View for displaying appointment details"""
     appointment = get_object_or_404(Appointment, id=appointment_id)
@@ -189,6 +193,7 @@ def appointment_detail(request, appointment_id):
     return render(request, 'appointments/appointment_detail.html', context)
 
 @login_required
+@permission_required('appointments.edit')
 def edit_appointment(request, appointment_id):
     """View for editing an appointment"""
     appointment = get_object_or_404(Appointment, id=appointment_id)
@@ -216,6 +221,7 @@ def edit_appointment(request, appointment_id):
     return render(request, 'appointments/appointment_form.html', context)
 
 @login_required
+@permission_required('appointments.edit')
 def cancel_appointment(request, appointment_id):
     """View for cancelling an appointment"""
     appointment = get_object_or_404(Appointment, id=appointment_id)
@@ -238,6 +244,7 @@ def cancel_appointment(request, appointment_id):
     return render(request, 'appointments/cancel_appointment.html', context)
 
 @login_required
+@permission_required('appointments.view')
 def appointment_calendar(request):
     """View for displaying appointments in a calendar view"""
     # Get the month and year from the request, default to current month
@@ -319,6 +326,7 @@ def appointment_calendar(request):
     return render(request, 'appointments/appointment_calendar.html', context)
 
 @login_required
+@permission_required('appointments.view')
 def doctor_appointments(request, doctor_id):
     """View for displaying appointments for a specific doctor"""
     doctor = get_object_or_404(CustomUser, id=doctor_id)
@@ -365,6 +373,7 @@ def doctor_appointments(request, doctor_id):
     return render(request, 'appointments/doctor_appointments.html', context)
 
 @login_required
+@permission_required('appointments.edit')
 def manage_doctor_schedule(request, doctor_id=None):
     """View for managing doctor schedules"""
     edit_schedule_id = request.GET.get('edit_schedule_id')
@@ -434,6 +443,7 @@ def manage_doctor_schedule(request, doctor_id=None):
     return render(request, 'appointments/manage_doctor_schedule.html', context)
 
 @login_required
+@permission_required('appointments.edit')
 def delete_doctor_schedule(request, schedule_id):
     """View for deleting a doctor schedule"""
     schedule = get_object_or_404(DoctorSchedule, id=schedule_id)
@@ -451,6 +461,7 @@ def delete_doctor_schedule(request, schedule_id):
     return render(request, 'appointments/delete_doctor_schedule.html', context)
 
 @login_required
+@permission_required('appointments.edit')
 def manage_doctor_leaves(request):
     """View for managing doctor leaves"""
     leaves = DoctorLeave.objects.all().order_by('-start_date')
@@ -473,6 +484,7 @@ def manage_doctor_leaves(request):
     return render(request, 'appointments/manage_doctor_leaves.html', context)
 
 @login_required
+@permission_required('appointments.edit')
 def approve_doctor_leave(request, leave_id):
     """View for approving a doctor leave request"""
     leave = get_object_or_404(DoctorLeave, id=leave_id)
@@ -490,6 +502,7 @@ def approve_doctor_leave(request, leave_id):
     return render(request, 'appointments/approve_doctor_leave.html', context)
 
 @login_required
+@permission_required('appointments.edit')
 def delete_doctor_leave(request, leave_id):
     """View for deleting a doctor leave request"""
     leave = get_object_or_404(DoctorLeave, id=leave_id)
@@ -506,6 +519,7 @@ def delete_doctor_leave(request, leave_id):
     return render(request, 'appointments/delete_doctor_leave.html', context)
 
 @login_required
+@permission_required('appointments.view')
 def get_available_slots(request):
     """AJAX view for getting available appointment slots for a doctor on a specific date"""
     date_str = request.GET.get('date')
@@ -571,6 +585,7 @@ def get_available_slots(request):
     return JsonResponse({'available_slots': available_slots}, status=200)
 
 @login_required
+@permission_required('appointments.edit')
 def update_appointment_status(request, appointment_id):
     """AJAX view for updating appointment status"""
     if request.method != 'POST':

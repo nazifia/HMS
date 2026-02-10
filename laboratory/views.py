@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
+from accounts.permissions import permission_required
 from django.db import models
 from django.db.models import Q, Sum, Count
 from django.core.paginator import Paginator
@@ -46,6 +47,7 @@ from core.models import send_notification_email, InternalNotification
 
 
 @login_required
+@permission_required('lab.view')
 @department_access_required('Laboratory')
 def laboratory_dashboard(request):
     """Enhanced Dashboard for Laboratory department with charts and metrics"""
@@ -149,6 +151,7 @@ def laboratory_dashboard(request):
 
 
 @login_required
+@permission_required('lab.view')
 def result_list(request):
     """Enhanced view for listing all test results with comprehensive search"""
     from .forms import TestResultSearchForm
@@ -251,6 +254,7 @@ def result_list(request):
     return render(request, 'laboratory/result_list.html', context)
 
 @login_required
+@permission_required('lab.view')
 def result_detail(request, result_id):
     """View for displaying a single test result"""
     result = get_object_or_404(
@@ -269,6 +273,7 @@ def result_detail(request, result_id):
     return render(request, 'laboratory/result_detail.html', context)
 
 @login_required
+@permission_required('lab.edit')
 def edit_test_result(request, result_id):
     """View for editing a test result"""
     result = get_object_or_404(TestResult.objects.select_related('test_request'), id=result_id)
@@ -293,6 +298,7 @@ def edit_test_result(request, result_id):
 
 # Test Management Views
 @login_required
+@permission_required('lab.view')
 def test_list(request):
     """View for listing all tests"""
     search_form = TestSearchForm(request.GET)
@@ -343,6 +349,7 @@ def test_list(request):
     return render(request, 'laboratory/test_list.html', context)
 
 @login_required
+@permission_required('lab.create')
 def add_test(request):
     """View for adding a new test"""
     if request.method == 'POST':
@@ -362,6 +369,7 @@ def add_test(request):
     return render(request, 'laboratory/test_form.html', context)
 
 @login_required
+@permission_required('lab.edit')
 def edit_test(request, test_id):
     """View for editing a test"""
     test = get_object_or_404(Test, id=test_id)
@@ -397,6 +405,7 @@ def edit_test(request, test_id):
     return render(request, 'laboratory/test_form.html', context)
 
 @login_required
+@permission_required('lab.edit')
 def delete_test(request, test_id):
     """View for deleting a test (soft delete)"""
     test = get_object_or_404(Test, id=test_id)
@@ -414,6 +423,7 @@ def delete_test(request, test_id):
     return render(request, 'laboratory/delete_test.html', context)
 
 @login_required
+@permission_required('lab.edit')
 def delete_parameter(request, parameter_id):
     """View for deleting a test parameter"""
     parameter = get_object_or_404(TestParameter, id=parameter_id)
@@ -432,6 +442,7 @@ def delete_parameter(request, parameter_id):
     return render(request, 'laboratory/delete_parameter.html', context)
 
 @login_required
+@permission_required('lab.edit')
 def manage_categories(request):
     """View for managing test categories"""
     categories = TestCategory.objects.all().order_by('name')
@@ -454,6 +465,7 @@ def manage_categories(request):
     return render(request, 'laboratory/manage_categories.html', context)
 
 @login_required
+@permission_required('lab.edit')
 def edit_category(request, category_id):
     """View for editing a test category"""
     category = get_object_or_404(TestCategory, id=category_id)
@@ -476,6 +488,7 @@ def edit_category(request, category_id):
     return render(request, 'laboratory/category_form.html', context)
 
 @login_required
+@permission_required('lab.edit')
 def delete_category(request, category_id):
     """View for deleting a test category"""
     category = get_object_or_404(TestCategory, id=category_id)
@@ -498,6 +511,7 @@ def delete_category(request, category_id):
 
 
 @login_required
+@permission_required('lab.view')
 def lab_statistics_report(request):
     """Comprehensive laboratory statistics and reporting"""
     from django.db.models import Q, Sum, Count, Avg
@@ -635,6 +649,7 @@ def lab_statistics_report(request):
 
 # Test Request and Result Views
 @login_required
+@permission_required('lab.view')
 def test_request_list(request):
     """View for listing all test requests - Optimized with select_related"""
     search_form = TestRequestSearchForm(request.GET)
@@ -722,6 +737,7 @@ def test_request_list(request):
     return render(request, 'laboratory/test_request_list.html', context)
 
 @login_required
+@permission_required('lab.create')
 def create_test_request(request):
     """View for creating a new test request and associated invoice."""
     if request.method == 'POST':
@@ -927,6 +943,7 @@ def create_test_request(request):
     return render(request, 'laboratory/enhanced_test_request_form.html', context)
 
 @login_required
+@permission_required('lab.view')
 def test_request_detail(request, request_id):
     test_request = get_object_or_404(TestRequest, id=request_id)
     tests = test_request.tests.all()
@@ -951,6 +968,7 @@ def test_request_detail(request, request_id):
     return render(request, 'laboratory/test_request_detail.html', context)
 
 @login_required
+@permission_required('lab.edit')
 def update_test_request_status(request, request_id):
     """View for updating test request status"""
     test_request = get_object_or_404(TestRequest, id=request_id)
@@ -982,6 +1000,7 @@ def update_test_request_status(request, request_id):
     return redirect('laboratory:test_request_detail', request_id=test_request.id)
 
 @login_required
+@permission_required('lab.results')
 def create_test_result(request, request_id):
     """View for creating a new test result"""
     test_request = get_object_or_404(TestRequest, id=request_id)
@@ -1144,6 +1163,7 @@ def create_test_result(request, request_id):
     return render(request, 'laboratory/test_result_form.html', context)
 
 @login_required
+@permission_required('lab.view')
 def result_list(request):
     """View for listing all test results"""
     results = TestResult.objects.all().order_by('-result_date')
@@ -1160,6 +1180,7 @@ def result_list(request):
     return render(request, 'laboratory/result_list.html', context)
 
 @login_required
+@permission_required('lab.view')
 def result_detail(request, result_id):
     """View for displaying test result details"""
     result = get_object_or_404(TestResult, id=result_id)
@@ -1173,6 +1194,7 @@ def result_detail(request, result_id):
     return render(request, 'laboratory/result_detail.html', context)
 
 @login_required
+@permission_required('lab.edit')
 def edit_test_result(request, result_id):
     """View for editing a test result and its parameters."""
     result = get_object_or_404(TestResult, id=result_id)
@@ -1222,6 +1244,7 @@ def edit_test_result(request, result_id):
 
 
 @login_required
+@permission_required('lab.edit')
 @require_http_methods(["GET", "POST"])
 def add_result_parameter(request, result_id):
     """View for manually adding a new parameter to an existing test result"""
@@ -1306,6 +1329,7 @@ def add_result_parameter(request, result_id):
 
 
 @login_required
+@permission_required('lab.view')
 def get_test_parameters(request, test_id):
     """
     AJAX endpoint to get predefined parameters for a test
@@ -1349,6 +1373,7 @@ def get_test_parameters(request, test_id):
 
 
 @login_required
+@permission_required('lab.results')
 def manual_test_result_entry(request, request_id):
     """
     Manual test result entry for laboratory staff - bypasses payment restrictions
@@ -1468,6 +1493,7 @@ def manual_test_result_entry(request, request_id):
     return render(request, 'laboratory/test_result_form.html', context)
 
 @login_required
+@permission_required('lab.view')
 def print_result(request, result_id):
     """View for printing a test result"""
     result = get_object_or_404(TestResult, id=result_id)
@@ -1486,6 +1512,7 @@ def print_result(request, result_id):
     return render(request, 'laboratory/print_result.html', context)
 
 @login_required
+@permission_required('lab.results')
 def verify_test_result(request, result_id):
     """View for verifying a test result"""
     result = get_object_or_404(TestResult, id=result_id)
@@ -1532,6 +1559,7 @@ def verify_test_result(request, result_id):
 
 
 @login_required
+@permission_required('lab.create')
 def create_prescription_from_test(request, test_request_id):
     """Create a prescription based on test results"""
     test_request = get_object_or_404(TestRequest, id=test_request_id)
@@ -1594,6 +1622,7 @@ def create_prescription_from_test(request, test_request_id):
     return render(request, 'laboratory/create_prescription.html', context)
 
 @login_required
+@permission_required('lab.view')
 def patient_tests(request, patient_id):
     """View for displaying tests for a specific patient"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -1608,6 +1637,7 @@ def patient_tests(request, patient_id):
 
 
 @login_required
+@permission_required('lab.view')
 def patient_prescriptions(request, patient_id):
     """View for displaying prescriptions for a specific patient"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -1621,6 +1651,7 @@ def patient_prescriptions(request, patient_id):
     return render(request, 'laboratory/patient_prescriptions.html', context)
 
 @login_required
+@permission_required('lab.view')
 def test_api(request):
     """API view for getting test information"""
     tests = Test.objects.filter(is_active=True).select_related('category')
@@ -1641,6 +1672,7 @@ def test_api(request):
 
 
 @login_required
+@permission_required('lab.view')
 def laboratory_sales_report(request):
     """View for daily laboratory tests by user and total monthly laboratory revenue."""
     from django.db.models import Sum, Count
@@ -1683,6 +1715,7 @@ def laboratory_sales_report(request):
 
 
 @login_required
+@permission_required('lab.view')
 def htmx_diagnostic(request):
     """Diagnostic page for testing HTMX patient search"""
     return render(request, 'laboratory/htmx_test_diagnostic.html', {
@@ -1691,6 +1724,7 @@ def htmx_diagnostic(request):
 
 
 @login_required
+@permission_required('lab.view')
 def radiology_sales_report(request):
     """View for daily radiology tests by user and total monthly radiology revenue."""
     from radiology.models import RadiologyOrder

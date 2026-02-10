@@ -19,8 +19,10 @@ from inpatient.models import Admission
 from core.audit_utils import log_audit_action
 from core.models import InternalNotification, send_notification_email
 from core.billing_office_integration import BillingOfficePaymentProcessor
+from accounts.permissions import permission_required
 
 @login_required
+@permission_required('billing.view')
 def invoice_list(request):
     """View for listing all invoices with search and filter functionality - Optimized"""
     search_form = InvoiceSearchForm(request.GET)
@@ -140,6 +142,7 @@ def invoice_list(request):
     return render(request, 'billing/invoice_list.html', context)
 
 @login_required
+@permission_required('billing.create')
 def create_invoice(request):
     """View for creating a new invoice"""
     # Pre-fill patient_id if provided in GET parameters
@@ -187,6 +190,7 @@ def create_invoice(request):
     return render(request, 'billing/invoice_form.html', context)
 
 @login_required
+@permission_required('billing.view')
 def invoice_detail(request, invoice_id):
     """View for displaying invoice details"""
     invoice = get_object_or_404(Invoice.objects.select_related('patient'), id=invoice_id)
@@ -223,6 +227,7 @@ def invoice_detail(request, invoice_id):
     return render(request, 'billing/invoice_detail.html', context)
 
 @login_required
+@permission_required('billing.edit')
 def edit_invoice(request, invoice_id):
     """View for editing an invoice"""
     invoice = get_object_or_404(Invoice, id=invoice_id)
@@ -250,6 +255,7 @@ def edit_invoice(request, invoice_id):
     return render(request, 'billing/invoice_form.html', context)
 
 @login_required
+@permission_required('billing.edit')
 def delete_invoice(request, invoice_id):
     """View for deleting an invoice"""
     invoice = get_object_or_404(Invoice, id=invoice_id)
@@ -277,6 +283,7 @@ def delete_invoice(request, invoice_id):
     return render(request, 'billing/delete_invoice.html', context)
 
 @login_required
+@permission_required('billing.view')
 def print_invoice(request, invoice_id):
     """View for printing an invoice"""
     invoice = get_object_or_404(Invoice, id=invoice_id)
@@ -293,6 +300,7 @@ def print_invoice(request, invoice_id):
     return render(request, 'billing/print_invoice.html', context)
 
 @login_required
+@permission_required('billing.process_payment')
 def record_payment(request, invoice_id):
     context = {}
     """Enhanced view for recording payments with billing office integration"""
@@ -373,6 +381,7 @@ def record_payment(request, invoice_id):
     return render(request, 'billing/payment_form.html', context)
 
 @login_required
+@permission_required('billing.view')
 def service_list(request):
     """View for listing all services"""
     services = Service.objects.all().order_by('name')
@@ -395,12 +404,14 @@ def service_list(request):
     return render(request, 'billing/service_list.html', context)
 
 @login_required
+@permission_required('billing.create')
 def add_service(request):
     """Redirect to service_list view which handles both listing and adding"""
     # The request parameter is required by the decorator but not used
     return redirect('billing:services')
 
 @login_required
+@permission_required('billing.edit')
 def edit_service(request, service_id):
     """View for editing a service"""
     service = get_object_or_404(Service, id=service_id)
@@ -423,6 +434,7 @@ def edit_service(request, service_id):
     return render(request, 'billing/service_form.html', context)
 
 @login_required
+@permission_required('billing.edit')
 def delete_service(request, service_id):
     """View for deleting a service"""
     service = get_object_or_404(Service, id=service_id)
@@ -444,6 +456,7 @@ def delete_service(request, service_id):
     return render(request, 'billing/delete_service.html', context)
 
 @login_required
+@permission_required('billing.view')
 def patient_invoices(request, patient_id):
     """View for displaying invoices for a specific patient"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -465,6 +478,7 @@ def patient_invoices(request, patient_id):
     return render(request, 'billing/patient_invoices.html', context)
 
 @login_required
+@permission_required('billing.view')
 def admission_invoices(request):
     """View for listing all admissions with their billing status"""
     admissions = Admission.objects.all().order_by('-admission_date')
@@ -489,6 +503,7 @@ def admission_invoices(request):
     return render(request, 'admissions/admission_invoices.html', context)
 
 @login_required
+@permission_required('billing.view')
 def billing_reports(request):
     """View for billing summary and reporting"""
     # Revenue by month (last 12 months)
@@ -547,6 +562,7 @@ def billing_reports(request):
 
 
 @login_required
+@permission_required('billing.process_payment')
 def surgery_billing(request, surgery_id):
     """View for managing surgery billing including pack costs"""
     from theatre.models import Surgery
@@ -668,6 +684,7 @@ def surgery_billing(request, surgery_id):
     return render(request, 'billing/surgery_billing.html', context)
 
 @login_required
+@permission_required('billing.view')
 def export_billing_report_csv(request):
     """Export billing report as CSV (by department, service, provider)"""
     response = HttpResponse(content_type='text/csv')
@@ -686,6 +703,7 @@ def export_billing_report_csv(request):
     return response
 
 @login_required
+@permission_required('billing.create')
 def create_invoice_for_prescription(request, prescription_id):
     """Create an invoice for a prescription if not already created."""
     prescription = get_object_or_404(Prescription, id=prescription_id)
@@ -756,6 +774,7 @@ def create_invoice_for_prescription(request, prescription_id):
 
 
 @login_required
+@permission_required('billing.view')
 def medication_billing_dashboard(request):
     """Dashboard for medication billing management"""
     from pharmacy.models import Prescription
@@ -789,6 +808,7 @@ def medication_billing_dashboard(request):
 
 
 @login_required
+@permission_required('billing.view')
 def prescription_billing_detail(request, prescription_id):
     """Detailed view for prescription billing with individual item breakdown"""
     from pharmacy.models import Prescription
@@ -850,6 +870,7 @@ def prescription_billing_detail(request, prescription_id):
 
 
 @login_required
+@permission_required('billing.process_payment')
 def process_medication_payment(request, prescription_id):
     """Process payment for medication prescription from billing office"""
     from pharmacy.models import Prescription
@@ -923,6 +944,7 @@ def process_medication_payment(request, prescription_id):
     return redirect('billing:prescription_billing_detail', prescription_id=prescription.id)
 
 @login_required
+@permission_required('billing.create')
 def create_invoice_for_admission(request, admission_id):
     """Create an invoice for an admission if not already created."""
     admission = get_object_or_404(Admission, id=admission_id)
@@ -986,6 +1008,7 @@ def create_invoice_for_admission(request, admission_id):
 
 
 @login_required
+@permission_required('billing.process_payment')
 def admission_payment(request, admission_id):
     """Enhanced view for processing admission payments with billing office integration"""
     from inpatient.models import Admission

@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
+from accounts.permissions import permission_required
 from patients.models import Patient
 from core.patient_search_forms import PatientSearchForm
 from patients.forms import NHIAIndependentPatientForm
@@ -35,6 +36,7 @@ def generate_nhia_reg_number():
 
 
 @login_required
+@permission_required('nhia.view')
 def nhia_patient_list(request):
     nhia_patients = NHIAPatient.objects.select_related('patient').all().order_by('-date_registered')
     
@@ -62,6 +64,7 @@ def nhia_patient_list(request):
 
 
 @login_required
+@permission_required('nhia.create')
 def register_patient_for_nhia(request):
     # Start with all patients
     patients = Patient.objects.all().order_by('-registration_date')
@@ -92,6 +95,7 @@ def register_patient_for_nhia(request):
 
 
 @login_required
+@permission_required('nhia.create')
 def register_independent_nhia_patient(request):
     if request.method == 'POST':
         form = NHIAIndependentPatientForm(request.POST, request.FILES)
@@ -151,6 +155,7 @@ def generate_authorization_code():
 
 
 @login_required
+@permission_required('nhia.view')
 def nhia_dashboard(request):
     """Dashboard for NHIA operations"""
     # Get statistics
@@ -171,6 +176,7 @@ def nhia_dashboard(request):
 
 
 @login_required
+@permission_required('nhia.view')
 def authorization_code_list(request):
     """List all authorization codes with search and filter functionality"""
     search_query = request.GET.get('search', '')
@@ -209,6 +215,7 @@ def authorization_code_list(request):
 
 
 @login_required
+@permission_required('nhia.create')
 def generate_authorization_code_view(request):
     """Generate a new authorization code"""
     if request.method == 'POST':
@@ -244,6 +251,7 @@ def generate_authorization_code_view(request):
 
 
 @login_required
+@permission_required('nhia.view')
 def authorization_code_detail(request, code_id):
     """View details of an authorization code"""
     code = get_object_or_404(AuthorizationCode, id=code_id)
@@ -254,6 +262,7 @@ def authorization_code_detail(request, code_id):
 
 
 @login_required
+@permission_required('nhia.edit')
 def cancel_authorization_code(request, code_id):
     """Cancel an authorization code"""
     code = get_object_or_404(AuthorizationCode, id=code_id)

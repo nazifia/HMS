@@ -7,6 +7,7 @@ Handles cart operations: create, view, update, checkout, and complete dispensing
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from accounts.permissions import permission_required
 from django.db import transaction
 from django.db.models import Sum, Count
 from django.http import JsonResponse
@@ -23,6 +24,7 @@ from core.audit_utils import log_audit_action
 
 
 @login_required
+@permission_required('pharmacy.create')
 def create_cart_from_prescription(request, prescription_id):
     """
     Create a new cart from prescription.
@@ -95,6 +97,7 @@ def create_cart_from_prescription(request, prescription_id):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def view_cart(request, cart_id):
     """
     View cart details with all items.
@@ -218,6 +221,7 @@ def view_cart(request, cart_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def update_cart_dispensary(request, cart_id):
     """
     Update the dispensary for the cart.
@@ -263,6 +267,7 @@ def update_cart_dispensary(request, cart_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def update_cart_item_quantity(request, item_id):
     """
     Update quantity for a cart item.
@@ -322,6 +327,7 @@ def update_cart_item_quantity(request, item_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def remove_cart_item(request, item_id):
     """
     Remove an item from cart.
@@ -336,6 +342,7 @@ def remove_cart_item(request, item_id):
 
 
 @login_required
+@permission_required('pharmacy.create')
 def generate_invoice_from_cart(request, cart_id):
     """
     Generate invoice from cart.
@@ -407,6 +414,7 @@ def generate_invoice_from_cart(request, cart_id):
 
 
 @login_required
+@permission_required('pharmacy.dispense')
 def complete_dispensing_from_cart(request, cart_id):
     """
     Complete dispensing after payment.
@@ -722,6 +730,7 @@ def complete_dispensing_from_cart(request, cart_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def cancel_cart(request, cart_id):
     """Cancel a cart"""
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
@@ -748,6 +757,7 @@ def cancel_cart(request, cart_id):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def cart_list(request):
     """
     List all prescription carts with filtering options.
@@ -825,6 +835,7 @@ def cart_list(request):
 
 
 @login_required
+@permission_required('pharmacy.view')
 def cart_receipt(request, cart_id):
     """
     Display printable cart receipt.
@@ -858,6 +869,7 @@ def cart_receipt(request, cart_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def substitute_cart_item(request, item_id):
     """
     Substitute a cart item with an alternative medication.
@@ -940,6 +952,7 @@ def substitute_cart_item(request, item_id):
 
 
 @login_required
+@permission_required('pharmacy.edit')
 def remove_substitution(request, item_id):
     """
     Remove substitution and revert to original prescribed medication.
