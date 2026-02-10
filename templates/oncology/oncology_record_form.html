@@ -17,24 +17,64 @@
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
-                    <div class="row">
+
+                    <!-- Patient Selection -->
+                    <div class="row mb-3">
                         <div class="col-md-6">
-                            {{ form.patient|as_crispy_field }}
+                            <label for="{{ form.patient_search.id_for_label }}" class="form-label">Search Patient *</label>
+                            {{ form.patient_search }}
+                            {% if form.patient.errors %}
+                                <div class="text-danger">{{ form.patient.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Search patient by name, ID, or phone number</div>
                         </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.patient.id_for_label }}" class="form-label">Selected Patient *</label>
+                            {{ form.patient }}
+                        </div>
+                    </div>
+
+                    <!-- Selected Patient Info Display -->
+                    <div id="selected-patient-info" class="alert alert-info d-none mb-3">
+                        <h6><i class="fas fa-user-circle"></i> Selected Patient Information</h6>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <strong>Name:</strong> <span id="patient-name">-</span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Patient ID:</strong> <span id="patient-id">-</span>
+                            </div>
+                            <div class="col-md-2">
+                                <strong>Age:</strong> <span id="patient-age">-</span>
+                            </div>
+                            <div class="col-md-2">
+                                <strong>Gender:</strong> <span id="patient-gender">-</span>
+                            </div>
+                            <div class="col-md-2">
+                                <strong>Phone:</strong> <span id="patient-phone">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Doctor Selection & Visit Info -->
+                    <div class="row">
                         <div class="col-md-6">
                             {{ form.doctor|as_crispy_field }}
                         </div>
-                    </div>
-                    
-                    <div class="row">
                         <div class="col-md-6">
                             {{ form.visit_date|as_crispy_field }}
                         </div>
-                        <div class="col-md-6">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
                             {{ form.authorization_code|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-disease"></i> Cancer Details</h5>
+
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.cancer_type|as_crispy_field }}
@@ -43,7 +83,7 @@
                             {{ form.stage|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.tumor_size|as_crispy_field }}
@@ -52,43 +92,55 @@
                             {{ form.metastasis|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-microscope"></i> Diagnostic Information</h5>
+
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.diagnosis|as_crispy_field }}
                         </div>
                         <div class="col-md-6">
-                            {{ form.treatment_plan|as_crispy_field }}
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            {{ form.treatment_protocol|as_crispy_field }}
-                        </div>
-                        <div class="col-md-6">
-                            {{ form.chemotherapy_cycle|as_crispy_field }}
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            {{ form.radiation_dose|as_crispy_field }}
-                        </div>
-                        <div class="col-md-6">
-                            {{ form.surgery_details|as_crispy_field }}
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
                             {{ form.biopsy_results|as_crispy_field }}
                         </div>
-                        <div class="col-md-6">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
                             {{ form.oncology_marker|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-pills"></i> Treatment Details</h5>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.treatment_plan|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.treatment_protocol|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.chemotherapy_cycle|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.radiation_dose|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            {{ form.surgery_details|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-calendar-check"></i> Follow-up</h5>
+
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.follow_up_required|as_crispy_field }}
@@ -97,14 +149,14 @@
                             {{ form.follow_up_date|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="row mt-4">
                         <div class="col-md-12">
                             {{ form.notes|as_crispy_field }}
                         </div>
                     </div>
-                    
-                    <div class="d-flex justify-content-between">
+
+                    <div class="d-flex justify-content-between mt-4">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save Record
                         </button>
@@ -117,4 +169,88 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize select2 for all dropdowns
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle patient search
+    if (typeof $ !== 'undefined') {
+        // Initialize Select2 for all select fields
+        $('.select2').select2({
+            placeholder: "Select an option",
+            allowClear: true
+        });
+
+        // Initialize patient search functionality
+        $('.patient-search').on('keyup', function() {
+            const searchValue = $(this).val();
+
+            if (searchValue.length >= 2) {
+                $.ajax({
+                    url: "{% url 'oncology:search_oncology_patients' %}",
+                    dataType: 'json',
+                    data: {
+                        term: searchValue
+                    },
+                    success: function(data) {
+                        // Update patient dropdown with search results
+                        const $patientSelect = $('#{{ form.patient.id_for_label|safe }}');
+                        $patientSelect.empty();
+
+                        // Add default option
+                        $patientSelect.append('<option value="">Select a patient...</option>');
+
+                        // Add search results
+                        data.forEach(function(item) {
+                            const option = new Option(item.text, item.id);
+                            $patientSelect.append(option);
+                        });
+                    }
+                });
+            }
+        });
+
+        // Handle patient selection from dropdown
+        $('#{{ form.patient.id_for_label|safe }}').on('change', function() {
+            const selectedId = $(this).val();
+            if (selectedId) {
+                // Fetch patient details and display them
+                $.ajax({
+                    url: "{% url 'oncology:search_oncology_patients' %}",
+                    dataType: 'json',
+                    data: {
+                        term: ''
+                    },
+                    success: function(data) {
+                        const selectedPatient = data.find(item => item.id == selectedId);
+                        if (selectedPatient) {
+                            // Update search field with selected patient name
+                            $('.patient-search').val(selectedPatient.text);
+
+                            // Display patient info
+                            $('#patient-name').text(selectedPatient.name || '-');
+                            $('#patient-id').text(selectedPatient.patient_id || '-');
+                            $('#patient-age').text(selectedPatient.age || '-');
+                            $('#patient-gender').text(selectedPatient.gender || '-');
+                            $('#patient-phone').text(selectedPatient.phone || '-');
+                            $('#selected-patient-info').removeClass('d-none');
+                        }
+                    }
+                });
+            } else {
+                // Hide patient info section if no patient selected
+                $('#selected-patient-info').addClass('d-none');
+            }
+        });
+
+        // On page load, if patient is already selected (edit mode), show patient info
+        const initialPatientId = $('#{{ form.patient.id_for_label|safe }}').val();
+        if (initialPatientId) {
+            $('#{{ form.patient.id_for_label|safe }}').trigger('change');
+        }
+    }
+});
+</script>
 {% endblock %}

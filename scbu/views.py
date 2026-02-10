@@ -196,10 +196,14 @@ def create_scbu_record(request):
             return redirect('scbu:scbu_record_detail', record_id=record.id)
     else:
         form = ScbuRecordForm()
-    
+
+    # Get all patients for the dropdown
+    all_patients = Patient.objects.all().order_by('first_name', 'last_name')
+
     context = {
         'form': form,
-        'title': 'Create SCBU Record'
+        'title': 'Create SCBU Record',
+        'all_patients': all_patients,
     }
     return render(request, 'scbu/scbu_record_form.html', context)
 
@@ -293,6 +297,9 @@ def edit_scbu_record(request, record_id):
                     f"Please contact the desk office to obtain authorization for SCBU services."
                 )
 
+    # Get all patients for the dropdown
+    all_patients = Patient.objects.all().order_by('first_name', 'last_name')
+
     context = {
         'form': form,
         'record': record,
@@ -302,6 +309,7 @@ def edit_scbu_record(request, record_id):
         'authorization_valid': authorization_valid,
         'authorization_message': authorization_message,
         'authorization_request_pending': authorization_request_pending,
+        'all_patients': all_patients,
     }
     return render(request, 'scbu/scbu_record_form.html', context)
 

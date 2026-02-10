@@ -1,12 +1,11 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
-{% load crispy_forms_tags %}
 
-{% block title %}{{ title }} - Hospital Management System{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block content %}
 <div class="row">
-    <div class="col-md-12">
+    <div class="col-md-10 mx-auto">
         <div class="card">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">{{ title }}</h4>
@@ -17,104 +16,291 @@
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
+
+                    <!-- Patient Selection -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.patient_search.id_for_label }}" class="form-label">Search Patient *</label>
+                            {{ form.patient_search }}
+                            {% if form.patient.errors %}
+                                <div class="text-danger">{{ form.patient.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Search patient by name, ID, or phone number</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.patient.id_for_label }}" class="form-label">Selected Patient *</label>
+                            {{ form.patient }}
+                        </div>
+                    </div>
+
+                    <!-- Visit Details -->
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.patient|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.doctor.id_for_label }}" class="form-label">Doctor</label>
+                                {{ form.doctor }}
+                                {% if form.doctor.errors %}
+                                    <div class="text-danger">{{ form.doctor.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            {{ form.doctor|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.visit_date.id_for_label }}" class="form-label">Visit Date *</label>
+                                {{ form.visit_date }}
+                                {% if form.visit_date.errors %}
+                                    <div class="text-danger">{{ form.visit_date.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                    
+
+                    <!-- Emergency Details -->
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.visit_date|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.emergency_type.id_for_label }}" class="form-label">Emergency Type</label>
+                                {{ form.emergency_type }}
+                                {% if form.emergency_type.errors %}
+                                    <div class="text-danger">{{ form.emergency_type.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            {{ form.authorization_code|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.pain_level.id_for_label }}" class="form-label">Pain Level</label>
+                                {{ form.pain_level }}
+                                {% if form.pain_level.errors %}
+                                    <div class="text-danger">{{ form.pain_level.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.emergency_type|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.bleeding_amount.id_for_label }}" class="form-label">Bleeding Amount</label>
+                                {{ form.bleeding_amount }}
+                                {% if form.bleeding_amount.errors %}
+                                    <div class="text-danger">{{ form.bleeding_amount.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            {{ form.pain_level|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.contractions.id_for_label }}" class="form-label">Contractions</label>
+                                {{ form.contractions }}
+                                {% if form.contractions.errors %}
+                                    <div class="text-danger">{{ form.contractions.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.bleeding_amount|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.contraction_frequency.id_for_label }}" class="form-label">Contraction Frequency</label>
+                                {{ form.contraction_frequency }}
+                                {% if form.contraction_frequency.errors %}
+                                    <div class="text-danger">{{ form.contraction_frequency.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            {{ form.contractions|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.rupture_of_membranes.id_for_label }}" class="form-label">Rupture of Membranes</label>
+                                {{ form.rupture_of_membranes }}
+                                {% if form.rupture_of_membranes.errors %}
+                                    <div class="text-danger">{{ form.rupture_of_membranes.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.contraction_frequency|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.fetal_movement.id_for_label }}" class="form-label">Fetal Movement</label>
+                                {{ form.fetal_movement }}
+                                {% if form.fetal_movement.errors %}
+                                    <div class="text-danger">{{ form.fetal_movement.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            {{ form.rupture_of_membranes|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.vaginal_discharge.id_for_label }}" class="form-label">Vaginal Discharge</label>
+                                {{ form.vaginal_discharge }}
+                                {% if form.vaginal_discharge.errors %}
+                                    <div class="text-danger">{{ form.vaginal_discharge.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                    
+
+                    <!-- Intervention Details -->
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.fetal_movement|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.emergency_intervention.id_for_label }}" class="form-label">Emergency Intervention</label>
+                                {{ form.emergency_intervention }}
+                                {% if form.emergency_intervention.errors %}
+                                    <div class="text-danger">{{ form.emergency_intervention.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            {{ form.vaginal_discharge|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.stabilization_status.id_for_label }}" class="form-label">Stabilization Status</label>
+                                {{ form.stabilization_status }}
+                                {% if form.stabilization_status.errors %}
+                                    <div class="text-danger">{{ form.stabilization_status.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                    
+
+                    <!-- Clinical Information -->
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.emergency_intervention|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.diagnosis.id_for_label }}" class="form-label">Diagnosis *</label>
+                                {{ form.diagnosis }}
+                                {% if form.diagnosis.errors %}
+                                    <div class="text-danger">{{ form.diagnosis.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            {{ form.stabilization_status|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.treatment_plan.id_for_label }}" class="form-label">Treatment Plan</label>
+                                {{ form.treatment_plan }}
+                                {% if form.treatment_plan.errors %}
+                                    <div class="text-danger">{{ form.treatment_plan.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                    
+
+                    <!-- Follow-up and Authorization -->
                     <div class="row">
-                        <div class="col-md-6">
-                            {{ form.diagnosis|as_crispy_field }}
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.follow_up_required.id_for_label }}" class="form-label">Follow-up Required</label>
+                                {{ form.follow_up_required }}
+                                {% if form.follow_up_required.errors %}
+                                    <div class="text-danger">{{ form.follow_up_required.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            {{ form.treatment_plan|as_crispy_field }}
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.follow_up_date.id_for_label }}" class="form-label">Follow-up Date</label>
+                                {{ form.follow_up_date }}
+                                {% if form.follow_up_date.errors %}
+                                    <div class="text-danger">{{ form.follow_up_date.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.authorization_code.id_for_label }}" class="form-label">Authorization Code</label>
+                                {{ form.authorization_code }}
+                                {% if form.authorization_code.errors %}
+                                    <div class="text-danger">{{ form.authorization_code.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            {{ form.follow_up_required|as_crispy_field }}
-                        </div>
-                        <div class="col-md-6">
-                            {{ form.follow_up_date|as_crispy_field }}
-                        </div>
+
+                    <!-- Notes -->
+                    <div class="mb-3">
+                        <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}
+                            <div class="text-danger">{{ form.notes.errors }}</div>
+                        {% endif %}
                     </div>
-                    
-                    <div class="row mt-4">
-                        <div class="col-md-12">
-                            {{ form.notes|as_crispy_field }}
-                        </div>
-                    </div>
-                    
+
                     <div class="d-flex justify-content-between">
+                        <a href="{% url 'gynae_emergency:gynae_emergency_records_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save Record
                         </button>
-                        <a href="{% url 'gynae_emergency:gynae_emergency_records_list' %}" class="btn btn-secondary">
-                            <i class="fas fa-times"></i> Cancel
-                        </a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize select2 for all dropdowns
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle patient search
+    if (typeof $ !== 'undefined') {
+        // Initialize Select2 for all select fields
+        $('.select2').select2({
+            placeholder: "Select an option",
+            allowClear: true
+        });
+
+        // Initialize patient search functionality
+        $('.patient-search').on('keyup', function() {
+            const searchValue = $(this).val();
+
+            if (searchValue.length >= 2) {
+                $.ajax({
+                    url: "{% url 'gynae_emergency:search_gynae_emergency_patients' %}",
+                    dataType: 'json',
+                    data: {
+                        term: searchValue
+                    },
+                    success: function(data) {
+                        // Update patient dropdown with search results
+                        const $patientSelect = $('#{{ form.patient.id_for_label|safe }}');
+                        $patientSelect.empty();
+
+                        // Add default option
+                        $patientSelect.append('<option value="">Select a patient...</option>');
+
+                        // Add search results
+                        data.forEach(function(item) {
+                            const option = new Option(item.text, item.id);
+                            $patientSelect.append(option);
+                        });
+                    }
+                });
+            }
+        });
+
+        // Handle patient selection from dropdown
+        $('#{{ form.patient.id_for_label|safe }}').on('change', function() {
+            const selectedId = $(this).val();
+            if (selectedId) {
+                // Update search field with selected patient name
+                $.ajax({
+                    url: "{% url 'gynae_emergency:search_gynae_emergency_patients' %}",
+                    dataType: 'json',
+                    data: {
+                        term: ''
+                    },
+                    success: function(data) {
+                        const selectedPatient = data.find(item => item.id == selectedId);
+                        if (selectedPatient) {
+                            $('.patient-search').val(selectedPatient.text);
+                        }
+                    }
+                });
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

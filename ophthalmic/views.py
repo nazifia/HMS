@@ -177,10 +177,14 @@ def create_ophthalmic_record(request):
             return redirect('ophthalmic:ophthalmic_record_detail', record_id=record.id)
     else:
         form = OphthalmicRecordForm()
-    
+
+    # Get all patients for the dropdown
+    all_patients = Patient.objects.all().order_by('first_name', 'last_name')
+
     context = {
         'form': form,
-        'title': 'Create Ophthalmic Record'
+        'title': 'Create Ophthalmic Record',
+        'all_patients': all_patients,
     }
     return render(request, 'ophthalmic/ophthalmic_record_form.html', context)
 
@@ -222,7 +226,7 @@ def ophthalmic_record_detail(request, record_id):
 def edit_ophthalmic_record(request, record_id):
     """View to edit an existing ophthalmic record"""
     record = get_object_or_404(OphthalmicRecord, id=record_id)
-    
+
     if request.method == 'POST':
         form = OphthalmicRecordForm(request.POST, instance=record)
         if form.is_valid():
@@ -231,7 +235,10 @@ def edit_ophthalmic_record(request, record_id):
             return redirect('ophthalmic:ophthalmic_record_detail', record_id=record.id)
     else:
         form = OphthalmicRecordForm(instance=record)
-    
+
+    # Get all patients for the dropdown
+    all_patients = Patient.objects.all().order_by('first_name', 'last_name')
+
     # **NHIA AUTHORIZATION CHECK**
     is_nhia_patient = record.patient.patient_type == 'nhia'
     requires_authorization = is_nhia_patient and not record.authorization_code
@@ -265,6 +272,7 @@ def edit_ophthalmic_record(request, record_id):
         'form': form,
         'record': record,
         'title': 'Edit Ophthalmic Record',
+        'all_patients': all_patients,
         'is_nhia_patient': is_nhia_patient,
         'requires_authorization': requires_authorization,
         'authorization_valid': authorization_valid,

@@ -29,6 +29,27 @@
 .modal-header {
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
+/* Selected patient info display */
+.selected-patient-info {
+    background-color: #e7f3ff;
+    border: 1px solid #b6d4fe;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-top: 0.5rem;
+}
+.selected-patient-info .patient-detail {
+    margin-bottom: 0.5rem;
+}
+.selected-patient-info .patient-detail:last-child {
+    margin-bottom: 0;
+}
+.selected-patient-info .label {
+    font-weight: 600;
+    color: #495057;
+}
+.selected-patient-info .value {
+    color: #212529;
+}
 </style>
 {% endblock %}
 
@@ -45,24 +66,75 @@
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
-                    <div class="row">
+
+                    <!-- Patient Selection Section -->
+                    <div class="row mb-3">
                         <div class="col-md-6">
-                            {{ form.patient|as_crispy_field }}
+                            <label for="{{ form.patient_search.id_for_label }}" class="form-label">Search Patient *</label>
+                            {{ form.patient_search }}
+                            {% if form.patient.errors %}
+                                <div class="text-danger">{{ form.patient.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Search patient by name, ID, or phone number</div>
                         </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.patient.id_for_label }}" class="form-label">Selected Patient *</label>
+                            {{ form.patient }}
+                        </div>
+                    </div>
+
+                    <!-- Selected Patient Info Display -->
+                    <div id="selected-patient-info" class="selected-patient-info d-none">
+                        <h6 class="mb-3"><i class="fas fa-user-circle text-primary"></i> Selected Patient Information</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="patient-detail">
+                                    <span class="label">Name:</span>
+                                    <span class="value" id="patient-name">-</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="patient-detail">
+                                    <span class="label">Patient ID:</span>
+                                    <span class="value" id="patient-id">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="patient-detail">
+                                    <span class="label">Age/Gender:</span>
+                                    <span class="value" id="patient-age-gender">-</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="patient-detail">
+                                    <span class="label">Phone:</span>
+                                    <span class="value" id="patient-phone">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Doctor and Visit Date -->
+                    <div class="row">
                         <div class="col-md-6">
                             {{ form.doctor|as_crispy_field }}
                         </div>
-                    </div>
-                    
-                    <div class="row">
                         <div class="col-md-6">
                             {{ form.visit_date|as_crispy_field }}
                         </div>
+                    </div>
+
+                    <div class="row">
                         <div class="col-md-6">
                             {{ form.authorization_code|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <h5 class="mt-4 mb-3">Visual Acuity</h5>
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.visual_acuity_right|as_crispy_field }}
@@ -71,7 +143,8 @@
                             {{ form.visual_acuity_left|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <h5 class="mt-4 mb-3">Intraocular Pressure</h5>
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.intraocular_pressure_right|as_crispy_field }}
@@ -80,7 +153,8 @@
                             {{ form.intraocular_pressure_left|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <h5 class="mt-4 mb-3">Pupil Reaction</h5>
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.pupil_reaction_right|as_crispy_field }}
@@ -89,7 +163,8 @@
                             {{ form.pupil_reaction_left|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <h5 class="mt-4 mb-3">Eyelid Examination</h5>
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.eyelid_exam_right|as_crispy_field }}
@@ -98,7 +173,8 @@
                             {{ form.eyelid_exam_left|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <h5 class="mt-4 mb-3">Conjunctiva Examination</h5>
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.conjunctiva_exam_right|as_crispy_field }}
@@ -107,7 +183,8 @@
                             {{ form.conjunctiva_exam_left|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <h5 class="mt-4 mb-3">Cornea Examination</h5>
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.cornea_exam_right|as_crispy_field }}
@@ -116,7 +193,8 @@
                             {{ form.cornea_exam_left|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <h5 class="mt-4 mb-3">Anterior Chamber</h5>
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.anterior_chamber_right|as_crispy_field }}
@@ -125,7 +203,8 @@
                             {{ form.anterior_chamber_left|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <h5 class="mt-4 mb-3">Lens Examination</h5>
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.lens_exam_right|as_crispy_field }}
@@ -134,7 +213,8 @@
                             {{ form.lens_exam_left|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <h5 class="mt-4 mb-3">Fundus Examination</h5>
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.fundus_exam_right|as_crispy_field }}
@@ -143,7 +223,8 @@
                             {{ form.fundus_exam_left|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <h5 class="mt-4 mb-3">Diagnosis & Treatment</h5>
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.diagnosis|as_crispy_field }}
@@ -152,7 +233,7 @@
                             {{ form.treatment_plan|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.follow_up_required|as_crispy_field }}
@@ -161,13 +242,13 @@
                             {{ form.follow_up_date|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="row mt-4">
                         <div class="col-md-12">
                             {{ form.notes|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="d-flex justify-content-between">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save Record
@@ -180,11 +261,11 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Right Sidebar for Authorization Widget -->
     <div class="col-md-4">
         {% include 'ophthalmic/includes/authorization_widget.html' %}
-        
+
         <!-- Patient Quick Info Card -->
         {% if record %}
         <div class="card shadow mb-4">
@@ -227,7 +308,7 @@
             </div>
         </div>
         {% endif %}
-        
+
         <!-- Quick Actions Card -->
         <div class="card shadow">
             <div class="card-header bg-secondary text-white">
@@ -241,16 +322,16 @@
                     <a href="{% url 'ophthalmic:ophthalmic_record_detail' record.id %}" class="btn btn-outline-primary btn-sm">
                         <i class="fas fa-eye"></i> View Full Record
                     </a>
-                    
+
                     <a href="{% url 'ophthalmic:create_prescription_for_ophthalmic' record.id %}" class="btn btn-outline-success btn-sm">
                         <i class="fas fa-pills"></i> Create Prescription
                     </a>
-                    
+
                     <a href="{% url 'patients:detail' record.patient.id %}" class="btn btn-outline-info btn-sm">
                         <i class="fas fa-user"></i> Patient Profile
                     </a>
                     {% endif %}
-                    
+
                     <a href="{% url 'ophthalmic:ophthalmic_records_list' %}" class="btn btn-outline-secondary btn-sm">
                         <i class="fas fa-list"></i> All Records
                     </a>
@@ -259,4 +340,90 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Select2 for all select fields
+    if (typeof $ !== 'undefined') {
+        $('.select2').select2({
+            placeholder: "Select an option",
+            allowClear: true
+        });
+
+        // Patient data cache
+        const patientData = {};
+        {% for patient in all_patients %}
+        patientData['{{ patient.id }}'] = {
+            id: '{{ patient.id }}',
+            name: '{{ patient.get_full_name|escapejs }}',
+            patientId: '{{ patient.patient_id }}',
+            age: '{{ patient.age|default:"N/A" }}',
+            gender: '{{ patient.gender|default:"N/A" }}',
+            phone: '{{ patient.phone_number|default:"N/A" }}'
+        };
+        {% endfor %}
+
+        // Handle patient search
+        $('.patient-search').on('keyup', function() {
+            const searchValue = $(this).val();
+
+            if (searchValue.length >= 2) {
+                $.ajax({
+                    url: "{% url 'ophthalmic:search_ophthalmic_patients' %}",
+                    dataType: 'json',
+                    data: {
+                        term: searchValue
+                    },
+                    success: function(data) {
+                        const $patientSelect = $('#{{ form.patient.id_for_label }}');
+                        $patientSelect.empty();
+
+                        // Add default option
+                        $patientSelect.append('<option value="">Select a patient...</option>');
+
+                        // Add search results
+                        data.forEach(function(item) {
+                            const option = new Option(item.text, item.id);
+                            $patientSelect.append(option);
+                        });
+
+                        // Trigger Select2 update
+                        $patientSelect.trigger('change.select2');
+                    }
+                });
+            }
+        });
+
+        // Handle patient selection from dropdown
+        $('#{{ form.patient.id_for_label }}').on('change', function() {
+            const selectedId = $(this).val();
+            const $patientInfo = $('#selected-patient-info');
+
+            if (selectedId && patientData[selectedId]) {
+                const patient = patientData[selectedId];
+
+                // Update patient info display
+                $('#patient-name').text(patient.name);
+                $('#patient-id').text(patient.patientId);
+                $('#patient-age-gender').text(patient.age + ' / ' + patient.gender);
+                $('#patient-phone').text(patient.phone);
+
+                // Show patient info section
+                $patientInfo.removeClass('d-none');
+            } else {
+                // Hide patient info section
+                $patientInfo.addClass('d-none');
+            }
+        });
+
+        // Trigger change on page load if patient is already selected (edit mode)
+        const initialPatientId = $('#{{ form.patient.id_for_label }}').val();
+        if (initialPatientId) {
+            $('#{{ form.patient.id_for_label }}').trigger('change');
+        }
+    }
+});
+</script>
 {% endblock %}

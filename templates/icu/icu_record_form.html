@@ -1,12 +1,11 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
-{% load crispy_forms_tags %}
 
-{% block title %}{{ title }} - Hospital Management System{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block content %}
 <div class="row">
-    <div class="col-md-12">
+    <div class="col-md-10 mx-auto">
         <div class="card">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">{{ title }}</h4>
@@ -17,104 +16,285 @@
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
+
+                    <!-- Patient Selection -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.patient_search.id_for_label }}" class="form-label">Search Patient *</label>
+                            {{ form.patient_search }}
+                            {% if form.patient.errors %}
+                                <div class="text-danger">{{ form.patient.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Search patient by name, ID, or phone number</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.patient.id_for_label }}" class="form-label">Selected Patient *</label>
+                            {{ form.patient }}
+                        </div>
+                    </div>
+
+                    <!-- Visit Details -->
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.patient|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.doctor.id_for_label }}" class="form-label">Doctor</label>
+                                {{ form.doctor }}
+                                {% if form.doctor.errors %}
+                                    <div class="text-danger">{{ form.doctor.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            {{ form.doctor|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.visit_date.id_for_label }}" class="form-label">Visit Date *</label>
+                                {{ form.visit_date }}
+                                {% if form.visit_date.errors %}
+                                    <div class="text-danger">{{ form.visit_date.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                    
+
+                    <!-- Vital Signs -->
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="{{ form.gcs_score.id_for_label }}" class="form-label">GCS Score</label>
+                                {{ form.gcs_score }}
+                                {% if form.gcs_score.errors %}
+                                    <div class="text-danger">{{ form.gcs_score.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="{{ form.respiratory_rate.id_for_label }}" class="form-label">Respiratory Rate</label>
+                                {{ form.respiratory_rate }}
+                                {% if form.respiratory_rate.errors %}
+                                    <div class="text-danger">{{ form.respiratory_rate.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="{{ form.oxygen_saturation.id_for_label }}" class="form-label">Oxygen Saturation (%)</label>
+                                {{ form.oxygen_saturation }}
+                                {% if form.oxygen_saturation.errors %}
+                                    <div class="text-danger">{{ form.oxygen_saturation.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="{{ form.heart_rate.id_for_label }}" class="form-label">Heart Rate</label>
+                                {{ form.heart_rate }}
+                                {% if form.heart_rate.errors %}
+                                    <div class="text-danger">{{ form.heart_rate.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.blood_pressure_systolic.id_for_label }}" class="form-label">BP Systolic</label>
+                                {{ form.blood_pressure_systolic }}
+                                {% if form.blood_pressure_systolic.errors %}
+                                    <div class="text-danger">{{ form.blood_pressure_systolic.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.blood_pressure_diastolic.id_for_label }}" class="form-label">BP Diastolic</label>
+                                {{ form.blood_pressure_diastolic }}
+                                {% if form.blood_pressure_diastolic.errors %}
+                                    <div class="text-danger">{{ form.blood_pressure_diastolic.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.body_temperature.id_for_label }}" class="form-label">Body Temperature</label>
+                                {{ form.body_temperature }}
+                                {% if form.body_temperature.errors %}
+                                    <div class="text-danger">{{ form.body_temperature.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Support Equipment -->
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.mechanical_ventilation.id_for_label }}" class="form-label">Mechanical Ventilation</label>
+                                {{ form.mechanical_ventilation }}
+                                {% if form.mechanical_ventilation.errors %}
+                                    <div class="text-danger">{{ form.mechanical_ventilation.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.vasopressor_use.id_for_label }}" class="form-label">Vasopressor Use</label>
+                                {{ form.vasopressor_use }}
+                                {% if form.vasopressor_use.errors %}
+                                    <div class="text-danger">{{ form.vasopressor_use.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.dialysis_required.id_for_label }}" class="form-label">Dialysis Required</label>
+                                {{ form.dialysis_required }}
+                                {% if form.dialysis_required.errors %}
+                                    <div class="text-danger">{{ form.dialysis_required.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Clinical Information -->
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.visit_date|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.diagnosis.id_for_label }}" class="form-label">Diagnosis *</label>
+                                {{ form.diagnosis }}
+                                {% if form.diagnosis.errors %}
+                                    <div class="text-danger">{{ form.diagnosis.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            {{ form.authorization_code|as_crispy_field }}
+                            <div class="mb-3">
+                                <label for="{{ form.treatment_plan.id_for_label }}" class="form-label">Treatment Plan</label>
+                                {{ form.treatment_plan }}
+                                {% if form.treatment_plan.errors %}
+                                    <div class="text-danger">{{ form.treatment_plan.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                    
+
+                    <!-- Follow-up and Authorization -->
                     <div class="row">
-                        <div class="col-md-6">
-                            {{ form.gcs_score|as_crispy_field }}
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.follow_up_required.id_for_label }}" class="form-label">Follow-up Required</label>
+                                {{ form.follow_up_required }}
+                                {% if form.follow_up_required.errors %}
+                                    <div class="text-danger">{{ form.follow_up_required.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            {{ form.respiratory_rate|as_crispy_field }}
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.follow_up_date.id_for_label }}" class="form-label">Follow-up Date</label>
+                                {{ form.follow_up_date }}
+                                {% if form.follow_up_date.errors %}
+                                    <div class="text-danger">{{ form.follow_up_date.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            {{ form.oxygen_saturation|as_crispy_field }}
-                        </div>
-                        <div class="col-md-6">
-                            {{ form.heart_rate|as_crispy_field }}
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            {{ form.blood_pressure_systolic|as_crispy_field }}
-                        </div>
-                        <div class="col-md-6">
-                            {{ form.blood_pressure_diastolic|as_crispy_field }}
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            {{ form.body_temperature|as_crispy_field }}
-                        </div>
-                        <div class="col-md-6">
-                            {{ form.mechanical_ventilation|as_crispy_field }}
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.authorization_code.id_for_label }}" class="form-label">Authorization Code</label>
+                                {{ form.authorization_code }}
+                                {% if form.authorization_code.errors %}
+                                    <div class="text-danger">{{ form.authorization_code.errors }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            {{ form.vasopressor_use|as_crispy_field }}
-                        </div>
-                        <div class="col-md-6">
-                            {{ form.dialysis_required|as_crispy_field }}
-                        </div>
+
+                    <!-- Notes -->
+                    <div class="mb-3">
+                        <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}
+                            <div class="text-danger">{{ form.notes.errors }}</div>
+                        {% endif %}
                     </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            {{ form.diagnosis|as_crispy_field }}
-                        </div>
-                        <div class="col-md-6">
-                            {{ form.treatment_plan|as_crispy_field }}
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            {{ form.follow_up_required|as_crispy_field }}
-                        </div>
-                        <div class="col-md-6">
-                            {{ form.follow_up_date|as_crispy_field }}
-                        </div>
-                    </div>
-                    
-                    <div class="row mt-4">
-                        <div class="col-md-12">
-                            {{ form.notes|as_crispy_field }}
-                        </div>
-                    </div>
-                    
+
                     <div class="d-flex justify-content-between">
+                        <a href="{% url 'icu:icu_records_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save Record
                         </button>
-                        <a href="{% url 'icu:icu_records_list' %}" class="btn btn-secondary">
-                            <i class="fas fa-times"></i> Cancel
-                        </a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize select2 for all dropdowns
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle patient search
+    if (typeof $ !== 'undefined') {
+        // Initialize Select2 for all select fields
+        $('.select2').select2({
+            placeholder: "Select an option",
+            allowClear: true
+        });
+
+        // Initialize patient search functionality
+        $('.patient-search').on('keyup', function() {
+            const searchValue = $(this).val();
+
+            if (searchValue.length >= 2) {
+                $.ajax({
+                    url: "{% url 'icu:search_icu_patients' %}",
+                    dataType: 'json',
+                    data: {
+                        term: searchValue
+                    },
+                    success: function(data) {
+                        // Update patient dropdown with search results
+                        const $patientSelect = $('#{{ form.patient.id_for_label|safe }}');
+                        $patientSelect.empty();
+
+                        // Add default option
+                        $patientSelect.append('<option value="">Select a patient...</option>');
+
+                        // Add search results
+                        data.forEach(function(item) {
+                            const option = new Option(item.text, item.id);
+                            $patientSelect.append(option);
+                        });
+                    }
+                });
+            }
+        });
+
+        // Handle patient selection from dropdown
+        $('#{{ form.patient.id_for_label|safe }}').on('change', function() {
+            const selectedId = $(this).val();
+            if (selectedId) {
+                // Update search field with selected patient name
+                $.ajax({
+                    url: "{% url 'icu:search_icu_patients' %}",
+                    dataType: 'json',
+                    data: {
+                        term: ''
+                    },
+                    success: function(data) {
+                        const selectedPatient = data.find(item => item.id == selectedId);
+                        if (selectedPatient) {
+                            $('.patient-search').val(selectedPatient.text);
+                        }
+                    }
+                });
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

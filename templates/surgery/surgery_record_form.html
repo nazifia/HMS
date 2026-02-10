@@ -17,18 +17,42 @@
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
-                    
-                    <!-- Patient and Doctor Information -->
-                    <h5 class="text-primary mb-3"><i class="fas fa-user-injured"></i> Patient Information</h5>
-                    <div class="row">
+
+                    <!-- Patient Selection -->
+                    <div class="row mb-3">
                         <div class="col-md-6">
-                            {{ form.patient|as_crispy_field }}
+                            <label for="{{ form.patient_search.id_for_label }}" class="form-label">Search Patient *</label>
+                            {{ form.patient_search }}
+                            {% if form.patient.errors %}
+                                <div class="text-danger">{{ form.patient.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Search patient by name, ID, or phone number</div>
                         </div>
                         <div class="col-md-6">
+                            <label for="{{ form.patient.id_for_label }}" class="form-label">Selected Patient *</label>
+                            {{ form.patient }}
+                        </div>
+                    </div>
+
+                    <!-- Selected Patient Info Display -->
+                    <div id="selected-patient-info" class="alert alert-info d-none mb-3">
+                        <h6 class="mb-2"><i class="fas fa-user"></i> Selected Patient Information</h6>
+                        <div class="row">
+                            <div class="col-md-3"><strong>Name:</strong> <span id="patient-name">-</span></div>
+                            <div class="col-md-3"><strong>ID:</strong> <span id="patient-id">-</span></div>
+                            <div class="col-md-2"><strong>Age:</strong> <span id="patient-age">-</span></div>
+                            <div class="col-md-2"><strong>Gender:</strong> <span id="patient-gender">-</span></div>
+                            <div class="col-md-2"><strong>Phone:</strong> <span id="patient-phone">-</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Doctor Selection -->
+                    <div class="row">
+                        <div class="col-md-12">
                             {{ form.doctor|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.visit_date|as_crispy_field }}
@@ -37,9 +61,9 @@
                             {{ form.authorization_code|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <hr class="my-4">
-                    
+
                     <!-- Surgery Details -->
                     <h5 class="text-primary mb-3"><i class="fas fa-procedures"></i> Surgery Details</h5>
                     <div class="row">
@@ -50,7 +74,7 @@
                             {{ form.surgery_date|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.procedure_code|as_crispy_field }}
@@ -59,9 +83,9 @@
                             {{ form.anesthesia_type|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <hr class="my-4">
-                    
+
                     <!-- Pre-operative Assessment -->
                     <h5 class="text-primary mb-3"><i class="fas fa-clipboard-check"></i> Pre-operative Assessment</h5>
                     <div class="row">
@@ -72,9 +96,9 @@
                             {{ form.preop_assessment|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <hr class="my-4">
-                    
+
                     <!-- Surgical Team -->
                     <h5 class="text-primary mb-3"><i class="fas fa-user-md"></i> Surgical Team</h5>
                     <div class="row">
@@ -88,9 +112,9 @@
                             {{ form.anesthesiologist|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <hr class="my-4">
-                    
+
                     <!-- Operative Findings -->
                     <h5 class="text-primary mb-3"><i class="fas fa-stethoscope"></i> Operative Findings</h5>
                     <div class="row">
@@ -101,7 +125,7 @@
                             {{ form.procedure_performed|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.implants_used|as_crispy_field }}
@@ -110,15 +134,15 @@
                             {{ form.estimated_blood_loss|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-12">
                             {{ form.complications|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <hr class="my-4">
-                    
+
                     <!-- Post-operative -->
                     <h5 class="text-primary mb-3"><i class="fas fa-hospital"></i> Post-operative Information</h5>
                     <div class="row">
@@ -129,7 +153,7 @@
                             {{ form.postop_instructions|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.discharge_summary|as_crispy_field }}
@@ -138,7 +162,7 @@
                             {{ form.postop_day|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-4">
                             {{ form.wound_status|as_crispy_field }}
@@ -150,9 +174,9 @@
                             {{ form.mobility_status|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <hr class="my-4">
-                    
+
                     <!-- Follow-up -->
                     <h5 class="text-primary mb-3"><i class="fas fa-calendar-check"></i> Follow-up</h5>
                     <div class="row">
@@ -163,13 +187,13 @@
                             {{ form.follow_up_date|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="row mt-3">
                         <div class="col-md-12">
                             {{ form.notes|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="d-flex justify-content-between mt-4">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save Record
@@ -183,4 +207,93 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Select2 for all select fields
+    if (typeof $ !== 'undefined') {
+        $('.select2').select2({
+            placeholder: "Select an option",
+            allowClear: true
+        });
+
+        // Initialize patient search functionality
+        $('.patient-search').on('keyup', function() {
+            const searchValue = $(this).val();
+
+            if (searchValue.length >= 2) {
+                $.ajax({
+                    url: "{% url 'surgery:search_surgery_patients' %}",
+                    dataType: 'json',
+                    data: {
+                        term: searchValue
+                    },
+                    success: function(data) {
+                        // Update patient dropdown with search results
+                        const $patientSelect = $('#{{ form.patient.id_for_label|safe }}');
+                        $patientSelect.empty();
+
+                        // Add default option
+                        $patientSelect.append('<option value="">Select a patient...</option>');
+
+                        // Add search results
+                        data.forEach(function(item) {
+                            const option = new Option(item.text, item.id);
+                            $patientSelect.append(option);
+                        });
+                    }
+                });
+            }
+        });
+
+        // Handle patient selection from dropdown
+        $('#{{ form.patient.id_for_label|safe }}').on('change', function() {
+            const selectedId = $(this).val();
+            if (selectedId) {
+                // Fetch patient details and display them
+                $.ajax({
+                    url: "/patients/api/" + selectedId + "/details/",
+                    dataType: 'json',
+                    success: function(data) {
+                        if (data.success) {
+                            const patient = data.patient;
+                            $('#patient-name').text(patient.name);
+                            $('#patient-id').text(patient.patient_id);
+                            $('#patient-age').text(patient.age);
+                            $('#patient-gender').text(patient.gender);
+                            $('#patient-phone').text(patient.phone);
+                            $('#selected-patient-info').removeClass('d-none');
+                        }
+                    }
+                });
+
+                // Update search field with selected patient name
+                $.ajax({
+                    url: "{% url 'surgery:search_surgery_patients' %}",
+                    dataType: 'json',
+                    data: {
+                        term: ''
+                    },
+                    success: function(data) {
+                        const selectedPatient = data.find(item => item.id == selectedId);
+                        if (selectedPatient) {
+                            $('.patient-search').val(selectedPatient.text);
+                        }
+                    }
+                });
+            } else {
+                $('#selected-patient-info').addClass('d-none');
+            }
+        });
+
+        // Check if patient is pre-selected (edit mode)
+        const initialPatient = $('#{{ form.patient.id_for_label|safe }}').val();
+        if (initialPatient) {
+            $('#{{ form.patient.id_for_label|safe }}').trigger('change');
+        }
+    }
+});
+</script>
 {% endblock %}

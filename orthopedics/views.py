@@ -160,10 +160,14 @@ def create_orthopedics_record(request):
             return redirect('orthopedics:orthopedics_record_detail', record_id=record.id)
     else:
         form = OrthopedicsRecordForm()
-    
+
+    # Get all patients for the dropdown
+    all_patients = Patient.objects.all().order_by('first_name', 'last_name')
+
     context = {
         'form': form,
-        'title': 'Create Orthopedics Record'
+        'title': 'Create Orthopedics Record',
+        'all_patients': all_patients,
     }
     return render(request, 'orthopedics/orthopedics_record_form.html', context)
 
@@ -240,7 +244,7 @@ def edit_orthopedics_record(request, record_id):
             authorization_message = f"Authorized - Code: {record.authorization_code}"
         else:
             authorization_message = "NHIA Authorization Required"
-            
+
             from core.models import InternalNotification
             authorization_request_pending = InternalNotification.objects.filter(
                 message__contains=f"Record ID: {record.id}",
@@ -255,6 +259,9 @@ def edit_orthopedics_record(request, record_id):
                     f"This is an NHIA patient. An authorization code from the desk office is required before proceeding with treatment or billing."
                 )
 
+    # Get all patients for the dropdown
+    all_patients = Patient.objects.all().order_by('first_name', 'last_name')
+
     context = {
         'form': form,
         'record': record,
@@ -264,6 +271,7 @@ def edit_orthopedics_record(request, record_id):
         'authorization_valid': authorization_valid,
         'authorization_message': authorization_message,
         'authorization_request_pending': authorization_request_pending,
+        'all_patients': all_patients,
     }
     return render(request, 'orthopedics/orthopedics_record_form.html', context)
 

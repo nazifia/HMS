@@ -186,10 +186,14 @@ def create_cardiology_record(request):
             return redirect('cardiology:cardiology_record_detail', record_id=record.id)
     else:
         form = CardiologyRecordForm()
-    
+
+    # Get all patients for the dropdown
+    all_patients = Patient.objects.all().order_by('first_name', 'last_name')
+
     context = {
         'form': form,
-        'title': 'Create Cardiology Record'
+        'title': 'Create Cardiology Record',
+        'all_patients': all_patients,
     }
     return render(request, 'cardiology/cardiology_record_form.html', context)
 
@@ -285,6 +289,9 @@ def edit_cardiology_record(request, record_id):
                     f"Please contact the desk office to obtain authorization for Cardiology services."
                 )
 
+    # Get all patients for the dropdown
+    all_patients = Patient.objects.all().order_by('first_name', 'last_name')
+
     context = {
         'form': form,
         'record': record,
@@ -294,6 +301,7 @@ def edit_cardiology_record(request, record_id):
         'authorization_valid': authorization_valid,
         'authorization_message': authorization_message,
         'authorization_request_pending': authorization_request_pending,
+        'all_patients': all_patients,
     }
     return render(request, 'cardiology/cardiology_record_form.html', context)
 

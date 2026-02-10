@@ -240,7 +240,8 @@ def create_neurology_record(request):
 
     context = {
         'form': form,
-        'title': 'Create Neurology Record'
+        'title': 'Create Neurology Record',
+        'all_patients': Patient.objects.all().order_by('first_name', 'last_name'),
     }
     return render(request, 'neurology/neurology_record_form.html', context)
 
@@ -354,6 +355,7 @@ def edit_neurology_record(request, record_id):
         'form': form,
         'record': record,
         'title': 'Edit Neurology Record',
+        'all_patients': Patient.objects.all().order_by('first_name', 'last_name'),
         'is_nhia_patient': is_nhia_patient,
         'requires_authorization': requires_authorization,
         'authorization_valid': authorization_valid,

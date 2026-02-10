@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
 
-{% block title %}{{ title }} - Hospital Management System{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block content %}
 <div class="row">
-    <div class="col-md-8 mx-auto">
+    <div class="col-md-10 mx-auto">
         <div class="card">
             <div class="card-header bg-primary text-white">
                 <h4 class="mb-0">{{ title }}</h4>
@@ -13,17 +13,25 @@
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
-                    
-                    <div class="row">
+
+                    <!-- Patient Selection -->
+                    <div class="row mb-3">
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="{{ form.patient.id_for_label }}" class="form-label">Patient *</label>
-                                {{ form.patient }}
-                                {% if form.patient.errors %}
-                                    <div class="text-danger">{{ form.patient.errors }}</div>
-                                {% endif %}
-                            </div>
+                            <label for="{{ form.patient_search.id_for_label }}" class="form-label">Search Patient *</label>
+                            {{ form.patient_search }}
+                            {% if form.patient.errors %}
+                                <div class="text-danger">{{ form.patient.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Search patient by name, ID, or phone number</div>
                         </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.patient.id_for_label }}" class="form-label">Selected Patient *</label>
+                            {{ form.patient }}
+                        </div>
+                    </div>
+
+                    <!-- Visit and Doctor -->
+                    <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="{{ form.doctor.id_for_label }}" class="form-label">Doctor</label>
@@ -33,9 +41,6 @@
                                 {% endif %}
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="{{ form.visit_date.id_for_label }}" class="form-label">Visit Date *</label>
@@ -45,6 +50,10 @@
                                 {% endif %}
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Method Details -->
+                    <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="{{ form.method_used.id_for_label }}" class="form-label">Method Used</label>
@@ -54,10 +63,7 @@
                                 {% endif %}
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-2">
                             <div class="mb-3">
                                 <label for="{{ form.start_date.id_for_label }}" class="form-label">Start Date</label>
                                 {{ form.start_date }}
@@ -66,7 +72,7 @@
                                 {% endif %}
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-2">
                             <div class="mb-3">
                                 <label for="{{ form.end_date.id_for_label }}" class="form-label">End Date</label>
                                 {{ form.end_date }}
@@ -75,7 +81,7 @@
                                 {% endif %}
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-2">
                             <div class="mb-3">
                                 <label for="{{ form.refill_date.id_for_label }}" class="form-label">Refill Date</label>
                                 {{ form.refill_date }}
@@ -85,11 +91,11 @@
                             </div>
                         </div>
                     </div>
-                    
+
+                    <!-- Compliance -->
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="{{ form.compliance.id_for_label }}" class="form-label">Compliance</label>
                                 <div class="form-check">
                                     {{ form.compliance }}
                                     <label class="form-check-label" for="{{ form.compliance.id_for_label }}">
@@ -103,7 +109,6 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="{{ form.partner_involvement.id_for_label }}" class="form-label">Partner Involvement</label>
                                 <div class="form-check">
                                     {{ form.partner_involvement }}
                                     <label class="form-check-label" for="{{ form.partner_involvement.id_for_label }}">
@@ -116,25 +121,32 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="{{ form.side_effects.id_for_label }}" class="form-label">Side Effects</label>
-                        {{ form.side_effects }}
-                        {% if form.side_effects.errors %}
-                            <div class="text-danger">{{ form.side_effects.errors }}</div>
-                        {% endif %}
-                        <div class="form-text">Document any side effects experienced by the patient.</div>
+
+                    <!-- Side Effects and Education -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.side_effects.id_for_label }}" class="form-label">Side Effects</label>
+                                {{ form.side_effects }}
+                                {% if form.side_effects.errors %}
+                                    <div class="text-danger">{{ form.side_effects.errors }}</div>
+                                {% endif %}
+                                <div class="form-text">Document any side effects experienced by the patient.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.education_provided.id_for_label }}" class="form-label">Education Provided</label>
+                                {{ form.education_provided }}
+                                {% if form.education_provided.errors %}
+                                    <div class="text-danger">{{ form.education_provided.errors }}</div>
+                                {% endif %}
+                                <div class="form-text">Details of education and counseling provided to the patient.</div>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="{{ form.education_provided.id_for_label }}" class="form-label">Education Provided</label>
-                        {{ form.education_provided }}
-                        {% if form.education_provided.errors %}
-                            <div class="text-danger">{{ form.education_provided.errors }}</div>
-                        {% endif %}
-                        <div class="form-text">Details of education and counseling provided to the patient.</div>
-                    </div>
-                    
+
+                    <!-- Discontinuation Reason -->
                     <div class="mb-3">
                         <label for="{{ form.discontinuation_reason.id_for_label }}" class="form-label">Discontinuation Reason</label>
                         {{ form.discontinuation_reason }}
@@ -143,27 +155,33 @@
                         {% endif %}
                         <div class="form-text">Reason for discontinuation if the patient stopped the method.</div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="{{ form.diagnosis.id_for_label }}" class="form-label">Diagnosis</label>
-                        {{ form.diagnosis }}
-                        {% if form.diagnosis.errors %}
-                            <div class="text-danger">{{ form.diagnosis.errors }}</div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="{{ form.treatment_plan.id_for_label }}" class="form-label">Treatment Plan</label>
-                        {{ form.treatment_plan }}
-                        {% if form.treatment_plan.errors %}
-                            <div class="text-danger">{{ form.treatment_plan.errors }}</div>
-                        {% endif %}
-                    </div>
-                    
+
+                    <!-- Clinical Information -->
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="{{ form.follow_up_required.id_for_label }}" class="form-label">Follow-up Required</label>
+                                <label for="{{ form.diagnosis.id_for_label }}" class="form-label">Diagnosis</label>
+                                {{ form.diagnosis }}
+                                {% if form.diagnosis.errors %}
+                                    <div class="text-danger">{{ form.diagnosis.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.treatment_plan.id_for_label }}" class="form-label">Treatment Plan</label>
+                                {{ form.treatment_plan }}
+                                {% if form.treatment_plan.errors %}
+                                    <div class="text-danger">{{ form.treatment_plan.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Follow-up and Authorization -->
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
                                 <div class="form-check">
                                     {{ form.follow_up_required }}
                                     <label class="form-check-label" for="{{ form.follow_up_required.id_for_label }}">
@@ -175,7 +193,7 @@
                                 {% endif %}
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="mb-3">
                                 <label for="{{ form.follow_up_date.id_for_label }}" class="form-label">Follow-up Date</label>
                                 {{ form.follow_up_date }}
@@ -184,17 +202,19 @@
                                 {% endif %}
                             </div>
                         </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.authorization_code.id_for_label }}" class="form-label">Authorization Code</label>
+                                {{ form.authorization_code }}
+                                {% if form.authorization_code.errors %}
+                                    <div class="text-danger">{{ form.authorization_code.errors }}</div>
+                                {% endif %}
+                                <div class="form-text">Authorization code from desk office if required.</div>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="{{ form.authorization_code.id_for_label }}" class="form-label">Authorization Code</label>
-                        {{ form.authorization_code }}
-                        {% if form.authorization_code.errors %}
-                            <div class="text-danger">{{ form.authorization_code.errors }}</div>
-                        {% endif %}
-                        <div class="form-text">Authorization code from desk office if required.</div>
-                    </div>
-                    
+
+                    <!-- Notes -->
                     <div class="mb-3">
                         <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
                         {{ form.notes }}
@@ -203,7 +223,7 @@
                         {% endif %}
                         <div class="form-text">Additional notes and observations.</div>
                     </div>
-                    
+
                     <div class="d-flex justify-content-between">
                         <a href="{% url 'family_planning:family_planning_records_list' %}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left"></i> Cancel
@@ -221,18 +241,66 @@
 
 {% block extra_js %}
 <script>
+// Initialize select2 for all dropdowns
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize date pickers if needed
-    const dateInputs = document.querySelectorAll('input[type="date"]');
-    dateInputs.forEach(input => {
-        // You can add date picker initialization here if needed
-    });
-    
-    // Initialize datetime pickers if needed
-    const datetimeInputs = document.querySelectorAll('input[type="datetime-local"]');
-    datetimeInputs.forEach(input => {
-        // You can add datetime picker initialization here if needed
-    });
+    // Handle patient search
+    if (typeof $ !== 'undefined') {
+        // Initialize Select2 for all select fields
+        $('.select2').select2({
+            placeholder: "Select an option",
+            allowClear: true
+        });
+
+        // Initialize patient search functionality
+        $('.patient-search').on('keyup', function() {
+            const searchValue = $(this).val();
+
+            if (searchValue.length >= 2) {
+                $.ajax({
+                    url: "{% url 'family_planning:search_family_planning_patients' %}",
+                    dataType: 'json',
+                    data: {
+                        term: searchValue
+                    },
+                    success: function(data) {
+                        // Update patient dropdown with search results
+                        const $patientSelect = $('#{{ form.patient.id_for_label|safe }}');
+                        $patientSelect.empty();
+
+                        // Add default option
+                        $patientSelect.append('<option value="">Select a patient...</option>');
+
+                        // Add search results
+                        data.forEach(function(item) {
+                            const option = new Option(item.text, item.id);
+                            $patientSelect.append(option);
+                        });
+                    }
+                });
+            }
+        });
+
+        // Handle patient selection from dropdown
+        $('#{{ form.patient.id_for_label|safe }}').on('change', function() {
+            const selectedId = $(this).val();
+            if (selectedId) {
+                // Update search field with selected patient name
+                $.ajax({
+                    url: "{% url 'family_planning:search_family_planning_patients' %}",
+                    dataType: 'json',
+                    data: {
+                        term: ''
+                    },
+                    success: function(data) {
+                        const selectedPatient = data.find(item => item.id == selectedId);
+                        if (selectedPatient) {
+                            $('.patient-search').val(selectedPatient.text);
+                        }
+                    }
+                });
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

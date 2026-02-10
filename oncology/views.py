@@ -188,10 +188,14 @@ def create_oncology_record(request):
             return redirect('oncology:oncology_record_detail', record_id=record.id)
     else:
         form = OncologyRecordForm()
-    
+
+    # Get all patients for the dropdown
+    all_patients = Patient.objects.all().order_by('first_name', 'last_name')
+
     context = {
         'form': form,
-        'title': 'Create Oncology Record'
+        'title': 'Create Oncology Record',
+        'all_patients': all_patients,
     }
     return render(request, 'oncology/oncology_record_form.html', context)
 
@@ -285,6 +289,9 @@ def edit_oncology_record(request, record_id):
                     f"Please contact the desk office to obtain authorization for oncology services."
                 )
 
+    # Get all patients for the dropdown
+    all_patients = Patient.objects.all().order_by('first_name', 'last_name')
+
     context = {
         'form': form,
         'record': record,
@@ -294,6 +301,7 @@ def edit_oncology_record(request, record_id):
         'authorization_valid': authorization_valid,
         'authorization_message': authorization_message,
         'authorization_request_pending': authorization_request_pending,
+        'all_patients': all_patients,
     }
     return render(request, 'oncology/oncology_record_form.html', context)
 
