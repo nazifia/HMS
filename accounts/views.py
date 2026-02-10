@@ -1665,13 +1665,45 @@ def create_role(request):
 def edit_role(request, role_id):
     """View for editing an existing role"""
     role = get_object_or_404(Role, id=role_id)
+    logger = logging.getLogger(__name__)
 
     if request.method == "POST":
         form = RoleForm(request.POST, instance=role)
         if form.is_valid():
             old_permissions = list(role.permissions.values_list("name", flat=True))
+            logger.info(f"[Role Edit] Updating role '{role.name}' (ID: {role_id})")
+            logger.info(f"[Role Edit] Old permissions: {old_permissions}")
+            logger.info(f"[Role Edit] Form cleaned_data permissions: {list(form.cleaned_data.get('permissions', []).values_list('name', flat=True))}")
+
             role = form.save()
             new_permissions = list(role.permissions.values_list("name", flat=True))
+            logger.info(f"[Role Edit] New permissions after save: {new_permissions}")
+
+            # Clear permission cache for all users with this role
+            User = get_user_model()
+            users_with_role = User.objects.filter(roles=role)
+            cache_cleared_count = 0
+            for user in users_with_role:
+                user.clear_permission_cache()
+                cache_cleared_count += 1
+            logger.info(f"[Role Edit] Cleared permission cache for {cache_cleared_count} users with role '{role.name}'")
+
+            # Clear UI permission cache
+            try:
+                from django.core.cache import cache
+                # Get all cache keys matching pattern
+                cache_keys_to_delete = []
+                try:
+                    # Try to get cache keys if cache backend supports it
+                    if hasattr(cache, 'keys'):
+                        cache_keys_to_delete = [k for k in cache.keys('*') if k.startswith('ui_perm_')]
+                        if cache_keys_to_delete:
+                            cache.delete_many(cache_keys_to_delete)
+                            logger.info(f"[Role Edit] Cleared {len(cache_keys_to_delete)} UI permission cache entries")
+                except Exception as e:
+                    logger.warning(f"[Role Edit] Could not clear UI cache: {e}")
+            except Exception as e:
+                logger.warning(f"[Role Edit] Error accessing cache: {e}")
 
             # Log the action
             AuditLog.objects.create(
@@ -1686,7 +1718,7 @@ def edit_role(request, role_id):
                 timestamp=timezone.now(),
             )
 
-            messages.success(request, f'Role "{role.name}" updated successfully.')
+            messages.success(request, f'Role "{role.name}" updated successfully. Permission cache cleared for {cache_cleared_count} users.')
             return redirect("accounts:role_management")
     else:
         form = RoleForm(instance=role)

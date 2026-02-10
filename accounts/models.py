@@ -305,7 +305,7 @@ class CustomUser(AbstractUser):
         """Get all active dispensary assignments for this user"""
         try:
             from pharmacy.models import PharmacistDispensaryAssignment
-            
+
             return PharmacistDispensaryAssignment.objects.filter(
                 pharmacist=self,
                 is_active=True,
@@ -313,6 +313,13 @@ class CustomUser(AbstractUser):
             ).select_related('dispensary')
         except:
             return []
+
+    def clear_permission_cache(self):
+        """Clear the permission cache for this user"""
+        if hasattr(self, '_role_perm_cache'):
+            delattr(self, '_role_perm_cache')
+        if hasattr(self, '_perm_cache'):
+            delattr(self, '_perm_cache')
 
 
 class CustomUserProfile(models.Model):
