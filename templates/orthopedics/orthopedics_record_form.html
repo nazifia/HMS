@@ -17,6 +17,8 @@
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
+
+                    <!-- Patient and Doctor Selection -->
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.patient|as_crispy_field }}
@@ -25,7 +27,10 @@
                             {{ form.doctor|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-calendar"></i> Visit Information</h5>
+
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.visit_date|as_crispy_field }}
@@ -34,25 +39,67 @@
                             {{ form.authorization_code|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-bone"></i> Injury Assessment</h5>
+
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.chief_complaint|as_crispy_field }}
+                            {{ form.injury_type|as_crispy_field }}
                         </div>
                         <div class="col-md-6">
-                            {{ form.history_of_present_illness|as_crispy_field }}
+                            {{ form.affected_body_part|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.triage_level|as_crispy_field }}
+                            {{ form.fracture_type|as_crispy_field }}
                         </div>
                         <div class="col-md-6">
-                            {{ form.vital_signs|as_crispy_field }}
+                            {{ form.fracture_classification|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-stethoscope"></i> Clinical Findings</h5>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            {{ form.pain_score|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.range_of_motion|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.neurovascular_status|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.imaging_results|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.weight_bearing_status|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-procedures"></i> Treatment & Procedure</h5>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.procedure_done|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.implant_used|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-diagnoses"></i> Diagnosis & Treatment Plan</h5>
+
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.diagnosis|as_crispy_field }}
@@ -61,29 +108,32 @@
                             {{ form.treatment_plan|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="row">
-                        <div class="col-md-6">
-                            {{ form.disposition|as_crispy_field }}
+                        <div class="col-md-12">
+                            {{ form.rehabilitation_plan|as_crispy_field }}
                         </div>
+                    </div>
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-calendar-check"></i> Follow-up</h5>
+
+                    <div class="row">
                         <div class="col-md-6">
                             {{ form.follow_up_required|as_crispy_field }}
                         </div>
-                    </div>
-                    
-                    <div class="row">
                         <div class="col-md-6">
                             {{ form.follow_up_date|as_crispy_field }}
                         </div>
                     </div>
-                    
-                    <div class="row mt-4">
+
+                    <div class="row mt-3">
                         <div class="col-md-12">
                             {{ form.notes|as_crispy_field }}
                         </div>
                     </div>
-                    
-                    <div class="d-flex justify-content-between">
+
+                    <div class="d-flex justify-content-between mt-4">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save Record
                         </button>

@@ -17,6 +17,8 @@
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
+
+                    <!-- Patient and Doctor Selection -->
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.patient|as_crispy_field }}
@@ -25,16 +27,67 @@
                             {{ form.doctor|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-clock"></i> Arrival & Triage Information</h5>
+
                     <div class="row">
-                        <div class="col-md-6">
-                            {{ form.visit_date|as_crispy_field }}
+                        <div class="col-md-4">
+                            {{ form.arrival_time|as_crispy_field }}
                         </div>
-                        <div class="col-md-6">
-                            {{ form.authorization_code|as_crispy_field }}
+                        <div class="col-md-4">
+                            {{ form.triage_level|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.status|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            {{ form.mode_of_arrival|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.brought_by|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.triage_notes|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-heartbeat"></i> Vital Signs</h5>
+
+                    <div class="row">
+                        <div class="col-md-3">
+                            {{ form.temperature|as_crispy_field }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.pulse_rate|as_crispy_field }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.respiratory_rate|as_crispy_field }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.oxygen_saturation|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            {{ form.blood_pressure_systolic|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.blood_pressure_diastolic|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.gcs_score|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-notes-medical"></i> Clinical Information</h5>
+
                     <div class="row">
                         <div class="col-md-6">
                             {{ form.chief_complaint|as_crispy_field }}
@@ -43,47 +96,101 @@
                             {{ form.history_of_present_illness|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.triage_level|as_crispy_field }}
+                            {{ form.past_medical_history|as_crispy_field }}
                         </div>
                         <div class="col-md-6">
-                            {{ form.vital_signs|as_crispy_field }}
+                            {{ form.allergies|as_crispy_field }}
                         </div>
                     </div>
-                    
+
                     <div class="row">
-                        <div class="col-md-6">
-                            {{ form.diagnosis|as_crispy_field }}
-                        </div>
-                        <div class="col-md-6">
-                            {{ form.treatment_plan|as_crispy_field }}
+                        <div class="col-md-12">
+                            {{ form.medications|as_crispy_field }}
                         </div>
                     </div>
-                    
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-stethoscope"></i> Examination Findings</h5>
+
                     <div class="row">
                         <div class="col-md-6">
-                            {{ form.disposition|as_crispy_field }}
+                            {{ form.general_appearance|as_crispy_field }}
                         </div>
                         <div class="col-md-6">
+                            {{ form.physical_examination|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-diagnoses"></i> Diagnosis & Management</h5>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.primary_diagnosis|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.secondary_diagnosis|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.investigations_done|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.treatment_given|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-hospital"></i> Discharge & Follow-up</h5>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            {{ form.discharge_time|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.discharge_diagnosis|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.discharge_medications|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
                             {{ form.follow_up_required|as_crispy_field }}
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            {{ form.follow_up_date|as_crispy_field }}
+                        <div class="col-md-8">
+                            {{ form.follow_up_instructions|as_crispy_field }}
                         </div>
                     </div>
-                    
-                    <div class="row mt-4">
+
+                    <hr class="my-3">
+                    <h5 class="text-primary"><i class="fas fa-exchange-alt"></i> Referral & Authorization</h5>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            {{ form.referred_to_department|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.authorization_code|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.referral_reason|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
                         <div class="col-md-12">
                             {{ form.notes|as_crispy_field }}
                         </div>
                     </div>
-                    
-                    <div class="d-flex justify-content-between">
+
+                    <div class="d-flex justify-content-between mt-4">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save Record
                         </button>
