@@ -1307,10 +1307,6 @@ ROLE_PERMISSIONS = {
             "appointments.view",
             "appointments.create",
             "appointments.edit",
-            # Desk Office
-            "desk_office.view",
-            "desk_office.generate_auth_code",
-            "desk_office.cancel_auth_code",
             "reports.view",
         ],
     },
@@ -1381,10 +1377,6 @@ ROLE_PERMISSIONS = {
             "wallet.view",
             "wallet.edit",
             "wallet.transactions",
-            # Desk Office
-            "desk_office.view",
-            "desk_office.generate_auth_code",
-            "desk_office.cancel_auth_code",
             "reports.view",
         ],
     },
