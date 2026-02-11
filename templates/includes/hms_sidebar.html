@@ -594,7 +594,7 @@
         {% endif %}
 
         <!-- Include Theatre Module Sidebar -->
-        {% if user.is_superuser or user|can_show_ui:'menu_theatre' %}
+        {% if user.is_superuser or user|has_permission:'inpatient.view' %}
         <li class="nav-item {% if '/theatre/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/theatre/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseTheatre" aria-expanded="{% if '/theatre/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseTheatre">
                 <i class="fas fa-fw fa-hospital-symbol text-white"></i>
