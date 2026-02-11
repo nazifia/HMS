@@ -46,10 +46,34 @@
                         </div>
                     </div>
 
-                    <!-- Doctor Selection -->
-                    <div class="row">
-                        <div class="col-md-12">
-                            {{ form.doctor|as_crispy_field }}
+                    <!-- Doctor Selection with Search -->
+                    <div class="form-group">
+                        <label for="{{ form.doctor.id_for_label }}">Doctor</label>
+
+                        <!-- Enhanced Doctor Search Field -->
+                        <div class="input-group mb-2">
+                            <input type="text" id="doctor_search" class="form-control" placeholder="Search by name...">
+                            <button class="btn btn-outline-secondary" type="button" id="clear_doctor_search">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <!-- Doctor Dropdown with Select2 -->
+                        <select id="doctor_dropdown" class="form-control select2" data-placeholder="Select a doctor...">
+                            <option value="">Select a doctor...</option>
+                        </select>
+
+                        <!-- Hidden field for form submission -->
+                        {{ form.doctor|add_class:"d-none" }}
+
+                        <!-- Selected Doctor Info -->
+                        <div id="selected_doctor_info" class="mt-2 p-2 bg-light rounded" style="display: none;">
+                            <strong>Selected Doctor:</strong>
+                            <span id="doctor_name"></span>
+                            <br>
+                            <small class="text-muted">
+                                Department: <span id="doctor_department"></span>
+                            </small>
                         </div>
                     </div>
 
@@ -284,6 +308,93 @@ document.addEventListener('DOMContentLoaded', function() {
         if (initialPatient) {
             $('#{{ form.patient.id_for_label|safe }}').trigger('change');
         }
+
+        // ========== Doctor Search Functionality ==========
+        let allDoctors = [];
+        let doctorSearchTimeout;
+
+        // Load all doctors on page load
+        $.ajax({
+            url: '/accounts/api/users/?role=doctor',
+            dataType: 'json',
+            success: function(data) {
+                allDoctors = data.users || data;
+                // Populate dropdown
+                const $dropdown = $('#doctor_dropdown');
+                $dropdown.empty();
+                $dropdown.append('<option value="">Select a doctor...</option>');
+                allDoctors.forEach(function(doctor) {
+                    const fullName = doctor.first_name && doctor.last_name
+                        ? doctor.first_name + ' ' + doctor.last_name
+                        : doctor.username || doctor.name || 'Unknown';
+                    $dropdown.append('<option value="' + doctor.id + '">' + fullName + '</option>');
+                });
+                // Initialize Select2 on doctor dropdown
+                $dropdown.select2({
+                    placeholder: "Select a doctor...",
+                    allowClear: true
+                });
+                // Pre-fill if editing
+                const initialDoctorId = $('#{{ form.doctor.id_for_label|safe }}').val();
+                if (initialDoctorId) {
+                    $dropdown.val(initialDoctorId).trigger('change');
+                }
+            }
+        });
+
+        // Doctor search input with debounce
+        $('#doctor_search').on('input', function() {
+            clearTimeout(doctorSearchTimeout);
+            const searchTerm = $(this).val().toLowerCase();
+            doctorSearchTimeout = setTimeout(function() {
+                const $dropdown = $('#doctor_dropdown');
+                $dropdown.empty();
+                $dropdown.append('<option value="">Select a doctor...</option>');
+                allDoctors.forEach(function(doctor) {
+                    const fullName = doctor.first_name && doctor.last_name
+                        ? doctor.first_name + ' ' + doctor.last_name
+                        : doctor.username || doctor.name || 'Unknown';
+                    if (fullName.toLowerCase().includes(searchTerm)) {
+                        $dropdown.append('<option value="' + doctor.id + '">' + fullName + '</option>');
+                    }
+                });
+                $dropdown.select2('destroy').select2({
+                    placeholder: "Select a doctor...",
+                    allowClear: true
+                });
+            }, 300);
+        });
+
+        // Handle doctor dropdown selection
+        $(document).on('select2:select', '#doctor_dropdown', function(e) {
+            const doctorId = $(this).val();
+            const doctor = allDoctors.find(d => String(d.id) === String(doctorId));
+            if (doctor) {
+                // Update hidden field
+                $('#{{ form.doctor.id_for_label|safe }}').val(doctorId);
+                // Update info display
+                const fullName = doctor.first_name && doctor.last_name
+                    ? doctor.first_name + ' ' + doctor.last_name
+                    : doctor.username || doctor.name || 'Unknown';
+                $('#doctor_name').text(fullName);
+                $('#doctor_department').text(doctor.department || 'N/A');
+                $('#selected_doctor_info').show();
+            }
+        });
+
+        // Handle clear doctor search
+        $('#clear_doctor_search').on('click', function() {
+            $('#doctor_search').val('');
+            $('#doctor_dropdown').val('').trigger('change');
+            $('#{{ form.doctor.id_for_label|safe }}').val('');
+            $('#selected_doctor_info').hide();
+        });
+
+        // Handle Select2 clear
+        $(document).on('select2:clear', '#doctor_dropdown', function() {
+            $('#{{ form.doctor.id_for_label|safe }}').val('');
+            $('#selected_doctor_info').hide();
+        });
     }
 });
 </script>

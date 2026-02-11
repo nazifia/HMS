@@ -8,14 +8,81 @@
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-md-8 text-center">
-            <h1 class="display-4 text-danger mb-3">403</h1>
-            <h3 class="mb-3">You don't have permission to access this page.</h3>
-            <p class="text-muted mb-4">
-                If you believe this is an error, please contact your system administrator or try a different account.
-            </p>
-            <a href="/" class="btn btn-primary me-2">Go to Dashboard</a>
-            <a href="{% url 'accounts:logout' %}" class="btn btn-outline-secondary">Switch Account</a>
+        <div class="col-md-8">
+            <div class="text-center mb-4">
+                <h1 class="display-4 text-danger mb-3">
+                    <i class="fas fa-lock"></i> 403
+                </h1>
+                <h3 class="mb-3">Access Denied</h3>
+            </div>
+            
+            <div class="alert alert-warning" role="alert">
+                <h5 class="alert-heading">
+                    <i class="fas fa-exclamation-triangle"></i> Permission Required
+                </h5>
+                <p class="mb-0">
+                    {% if reason %}
+                        {{ reason }}
+                    {% else %}
+                        You don't have the required permission to access this resource.
+                    {% endif %}
+                </p>
+            </div>
+            
+            {% if required_permission %}
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <strong>Required Permission:</strong>
+                </div>
+                <div class="card-body">
+                    <code>{{ required_permission }}</code>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if user_roles %}
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <strong>Your Current Roles:</strong>
+                </div>
+                <div class="card-body">
+                    {% for role in user_roles %}
+                        <span class="badge bg-info me-1">{{ role|title }}</span>
+                    {% empty %}
+                        <em class="text-muted">No roles assigned</em>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="text-center">
+                <p class="text-muted mb-4">
+                    <i class="fas fa-info-circle"></i>
+                    This system enforces strict access control. You can only access resources 
+                    that you have been explicitly permitted to access through your assigned roles or permissions.
+                </p>
+                
+                <div class="d-flex justify-content-center gap-2">
+                    <a href="{% url 'dashboard:dashboard' %}" class="btn btn-primary">
+                        <i class="fas fa-home"></i> Go to Dashboard
+                    </a>
+                    <a href="{% url 'accounts:profile' %}" class="btn btn-outline-info">
+                        <i class="fas fa-user"></i> View My Profile
+                    </a>
+                    <a href="{% url 'accounts:logout' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-sign-out-alt"></i> Switch Account
+                    </a>
+                </div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <div class="text-center">
+                <small class="text-muted">
+                    If you believe this is an error, please contact your system administrator 
+                    and reference the required permission above.
+                </small>
+            </div>
         </div>
     </div>
 </div>

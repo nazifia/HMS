@@ -79,9 +79,36 @@
                         </div>
                     </div>
                     <div class="col-md-6">
+                        <!-- Doctor Selection with Search -->
                         <div class="form-group">
                             <label for="{{ form.doctor.id_for_label }}">Doctor</label>
-                            {{ form.doctor|add_class:"form-control" }}
+
+                            <!-- Enhanced Doctor Search Field -->
+                            <div class="input-group mb-2">
+                                <input type="text" id="doctor_search" class="form-control" placeholder="Search by name...">
+                                <button class="btn btn-outline-secondary" type="button" id="clear_doctor_search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+
+                            <!-- Doctor Dropdown with Select2 -->
+                            <select id="doctor_dropdown" class="form-control select2" data-placeholder="Select a doctor...">
+                                <option value="">Select a doctor...</option>
+                                <!-- Options will be populated by JavaScript -->
+                            </select>
+
+                            <!-- Hidden field for form submission (will be updated by JavaScript) -->
+                            {{ form.doctor|add_class:"d-none" }}
+
+                            <!-- Selected Doctor Info -->
+                            <div id="selected_doctor_info" class="mt-2 p-2 bg-light rounded" style="display: none;">
+                                <strong>Selected Doctor:</strong>
+                                <span id="doctor_name"></span>
+                                <br>
+                                <small class="text-muted">
+                                    Department: <span id="doctor_department"></span>
+                                </small>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -151,4 +178,147 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Select2 for dropdowns
+    if (typeof $ !== 'undefined') {
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            allowClear: true
+        });
+    }
+
+    // Doctor Search Functionality
+    const doctorSearchField = document.getElementById('doctor_search');
+    const doctorDropdown = document.getElementById('doctor_dropdown');
+    const doctorHiddenField = document.getElementById('{{ form.doctor.auto_id }}');
+    const selectedDoctorInfo = document.getElementById('selected_doctor_info');
+    const clearDoctorSearchBtn = document.getElementById('clear_doctor_search');
+
+    let doctorSearchTimeout;
+
+    // Load all doctors for dropdown
+    function loadAllDoctors() {
+        fetch('/accounts/api/users/?role=doctor')
+            .then(response => response.json())
+            .then(data => {
+                const options = data.map(doctor => {
+                    const doctorName = `Dr. ${doctor.first_name} ${doctor.last_name}`;
+                    const department = doctor.department || 'N/A';
+                    return `<option value="${doctor.id}"
+                             data-name="${doctorName}"
+                             data-department="${department}">
+                             ${doctorName}${department ? ` (${department})` : ''}
+                             </option>`;
+                }).join('');
+                doctorDropdown.innerHTML = '<option value="">Select a doctor...</option>' + options;
+                $(doctorDropdown).trigger('change.select2');
+            })
+            .catch(error => console.error('Error loading doctors:', error));
+    }
+
+    // Initialize doctors dropdown with data
+    loadAllDoctors();
+
+    // Doctor Search Handler
+    if (doctorSearchField) {
+        doctorSearchField.addEventListener('input', function() {
+            const searchTerm = this.value.trim();
+
+            clearTimeout(doctorSearchTimeout);
+
+            if (searchTerm.length === 0) {
+                // Reload all doctors
+                loadAllDoctors();
+                return;
+            }
+
+            if (searchTerm.length < 2) {
+                return;
+            }
+
+            doctorSearchTimeout = setTimeout(() => {
+                fetch('/accounts/api/users/?role=doctor')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Filter doctors based on search term
+                        const filteredDoctors = data.filter(doctor =>
+                            `${doctor.first_name} ${doctor.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
+                        );
+
+                        const options = filteredDoctors.map(doctor => {
+                            const doctorName = `Dr. ${doctor.first_name} ${doctor.last_name}`;
+                            const department = doctor.department || 'N/A';
+                            return `<option value="${doctor.id}"
+                                     data-name="${doctorName}"
+                                     data-department="${department}">
+                                     ${doctorName}${department ? ` (${department})` : ''}
+                                     </option>`;
+                        }).join('');
+                        doctorDropdown.innerHTML = '<option value="">Select a doctor...</option>' + options;
+                        $(doctorDropdown).trigger('change.select2');
+                    })
+                    .catch(error => console.error('Error searching doctors:', error));
+            }, 300);
+        });
+    }
+
+    // Doctor Dropdown Selection Handler
+    if (doctorDropdown) {
+        doctorDropdown.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                const doctorId = selectedOption.value;
+                const doctorName = selectedOption.dataset.name;
+                const doctorDepartment = selectedOption.dataset.department;
+
+                // Update hidden field
+                doctorHiddenField.value = doctorId;
+
+                // Update selected doctor info display
+                document.getElementById('doctor_name').textContent = doctorName;
+                document.getElementById('doctor_department').textContent = doctorDepartment;
+                selectedDoctorInfo.style.display = 'block';
+
+                // Sync search field
+                doctorSearchField.value = doctorName;
+            } else {
+                // Clear selection
+                doctorHiddenField.value = '';
+                selectedDoctorInfo.style.display = 'none';
+                doctorSearchField.value = '';
+            }
+        });
+    }
+
+    // Clear Doctor Search
+    if (clearDoctorSearchBtn) {
+        clearDoctorSearchBtn.addEventListener('click', function() {
+            doctorSearchField.value = '';
+            doctorHiddenField.value = '';
+            selectedDoctorInfo.style.display = 'none';
+            loadAllDoctors(); // Reload all doctors
+        });
+    }
+
+    // Pre-fill if editing existing record
+    {% if record and record.doctor %}
+        const doctorId = "{{ record.doctor.id }}";
+        const doctorName = "Dr. {{ record.doctor.get_full_name }}";
+        const doctorDepartment = "{{ record.doctor.profile.department.name|default:'N/A' }}";
+
+        doctorHiddenField.value = doctorId;
+        document.getElementById('doctor_name').textContent = doctorName;
+        document.getElementById('doctor_department').textContent = doctorDepartment;
+        selectedDoctorInfo.style.display = 'block';
+
+        // Set dropdown selection
+        $(doctorDropdown).val(doctorId).trigger('change.select2');
+    {% endif %}
+});
+</script>
 {% endblock %}

@@ -74,9 +74,35 @@
                         </div>
                     </div>
                     <div class="col-md-6">
+                        <!-- Doctor Selection with Search -->
                         <div class="form-group">
                             <label for="{{ form.doctor.id_for_label }}">Doctor</label>
-                            {{ form.doctor|add_class:"form-control" }}
+
+                            <!-- Enhanced Doctor Search Field -->
+                            <div class="input-group mb-2">
+                                <input type="text" id="doctor_search" class="form-control" placeholder="Search by name...">
+                                <button class="btn btn-outline-secondary" type="button" id="clear_doctor_search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+
+                            <!-- Doctor Dropdown with Select2 -->
+                            <select id="doctor_dropdown" class="form-control select2" data-placeholder="Select a doctor...">
+                                <option value="">Select a doctor...</option>
+                            </select>
+
+                            <!-- Hidden field for form submission -->
+                            {{ form.doctor|add_class:"d-none" }}
+
+                            <!-- Selected Doctor Info -->
+                            <div id="selected_doctor_info" class="mt-2 p-2 bg-light rounded" style="display: none;">
+                                <strong>Selected Doctor:</strong>
+                                <span id="doctor_name"></span>
+                                <br>
+                                <small class="text-muted">
+                                    Department: <span id="doctor_department"></span>
+                                </small>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -140,4 +166,107 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    let allDoctors = [];
+
+    // Load all doctors via AJAX
+    $.ajax({
+        url: '/accounts/api/users/?role=doctor',
+        method: 'GET',
+        success: function(data) {
+            allDoctors = data.users || [];
+            populateDoctorDropdown(allDoctors);
+
+            // Pre-fill if editing existing record
+            const existingDoctorId = $('#id_doctor').val();
+            if (existingDoctorId) {
+                selectDoctor(existingDoctorId);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error loading doctors:', error);
+        }
+    });
+
+    // Populate doctor dropdown
+    function populateDoctorDropdown(doctors) {
+        const $dropdown = $('#doctor_dropdown');
+        $dropdown.find('option:not(:first)').remove();
+
+        doctors.forEach(function(doctor) {
+            const fullName = `${doctor.first_name} ${doctor.last_name}`.trim() || doctor.username;
+            const department = doctor.department_name || 'N/A';
+            $dropdown.append(
+                $('<option></option>')
+                    .attr('value', doctor.id)
+                    .attr('data-name', fullName)
+                    .attr('data-department', department)
+                    .text(`${fullName} (${department})`)
+            );
+        });
+    }
+
+    // Handle doctor search input
+    let searchTimeout;
+    $('#doctor_search').on('input', function() {
+        clearTimeout(searchTimeout);
+        const searchTerm = $(this).val().toLowerCase().trim();
+
+        searchTimeout = setTimeout(function() {
+            if (searchTerm === '') {
+                populateDoctorDropdown(allDoctors);
+            } else {
+                const filtered = allDoctors.filter(function(doctor) {
+                    const fullName = `${doctor.first_name} ${doctor.last_name}`.toLowerCase();
+                    return fullName.includes(searchTerm) ||
+                           doctor.username.toLowerCase().includes(searchTerm);
+                });
+                populateDoctorDropdown(filtered);
+            }
+        }, 300);
+    });
+
+    // Handle doctor dropdown selection
+    $('#doctor_dropdown').on('change', function() {
+        const selectedId = $(this).val();
+        if (selectedId) {
+            selectDoctor(selectedId);
+        } else {
+            clearDoctorSelection();
+        }
+    });
+
+    // Select doctor and update UI
+    function selectDoctor(doctorId) {
+        const doctor = allDoctors.find(d => String(d.id) === String(doctorId));
+        if (doctor) {
+            $('#id_doctor').val(doctor.id);
+            $('#doctor_dropdown').val(doctor.id);
+
+            const fullName = `${doctor.first_name} ${doctor.last_name}`.trim() || doctor.username;
+            $('#doctor_name').text(fullName);
+            $('#doctor_department').text(doctor.department_name || 'N/A');
+            $('#selected_doctor_info').show();
+        }
+    }
+
+    // Clear doctor selection
+    function clearDoctorSelection() {
+        $('#id_doctor').val('');
+        $('#doctor_dropdown').val('');
+        $('#doctor_search').val('');
+        $('#selected_doctor_info').hide();
+        populateDoctorDropdown(allDoctors);
+    }
+
+    // Handle clear button
+    $('#clear_doctor_search').on('click', function() {
+        clearDoctorSelection();
+    });
+});
+</script>
 {% endblock %}

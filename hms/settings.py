@@ -16,7 +16,7 @@ from decimal import Decimal
 import sys
 
 # Apply Windows OSError patches FIRST, before Django loads
-if sys.platform == 'win32':
+if sys.platform == "win32":
     try:
         from core import django_patches
     except ImportError:
@@ -25,18 +25,22 @@ if sys.platform == 'win32':
 # Fix for Python 3.13 timezone compatibility issue with django_celery_beat
 if sys.version_info >= (3, 13):
     import os
-    os.environ['TZ'] = 'UTC'
+
+    os.environ["TZ"] = "UTC"
     try:
         import zoneinfo
+
         # Ensure zoneinfo data is available
-        zoneinfo.ZoneInfo('UTC')
+        zoneinfo.ZoneInfo("UTC")
     except Exception:
         # Fallback to tzdata if zoneinfo data is not available
         import tzdata
-        os.environ['PYTHONZONE'] = 'tzdata'
+
+        os.environ["PYTHONZONE"] = "tzdata"
 
 # Load environment variables from .env file
 from core.env_loader import load_env_file
+
 load_env_file()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -47,27 +51,38 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'o39@*p9_djglfvp(r8&m9+hl*2+xnz0#fm-uk%cqg-32655$22')
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY", "o39@*p9_djglfvp(r8&m9+hl*2+xnz0#fm-uk%cqg-32655$22"
+)
 if not SECRET_KEY:
-    if os.environ.get('DEBUG', 'False') == 'True':
-        SECRET_KEY = 'django-dev-key-change-in-production-make-it-very-long-and-random-at-least-50-chars'
+    if os.environ.get("DEBUG", "False") == "True":
+        SECRET_KEY = "django-dev-key-change-in-production-make-it-very-long-and-random-at-least-50-chars"
     else:
         raise ValueError("SECRET_KEY environment variable must be set in production")
 
 # Validate SECRET_KEY strength
 if len(SECRET_KEY) < 50:
     import warnings
+
     warnings.warn("SECRET_KEY should be at least 50 characters long for security")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',')
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(
+    ","
+)
 
 # Security settings - Apply based on environment variables or DEBUG setting
-SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False' if DEBUG else 'True') == 'True'
-CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', 'False' if DEBUG else 'True') == 'True'
-SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False' if DEBUG else 'True') == 'True'
+SESSION_COOKIE_SECURE = (
+    os.environ.get("SESSION_COOKIE_SECURE", "False" if DEBUG else "True") == "True"
+)
+CSRF_COOKIE_SECURE = (
+    os.environ.get("CSRF_COOKIE_SECURE", "False" if DEBUG else "True") == "True"
+)
+SECURE_SSL_REDIRECT = (
+    os.environ.get("SECURE_SSL_REDIRECT", "False" if DEBUG else "True") == "True"
+)
 
 # HSTS settings - Set to 0 in development (warning suppressed), 1 year in production
 if DEBUG:
@@ -76,14 +91,16 @@ if DEBUG:
     SECURE_HSTS_PRELOAD = False
 else:
     # Production: Enable HSTS with 1 year duration (31536000 seconds)
-    SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '31536000'))
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'True') == 'True'
-    SECURE_HSTS_PRELOAD = os.environ.get('SECURE_HSTS_PRELOAD', 'True') == 'True'
+    SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = (
+        os.environ.get("SECURE_HSTS_INCLUDE_SUBDOMAINS", "True") == "True"
+    )
+    SECURE_HSTS_PRELOAD = os.environ.get("SECURE_HSTS_PRELOAD", "True") == "True"
 
 # Silence security warnings that are expected in development
 if DEBUG:
     SILENCED_SYSTEM_CHECKS = [
-        'security.W004',  # SECURE_HSTS_SECONDS is 0 in development (expected)
+        "security.W004",  # SECURE_HSTS_SECONDS is 0 in development (expected)
     ]
 else:
     SILENCED_SYSTEM_CHECKS = []
@@ -91,161 +108,190 @@ else:
 # Content security
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
-X_FRAME_OPTIONS = 'DENY'
-SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+
+# ============================================================================
+# STRICT ACCESS CONTROL SETTINGS
+# ============================================================================
+# When enabled, users can ONLY access resources they are explicitly
+# permitted to access through roles or individual permissions.
+# Default: True (highly recommended for production)
+STRICT_ACCESS_CONTROL = (
+    os.environ.get("STRICT_ACCESS_CONTROL", "True" if not DEBUG else "False") == "True"
+)
+
+# URLs that don't require any permission checks (public access)
+PUBLIC_URLS = [
+    # Add any custom public URLs here
+]
+
+# Enable permission audit logging
+PERMISSION_AUDIT_ENABLED = True
+
+# Debug permission checks (verbose logging)
+DEBUG_PERMISSIONS = DEBUG
+X_FRAME_OPTIONS = "DENY"
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 # Additional security headers
-SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
 
 # Encryption key for sensitive data
-ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', 'dev-32-byte-encryption-key-here').encode()
+ENCRYPTION_KEY = os.environ.get(
+    "ENCRYPTION_KEY", "dev-32-byte-encryption-key-here"
+).encode()
 
-AUTH_USER_MODEL = 'accounts.CustomUser'
+AUTH_USER_MODEL = "accounts.CustomUser"
 
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'django.contrib.humanize',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "django.contrib.humanize",
     # Third-party apps
-    'widget_tweaks',
-    'crispy_forms',
-    'crispy_bootstrap5',
-    'compressor',  # Django Compressor for CSS/JS minification
-    'django_extensions',  # SSL support for runserver
+    "widget_tweaks",
+    "crispy_forms",
+    "crispy_bootstrap5",
+    "compressor",  # Django Compressor for CSS/JS minification
+    "django_extensions",  # SSL support for runserver
     # 'django_celery_beat',  # Temporarily disabled due to Python 3.13 timezone compatibility issue
-
     # HMS Apps
-    'accounts',
-    'core',
-    'patients',
-    'doctors',
-    'appointments',
-    'pharmacy.apps.PharmacyConfig',
-    'laboratory',
-    'billing',
-    'inpatient',
-    'hr',
-    'reporting',
-    'dashboard',
-    'consultations',
-    'radiology',
-    'theatre.apps.TheatreConfig',
-    'nhia',
-    'retainership',
-    'desk_office',
-    'dental',
-    'ophthalmic',
-    'ent',
-    'oncology',
-    'scbu',
-    'anc',
-    'labor',
-    'icu',
-    'family_planning',
-    'gynae_emergency',
-    'neurology',
-    'dermatology',
-    'pharmacy_billing.apps.PharmacyBillingConfig',  # Added to resolve RuntimeError
-    
+    "accounts",
+    "core",
+    "patients",
+    "doctors",
+    "appointments",
+    "pharmacy.apps.PharmacyConfig",
+    "laboratory",
+    "billing",
+    "inpatient",
+    "hr",
+    "reporting",
+    "dashboard",
+    "consultations",
+    "radiology",
+    "theatre.apps.TheatreConfig",
+    "nhia",
+    "retainership",
+    "desk_office",
+    "dental",
+    "ophthalmic",
+    "ent",
+    "oncology",
+    "scbu",
+    "anc",
+    "labor",
+    "icu",
+    "family_planning",
+    "gynae_emergency",
+    "neurology",
+    "dermatology",
+    "pharmacy_billing.apps.PharmacyBillingConfig",  # Added to resolve RuntimeError
     # New Specialty Modules
-    'emergency',
-    'general_medicine',
-    'pediatrics',
-    'surgery',
-    'cardiology',
-    'orthopedics',
-
+    "emergency",
+    "general_medicine",
+    "pediatrics",
+    "surgery",
+    "cardiology",
+    "orthopedics",
 ]
 
 MIDDLEWARE = [
     # Disable SSL in development middleware (must be first to intercept HTTPS headers)
-    'core.disable_ssl_in_dev.DisableSSLInDevMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'core.disable_ssl_in_dev.DisableSSLInDevMiddleware',  # Disable SSL in development
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    "core.disable_ssl_in_dev.DisableSSLInDevMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "core.disable_ssl_in_dev.DisableSSLInDevMiddleware",  # Disable SSL in development
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # STRICT ACCESS CONTROL - Must be right after AuthenticationMiddleware
+    # This enforces that users only access what they're explicitly permitted to
+    "accounts.middleware.StrictAccessControlMiddleware",
     # User Activity Monitoring Middleware
-    'accounts.middleware.UserActivityMiddleware',
-    'accounts.middleware.LoginTrackingMiddleware',
+    "accounts.middleware.UserActivityMiddleware",
+    "accounts.middleware.LoginTrackingMiddleware",
     # Activity Logging Middleware
-    'core.activity_log.ActivityLogMiddleware',
+    "core.activity_log.ActivityLogMiddleware",
+    # Permission Audit Middleware - Logs permission denials
+    "accounts.middleware.PermissionAuditMiddleware",
     # Other middleware
-    'django.contrib.messages.middleware.MessageMiddleware',
+    "django.contrib.messages.middleware.MessageMiddleware",
     # Module Access Control Middleware (must be after MessageMiddleware)
-    'pharmacy.middleware.PharmacyAccessMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "pharmacy.middleware.PharmacyAccessMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'hms.urls'
+ROOT_URLCONF = "hms.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-                'django.template.context_processors.media',
-                'django.template.context_processors.static',
-                'pharmacy.context_processors.pharmacy_context',
-                'patients.context_processors.all_patients',
-                'patients.context_processors.current_patient_context',
-                'core.context_processors.hms_permissions',
-                'core.context_processors.hms_user_roles',
-                'accounts.context_processors.user_permissions',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+                "django.template.context_processors.media",
+                "django.template.context_processors.static",
+                "pharmacy.context_processors.pharmacy_context",
+                "patients.context_processors.all_patients",
+                "patients.context_processors.current_patient_context",
+                "core.context_processors.hms_permissions",
+                "core.context_processors.hms_user_roles",
+                "accounts.context_processors.user_permissions",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'hms.wsgi.application'
+WSGI_APPLICATION = "hms.wsgi.application"
 
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 # Database Configuration
-DB_ENGINE = os.environ.get('DB_ENGINE', 'django.db.backends.sqlite3')
+DB_ENGINE = os.environ.get("DB_ENGINE", "django.db.backends.sqlite3")
 
-if DB_ENGINE == 'django.db.backends.sqlite3':
+if DB_ENGINE == "django.db.backends.sqlite3":
     # SQLite Configuration (Development)
     DATABASES = {
-        'default': {
-            'ENGINE': DB_ENGINE,
-            'NAME': BASE_DIR / os.environ.get('DB_NAME', 'db.sqlite3'),
-            'OPTIONS': {
-                'timeout': 20,
-            }
+        "default": {
+            "ENGINE": DB_ENGINE,
+            "NAME": BASE_DIR / os.environ.get("DB_NAME", "db.sqlite3"),
+            "OPTIONS": {
+                "timeout": 20,
+            },
         }
     }
 else:
     # MySQL/PostgreSQL Configuration (Production)
     DATABASES = {
-        'default': {
-            'ENGINE': DB_ENGINE,
-            'NAME': os.environ.get('DB_NAME', 'hms_db'),
-            'USER': os.environ.get('DB_USER', 'hms_user'),
-            'PASSWORD': os.environ.get('DB_PASSWORD'),
-            'HOST': os.environ.get('DB_HOST', 'localhost'),
-            'PORT': os.environ.get('DB_PORT', '3306' if 'mysql' in DB_ENGINE else '5432'),
-            'OPTIONS': {
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'" if 'mysql' in DB_ENGINE else {},
-                'charset': 'utf8mb4' if 'mysql' in DB_ENGINE else 'utf8',
+        "default": {
+            "ENGINE": DB_ENGINE,
+            "NAME": os.environ.get("DB_NAME", "hms_db"),
+            "USER": os.environ.get("DB_USER", "hms_user"),
+            "PASSWORD": os.environ.get("DB_PASSWORD"),
+            "HOST": os.environ.get("DB_HOST", "localhost"),
+            "PORT": os.environ.get(
+                "DB_PORT", "3306" if "mysql" in DB_ENGINE else "5432"
+            ),
+            "OPTIONS": {
+                "init_command": "SET sql_mode='STRICT_TRANS_TABLES'"
+                if "mysql" in DB_ENGINE
+                else {},
+                "charset": "utf8mb4" if "mysql" in DB_ENGINE else "utf8",
             },
-            'CONN_MAX_AGE': 60,  # Connection pooling
-            'CONN_HEALTH_CHECKS': True,
+            "CONN_MAX_AGE": 60,  # Connection pooling
+            "CONN_HEALTH_CHECKS": True,
         }
     }
 
@@ -259,16 +305,16 @@ else:
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -276,9 +322,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -288,21 +334,25 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 
 # Email Configuration
-EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
-EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'False') == 'True'
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'noreply@hospital.com')
-SERVER_EMAIL = os.environ.get('SERVER_EMAIL', DEFAULT_FROM_EMAIL)
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False") == "True"
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "noreply@hospital.com"
+)
+SERVER_EMAIL = os.environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
 
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 
 # AUTHENTICATION_BACKENDS = [
 #     'accounts.backends.AdminBackend',  # Admin authentication (username-based)
@@ -313,29 +363,29 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 # Authentication Backends Configuration
 # Order matters: Django tries each backend in sequence until one succeeds
 AUTHENTICATION_BACKENDS = [
-    'accounts.backends.AdminBackend',           # First: Handle admin/username logins
-    'accounts.backends.PhoneNumberBackend',     # Second: Handle phone number logins
-    'accounts.backends.RolePermissionBackend',  # Third: Role-based permissions
-    'django.contrib.auth.backends.ModelBackend',  # Fourth: Django's default backend as fallback
+    "accounts.backends.AdminBackend",  # First: Handle admin/username logins
+    "accounts.backends.PhoneNumberBackend",  # Second: Handle phone number logins
+    "accounts.backends.RolePermissionBackend",  # Third: Role-based permissions
+    "django.contrib.auth.backends.ModelBackend",  # Fourth: Django's default backend as fallback
 ]
 
 # Login URLs - these remain the same for your application
-LOGIN_URL = '/accounts/login/'
-LOGIN_REDIRECT_URL = 'dashboard:dashboard'  # Where users go after app login
-LOGOUT_REDIRECT_URL = 'accounts:login'
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "dashboard:dashboard"  # Where users go after app login
+LOGOUT_REDIRECT_URL = "accounts:login"
 
 # Admin site configuration (optional - for customization)
-ADMIN_SITE_HEADER = 'HMS Administration'
-ADMIN_SITE_TITLE = 'HMS Admin'
-ADMIN_INDEX_TITLE = 'Welcome to HMS Administration'
+ADMIN_SITE_HEADER = "HMS Administration"
+ADMIN_SITE_TITLE = "HMS Admin"
+ADMIN_INDEX_TITLE = "Welcome to HMS Administration"
 
 # Media files
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # Login URLs
-LOGIN_REDIRECT_URL = 'home'
-LOGOUT_REDIRECT_URL = 'accounts:login'
+LOGIN_REDIRECT_URL = "home"
+LOGOUT_REDIRECT_URL = "accounts:login"
 
 # Crispy Forms settings (temporarily disabled)
 # Use default crispy forms template pack
@@ -344,102 +394,99 @@ LOGOUT_REDIRECT_URL = 'accounts:login'
 
 # REST framework configuration
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
     ),
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated'
-    ],
-    'DEFAULT_RENDERER_CLASSES': (
-        'rest_framework.renderers.JSONRenderer',
-    ),
-    'DEFAULT_PARSER_CLASSES': (
-        'rest_framework.parsers.JSONParser',
-        'rest_framework.parsers.FormParser',
-        'rest_framework.parsers.MultiPartParser',
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
+    "DEFAULT_PARSER_CLASSES": (
+        "rest_framework.parsers.JSONParser",
+        "rest_framework.parsers.FormParser",
+        "rest_framework.parsers.MultiPartParser",
     ),
 }
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Logging configuration
 import sys
 import platform
 
-LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO' if DEBUG else 'INFO')  # Changed default to INFO to reduce noise
-LOG_FILE = os.environ.get('LOG_FILE', None)
+LOG_LEVEL = os.environ.get(
+    "LOG_LEVEL", "INFO" if DEBUG else "INFO"
+)  # Changed default to INFO to reduce noise
+LOG_FILE = os.environ.get("LOG_FILE", None)
 
 # On Windows, always use file logging to avoid console encoding issues (OSError [Errno 22])
-IS_WINDOWS = platform.system() == 'Windows'
+IS_WINDOWS = platform.system() == "Windows"
 if IS_WINDOWS and not LOG_FILE:
-    LOG_FILE = os.path.join(BASE_DIR, 'logs', 'hms.log')
+    LOG_FILE = os.path.join(BASE_DIR, "logs", "hms.log")
     # Create logs directory if it doesn't exist
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 
 # Suppress verbose autoreload and debug messages
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'simple': {
-            'format': '%(levelname)s %(asctime)s %(module)s %(message)s',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {
+            "format": "%(levelname)s %(asctime)s %(module)s %(message)s",
         },
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'level': 'INFO',  # Changed from DEBUG to INFO to reduce verbose output
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
         },
     },
-    'loggers': {
+    "handlers": {
+        "console": {
+            "level": "INFO",  # Changed from DEBUG to INFO to reduce verbose output
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "loggers": {
         # Django root logger - set to WARNING to suppress info/debug
-        'django': {
-            'handlers': ['console'],
-            'level': 'WARNING',  # Only show warnings and errors
-            'propagate': False,
+        "django": {
+            "handlers": ["console"],
+            "level": "WARNING",  # Only show warnings and errors
+            "propagate": False,
         },
         # Django autoreload logger - suppress entirely
-        'django.utils.autoreload': {
-            'handlers': ['console'],
-            'level': 'ERROR',  # Only show errors
-            'propagate': False,
+        "django.utils.autoreload": {
+            "handlers": ["console"],
+            "level": "ERROR",  # Only show errors
+            "propagate": False,
         },
         # Django template debug messages
-        'django.template': {
-            'handlers': ['console'],
-            'level': 'INFO',  # INFO level to see template errors but not debug
-            'propagate': False,
+        "django.template": {
+            "handlers": ["console"],
+            "level": "INFO",  # INFO level to see template errors but not debug
+            "propagate": False,
         },
         # HMS application logger
-        'hms': {
-            'handlers': ['console'],
-            'level': LOG_LEVEL,
-            'propagate': False,
+        "hms": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+            "propagate": False,
         },
         # Requests logger - reduce noise
-        'django.request': {
-            'handlers': ['console'],
-            'level': 'WARNING',  # Only show warnings and errors for requests
-            'propagate': False,
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",  # Only show warnings and errors for requests
+            "propagate": False,
         },
         # Database queries logger - reduce noise
-        'django.db.backends': {
-            'handlers': ['console'],
-            'level': 'WARNING',  # Only show DB warnings and errors
-            'propagate': False,
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "WARNING",  # Only show DB warnings and errors
+            "propagate": False,
         },
     },
 }
-
 
 
 # LOGGING = {
@@ -479,55 +526,69 @@ LOGGING = {
 
 
 # Hospital Information
-HOSPITAL_NAME = os.environ.get('HOSPITAL_NAME', 'City General Hospital')
-HOSPITAL_ADDRESS = os.environ.get('HOSPITAL_ADDRESS', '123 Medical Center Blvd, City, State 12345')
-HOSPITAL_PHONE = os.environ.get('HOSPITAL_PHONE', '(555) 123-4567')
-HOSPITAL_EMAIL = os.environ.get('HOSPITAL_EMAIL', 'info@citygeneralhospital.com')
+HOSPITAL_NAME = os.environ.get("HOSPITAL_NAME", "City General Hospital")
+HOSPITAL_ADDRESS = os.environ.get(
+    "HOSPITAL_ADDRESS", "123 Medical Center Blvd, City, State 12345"
+)
+HOSPITAL_PHONE = os.environ.get("HOSPITAL_PHONE", "(555) 123-4567")
+HOSPITAL_EMAIL = os.environ.get("HOSPITAL_EMAIL", "info@citygeneralhospital.com")
 
 # Cache Configuration
 # Using DatabaseCache for shared caching across all processes
 # This fixes the LocMemCache issue where each process has its own cache
 CACHES = {
-    'default': {
-        'BACKEND': os.environ.get('CACHE_BACKEND', 'django.core.cache.backends.db.DatabaseCache'),
-        'LOCATION': os.environ.get('CACHE_LOCATION', 'cache_table'),
-        'TIMEOUT': int(os.environ.get('CACHE_TIMEOUT', '300')),  # 5 minutes default
-        'OPTIONS': {
-            'MAX_ENTRIES': int(os.environ.get('CACHE_MAX_ENTRIES', '10000')),
-        }
+    "default": {
+        "BACKEND": os.environ.get(
+            "CACHE_BACKEND", "django.core.cache.backends.db.DatabaseCache"
+        ),
+        "LOCATION": os.environ.get("CACHE_LOCATION", "cache_table"),
+        "TIMEOUT": int(os.environ.get("CACHE_TIMEOUT", "300")),  # 5 minutes default
+        "OPTIONS": {
+            "MAX_ENTRIES": int(os.environ.get("CACHE_MAX_ENTRIES", "10000")),
+        },
     }
 }
 
 # Session Configuration
-SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
-SESSION_CACHE_ALIAS = 'default'
-SESSION_COOKIE_AGE = int(os.environ.get('SESSION_COOKIE_AGE', '1200'))  # 20 minutes default
-SESSION_COOKIE_NAME = 'hms_sessionid'
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+SESSION_CACHE_ALIAS = "default"
+SESSION_COOKIE_AGE = int(
+    os.environ.get("SESSION_COOKIE_AGE", "1200")
+)  # 20 minutes default
+SESSION_COOKIE_NAME = "hms_sessionid"
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Session expires when browser closes
 SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access to session cookie
 
 # Patient-specific session settings
-PATIENT_SESSION_TIMEOUT = int(os.environ.get('PATIENT_SESSION_TIMEOUT', '1200'))  # 20 minutes for patient portal
-STAFF_SESSION_TIMEOUT = int(os.environ.get('STAFF_SESSION_TIMEOUT', '1200'))  # 20 minutes for staff
+PATIENT_SESSION_TIMEOUT = int(
+    os.environ.get("PATIENT_SESSION_TIMEOUT", "1200")
+)  # 20 minutes for patient portal
+STAFF_SESSION_TIMEOUT = int(
+    os.environ.get("STAFF_SESSION_TIMEOUT", "1200")
+)  # 20 minutes for staff
 
 # Session security
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_PATH = '/'
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_PATH = "/"
 
 # Custom session variables
-SESSION_TIMEOUT_WARNING = int(os.environ.get('SESSION_TIMEOUT_WARNING', '300'))  # 5 minutes warning before timeout
+SESSION_TIMEOUT_WARNING = int(
+    os.environ.get("SESSION_TIMEOUT_WARNING", "300")
+)  # 5 minutes warning before timeout
 
 # Crispy Forms Configuration
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # Celery Configuration
-CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.environ.get(
+    "CELERY_RESULT_BACKEND", "redis://localhost:6379/0"
+)
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_ENABLE_UTC = USE_TZ
 
@@ -535,31 +596,35 @@ CELERY_ENABLE_UTC = USE_TZ
 # CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'  # Temporarily disabled
 
 # Custom settings for wallet and session management
-WALLET_LOW_BALANCE_THRESHOLD = Decimal(os.environ.get('WALLET_LOW_BALANCE_THRESHOLD', '100.00'))
-SESSION_MAX_AGE_DAYS = int(os.environ.get('SESSION_MAX_AGE_DAYS', '30'))
-SESSION_SECURITY_LONG_THRESHOLD = int(os.environ.get('SESSION_SECURITY_LONG_THRESHOLD', '7200'))
+WALLET_LOW_BALANCE_THRESHOLD = Decimal(
+    os.environ.get("WALLET_LOW_BALANCE_THRESHOLD", "100.00")
+)
+SESSION_MAX_AGE_DAYS = int(os.environ.get("SESSION_MAX_AGE_DAYS", "30"))
+SESSION_SECURITY_LONG_THRESHOLD = int(
+    os.environ.get("SESSION_SECURITY_LONG_THRESHOLD", "7200")
+)
 
 # Crispy Forms Configuration
-CRISPY_TEMPLATE_PACK = 'bootstrap5'
-CRISPY_ALLOWED_TEMPLATE_PACKS = ['bootstrap5']
+CRISPY_TEMPLATE_PACK = "bootstrap5"
+CRISPY_ALLOWED_TEMPLATE_PACKS = ["bootstrap5"]
 
 # Inter-Dispensary Transfer Settings
-MAX_INTER_DISPENSARY_TRANSFER_QUANTITY = Decimal('1000.00')
-MIN_INTER_DISPENSARY_TRANSFER_QUANTITY = Decimal('1.00')
+MAX_INTER_DISPENSARY_TRANSFER_QUANTITY = Decimal("1000.00")
+MIN_INTER_DISPENSARY_TRANSFER_QUANTITY = Decimal("1.00")
 
 # Django Compressor Settings
 COMPRESS_ENABLED = not DEBUG  # Enable compression in production
 COMPRESS_OFFLINE = False  # Set to True for offline compression
 COMPRESS_CSS_FILTERS = [
-    'compressor.filters.css_default.CssAbsoluteFilter',
-    'compressor.filters.cssmin.rCSSMinFilter',
+    "compressor.filters.css_default.CssAbsoluteFilter",
+    "compressor.filters.cssmin.rCSSMinFilter",
 ]
 COMPRESS_JS_FILTERS = [
-    'compressor.filters.jsmin.rJSMinFilter',
+    "compressor.filters.jsmin.rJSMinFilter",
 ]
 # Add compressor to staticfiles finders
 STATICFILES_FINDERS = [
-    'django.contrib.staticfiles.finders.FileSystemFinder',
-    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-    'compressor.finders.CompressorFinder',
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+    "compressor.finders.CompressorFinder",
 ]

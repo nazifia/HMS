@@ -154,8 +154,35 @@
                         {% endif %}
                     </div>
                     <div class="col-sm-6">
-                        <label>Dermatologist</label>
-                        {{ form.dermatologist|add_class:"form-control" }}
+                        <!-- Doctor Selection with Search -->
+                        <label for="doctor_dropdown">Dermatologist</label>
+
+                        <!-- Enhanced Doctor Search Field -->
+                        <div class="input-group mb-2">
+                            <input type="text" id="doctor_search" class="form-control" placeholder="Search by name...">
+                            <button class="btn btn-outline-secondary" type="button" id="clear_doctor_search">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <!-- Doctor Dropdown with Select2 -->
+                        <select id="doctor_dropdown" class="form-control select2" data-placeholder="Select a dermatologist...">
+                            <option value="">Select a dermatologist...</option>
+                        </select>
+
+                        <!-- Hidden field for form submission -->
+                        {{ form.dermatologist|add_class:"d-none" }}
+
+                        <!-- Selected Doctor Info -->
+                        <div id="selected_doctor_info" class="mt-2 p-2 bg-light rounded" style="display: none;">
+                            <strong>Selected Doctor:</strong>
+                            <span id="doctor_name"></span>
+                            <br>
+                            <small class="text-muted">
+                                Department: <span id="doctor_department"></span>
+                            </small>
+                        </div>
+
                         {% if form.dermatologist.errors %}
                         <div class="text-danger">{{ form.dermatologist.errors }}</div>
                         {% endif %}
@@ -289,6 +316,100 @@ document.addEventListener('DOMContentLoaded', function() {
         if (initialPatientId) {
             $('#{{ form.patient.id_for_label }}').trigger('change');
         }
+
+        // ============================================
+        // Doctor Selection with Search
+        // ============================================
+
+        // Doctor data cache
+        let allDoctors = [];
+        const $doctorDropdown = $('#doctor_dropdown');
+        const $doctorSearch = $('#doctor_search');
+        const $clearDoctorSearch = $('#clear_doctor_search');
+        const $doctorInfo = $('#selected_doctor_info');
+        const $hiddenDoctorField = $('#{{ form.dermatologist.id_for_label }}');
+
+        // Load all doctors on page load
+        $.ajax({
+            url: '/accounts/api/users/?role=doctor',
+            method: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                allDoctors = data.users || [];
+                populateDoctorDropdown(allDoctors);
+
+                // Pre-fill if editing existing record
+                const existingDoctorId = $hiddenDoctorField.val();
+                if (existingDoctorId) {
+                    $doctorDropdown.val(existingDoctorId).trigger('change');
+                }
+            },
+            error: function() {
+                console.error('Failed to load doctors');
+            }
+        });
+
+        // Populate doctor dropdown
+        function populateDoctorDropdown(doctors) {
+            $doctorDropdown.empty();
+            $doctorDropdown.append('<option value="">Select a dermatologist...</option>');
+
+            doctors.forEach(function(doctor) {
+                const option = new Option(doctor.name + ' (' + doctor.department + ')', doctor.id);
+                $doctorDropdown.append(option);
+            });
+
+            // Re-initialize Select2
+            $doctorDropdown.trigger('change.select2');
+        }
+
+        // Doctor search with debounce
+        let doctorSearchTimeout;
+        $doctorSearch.on('input', function() {
+            clearTimeout(doctorSearchTimeout);
+            const searchTerm = $(this).val().toLowerCase().trim();
+
+            doctorSearchTimeout = setTimeout(function() {
+                if (searchTerm.length >= 2) {
+                    const filtered = allDoctors.filter(function(doctor) {
+                        return doctor.name.toLowerCase().includes(searchTerm) ||
+                               (doctor.department && doctor.department.toLowerCase().includes(searchTerm));
+                    });
+                    populateDoctorDropdown(filtered);
+                } else if (searchTerm.length === 0) {
+                    populateDoctorDropdown(allDoctors);
+                }
+            }, 300);
+        });
+
+        // Clear doctor search
+        $clearDoctorSearch.on('click', function() {
+            $doctorSearch.val('');
+            populateDoctorDropdown(allDoctors);
+            $doctorDropdown.val('').trigger('change');
+        });
+
+        // Handle doctor selection
+        $doctorDropdown.on('change', function() {
+            const selectedId = $(this).val();
+
+            if (selectedId) {
+                const selectedDoctor = allDoctors.find(function(d) { return d.id == selectedId; });
+
+                if (selectedDoctor) {
+                    // Update hidden field
+                    $hiddenDoctorField.val(selectedId);
+
+                    // Update doctor info display
+                    $('#doctor_name').text(selectedDoctor.name);
+                    $('#doctor_department').text(selectedDoctor.department || 'N/A');
+                    $doctorInfo.show();
+                }
+            } else {
+                $hiddenDoctorField.val('');
+                $doctorInfo.hide();
+            }
+        });
     }
 });
 </script>
