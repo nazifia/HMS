@@ -1431,17 +1431,11 @@ ROLE_PERMISSIONS = {
             "wallet.view",
             "wallet.edit",
             "wallet.transactions",
-<<<<<<< HEAD
-=======
-            # Desk Office
-            "desk_office.view",
-            "desk_office.generate_auth_code",
             "desk_office.cancel_auth_code",
             # Patient Categories - Access to all patient types
             "nhia.view",
             "retainership.view",
             "patients.nhia_manage",
->>>>>>> 4419960 (feat: Grant receptionists and health record officers access to all patient categories)
             "reports.view",
         ],
     },
