@@ -1355,8 +1355,6 @@ ROLE_PERMISSIONS = {
             "appointments.view",
             "appointments.create",
             "appointments.edit",
-
-
             # Patient Categories - Access to all patient types
             "nhia.view",
             "retainership.view",
@@ -1424,18 +1422,6 @@ ROLE_PERMISSIONS = {
             "appointments.view",
             "appointments.create",
             "appointments.edit",
-            "billing.view",
-            "billing.create",
-            "billing.edit",
-            "billing.process_payment",
-            "wallet.view",
-            "wallet.edit",
-            "wallet.transactions",
-            "desk_office.cancel_auth_code",
-            # Patient Categories - Access to all patient types
-            "nhia.view",
-            "retainership.view",
-            "patients.nhia_manage",
             "reports.view",
         ],
     },

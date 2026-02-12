@@ -688,8 +688,8 @@
             </a>
         </li> {% endcomment %}
 
-        <!-- Nav Item - Billing (Available to accountants, receptionists, and admins) -->
-        {% if user.is_superuser or user|can_show_ui:'menu_billing' %}
+        <!-- Nav Item - Billing (Available to Cashier/Accountant and admins only) -->
+        {% if user.is_superuser or user|has_permission:'billing.view' %}
         <li class="nav-item {% if '/billing/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/billing/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseBilling" aria-expanded="{% if '/billing/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseBilling">
                 <i class="fas fa-fw fa-file-invoice-dollar text-white"></i>
@@ -699,10 +699,10 @@
                 <div class="bg-white py-2 collapse-inner rounded">
                     <h6 class="collapse-header">Billing Management:</h6>
                     <a class="collapse-item {% if request.path == '/billing/list/' %}active{% endif %}" href="{% url 'billing:list' %}">Invoices</a>
-                    {% if user.is_superuser or user|can_show_ui:'btn_create_invoice' %}
+                    {% if user.is_superuser or user|has_permission:'billing.create' %}
                     <a class="collapse-item {% if request.path == '/billing/create/' %}active{% endif %}" href="{% url 'billing:create' %}">Create Invoice</a>
                     {% endif %}
-                    {% if user.is_superuser or user|can_show_ui:'menu_billing' %}
+                    {% if user.is_superuser or user|has_permission:'billing.view' %}
                     <a class="collapse-item {% if request.path == '/billing/services/' %}active{% endif %}" href="{% url 'billing:services' %}">Services</a>
                     <a class="collapse-item {% if request.path == '/billing/admission-invoices/' %}active{% endif %}" href="{% url 'billing:admission_invoices' %}">Admission Invoices</a>
                     {% endif %}
@@ -712,7 +712,7 @@
         {% endif %}
 
         <!-- Nav Item - Wallet Management -->
-        {% if user.is_superuser or user|can_show_ui:'menu_billing' or user|has_permission:'wallet.manage' %}
+        {% if user.is_superuser or user|has_permission:'wallet.view' %}
         <li class="nav-item {% if '/patients/wallet/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/patients/wallet/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseWallet" aria-expanded="{% if '/patients/wallet/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseWallet">
                 <i class="fas fa-fw fa-wallet text-white"></i>
