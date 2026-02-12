@@ -630,8 +630,8 @@
             Administration
         </div>
 
-        <!-- Nav Item - Desk Office (Available to admins and receptionists for NHIA) -->
-        {% if user.is_superuser or user|can_show_ui:'menu_desk_office' %}
+        <!-- Nav Item - Desk Office (Available to desk officers and admins only) -->
+        {% if user.is_superuser or user|has_permission:'desk_office.view' %}
         <li class="nav-item {% if '/desk-office/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/desk-office/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDeskOffice" aria-expanded="{% if '/desk-office/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseDeskOffice">
                 <i class="fas fa-fw fa-desktop text-white"></i>
@@ -656,7 +656,7 @@
                         <i class="fas fa-key me-1"></i> Authorization Codes
                     </a>
 
-                    {% if user.is_superuser or user|has_role:'admin' %}
+                    {% if user.is_superuser or user|has_permission:'desk_office.generate_auth_code' %}
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Bulk Operations:</h6>
                     <a class="collapse-item {% if 'bulk-authorize-consultations' in request.path %}active{% endif %}" href="{% url 'desk_office:bulk_authorize_consultations' %}">
