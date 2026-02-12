@@ -193,125 +193,126 @@
                 </div>
             </div>
 
-            <!-- Role Assignment Card -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="m-0 font-weight-bold text-primary">
-                            <i class="fas fa-user-tag me-2"></i>
-                            Role Assignment
-                        </h5>
-                        <small class="text-muted">Assign roles to control access levels</small>
-                    </div>
-                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="applyRolePermissions()">
-                        <i class="fas fa-magic me-1"></i>
-                        Apply Role Permissions
-                    </button>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6 class="text-muted mb-3">
-                                <i class="fas fa-list-check me-1"></i>
-                                Select Roles
-                            </h6>
-                            {% if all_roles %}
-                                <div class="role-list">
-                                    {% for role in all_roles %}
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input role-checkbox"
-                                                   type="checkbox"
-                                                   name="roles"
-                                                   value="{{ role.id }}"
-                                                   id="role_{{ role.id }}"
-                                                   {% if role.id in user_role_ids %}checked{% endif %}
-                                                   data-role-name="{{ role.name }}"
-                                                   onchange="updateRoleInfo()">
-                                            <label class="form-check-label d-flex justify-content-between align-items-center" for="role_{{ role.id }}">
-                                                <span>
-                                                    <strong>{{ role.name|title }}</strong>
-                                                    {% if role.description %}
-                                                        <br><small class="text-muted">{{ role.description }}</small>
-                                                    {% endif %}
-                                                </span>
-                                                {% if role.parent %}
-                                                    <span class="badge bg-secondary">
-                                                        <i class="fas fa-sitemap me-1"></i>{{ role.parent.name }}
-                                                    </span>
-                                                {% endif %}
-                                            </label>
-                                        </div>
-                                    {% endfor %}
-                                </div>
-                            {% else %}
-                                <div class="alert alert-warning">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>
-                                    No roles found. Please run <code>python manage.py populate_roles</code>
-                                </div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="text-muted mb-3">
-                                <i class="fas fa-info-circle me-1"></i>
-                                Role Information
-                            </h6>
-                            <div id="roleInfoPanel" class="border rounded p-3 bg-light">
-                                <p class="text-muted mb-0">
-                                    <i class="fas fa-hand-pointer me-1"></i>
-                                    Select a role above to see its associated permissions
-                                </p>
-                            </div>
-
-                            <!-- Quick Role Actions -->
-                            <div class="mt-3">
-                                <h6 class="text-muted mb-2">
-                                    <i class="fas fa-bolt me-1"></i>
-                                    Quick Actions
-                                </h6>
-                                <div class="btn-group-vertical w-100" role="group">
-                                    <button type="button" class="btn btn-outline-secondary btn-sm text-start" onclick="selectRoleByName('admin')">
-                                        <i class="fas fa-crown me-2"></i>Admin Role
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm text-start" onclick="selectRoleByName('doctor')">
-                                        <i class="fas fa-user-md me-2"></i>Doctor Role
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm text-start" onclick="selectRoleByName('nurse')">
-                                        <i class="fas fa-user-nurse me-2"></i>Nurse Role
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm text-start" onclick="selectRoleByName('pharmacist')">
-                                        <i class="fas fa-pills me-2"></i>Pharmacist Role
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm text-start" onclick="clearAllRoles()">
-                                        <i class="fas fa-times me-2"></i>Clear All Roles
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Permission Management Form -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h5 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-key me-2"></i>
-                        Permission Management
-                    </h5>
-                    <small class="text-muted">Select permissions to assign to {{ target_user.username }}</small>
-                </div>
-                <div class="card-body">
-                    {% if messages %}
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <form method="POST" id="permissionsForm">
+                {% csrf_token %}
+                
+                <!-- Role Assignment Card -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="m-0 font-weight-bold text-primary">
+                                <i class="fas fa-user-tag me-2"></i>
+                                Role Assignment
+                            </h5>
+                            <small class="text-muted">Assign roles to control access levels</small>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="applyRolePermissions()">
+                            <i class="fas fa-magic me-1"></i>
+                            Apply Role Permissions
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-3">
+                                    <i class="fas fa-list-check me-1"></i>
+                                    Select Roles
+                                </h6>
+                                {% if all_roles %}
+                                    <div class="role-list">
+                                        {% for role in all_roles %}
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input role-checkbox"
+                                                       type="checkbox"
+                                                       name="roles"
+                                                       value="{{ role.id }}"
+                                                       id="role_{{ role.id }}"
+                                                       {% if role.id in user_role_ids %}checked{% endif %}
+                                                       data-role-name="{{ role.name }}"
+                                                       onchange="updateRoleInfo()">
+                                                <label class="form-check-label d-flex justify-content-between align-items-center" for="role_{{ role.id }}">
+                                                    <span>
+                                                        <strong>{{ role.name|title }}</strong>
+                                                        {% if role.description %}
+                                                            <br><small class="text-muted">{{ role.description }}</small>
+                                                        {% endif %}
+                                                    </span>
+                                                    {% if role.parent %}
+                                                        <span class="badge bg-secondary">
+                                                            <i class="fas fa-sitemap me-1"></i>{{ role.parent.name }}
+                                                        </span>
+                                                    {% endif %}
+                                                </label>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        No roles found. Please run <code>python manage.py populate_roles</code>
+                                    </div>
+                                {% endif %}
                             </div>
-                        {% endfor %}
-                    {% endif %}
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-3">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Role Information
+                                </h6>
+                                <div id="roleInfoPanel" class="border rounded p-3 bg-light">
+                                    <p class="text-muted mb-0">
+                                        <i class="fas fa-hand-pointer me-1"></i>
+                                        Select a role above to see its associated permissions
+                                    </p>
+                                </div>
 
-                    <form method="POST" id="permissionsForm">
-                        {% csrf_token %}
+                                <!-- Quick Role Actions -->
+                                <div class="mt-3">
+                                    <h6 class="text-muted mb-2">
+                                        <i class="fas fa-bolt me-1"></i>
+                                        Quick Actions
+                                    </h6>
+                                    <div class="btn-group-vertical w-100" role="group">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm text-start" onclick="selectRoleByName('admin')">
+                                            <i class="fas fa-crown me-2"></i>Admin Role
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm text-start" onclick="selectRoleByName('doctor')">
+                                            <i class="fas fa-user-md me-2"></i>Doctor Role
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm text-start" onclick="selectRoleByName('nurse')">
+                                            <i class="fas fa-user-nurse me-2"></i>Nurse Role
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm text-start" onclick="selectRoleByName('pharmacist')">
+                                            <i class="fas fa-pills me-2"></i>Pharmacist Role
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm text-start" onclick="clearAllRoles()">
+                                            <i class="fas fa-times me-2"></i>Clear All Roles
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Permission Management Card -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h5 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-key me-2"></i>
+                            Permission Management
+                        </h5>
+                        <small class="text-muted">Select permissions to assign to {{ target_user.username }}</small>
+                    </div>
+                    <div class="card-body">
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
                         
                         <!-- Quick Actions -->
                         <div class="row mb-3">
@@ -416,7 +417,7 @@
                                 <div class="col-md-6">
                                     <button type="submit" class="btn btn-primary btn-lg">
                                         <i class="fas fa-save me-1"></i>
-                                        Save Permissions
+                                        Save Roles & Permissions
                                     </button>
                                 </div>
                                 <div class="col-md-6 text-end">
@@ -426,10 +427,10 @@
                                 </div>
                             </div>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
-        </div>
+        </form>
     </div>
 </div>
 {% endblock %}
