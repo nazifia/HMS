@@ -611,6 +611,54 @@ PERMISSION_DEFINITIONS = {
         "is_custom": False,
     },
     # --------------------------------------------------------------------------
+    # NHIA Patient Management
+    # --------------------------------------------------------------------------
+    "nhia.view": {
+        "django_codename": "nhia.view_nhiapatient",
+        "category": "patient_management",
+        "description": "Can view NHIA patients",
+        "model": "NHIAPatient",
+        "is_custom": False,
+    },
+    "nhia.create": {
+        "django_codename": "nhia.add_nhiapatient",
+        "category": "patient_management",
+        "description": "Can create NHIA patients",
+        "model": "NHIAPatient",
+        "is_custom": False,
+    },
+    "nhia.edit": {
+        "django_codename": "nhia.change_nhiapatient",
+        "category": "patient_management",
+        "description": "Can edit NHIA patients",
+        "model": "NHIAPatient",
+        "is_custom": False,
+    },
+    # --------------------------------------------------------------------------
+    # Retainership Patient Management
+    # --------------------------------------------------------------------------
+    "retainership.view": {
+        "django_codename": "retainership.view_retainershippatient",
+        "category": "patient_management",
+        "description": "Can view Retainership patients",
+        "model": "RetainershipPatient",
+        "is_custom": False,
+    },
+    "retainership.create": {
+        "django_codename": "retainership.add_retainershippatient",
+        "category": "patient_management",
+        "description": "Can create Retainership patients",
+        "model": "RetainershipPatient",
+        "is_custom": False,
+    },
+    "retainership.edit": {
+        "django_codename": "retainership.change_retainershippatient",
+        "category": "patient_management",
+        "description": "Can edit Retainership patients",
+        "model": "RetainershipPatient",
+        "is_custom": False,
+    },
+    # --------------------------------------------------------------------------
     # Specialty Medical Modules
     # All specialty modules share the same permission structure
     # --------------------------------------------------------------------------
@@ -1307,6 +1355,12 @@ ROLE_PERMISSIONS = {
             "appointments.view",
             "appointments.create",
             "appointments.edit",
+
+
+            # Patient Categories - Access to all patient types
+            "nhia.view",
+            "retainership.view",
+            "patients.nhia_manage",
             "reports.view",
         ],
     },
@@ -1377,6 +1431,11 @@ ROLE_PERMISSIONS = {
             "wallet.view",
             "wallet.edit",
             "wallet.transactions",
+            "desk_office.cancel_auth_code",
+            # Patient Categories - Access to all patient types
+            "nhia.view",
+            "retainership.view",
+            "patients.nhia_manage",
             "reports.view",
         ],
     },
@@ -1405,7 +1464,9 @@ ROLE_PERMISSIONS = {
             "desk_office.view",
             "desk_office.generate_auth_code",
             "desk_office.cancel_auth_code",
-            # NHIA
+            # Patient Categories - Access to all patient types
+            "nhia.view",
+            "retainership.view",
             "patients.nhia_manage",
             # Billing
             "billing.view",

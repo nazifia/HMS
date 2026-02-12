@@ -103,7 +103,7 @@
         </div>
 
         <!-- Nav Item - Consultations -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' or user|has_role:'receptionist' or user|has_role:'health_record_officer' %}
+        {% if user.is_superuser or user|has_permission:'consultations.view' %}
         <li class="nav-item {% if '/consultations/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/consultations/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseConsultations" aria-expanded="{% if '/consultations/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseConsultations">
                 <i class="fas fa-fw fa-comments text-white"></i>
@@ -115,7 +115,7 @@
                     <a class="collapse-item {% if '/consultations/list/' in request.path %}active{% endif %}" href="{% url 'consultations:consultation_list' %}">All Consultations</a>
                     <a class="collapse-item {% if '/consultations/patients/' in request.path %}active{% endif %}" href="{% url 'consultations:patient_list' %}">Create Consultation</a>
                     <a class="collapse-item {% if '/consultations/referrals/' in request.path %}active{% endif %}" href="{% url 'consultations:referral_list' %}">Referrals</a>
-                    {% if user|has_role:'doctor' %}
+                    {% if user|has_permission:'consultations.create' %}
                     <a class="collapse-item {% if '/consultations/doctor/' in request.path %}active{% endif %}" href="{% url 'consultations:doctor_dashboard' %}">Doctor Dashboard</a>
                     {% endif %}
                     {% if user.profile and user.profile.department %}
@@ -161,7 +161,7 @@
                     <h6 class="collapse-header">Doctor Directory:</h6>
                     <a class="collapse-item {% if request.path == '/doctors/' %}active{% endif %}" href="{% url 'doctors:doctor_list' %}">All Doctors</a>
 
-                    {% if user.is_superuser or user|has_role:'admin' %}
+                    {% if user.is_superuser or user|has_permission:'users.view' %}
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Administration:</h6>
                     <a class="collapse-item {% if request.path == '/doctors/admin/doctors/' %}active{% endif %}" href="{% url 'doctors:manage_doctors' %}">Manage Doctors</a>
@@ -170,7 +170,7 @@
                     <a class="collapse-item {% if request.path == '/doctors/admin/leave-requests/' %}active{% endif %}" href="{% url 'doctors:manage_leave_requests' %}">Leave Requests</a>
                     {% endif %}
 
-                    {% if user|has_role:'doctor' %}
+                    {% if user|has_permission:'consultations.create' %}
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Doctor Portal:</h6>
                     <a class="collapse-item {% if request.path == '/consultations/doctor/dashboard/' %}active{% endif %}" href="{% url 'consultations:doctor_dashboard' %}">My Dashboard</a>
@@ -190,7 +190,7 @@
         {% endif %}
 
         <!-- Nav Item - Inpatient Management -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'nurse' or user|has_role:'doctor' %}
+        {% if user.is_superuser or user|has_permission:'inpatient.view' %}
         <li class="nav-item {% if '/inpatient/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/inpatient/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseInpatient" aria-expanded="{% if '/inpatient/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseInpatient">
                 <i class="fas fa-fw fa-hospital-alt text-white"></i>
@@ -229,12 +229,12 @@
                     {% endif %}
 
                     <!-- Doctor-specific appointment views -->
-                    {% if user|has_role:'doctor' %}
+                    {% if user|has_permission:'consultations.create' %}
                     <a class="collapse-item {% if request.path == '/appointments/doctor/' %}active{% endif %}" href="{% url 'appointments:doctor_appointments' user.id %}">My Appointments</a>
                     {% endif %}
 
                     <!-- Admin and receptionist schedule management -->
-                    {% if user.is_superuser or user|has_role:'admin' or user|has_role:'receptionist' or user|has_role:'health_record_officer' %}
+                    {% if user.is_superuser or user|has_permission:'appointments.edit' %}
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Schedule Management:</h6>
                     <a class="collapse-item {% if '/appointments/schedules/' in request.path %}active{% endif %}" href="{% url 'appointments:manage_doctor_schedule' %}">Doctor Schedules</a>
@@ -246,7 +246,7 @@
         {% endif %}
 
         <!-- Nav Item - Consulting Rooms and Waiting List (HMS Custom Permission: access_sensitive_data) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'receptionist' or user|has_role:'health_record_officer' %}
+        {% if user.is_superuser or user|has_permission:'consultations.view' %}
         <li class="nav-item {% if '/consultations/consulting-rooms/' in request.path or '/consultations/waiting-list/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/consultations/consulting-rooms/' in request.path and not '/consultations/waiting-list/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseConsultingRooms" aria-expanded="{% if '/consultations/consulting-rooms/' in request.path or '/consultations/waiting-list/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseConsultingRooms">
                 <i class="fas fa-fw fa-door-open text-white"></i>
@@ -257,7 +257,7 @@
                     <h6 class="collapse-header">Room Management:</h6>
                     <a class="collapse-item {% if request.path == '/consultations/consulting-rooms/' %}active{% endif %}" href="{% url 'consultations:consulting_room_list' %}">All Rooms</a>
 
-                    {% if user.is_superuser or user|has_role:'admin' %}
+                    {% if user.is_superuser or user|has_permission:'consultations.create' %}
                     <a class="collapse-item {% if request.path == '/consultations/consulting-rooms/create/' %}active{% endif %}" href="{% url 'consultations:create_consulting_room' %}">Add New Room</a>
                     {% endif %}
 
@@ -269,7 +269,7 @@
                     <a class="collapse-item {% if request.path == '/consultations/waiting-list/add/' %}active{% endif %}" href="{% url 'consultations:add_to_waiting_list' %}">Add to Waiting List</a>
                     {% endif %}
 
-                    {% if user|has_role:'doctor' %}
+                    {% if user|has_permission:'consultations.create' %}
                     <a class="collapse-item {% if request.path == '/consultations/doctor/waiting-list/' %}active{% endif %}" href="{% url 'consultations:doctor_waiting_list' %}">My Waiting Patients</a>
                     {% endif %}
                 </div>
@@ -307,7 +307,7 @@
                     <a class="collapse-item {% if '/pharmacy/transfers/' in request.path %}active{% endif %}" href="{% url 'pharmacy:enhanced_transfer_dashboard' %}">Enhanced Transfers</a>
 
                     <!-- Inventory management for pharmacists, admins, and users with inventory permissions -->
-                    {% if user.is_superuser or user|has_role:'admin' or user|has_role:'pharmacist' or user|has_permission:'manage_inventory' %}
+                    {% if user.is_superuser or user|has_permission:'pharmacy.view' %}
                     <a class="collapse-item {% if request.path == '/pharmacy/inventory/' %}active{% endif %}" href="{% url 'pharmacy:inventory' %}">Inventory</a>
                     <a class="collapse-item {% if '/pharmacy/alerts/' in request.path %}active{% endif %}" href="{% url 'pharmacy:alerts' %}">Stock Alerts</a>
 
@@ -414,8 +414,8 @@
         </li>
         {% endif %}
 
-        <!-- Dental Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- Dental Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'dental.view' %}
         <li class="nav-item {% if '/dental/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'dental:dashboard' %}">
                 <i class="fas fa-fw fa-tooth text-white"></i>
@@ -424,8 +424,8 @@
         </li>
         {% endif %}
 
-        <!-- Ophthalmic Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- Ophthalmic Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'ophthalmic.view' %}
         <li class="nav-item {% if '/ophthalmic/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'ophthalmic:dashboard' %}">
                 <i class="fas fa-fw fa-eye text-white"></i>
@@ -434,8 +434,8 @@
         </li>
         {% endif %}
 
-        <!-- ENT Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- ENT Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'ent.view' %}
         <li class="nav-item {% if '/ent/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'ent:dashboard' %}">
                 <i class="fas fa-fw fa-ear-listen text-white"></i>
@@ -444,8 +444,8 @@
         </li>
         {% endif %}
 
-        <!-- Neurology Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- Neurology Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'neurology.view' %}
         <li class="nav-item {% if '/neurology/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'neurology:dashboard' %}">
                 <i class="fas fa-fw fa-brain text-white"></i>
@@ -453,8 +453,8 @@
             </a>
         </li>
         {% endif %}
-        <!-- Dermatology Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- Dermatology Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'dermatology.view' %}
         <li class="nav-item {% if '/dermatology/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'dermatology:dashboard' %}">
                 <i class="fas fa-fw fa-skin text-white"></i>
@@ -463,8 +463,8 @@
         </li>
         {% endif %}
 
-        <!-- Emergency Medicine Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- Emergency Medicine Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'emergency.view' %}
         <li class="nav-item {% if '/emergency/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'emergency:dashboard' %}">
                 <i class="fas fa-fw fa-ambulance text-white"></i>
@@ -473,8 +473,8 @@
         </li>
         {% endif %}
 
-        <!-- General Medicine Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- General Medicine Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'general_medicine.view' %}
         <li class="nav-item {% if '/general-medicine/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'general_medicine:dashboard' %}">
                 <i class="fas fa-fw fa-stethoscope text-white"></i>
@@ -483,8 +483,8 @@
         </li>
         {% endif %}
 
-        <!-- Pediatrics Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- Pediatrics Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'pediatrics.view' %}
         <li class="nav-item {% if '/pediatrics/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'pediatrics:dashboard' %}">
                 <i class="fas fa-fw fa-child text-white"></i>
@@ -493,8 +493,8 @@
         </li>
         {% endif %}
 
-        <!-- Surgery Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- Surgery Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'surgery_module.view' %}
         <li class="nav-item {% if '/surgery/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'surgery:dashboard' %}">
                 <i class="fas fa-fw fa-procedures text-white"></i>
@@ -503,8 +503,8 @@
         </li>
         {% endif %}
 
-        <!-- Cardiology Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- Cardiology Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'cardiology.view' %}
         <li class="nav-item {% if '/cardiology/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'cardiology:dashboard' %}">
                 <i class="fas fa-fw fa-heart text-white"></i>
@@ -513,8 +513,8 @@
         </li>
         {% endif %}
 
-        <!-- Orthopedics Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- Orthopedics Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'orthopedics.view' %}
         <li class="nav-item {% if '/orthopedics/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'orthopedics:dashboard' %}">
                 <i class="fas fa-fw fa-bone text-white"></i>
@@ -523,8 +523,8 @@
         </li>
         {% endif %}
 
-        <!-- Oncology Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- Oncology Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'oncology.view' %}
         <li class="nav-item {% if '/oncology/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'oncology:dashboard' %}">
                 <i class="fas fa-fw fa-ribbon text-white"></i>
@@ -533,8 +533,8 @@
         </li>
         {% endif %}
 
-        <!-- SCBU Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- SCBU Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'scbu.view' %}
         <li class="nav-item {% if '/scbu/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'scbu:dashboard' %}">
                 <i class="fas fa-fw fa-baby text-white"></i>
@@ -543,8 +543,8 @@
         </li>
         {% endif %}
 
-        <!-- ANC Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- ANC Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'anc.view' %}
         <li class="nav-item {% if '/anc/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'anc:dashboard' %}">
                 <i class="fas fa-fw fa-person-pregnant text-white"></i>
@@ -553,8 +553,8 @@
         </li>
         {% endif %}
 
-        <!-- Labor Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- Labor Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'labor.view' %}
         <li class="nav-item {% if '/labor/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'labor:dashboard' %}">
                 <i class="fas fa-fw fa-baby-carriage text-white"></i>
@@ -563,8 +563,8 @@
         </li>
         {% endif %}
 
-        <!-- ICU Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- ICU Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'icu.view' %}
         <li class="nav-item {% if '/icu/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'icu:dashboard' %}">
                 <i class="fas fa-fw fa-heartbeat text-white"></i>
@@ -573,8 +573,8 @@
         </li>
         {% endif %}
 
-        <!-- Family Planning Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- Family Planning Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'family_planning.view' %}
         <li class="nav-item {% if '/family_planning/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'family_planning:dashboard' %}">
                 <i class="fas fa-fw fa-users text-white"></i>
@@ -583,8 +583,8 @@
         </li>
         {% endif %}
 
-        <!-- Gynae Emergency Module (Available to doctors, nurses, and admins) -->
-        {% if user.is_superuser or user|has_role:'admin' or user|has_role:'doctor' or user|has_role:'nurse' %}
+        <!-- Gynae Emergency Module (Permission-based access) -->
+        {% if user.is_superuser or user|has_permission:'gynae_emergency.view' %}
         <li class="nav-item {% if '/gynae_emergency/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'gynae_emergency:dashboard' %}">
                 <i class="fas fa-fw fa-ambulance text-white"></i>
