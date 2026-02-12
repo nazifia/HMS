@@ -127,6 +127,7 @@
         {% endif %}
 
         <!-- Nav Item - Patients -->
+        {% if user.is_authenticated %}
         {% if user.is_superuser or user|has_permission:'patients.view' %}
         <li class="nav-item {% if '/patients/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/patients/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePatients" aria-expanded="{% if '/patients/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapsePatients">
@@ -147,6 +148,7 @@
                 </div>
             </div>
         </li>
+        {% endif %}
         {% endif %}
 
         <!-- Nav Item - Doctors (Admin can manage, All can view list) -->
