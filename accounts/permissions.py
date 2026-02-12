@@ -1414,6 +1414,78 @@ ROLE_PERMISSIONS = {
             "reports.view",
         ],
     },
+    "cashier_accountant": {
+        "description": "Cashier/Accountant - Financial operations, billing, and payment processing",
+        "permissions": [
+            # Patient View (needed for billing)
+            "patients.view",
+            # Full Billing Access
+            "billing.view",
+            "billing.create",
+            "billing.edit",
+            "billing.delete",
+            "billing.process_payment",
+            "billing.refund",
+            "billing.cancel",
+            # Wallet Management
+            "wallet.view",
+            "wallet.edit",
+            "wallet.transactions",
+            "wallet.refund",
+            "wallet.deposit",
+            "wallet.withdraw",
+            # Invoice Management
+            "invoices.view",
+            "invoices.create",
+            "invoices.edit",
+            "invoices.delete",
+            "invoices.print",
+            "invoices.email",
+            # Pharmacy Billing
+            "pharmacy_billing.view",
+            "pharmacy_billing.create",
+            "pharmacy_billing.edit",
+            # Laboratory Billing
+            "lab_billing.view",
+            "lab_billing.create",
+            # Radiology Billing
+            "radiology_billing.view",
+            "radiology_billing.create",
+            # Theatre Billing
+            "theatre_billing.view",
+            "theatre_billing.create",
+            # Inpatient Billing
+            "inpatient_billing.view",
+            "inpatient_billing.create",
+            # Consultation Billing
+            "consultation_billing.view",
+            "consultation_billing.create",
+            # Bed and Ward Billing
+            "bed_charges.view",
+            "bed_charges.create",
+            "feeding_charges.view",
+            "feeding_charges.create",
+            "nursing_care_charges.view",
+            "nursing_care_charges.create",
+            # Financial Reports
+            "reports.view",
+            "reports.generate",
+            "reports.financial",
+            "reports.revenue",
+            "reports.daily_cash",
+            "reports.billing",
+            # Insurance and Retainership
+            "insurance.view",
+            "insurance.create",
+            "insurance.edit",
+            "retainership.view",
+            "retainership.create",
+            "retainership.edit",
+            # NHIA Billing
+            "nhia.view",
+            "nhia.billing",
+        ],
+    },
 }
 
 # Permission categories for easier management

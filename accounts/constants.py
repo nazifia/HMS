@@ -16,6 +16,7 @@ ROLE_RADIOLOGY_STAFF = "radiology_staff"
 ROLE_ACCOUNTANT = "accountant"
 ROLE_HEALTH_RECORD_OFFICER = "health_record_officer"
 ROLE_DESK_OFFICER = "desk_officer"
+ROLE_CASHIER_ACCOUNTANT = "cashier_accountant"
 
 # All role names as tuples for choices
 ROLE_CHOICES = (
@@ -29,6 +30,7 @@ ROLE_CHOICES = (
     (ROLE_ACCOUNTANT, "Accountant"),
     (ROLE_HEALTH_RECORD_OFFICER, "Health Record Officer"),
     (ROLE_DESK_OFFICER, "Desk Officer"),
+    (ROLE_CASHIER_ACCOUNTANT, "Cashier/Accountant"),
 )
 
 # Role groups for permission checks
@@ -47,6 +49,7 @@ RECEPTION_ROLES = [
 
 FINANCE_ROLES = [
     ROLE_ACCOUNTANT,
+    ROLE_CASHIER_ACCOUNTANT,
 ]
 
 ADMIN_ROLES = [

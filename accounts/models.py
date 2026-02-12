@@ -355,6 +355,7 @@ class CustomUserProfile(models.Model):
         ("accountant", "Accountant"),
         ("health_record_officer", "Health Record Officer"),
         ("desk_officer", "Desk Officer"),
+        ("cashier_accountant", "Cashier/Accountant"),
     )
 
     user = models.OneToOneField(
