@@ -138,13 +138,22 @@
                 <div class="bg-white py-2 collapse-inner rounded">
                     <h6 class="collapse-header">Patient Management:</h6>
                     <a class="collapse-item {% if request.path == '/patients/list/' %}active{% endif %}" href="{% url 'patients:list' %}">All Patients</a>
-                    <!-- All patient links visible to users with Patients menu access -->
+                    {% if user.is_superuser or user|has_permission:'patients.create' %}
                     <a class="collapse-item {% if request.path == '/patients/register/' %}active{% endif %}" href="{% url 'patients:register' %}">Register Patient</a>
+                    {% endif %}
+                    {% if user.is_superuser or user|has_permission:'patients.create' or user|has_permission:'nhia.manage' %}
                     <a class="collapse-item {% if request.path == '/nhia/register-independent/' %}active{% endif %}" href="{% url 'nhia:register_independent_nhia_patient' %}">Register NHIA Patient</a>
                     <a class="collapse-item {% if request.path == '/nhia/register-patient/' %}active{% endif %}" href="{% url 'nhia:register_patient_for_nhia' %}">Add Patient to NHIA</a>
+                    {% endif %}
+                    {% if user.is_superuser or user|has_permission:'patients.create' or user|has_permission:'retainership.manage' %}
                     <a class="collapse-item {% if request.path == '/retainership/register-independent/' %}active{% endif %}" href="{% url 'retainership:register_independent_retainership_patient' %}">Register Retainership Patient</a>
+                    {% endif %}
+                    {% if user.is_superuser or user|has_permission:'nhia.view' %}
                     <a class="collapse-item {% if '/nhia/patients/' in request.path %}active{% endif %}" href="{% url 'nhia:nhia_patient_list' %}">NHIA Patients</a>
+                    {% endif %}
+                    {% if user.is_superuser or user|has_permission:'retainership.view' %}
                     <a class="collapse-item {% if '/retainership/patients/' in request.path %}active{% endif %}" href="{% url 'retainership:retainership_patient_list' %}">Retainership Patients</a>
+                    {% endif %}
                 </div>
             </div>
         </li>
@@ -153,6 +162,7 @@
 
         <!-- Nav Item - Doctors (Admin can manage, All can view list) -->
         {% if user.is_authenticated %}
+        {% if user.is_superuser or user|has_permission:'users.view' or user|has_permission:'consultations.create' %}
         <li class="nav-item {% if '/doctors/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/doctors/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDoctors" aria-expanded="{% if '/doctors/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseDoctors">
                 <i class="fas fa-fw fa-user-md text-white"></i>
@@ -189,6 +199,7 @@
                 </div>
             </div>
         </li>
+        {% endif %}
         {% endif %}
 
         <!-- Nav Item - Inpatient Management -->

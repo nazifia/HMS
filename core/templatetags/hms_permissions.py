@@ -5,11 +5,13 @@ from django.utils.safestring import mark_safe
 
 register = template.Library()
 
+
 @register.filter
 def has_permission(user, permission_name):
     """
-    Template filter to check basic permissions using Django's built-in system
-    Usage: {% if user|has_permission:'view_dashboard' %}
+    Template filter to check permissions using the HMS RBAC system.
+    Supports both custom permission keys (e.g., 'patients.view') and Django codenames.
+    Usage: {% if user|has_permission:'consultations.view' %}
     """
     if not user.is_authenticated:
         return False
@@ -18,16 +20,32 @@ def has_permission(user, permission_name):
     if user.is_superuser:
         return True
 
-    # Check direct user permissions
-    if user.user_permissions.filter(codename=permission_name).exists():
+    # Use the accounts permission system which handles proper permission mapping
+    from accounts.permissions import user_has_permission
+
+    return user_has_permission(user, permission_name)
+
+
+@register.filter
+def has_role(user, role_name):
+    """
+    Check if user has a specific role.
+    Usage: {% if user|has_role:'admin' %}
+    """
+    if not user or not user.is_authenticated:
+        return False
+
+    if user.is_superuser:
         return True
 
-    # Check permissions from user's roles
-    for role in user.roles.all():
-        if role.permissions.filter(codename=permission_name).exists():
-            return True
+    # Check ManyToMany roles
+    if user.roles.filter(name=role_name).exists():
+        return True
 
-    return False
+    # Check legacy profile role
+    profile_role = getattr(getattr(user, "profile", None), "role", None)
+    return profile_role == role_name
+
 
 @register.filter
 def has_any_permission(user, permission_list):
@@ -37,14 +55,15 @@ def has_any_permission(user, permission_list):
     """
     if not user.is_authenticated:
         return False
-    
-    permissions = [p.strip() for p in permission_list.split(',')]
-    
+
+    permissions = [p.strip() for p in permission_list.split(",")]
+
     for permission in permissions:
         if has_permission(user, permission):
             return True
-    
+
     return False
+
 
 @register.filter
 def has_all_permissions(user, permission_list):
@@ -54,14 +73,15 @@ def has_all_permissions(user, permission_list):
     """
     if not user.is_authenticated:
         return False
-    
-    permissions = [p.strip() for p in permission_list.split(',')]
-    
+
+    permissions = [p.strip() for p in permission_list.split(",")]
+
     for permission in permissions:
         if not has_permission(user, permission):
             return False
-    
+
     return True
+
 
 @register.filter
 def get_user_roles(user):
@@ -70,7 +90,7 @@ def get_user_roles(user):
     """
     if not user.is_authenticated:
         return []
-    
+
     roles = []
     for role_relation in user.roles.all():
         roles.append(role_relation.name)
@@ -78,8 +98,9 @@ def get_user_roles(user):
         while parent:
             roles.append(parent.name)
             parent = parent.parent
-    
+
     return list(set(roles))
+
 
 @register.filter
 def can_access_module(user, module_name):
@@ -88,27 +109,28 @@ def can_access_module(user, module_name):
     """
     if not user.is_authenticated:
         return False
-    
+
     # Module permission mappings
     module_permissions = {
-        'dashboard': ['view_dashboard'],
-        'patients': ['view_patients', 'create_patient'],
-        'consultations': ['access_sensitive_data', 'create_consultation'],
-        'appointments': ['view_appointments', 'create_appointment'],
-        'pharmacy': ['view_pharmacy', 'manage_pharmacy_inventory'],
-        'laboratory': ['view_laboratory', 'create_lab_test'],
-        'radiology': ['view_radiology', 'create_radiology_request'],
-        'billing': ['view_invoices', 'create_invoice'],
-        'reports': ['view_reports', 'view_analytics'],
-        'administration': ['view_user_management', 'manage_roles'],
+        "dashboard": ["view_dashboard"],
+        "patients": ["view_patients", "create_patient"],
+        "consultations": ["access_sensitive_data", "create_consultation"],
+        "appointments": ["view_appointments", "create_appointment"],
+        "pharmacy": ["view_pharmacy", "manage_pharmacy_inventory"],
+        "laboratory": ["view_laboratory", "create_lab_test"],
+        "radiology": ["view_radiology", "create_radiology_request"],
+        "billing": ["view_invoices", "create_invoice"],
+        "reports": ["view_reports", "view_analytics"],
+        "administration": ["view_user_management", "manage_roles"],
     }
-    
+
     if module_name not in module_permissions:
         return False
-    
+
     permissions = module_permissions[module_name]
-    
+
     return any(has_permission(user, perm) for perm in permissions)
+
 
 # Legacy aliases for backward compatibility
 @register.filter
@@ -119,6 +141,7 @@ def has_hms_permission(user, permission_name):
     """
     return has_permission(user, permission_name)
 
+
 @register.filter
 def has_any_hms_permission(user, permission_list):
     """
@@ -127,6 +150,7 @@ def has_any_hms_permission(user, permission_list):
     """
     return has_any_permission(user, permission_list)
 
+
 @register.filter
 def has_all_hms_permission(user, permission_list):
     """
@@ -134,6 +158,7 @@ def has_all_hms_permission(user, permission_list):
     Usage: {% if user|has_all_hms_permission:'view_patients,edit_patients' %}
     """
     return has_all_permissions(user, permission_list)
+
 
 @register.filter
 def is_feature_enabled(feature_name, user):
@@ -146,6 +171,7 @@ def is_feature_enabled(feature_name, user):
 
 
 # ==================== NEW UI PERMISSION SYSTEM ====================
+
 
 @register.filter
 def can_show_ui(user, element_id):
@@ -178,7 +204,7 @@ def can_show_ui(user, element_id):
 
     try:
         ui_perm = UIPermission.objects.prefetch_related(
-            'required_permissions', 'required_roles'
+            "required_permissions", "required_roles"
         ).get(element_id=element_id, is_active=True)
 
         result = ui_perm.user_can_access(user)
@@ -212,7 +238,7 @@ def can_show_any_ui(user, element_ids):
     if user.is_superuser:
         return True
 
-    element_list = [e.strip() for e in element_ids.split(',')]
+    element_list = [e.strip() for e in element_ids.split(",")]
 
     for element_id in element_list:
         if can_show_ui(user, element_id):
@@ -240,7 +266,7 @@ def can_show_all_ui(user, element_ids):
     if user.is_superuser:
         return True
 
-    element_list = [e.strip() for e in element_ids.split(',')]
+    element_list = [e.strip() for e in element_ids.split(",")]
 
     for element_id in element_list:
         if not can_show_ui(user, element_id):
@@ -259,20 +285,20 @@ def ui_element_visible(user, element_id):
 
 
 @register.simple_tag(takes_context=True)
-def render_ui_if_allowed(context, element_id, content=''):
+def render_ui_if_allowed(context, element_id, content=""):
     """
     Render content only if user has permission for the UI element.
     Usage: {% render_ui_if_allowed 'btn_create' 'Button HTML here' %}
     """
-    user = context.get('user')
+    user = context.get("user")
 
     if can_show_ui(user, element_id):
         return mark_safe(content)
 
-    return ''
+    return ""
 
 
-@register.inclusion_tag('core/ui_permission_indicator.html')
+@register.inclusion_tag("core/ui_permission_indicator.html")
 def show_permission_indicator(user, element_id):
     """
     Display a visual indicator of permission status.
@@ -281,9 +307,9 @@ def show_permission_indicator(user, element_id):
     can_access = can_show_ui(user, element_id)
 
     return {
-        'can_access': can_access,
-        'element_id': element_id,
-        'user': user,
+        "can_access": can_access,
+        "element_id": element_id,
+        "user": user,
     }
 
 
@@ -310,13 +336,13 @@ def get_user_ui_elements(user, module=None):
         queryset = UIPermission.objects.filter(is_active=True)
         if module:
             queryset = queryset.filter(module=module)
-        return queryset.order_by('display_order', 'element_label')
+        return queryset.order_by("display_order", "element_label")
 
     # Filter elements user can access
     accessible_elements = []
 
     queryset = UIPermission.objects.filter(is_active=True).prefetch_related(
-        'required_permissions', 'required_roles'
+        "required_permissions", "required_roles"
     )
 
     if module:
