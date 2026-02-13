@@ -53,6 +53,11 @@ urlpatterns = [
         name="wallet_members_partial",
     ),
     path(
+        "wallet/<int:wallet_id>/member/<int:member_id>/remove/",
+        views.remove_wallet_member,
+        name="remove_wallet_member",
+    ),
+    path(
         "create-wallet/<int:patient_id>/",
         views.create_retainership_wallet,
         name="create_wallet",

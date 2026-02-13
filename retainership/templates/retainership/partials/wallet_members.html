@@ -1,0 +1,46 @@
+{% if members %}
+<div class="table-responsive">
+    <table class="table table-sm table-hover">
+        <thead>
+            <tr>
+                <th>Patient Name</th>
+                <th>Patient ID</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in members %}
+            <tr>
+                <td>
+                    <a href="{% url 'patients:detail' patient_id=member.patient.id %}">
+                        {{ member.patient.get_full_name }}
+                    </a>
+                </td>
+                <td>{{ member.patient.patient_id }}</td>
+                <td>{{ member.patient.phone_number|default:"N/A" }}</td>
+                <td>
+                    {% if member.is_primary %}
+                        <span class="badge bg-primary">Primary</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Member</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'patients:detail' patient_id=member.patient.id %}" 
+                       class="btn btn-sm btn-outline-info" title="View Patient">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center text-muted py-4">
+    <i class="fas fa-users fa-3x mb-3"></i>
+    <p>No members in this wallet yet.</p>
+</div>
+{% endif %}

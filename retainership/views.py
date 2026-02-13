@@ -771,74 +771,134 @@ def link_retainership_patient_to_wallet(request, patient_id):
     [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
 )
 def add_member_to_retainership_wallet(request, wallet_id):
-    """Add a patient to a retainership wallet"""
+    """Add a patient to a retainership wallet - supports HTMX requests"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type="retainership")
 
     if request.method == "POST":
-        form = AddMemberToWalletForm(request.POST, wallet=wallet)
-        if form.is_valid():
-            patient = form.cleaned_data["patient"]
-            is_primary = form.cleaned_data["is_primary"]
+        # Handle HTMX request with patient_id
+        patient_id = request.POST.get("patient_id")
+        is_primary = request.POST.get("is_primary") == "on"
 
-            try:
-                with transaction.atomic():
-                    # Check if patient is already in this wallet
-                    if wallet.members.filter(patient=patient).exists():
-                        messages.warning(
+        if not patient_id:
+            if request.headers.get("HX-Request"):
+                return render(
+                    request,
+                    "retainership/partials/add_member_result.html",
+                    {"success": False, "message": "Please select a patient."},
+                )
+            messages.error(request, "Please select a patient.")
+            return redirect("retainership:view_wallet_details", wallet_id=wallet.id)
+
+        try:
+            patient = Patient.objects.get(id=patient_id, is_active=True)
+        except Patient.DoesNotExist:
+            if request.headers.get("HX-Request"):
+                return render(
+                    request,
+                    "retainership/partials/add_member_result.html",
+                    {"success": False, "message": "Patient not found."},
+                )
+            messages.error(request, "Patient not found.")
+            return redirect("retainership:view_wallet_details", wallet_id=wallet.id)
+
+        try:
+            with transaction.atomic():
+                # Check if patient is already in this wallet
+                if wallet.members.filter(patient=patient).exists():
+                    if request.headers.get("HX-Request"):
+                        return render(
                             request,
-                            f"{patient.get_full_name()} is already a member of this wallet.",
+                            "retainership/partials/add_member_result.html",
+                            {
+                                "success": False,
+                                "message": f"{patient.get_full_name()} is already a member of this wallet.",
+                            },
                         )
-                        return redirect(
-                            "retainership:view_wallet_details", wallet_id=wallet.id
-                        )
-
-                    # Check if this wallet already has a primary member
-                    if is_primary:
-                        existing_primary = wallet.members.filter(
-                            is_primary=True
-                        ).first()
-                        if existing_primary:
-                            messages.warning(
-                                request,
-                                f"This wallet already has a primary member: {existing_primary.patient.get_full_name()}",
-                            )
-                            messages.info(
-                                request,
-                                "Adding this patient as a regular member instead.",
-                            )
-                            is_primary = False
-
-                    # Create wallet membership
-                    membership = WalletMembership.objects.create(
-                        wallet=wallet, patient=patient, is_primary=is_primary
-                    )
-
-                    # Create or update patient wallet to link to shared wallet
-                    patient_wallet, created = PatientWallet.objects.get_or_create(
-                        patient=patient, defaults={"balance": Decimal("0.00")}
-                    )
-                    patient_wallet.shared_wallet = wallet
-                    patient_wallet.save()
-
-                    messages.success(
+                    messages.warning(
                         request,
-                        f"Successfully added {patient.get_full_name()} to retainership wallet: {wallet.wallet_name}",
+                        f"{patient.get_full_name()} is already a member of this wallet.",
                     )
                     return redirect(
                         "retainership:view_wallet_details", wallet_id=wallet.id
                     )
 
-            except Exception as e:
-                messages.error(request, f"Error adding member to wallet: {str(e)}")
-                return redirect("retainership:view_wallet_details", wallet_id=wallet.id)
-    else:
-        form = AddMemberToWalletForm(wallet=wallet)
+                # Check if this wallet already has a primary member
+                if is_primary:
+                    existing_primary = wallet.members.filter(
+                        is_primary=True
+                    ).first()
+                    if existing_primary:
+                        if request.headers.get("HX-Request"):
+                            return render(
+                                request,
+                                "retainership/partials/add_member_result.html",
+                                {
+                                    "success": False,
+                                    "message": f"This wallet already has a primary member: {existing_primary.patient.get_full_name()}. Adding as regular member instead.",
+                                },
+                            )
+                        messages.warning(
+                            request,
+                            f"This wallet already has a primary member: {existing_primary.patient.get_full_name()}",
+                        )
+                        messages.info(
+                            request,
+                            "Adding this patient as a regular member instead.",
+                        )
+                        is_primary = False
+
+                # Create wallet membership
+                membership = WalletMembership.objects.create(
+                    wallet=wallet, patient=patient, is_primary=is_primary
+                )
+
+                # Create or update patient wallet to link to shared wallet
+                patient_wallet, created = PatientWallet.objects.get_or_create(
+                    patient=patient, defaults={"balance": Decimal("0.00")}
+                )
+                patient_wallet.shared_wallet = wallet
+                patient_wallet.save()
+
+                if request.headers.get("HX-Request"):
+                    return render(
+                        request,
+                        "retainership/partials/add_member_result.html",
+                        {
+                            "success": True,
+                            "message": f"Successfully added {patient.get_full_name()} to wallet.",
+                        },
+                    )
+
+                messages.success(
+                    request,
+                    f"Successfully added {patient.get_full_name()} to retainership wallet: {wallet.wallet_name}",
+                )
+                return redirect(
+                    "retainership:view_wallet_details", wallet_id=wallet.id
+                )
+
+        except Exception as e:
+            if request.headers.get("HX-Request"):
+                return render(
+                    request,
+                    "retainership/partials/add_member_result.html",
+                    {"success": False, "message": f"Error adding member: {str(e)}"},
+                )
+            messages.error(request, f"Error adding member to wallet: {str(e)}")
+            return redirect("retainership:view_wallet_details", wallet_id=wallet.id)
+
+    # GET request - show form
+    form = AddMemberToWalletForm(wallet=wallet)
 
     context = {
         "form": form,
         "wallet": wallet,
         "title": f"Add Member to {wallet.wallet_name}",
     }
+    
+    if request.headers.get("HX-Request"):
+        return render(request, "retainership/partials/add_member_form.html", context)
+    
     return render(request, "retainership/add_member_to_wallet.html", context)
 
 
@@ -872,7 +932,6 @@ def htmx_search_patients_for_wallet(request, wallet_id):
 
 
 @login_required
-@login_required
 @role_required(
     [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
 )
@@ -886,3 +945,57 @@ def wallet_members_partial(request, wallet_id):
         "members": members,
     }
     return render(request, "retainership/partials/wallet_members.html", context)
+
+
+@login_required
+@role_required(
+    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
+)
+def remove_wallet_member(request, wallet_id, member_id):
+    """Remove a member from a retainership wallet"""
+    wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type="retainership")
+    membership = get_object_or_404(WalletMembership, id=member_id, wallet=wallet)
+
+    if request.method == "DELETE":
+        try:
+            patient_name = membership.patient.get_full_name()
+            patient = membership.patient
+            
+            # Remove the membership
+            membership.delete()
+            
+            # Update patient wallet if it was linked to this shared wallet
+            try:
+                patient_wallet = PatientWallet.objects.get(patient=patient)
+                if patient_wallet.shared_wallet == wallet:
+                    patient_wallet.shared_wallet = None
+                    patient_wallet.save()
+            except PatientWallet.DoesNotExist:
+                pass
+
+            if request.headers.get("HX-Request"):
+                # Return updated members list
+                members = wallet.members.select_related("patient").all()
+                return render(
+                    request,
+                    "retainership/partials/wallet_members.html",
+                    {"wallet": wallet, "members": members},
+                )
+
+            messages.success(
+                request,
+                f"Successfully removed {patient_name} from wallet.",
+            )
+            return redirect("retainership:view_wallet_details", wallet_id=wallet.id)
+
+        except Exception as e:
+            if request.headers.get("HX-Request"):
+                return render(
+                    request,
+                    "retainership/partials/wallet_members.html",
+                    {"wallet": wallet, "members": wallet.members.all(), "error": str(e)},
+                )
+            messages.error(request, f"Error removing member: {str(e)}")
+            return redirect("retainership:view_wallet_details", wallet_id=wallet.id)
+
+    return redirect("retainership:view_wallet_details", wallet_id=wallet.id)

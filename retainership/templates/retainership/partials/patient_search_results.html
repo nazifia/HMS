@@ -1,40 +1,23 @@
 {% if patients %}
 <div class="list-group">
     {% for patient in patients %}
-    <a href="javascript:void(0);" 
-       class="list-group-item list-group-item-action patient-result-item"
-       onclick="selectPatient({{ patient.id }}, '{{ patient.get_full_name|escapejs }} ({{ patient.patient_id }})')">
-        <div class="d-flex w-100 justify-content-between">
-            <h6 class="mb-1">{{ patient.get_full_name }}</h6>
-            <small class="text-muted">{{ patient.patient_id }}</small>
-        </div>
-        <p class="mb-1">
-            <small>
-                {% if patient.phone_number %}
-                <i class="fas fa-phone text-muted"></i> {{ patient.phone_number }}
-                {% endif %}
-                {% if patient.retainership_info %}
-                <span class="ms-2">
-                    <i class="fas fa-id-card text-muted"></i> 
-                    {{ patient.retainership_info.retainership_reg_number }}
-                </span>
-                {% endif %}
+    <button type="button" 
+            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+            onclick="selectPatient({{ wallet.id }}, {{ patient.id }}, '{{ patient.get_full_name|escapejs }}')">
+        <div>
+            <strong>{{ patient.get_full_name }}</strong>
+            <br>
+            <small class="text-muted">
+                ID: {{ patient.patient_id }} | Phone: {{ patient.phone_number|default:"N/A" }}
             </small>
-        </p>
-        <small class="text-muted">
-            {{ patient.get_patient_type_display }} | {{ patient.gender }} | {{ patient.get_age }} years old
-        </small>
-    </a>
+        </div>
+        <i class="fas fa-plus-circle text-success"></i>
+    </button>
     {% endfor %}
 </div>
 {% else %}
-<div class="alert alert-warning">
-    <i class="fas fa-exclamation-triangle"></i> No patients found matching your search.
-    <hr>
-    <p class="mb-0">
-        <small>
-            Try searching with a different term, or make sure the patient is not already a member of this wallet.
-        </small>
-    </p>
+<div class="text-center text-muted py-3">
+    <i class="fas fa-search fa-2x mb-2"></i>
+    <p class="mb-0">No patients found matching your search.</p>
 </div>
 {% endif %}

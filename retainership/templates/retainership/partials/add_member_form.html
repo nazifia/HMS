@@ -1,0 +1,53 @@
+<form id="addMemberForm{{ wallet.id }}"
+      hx-post="{% url 'retainership:add_member_to_wallet' wallet.id %}"
+      hx-target="#add-member-result-{{ wallet.id }}"
+      hx-on::after-request="if(event.detail.successful) { setTimeout(function() { bootstrap.Modal.getInstance(document.getElementById('addMemberModal{{ wallet.id }}')).hide(); htmx.trigger('#wallet-table-body', 'refresh'); }, 1500); }">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="patientSearch{{ wallet.id }}" class="form-label">Search Patient</label>
+        <input type="text" 
+               class="form-control" 
+               id="patientSearch{{ wallet.id }}"
+               name="patient_search"
+               placeholder="Type to search by name or patient ID..."
+               hx-get="{% url 'retainership:htmx_search_patients_for_wallet' wallet.id %}"
+               hx-target="#patient-results-{{ wallet.id }}"
+               hx-trigger="keyup changed delay:300ms, focus"
+               hx-indicator="#search-indicator-{{ wallet.id }}">
+        <input type="hidden" name="patient_id" id="selectedPatientId{{ wallet.id }}">
+        <div id="search-indicator-{{ wallet.id }}" class="htmx-indicator">
+            <small class="text-muted"><i class="fas fa-spinner fa-spin"></i> Searching...</small>
+        </div>
+    </div>
+    <div id="patient-results-{{ wallet.id }}" class="mb-3">
+        <!-- Patient search results will appear here -->
+    </div>
+    <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="isPrimary{{ wallet.id }}" name="is_primary">
+        <label class="form-check-label" for="isPrimary{{ wallet.id }}">Make Primary Member</label>
+    </div>
+    <div id="add-member-result-{{ wallet.id }}"></div>
+    <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-success" id="submitBtn{{ wallet.id }}" disabled>
+            <i class="fas fa-plus me-1"></i>Add Member
+        </button>
+    </div>
+</form>
+
+<script>
+function selectPatient(walletId, patientId, patientName) {
+    document.getElementById('selectedPatientId' + walletId).value = patientId;
+    document.getElementById('patientSearch' + walletId).value = patientName;
+    document.getElementById('patient-results-' + walletId).innerHTML = '';
+    document.getElementById('submitBtn' + walletId).disabled = false;
+}
+
+// Clear form when modal is closed
+document.getElementById('addMemberModal{{ wallet.id }}').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('addMemberForm{{ wallet.id }}').reset();
+    document.getElementById('patient-results-{{ wallet.id }}').innerHTML = '';
+    document.getElementById('add-member-result-{{ wallet.id }}').innerHTML = '';
+    document.getElementById('submitBtn{{ wallet.id }}').disabled = true;
+});
+</script>
