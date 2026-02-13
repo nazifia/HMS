@@ -58,6 +58,16 @@ urlpatterns = [
         name="remove_wallet_member",
     ),
     path(
+        "wallet/<int:wallet_id>/print/",
+        views.print_wallet_transactions,
+        name="print_wallet_transactions",
+    ),
+    path(
+        "wallet/<int:wallet_id>/print-html/",
+        views.print_wallet_transactions_html,
+        name="print_wallet_transactions_html",
+    ),
+    path(
         "create-wallet/<int:patient_id>/",
         views.create_retainership_wallet,
         name="create_wallet",

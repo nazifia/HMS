@@ -41,6 +41,12 @@
                title="Add Member">
                 <i class="fas fa-user-plus"></i>
             </a>
+            <a href="{% url 'retainership:print_wallet_transactions_html' wallet.id %}"
+               class="btn btn-sm btn-outline-dark"
+               title="Print Report"
+               target="_blank">
+                <i class="fas fa-print"></i>
+            </a>
         </div>
     </td>
 </tr>

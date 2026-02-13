@@ -30,6 +30,22 @@ from .forms import (
     RetainershipWalletLinkForm,
     AddMemberToWalletForm,
 )
+from django.http import HttpResponse
+from datetime import datetime
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Table,
+    TableStyle,
+    Paragraph,
+    Spacer,
+    Image,
+)
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from django.conf import settings
+import os
 
 
 @login_required
@@ -824,9 +840,7 @@ def add_member_to_retainership_wallet(request, wallet_id):
 
                 # Check if this wallet already has a primary member
                 if is_primary:
-                    existing_primary = wallet.members.filter(
-                        is_primary=True
-                    ).first()
+                    existing_primary = wallet.members.filter(is_primary=True).first()
                     if existing_primary:
                         if request.headers.get("HX-Request"):
                             return render(
@@ -873,9 +887,7 @@ def add_member_to_retainership_wallet(request, wallet_id):
                     request,
                     f"Successfully added {patient.get_full_name()} to retainership wallet: {wallet.wallet_name}",
                 )
-                return redirect(
-                    "retainership:view_wallet_details", wallet_id=wallet.id
-                )
+                return redirect("retainership:view_wallet_details", wallet_id=wallet.id)
 
         except Exception as e:
             if request.headers.get("HX-Request"):
@@ -895,10 +907,10 @@ def add_member_to_retainership_wallet(request, wallet_id):
         "wallet": wallet,
         "title": f"Add Member to {wallet.wallet_name}",
     }
-    
+
     if request.headers.get("HX-Request"):
         return render(request, "retainership/partials/add_member_form.html", context)
-    
+
     return render(request, "retainership/add_member_to_wallet.html", context)
 
 
@@ -960,10 +972,10 @@ def remove_wallet_member(request, wallet_id, member_id):
         try:
             patient_name = membership.patient.get_full_name()
             patient = membership.patient
-            
+
             # Remove the membership
             membership.delete()
-            
+
             # Update patient wallet if it was linked to this shared wallet
             try:
                 patient_wallet = PatientWallet.objects.get(patient=patient)
@@ -993,9 +1005,264 @@ def remove_wallet_member(request, wallet_id, member_id):
                 return render(
                     request,
                     "retainership/partials/wallet_members.html",
-                    {"wallet": wallet, "members": wallet.members.all(), "error": str(e)},
+                    {
+                        "wallet": wallet,
+                        "members": wallet.members.all(),
+                        "error": str(e),
+                    },
                 )
             messages.error(request, f"Error removing member: {str(e)}")
             return redirect("retainership:view_wallet_details", wallet_id=wallet.id)
 
     return redirect("retainership:view_wallet_details", wallet_id=wallet.id)
+
+
+@login_required
+@role_required(
+    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
+)
+def print_wallet_transactions(request, wallet_id):
+    """Generate a printable PDF of wallet transactions"""
+    wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type="retainership")
+
+    # Get all transactions for this wallet
+    transactions = (
+        WalletTransaction.objects.filter(shared_wallet=wallet)
+        .select_related("patient")
+        .order_by("-created_at")
+    )
+
+    # Calculate totals
+    total_credits = (
+        WalletTransaction.objects.filter(
+            shared_wallet=wallet,
+            transaction_type__in=["credit", "deposit", "transfer_in"],
+        ).aggregate(total=Sum("amount"))["total"]
+        or 0
+    )
+
+    total_debits = (
+        WalletTransaction.objects.filter(
+            shared_wallet=wallet,
+            transaction_type__in=["debit", "withdrawal", "transfer_out"],
+        ).aggregate(total=Sum("amount"))["total"]
+        or 0
+    )
+
+    # Create the PDF response
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = (
+        f'attachment; filename="{wallet.wallet_name}_transactions.pdf"'
+    )
+
+    # Create PDF document
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=A4,
+        rightMargin=72,
+        leftMargin=72,
+        topMargin=72,
+        bottomMargin=18,
+    )
+
+    # Container for elements
+    elements = []
+
+    # Get styles
+    styles = getSampleStyleSheet()
+    title_style = styles["Heading1"]
+    subtitle_style = styles["Heading2"]
+    normal_style = styles["Normal"]
+
+    # Title
+    elements.append(Paragraph(f"Wallet Transaction Report", title_style))
+    elements.append(Spacer(1, 12))
+
+    # Wallet Information
+    elements.append(Paragraph(f"Wallet: {wallet.wallet_name}", subtitle_style))
+    elements.append(
+        Paragraph(
+            f"Registration No: {wallet.retainership_registration or 'N/A'}",
+            normal_style,
+        )
+    )
+    elements.append(
+        Paragraph(
+            f"Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}", normal_style
+        )
+    )
+    elements.append(Spacer(1, 12))
+
+    # Summary Table
+    summary_data = [
+        ["Summary", "Amount (₦)"],
+        ["Total Credits", f"{total_credits:,.2f}"],
+        ["Total Debits", f"{total_debits:,.2f}"],
+        ["Current Balance", f"{wallet.balance:,.2f}"],
+        ["Total Transactions", str(transactions.count())],
+    ]
+
+    summary_table = Table(summary_data, colWidths=[3 * inch, 2 * inch])
+    summary_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 12),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"),
+                ("ALIGN", (1, 1), (1, -1), "RIGHT"),
+            ]
+        )
+    )
+
+    elements.append(summary_table)
+    elements.append(Spacer(1, 20))
+
+    # Members List
+    members = wallet.members.select_related("patient").all()
+    if members:
+        elements.append(Paragraph("Wallet Members:", subtitle_style))
+        member_data = [["Name", "Patient ID", "Role"]]
+        for member in members:
+            role = "Primary" if member.is_primary else "Member"
+            member_data.append(
+                [member.patient.get_full_name(), member.patient.patient_id, role]
+            )
+
+        member_table = Table(member_data, colWidths=[2.5 * inch, 1.5 * inch, 1 * inch])
+        member_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 10),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                ]
+            )
+        )
+        elements.append(member_table)
+        elements.append(Spacer(1, 20))
+
+    # Transactions Header
+    elements.append(Paragraph("Transaction History:", subtitle_style))
+    elements.append(Spacer(1, 12))
+
+    # Transactions Table
+    if transactions:
+        trans_data = [
+            ["Date", "Type", "Patient", "Description", "Amount (₦)", "Balance (₦)"]
+        ]
+
+        for trans in transactions[:100]:  # Limit to 100 transactions for PDF size
+            patient_name = trans.patient.get_full_name() if trans.patient else "N/A"
+            trans_data.append(
+                [
+                    trans.created_at.strftime("%Y-%m-%d %H:%M"),
+                    trans.get_transaction_type_display(),
+                    patient_name[:20],  # Truncate long names
+                    (trans.description or "-")[:25],
+                    f"{trans.amount:,.2f}",
+                    f"{trans.balance_after:,.2f}",
+                ]
+            )
+
+        # Create transaction table
+        trans_table = Table(
+            trans_data,
+            colWidths=[
+                1.2 * inch,
+                0.8 * inch,
+                1.3 * inch,
+                1.5 * inch,
+                0.9 * inch,
+                0.9 * inch,
+            ],
+        )
+        trans_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 8),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                    ("FONTSIZE", (0, 1), (-1, -1), 7),
+                    ("ALIGN", (4, 1), (5, -1), "RIGHT"),
+                ]
+            )
+        )
+
+        elements.append(trans_table)
+    else:
+        elements.append(Paragraph("No transactions found.", normal_style))
+
+    # Footer
+    elements.append(Spacer(1, 30))
+    footer_text = f"This report was generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} by {request.user.get_full_name() or request.user.username}"
+    elements.append(Paragraph(footer_text, normal_style))
+
+    # Build PDF
+    doc.build(elements)
+
+    return response
+
+
+@login_required
+@role_required(
+    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
+)
+def print_wallet_transactions_html(request, wallet_id):
+    """Generate a printable HTML view of wallet transactions"""
+    wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type="retainership")
+
+    # Get all transactions for this wallet
+    transactions = (
+        WalletTransaction.objects.filter(shared_wallet=wallet)
+        .select_related("patient")
+        .order_by("-created_at")
+    )
+
+    # Calculate totals
+    total_credits = (
+        WalletTransaction.objects.filter(
+            shared_wallet=wallet,
+            transaction_type__in=["credit", "deposit", "transfer_in"],
+        ).aggregate(total=Sum("amount"))["total"]
+        or 0
+    )
+
+    total_debits = (
+        WalletTransaction.objects.filter(
+            shared_wallet=wallet,
+            transaction_type__in=["debit", "withdrawal", "transfer_out"],
+        ).aggregate(total=Sum("amount"))["total"]
+        or 0
+    )
+
+    # Get members
+    members = wallet.members.select_related("patient").all()
+
+    context = {
+        "wallet": wallet,
+        "transactions": transactions,
+        "members": members,
+        "total_credits": total_credits,
+        "total_debits": total_debits,
+        "transaction_count": transactions.count(),
+        "report_date": datetime.now(),
+        "generated_by": request.user.get_full_name() or request.user.username,
+    }
+
+    return render(request, "retainership/wallet_transactions_print.html", context)
