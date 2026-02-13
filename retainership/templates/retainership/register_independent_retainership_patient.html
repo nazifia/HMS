@@ -28,12 +28,90 @@
                     <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
                         {{ form|crispy }}
-                        <button type="submit" class="btn btn-primary mt-3">Register Retainership Patient</button>
-                        <a href="{% url 'retainership:retainership_patient_list' %}" class="btn btn-secondary mt-3 ms-2">Cancel</a>
+                        
+                        <!-- Wallet Selection Section -->
+                        <div class="card border-secondary mt-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-wallet text-primary"></i> Wallet Options
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="addToExistingWallet" 
+                                           name="add_to_existing_wallet" onchange="toggleWalletSelection()">
+                                    <label class="form-check-label" for="addToExistingWallet">
+                                        <strong>Add to Existing Retainership Wallet</strong>
+                                    </label>
+                                    <small class="form-text text-muted d-block">
+                                        Check this box if you want to add this patient to an existing retainership wallet instead of creating a new one.
+                                    </small>
+                                </div>
+                                
+                                <div id="walletSelectionDiv" style="display: none;">
+                                    <div class="mb-3">
+                                        <label for="existingWallet" class="form-label">Select Wallet</label>
+                                        <select class="form-select" id="existingWallet" name="existing_wallet" disabled>
+                                            <option value="">-- Choose a wallet --</option>
+                                            {% for wallet in existing_wallets %}
+                                            <option value="{{ wallet.id }}">
+                                                {{ wallet.wallet_name }} 
+                                                {% if wallet.retainership_registration %}
+                                                (Reg: {{ wallet.retainership_registration }})
+                                                {% endif %}
+                                                - Balance: ₦{{ wallet.balance }}
+                                            </option>
+                                            {% empty %}
+                                            <option value="" disabled>No existing wallets found</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="makePrimaryMember" 
+                                               name="make_primary_member" disabled>
+                                        <label class="form-check-label" for="makePrimaryMember">
+                                            Make this patient the primary member
+                                        </label>
+                                        <small class="form-text text-muted d-block">
+                                            Primary members have special status in the wallet. Only one primary member is allowed per wallet.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary mt-4">Register Retainership Patient</button>
+                        <a href="{% url 'retainership:retainership_patient_list' %}" class="btn btn-secondary mt-4 ms-2">Cancel</a>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleWalletSelection() {
+    var checkbox = document.getElementById('addToExistingWallet');
+    var walletDiv = document.getElementById('walletSelectionDiv');
+    var walletSelect = document.getElementById('existingWallet');
+    var primaryCheckbox = document.getElementById('makePrimaryMember');
+    
+    if (checkbox.checked) {
+        walletDiv.style.display = 'block';
+        walletSelect.disabled = false;
+        primaryCheckbox.disabled = false;
+        walletSelect.required = true;
+    } else {
+        walletDiv.style.display = 'none';
+        walletSelect.disabled = true;
+        primaryCheckbox.disabled = true;
+        walletSelect.required = false;
+        walletSelect.value = '';
+        primaryCheckbox.checked = false;
+    }
+}
+</script>
 {% endblock %}

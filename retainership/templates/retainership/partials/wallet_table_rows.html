@@ -1,0 +1,115 @@
+{% load custom_filters %}
+{% for wallet in page_obj %}
+<tr>
+    <td>{{ wallet.wallet_name }}</td>
+    <td>{{ wallet.retainership_registration }}</td>
+    <td>
+        <span class="badge {% if wallet.balance >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+            ₦{{ wallet.balance }}
+        </span>
+    </td>
+    <td>
+        {{ wallet.member_count }}
+        {% if wallet.member_count > 0 %}
+        <button type="button" 
+                class="btn btn-sm btn-link p-0 ms-1" 
+                data-bs-toggle="modal" 
+                data-bs-target="#membersModal{{ wallet.id }}"
+                title="View members">
+            <i class="fas fa-users"></i>
+        </button>
+        {% endif %}
+    </td>
+    <td>₦{{ wallet.total_credits }}</td>
+    <td>₦{{ wallet.total_debits }}</td>
+    <td>
+        {% if wallet.is_active %}
+            <span class="badge bg-success">Active</span>
+        {% else %}
+            <span class="badge bg-danger">Inactive</span>
+        {% endif %}
+    </td>
+    <td>{{ wallet.created_at|date:"Y-m-d H:i" }}</td>
+    <td>
+        <div class="btn-group" role="group">
+            <a href="{% url 'retainership:view_wallet_details' wallet.id %}" class="btn btn-sm btn-outline-info" title="View Details">
+                <i class="fas fa-eye"></i>
+            </a>
+            <a href="{% url 'retainership:manage_wallet_by_id' wallet.id %}" class="btn btn-sm btn-outline-primary" title="Manage">
+                <i class="fas fa-cog"></i>
+            </a>
+            <button type="button"
+                    class="btn btn-sm btn-outline-success"
+                    data-bs-toggle="modal"
+                    data-bs-target="#addMemberModal{{ wallet.id }}"
+                    title="Add Member">
+                <i class="fas fa-user-plus"></i>
+            </button>
+        </div>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="9" class="text-center text-muted py-4">
+        <i class="fas fa-wallet fa-3x mb-3 d-block"></i>
+        No retainership wallets found.
+    </td>
+</tr>
+{% endfor %}
+
+{% if page_obj.has_other_pages %}
+<tr>
+    <td colspan="9" class="px-0 py-0">
+        <nav aria-label="Wallet pagination">
+            <ul class="pagination justify-content-center mb-0">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" 
+                           href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}"
+                           hx-get="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}"
+                           hx-target="#wallet-table-body">
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-chevron-left"></i> Previous</span>
+                    </li>
+                {% endif %}
+
+                {% for i in page_obj.paginator.page_range %}
+                    {% if page_obj.number == i %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ i }}</span>
+                        </li>
+                    {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" 
+                               href="?page={{ i }}{% if search_query %}&search={{ search_query }}{% endif %}"
+                               hx-get="?page={{ i }}{% if search_query %}&search={{ search_query }}{% endif %}"
+                               hx-target="#wallet-table-body">
+                                {{ i }}
+                            </a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" 
+                           href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}"
+                           hx-get="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}"
+                           hx-target="#wallet-table-body">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Next <i class="fas fa-chevron-right"></i></span>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </td>
+</tr>
+{% endif %}

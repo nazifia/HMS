@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{% url 'retainership:retainership_wallet_list' %}">Retainership Wallets</a></li>
+<li class="breadcrumb-item"><a href="{% url 'retainership:view_wallet_details' wallet.id %}">{{ wallet.wallet_name }}</a></li>
+<li class="breadcrumb-item active" aria-current="page">Add Member</li>
+{% endblock breadcrumbs %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{{ title }}</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Wallet Information -->
+                    <div class="mb-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">Wallet Information</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>Wallet Name:</strong> {{ wallet.wallet_name }}<br>
+                                        <strong>Registration #:</strong> {{ wallet.retainership_registration }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Current Balance:</strong> 
+                                        <span class="{% if wallet.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            ₦{{ wallet.balance }}
+                                        </span><br>
+                                        <strong>Current Members:</strong> {{ wallet.members.count }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post" id="addMemberForm">
+                        {% csrf_token %}
+                        
+                        <!-- Patient Search with HTMX -->
+                        <div class="mb-4">
+                            <label class="form-label">Search and Select Patient</label>
+                            <div class="input-group mb-2">
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="patientSearchInput"
+                                       placeholder="Type patient name, ID, or phone number..."
+                                       autocomplete="off"
+                                       hx-get="{% url 'retainership:htmx_search_patients_for_wallet' wallet.id %}"
+                                       hx-target="#patientSearchResults"
+                                       hx-trigger="keyup changed delay:300ms, search"
+                                       hx-indicator="#searchIndicator"
+                                       hx-vals='js:{q: document.getElementById("patientSearchInput").value}'>
+                                <span class="input-group-text" id="searchIndicator" style="display: none;">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                </span>
+                            </div>
+                            <small class="form-text text-muted">
+                                Type at least 2 characters to search for patients
+                            </small>
+                            
+                            <!-- Search Results -->
+                            <div id="patientSearchResults" class="mt-2">
+                                <p class="text-muted">Start typing to search for patients...</p>
+                            </div>
+                        </div>
+
+                        <!-- Hidden field for selected patient -->
+                        <input type="hidden" name="patient" id="selectedPatientId" required>
+
+                        <!-- Selected Patient Display -->
+                        <div id="selectedPatientDisplay" class="alert alert-info mb-3" style="display: none;">
+                            <strong>Selected Patient:</strong> <span id="selectedPatientName"></span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary float-end" onclick="clearSelectedPatient()">
+                                <i class="fas fa-times"></i> Change
+                            </button>
+                        </div>
+
+                        <!-- Is Primary Checkbox -->
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="id_is_primary" name="is_primary">
+                            <label class="form-check-label" for="id_is_primary">
+                                Make this patient the primary member
+                            </label>
+                            <small class="form-text text-muted d-block">
+                                Primary members have special status in the wallet. Only one primary member is allowed per wallet.
+                            </small>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+                                <i class="fas fa-user-plus"></i> Add Member to Wallet
+                            </button>
+                            <a href="{% url 'retainership:view_wallet_details' wallet.id %}" 
+                               class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function selectPatient(patientId, patientName) {
+    document.getElementById('selectedPatientId').value = patientId;
+    document.getElementById('selectedPatientName').textContent = patientName;
+    document.getElementById('selectedPatientDisplay').style.display = 'block';
+    document.getElementById('patientSearchResults').style.display = 'none';
+    document.getElementById('patientSearchInput').style.display = 'none';
+    document.getElementById('submitBtn').disabled = false;
+}
+
+function clearSelectedPatient() {
+    document.getElementById('selectedPatientId').value = '';
+    document.getElementById('selectedPatientDisplay').style.display = 'none';
+    document.getElementById('patientSearchResults').style.display = 'block';
+    document.getElementById('patientSearchResults').innerHTML = '<p class="text-muted">Start typing to search for patients...</p>';
+    document.getElementById('patientSearchInput').style.display = 'block';
+    document.getElementById('patientSearchInput').value = '';
+    document.getElementById('submitBtn').disabled = true;
+}
+
+// Initialize HTMX event listeners
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target.id === 'patientSearchResults') {
+        // Make search results visible
+        evt.detail.target.style.display = 'block';
+    }
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.patient-result-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.patient-result-item:hover {
+    background-color: #f8f9fa;
+}
+</style>
+{% endblock %}

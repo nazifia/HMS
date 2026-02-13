@@ -1,0 +1,40 @@
+{% if patients %}
+<div class="list-group">
+    {% for patient in patients %}
+    <a href="javascript:void(0);" 
+       class="list-group-item list-group-item-action patient-result-item"
+       onclick="selectPatient({{ patient.id }}, '{{ patient.get_full_name|escapejs }} ({{ patient.patient_id }})')">
+        <div class="d-flex w-100 justify-content-between">
+            <h6 class="mb-1">{{ patient.get_full_name }}</h6>
+            <small class="text-muted">{{ patient.patient_id }}</small>
+        </div>
+        <p class="mb-1">
+            <small>
+                {% if patient.phone_number %}
+                <i class="fas fa-phone text-muted"></i> {{ patient.phone_number }}
+                {% endif %}
+                {% if patient.retainership_info %}
+                <span class="ms-2">
+                    <i class="fas fa-id-card text-muted"></i> 
+                    {{ patient.retainership_info.retainership_reg_number }}
+                </span>
+                {% endif %}
+            </small>
+        </p>
+        <small class="text-muted">
+            {{ patient.get_patient_type_display }} | {{ patient.gender }} | {{ patient.get_age }} years old
+        </small>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-warning">
+    <i class="fas fa-exclamation-triangle"></i> No patients found matching your search.
+    <hr>
+    <p class="mb-0">
+        <small>
+            Try searching with a different term, or make sure the patient is not already a member of this wallet.
+        </small>
+    </p>
+</div>
+{% endif %}
