@@ -1022,8 +1022,12 @@ def remove_wallet_member(request, wallet_id, member_id):
     [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
 )
 def print_wallet_transactions(request, wallet_id):
-    """Generate a printable PDF of wallet transactions"""
+    """Generate a printable PDF of wallet transactions with optional date range filter"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type="retainership")
+
+    # Get date range parameters
+    from_date = request.GET.get("from_date")
+    to_date = request.GET.get("to_date")
 
     # Get all transactions for this wallet
     transactions = (
@@ -1032,22 +1036,31 @@ def print_wallet_transactions(request, wallet_id):
         .order_by("-created_at")
     )
 
-    # Calculate totals
-    total_credits = (
-        WalletTransaction.objects.filter(
-            shared_wallet=wallet,
-            transaction_type__in=["credit", "deposit", "transfer_in"],
-        ).aggregate(total=Sum("amount"))["total"]
-        or 0
+    # Apply date range filter if provided
+    if from_date:
+        transactions = transactions.filter(created_at__date__gte=from_date)
+    if to_date:
+        transactions = transactions.filter(created_at__date__lte=to_date)
+
+    # Calculate totals (also filtered by date range)
+    total_credits_qs = WalletTransaction.objects.filter(
+        shared_wallet=wallet,
+        transaction_type__in=["credit", "deposit", "transfer_in"],
+    )
+    total_debits_qs = WalletTransaction.objects.filter(
+        shared_wallet=wallet,
+        transaction_type__in=["debit", "withdrawal", "transfer_out"],
     )
 
-    total_debits = (
-        WalletTransaction.objects.filter(
-            shared_wallet=wallet,
-            transaction_type__in=["debit", "withdrawal", "transfer_out"],
-        ).aggregate(total=Sum("amount"))["total"]
-        or 0
-    )
+    if from_date:
+        total_credits_qs = total_credits_qs.filter(created_at__date__gte=from_date)
+        total_debits_qs = total_debits_qs.filter(created_at__date__gte=from_date)
+    if to_date:
+        total_credits_qs = total_credits_qs.filter(created_at__date__lte=to_date)
+        total_debits_qs = total_debits_qs.filter(created_at__date__lte=to_date)
+
+    total_credits = total_credits_qs.aggregate(total=Sum("amount"))["total"] or 0
+    total_debits = total_debits_qs.aggregate(total=Sum("amount"))["total"] or 0
 
     # Create the PDF response
     response = HttpResponse(content_type="application/pdf")
@@ -1091,6 +1104,18 @@ def print_wallet_transactions(request, wallet_id):
             f"Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}", normal_style
         )
     )
+
+    # Add date range info if filtered
+    if from_date or to_date:
+        date_range_text = "Date Range: "
+        if from_date and to_date:
+            date_range_text += f"{from_date} to {to_date}"
+        elif from_date:
+            date_range_text += f"From {from_date}"
+        else:
+            date_range_text += f"Up to {to_date}"
+        elements.append(Paragraph(date_range_text, normal_style))
+
     elements.append(Spacer(1, 12))
 
     # Summary Table
@@ -1224,8 +1249,12 @@ def print_wallet_transactions(request, wallet_id):
     [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
 )
 def print_wallet_transactions_html(request, wallet_id):
-    """Generate a printable HTML view of wallet transactions"""
+    """Generate a printable HTML view of wallet transactions with optional date range filter"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type="retainership")
+
+    # Get date range parameters
+    from_date = request.GET.get("from_date")
+    to_date = request.GET.get("to_date")
 
     # Get all transactions for this wallet
     transactions = (
@@ -1234,22 +1263,31 @@ def print_wallet_transactions_html(request, wallet_id):
         .order_by("-created_at")
     )
 
-    # Calculate totals
-    total_credits = (
-        WalletTransaction.objects.filter(
-            shared_wallet=wallet,
-            transaction_type__in=["credit", "deposit", "transfer_in"],
-        ).aggregate(total=Sum("amount"))["total"]
-        or 0
+    # Apply date range filter if provided
+    if from_date:
+        transactions = transactions.filter(created_at__date__gte=from_date)
+    if to_date:
+        transactions = transactions.filter(created_at__date__lte=to_date)
+
+    # Calculate totals (also filtered by date range)
+    total_credits_qs = WalletTransaction.objects.filter(
+        shared_wallet=wallet,
+        transaction_type__in=["credit", "deposit", "transfer_in"],
+    )
+    total_debits_qs = WalletTransaction.objects.filter(
+        shared_wallet=wallet,
+        transaction_type__in=["debit", "withdrawal", "transfer_out"],
     )
 
-    total_debits = (
-        WalletTransaction.objects.filter(
-            shared_wallet=wallet,
-            transaction_type__in=["debit", "withdrawal", "transfer_out"],
-        ).aggregate(total=Sum("amount"))["total"]
-        or 0
-    )
+    if from_date:
+        total_credits_qs = total_credits_qs.filter(created_at__date__gte=from_date)
+        total_debits_qs = total_debits_qs.filter(created_at__date__gte=from_date)
+    if to_date:
+        total_credits_qs = total_credits_qs.filter(created_at__date__lte=to_date)
+        total_debits_qs = total_debits_qs.filter(created_at__date__lte=to_date)
+
+    total_credits = total_credits_qs.aggregate(total=Sum("amount"))["total"] or 0
+    total_debits = total_debits_qs.aggregate(total=Sum("amount"))["total"] or 0
 
     # Get members
     members = wallet.members.select_related("patient").all()
@@ -1263,6 +1301,8 @@ def print_wallet_transactions_html(request, wallet_id):
         "transaction_count": transactions.count(),
         "report_date": datetime.now(),
         "generated_by": request.user.get_full_name() or request.user.username,
+        "from_date": from_date,
+        "to_date": to_date,
     }
 
     return render(request, "retainership/wallet_transactions_print.html", context)
