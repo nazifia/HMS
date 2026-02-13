@@ -11,13 +11,11 @@
     <td>
         {{ wallet.member_count }}
         {% if wallet.member_count > 0 %}
-        <button type="button" 
-                class="btn btn-sm btn-link p-0 ms-1" 
-                data-bs-toggle="modal" 
-                data-bs-target="#membersModal{{ wallet.id }}"
-                title="View members">
+        <a href="{% url 'retainership:view_wallet_details' wallet.id %}" 
+           class="btn btn-sm btn-link p-0 ms-1" 
+           title="View members">
             <i class="fas fa-users"></i>
-        </button>
+        </a>
         {% endif %}
     </td>
     <td>₦{{ wallet.total_credits }}</td>
@@ -38,13 +36,11 @@
             <a href="{% url 'retainership:manage_wallet_by_id' wallet.id %}" class="btn btn-sm btn-outline-primary" title="Manage">
                 <i class="fas fa-cog"></i>
             </a>
-            <button type="button"
-                    class="btn btn-sm btn-outline-success"
-                    data-bs-toggle="modal"
-                    data-bs-target="#addMemberModal{{ wallet.id }}"
-                    title="Add Member">
+            <a href="{% url 'retainership:add_member_to_wallet' wallet.id %}"
+               class="btn btn-sm btn-outline-success"
+               title="Add Member">
                 <i class="fas fa-user-plus"></i>
-            </button>
+            </a>
         </div>
     </td>
 </tr>
