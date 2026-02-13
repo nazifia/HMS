@@ -5,53 +5,67 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from .models import Surgery, PostOperativeNote
 from .forms import PostOperativeNoteForm
+from .views import ReceptionistHROAccessMixin
 
-class PostOperativeNoteCreateView(LoginRequiredMixin, CreateView):
+
+class PostOperativeNoteCreateView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, CreateView
+):
     model = PostOperativeNote
     form_class = PostOperativeNoteForm
-    template_name = 'theatre/post_op_note_form.html'
-    
+    template_name = "theatre/post_op_note_form.html"
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['surgery'] = get_object_or_404(Surgery, pk=self.kwargs['surgery_id'])
+        context["surgery"] = get_object_or_404(Surgery, pk=self.kwargs["surgery_id"])
         return context
-    
+
     def form_valid(self, form):
-        form.instance.surgery = get_object_or_404(Surgery, pk=self.kwargs['surgery_id'])
+        form.instance.surgery = get_object_or_404(Surgery, pk=self.kwargs["surgery_id"])
         form.instance.created_by = self.request.user
-        messages.success(self.request, 'Post-operative note added successfully.')
+        messages.success(self.request, "Post-operative note added successfully.")
         return super().form_valid(form)
-    
-    def get_success_url(self):
-        return reverse_lazy('theatre:surgery_detail', kwargs={'pk': self.kwargs['surgery_id']})
 
-class PostOperativeNoteUpdateView(LoginRequiredMixin, UpdateView):
+    def get_success_url(self):
+        return reverse_lazy(
+            "theatre:surgery_detail", kwargs={"pk": self.kwargs["surgery_id"]}
+        )
+
+
+class PostOperativeNoteUpdateView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, UpdateView
+):
     model = PostOperativeNote
     form_class = PostOperativeNoteForm
-    template_name = 'theatre/post_op_note_form.html'
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['surgery'] = self.object.surgery
-        return context
-    
-    def form_valid(self, form):
-        messages.success(self.request, 'Post-operative note updated successfully.')
-        return super().form_valid(form)
-    
-    def get_success_url(self):
-        return reverse_lazy('theatre:surgery_detail', kwargs={'pk': self.object.surgery.id})
+    template_name = "theatre/post_op_note_form.html"
 
-class PostOperativeNoteDeleteView(LoginRequiredMixin, DeleteView):
-    model = PostOperativeNote
-    template_name = 'theatre/post_op_note_confirm_delete.html'
-    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['surgery'] = self.object.surgery
+        context["surgery"] = self.object.surgery
         return context
-    
+
+    def form_valid(self, form):
+        messages.success(self.request, "Post-operative note updated successfully.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy(
+            "theatre:surgery_detail", kwargs={"pk": self.object.surgery.id}
+        )
+
+
+class PostOperativeNoteDeleteView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, DeleteView
+):
+    model = PostOperativeNote
+    template_name = "theatre/post_op_note_confirm_delete.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["surgery"] = self.object.surgery
+        return context
+
     def get_success_url(self):
         surgery_id = self.object.surgery.id
-        messages.success(self.request, 'Post-operative note deleted successfully.')
-        return reverse_lazy('theatre:surgery_detail', kwargs={'pk': surgery_id})
+        messages.success(self.request, "Post-operative note deleted successfully.")
+        return reverse_lazy("theatre:surgery_detail", kwargs={"pk": surgery_id})

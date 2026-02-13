@@ -1,5 +1,13 @@
+from functools import wraps
 from django.shortcuts import render, get_object_or_404, redirect
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
+from django.views.generic import (
+    ListView,
+    DetailView,
+    CreateView,
+    UpdateView,
+    DeleteView,
+    TemplateView,
+)
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
@@ -12,7 +20,10 @@ from django.http import JsonResponse
 from decimal import Decimal
 import logging
 from patients.models import Patient
-from core.medical_prescription_forms import MedicalModulePrescriptionForm, PrescriptionItemFormSet
+from core.medical_prescription_forms import (
+    MedicalModulePrescriptionForm,
+    PrescriptionItemFormSet,
+)
 from pharmacy.models import Prescription, PrescriptionItem, MedicalPack, PackOrder
 from pharmacy.forms import PackOrderForm
 from pharmacy.views import _add_pack_to_patient_billing
@@ -21,11 +32,50 @@ from core.department_dashboard_utils import (
     get_user_department,
     get_pending_referrals,
     get_department_referral_statistics,
-    categorize_referrals
+    categorize_referrals,
 )
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
+
+
+def block_receptionists_and_hro(user):
+    """Check if user is a receptionist or health record officer."""
+    if user.is_superuser:
+        return False
+    user_roles = list(user.roles.values_list("name", flat=True))
+    profile_role = getattr(getattr(user, "profile", None), "role", None)
+    if profile_role and profile_role not in user_roles:
+        user_roles.append(profile_role)
+    return "receptionist" in user_roles or "health_record_officer" in user_roles
+
+
+class ReceptionistHROAccessMixin:
+    """Mixin to block receptionists and health record officers from accessing theatre views."""
+
+    def dispatch(self, request, *args, **kwargs):
+        if block_receptionists_and_hro(request.user):
+            messages.error(
+                request, "You don't have permission to access the theatre module."
+            )
+            return redirect("dashboard:dashboard")
+        return super().dispatch(request, *args, **kwargs)
+
+
+def theatre_access_required(view_func):
+    """Decorator to block receptionists and health record officers from accessing theatre views."""
+
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        if block_receptionists_and_hro(request.user):
+            messages.error(
+                request, "You don't have permission to access the theatre module."
+            )
+            return redirect("dashboard:dashboard")
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped_view
+
 
 from .models import (
     OperationTheatre,
@@ -38,178 +88,235 @@ from .models import (
     PostOperativeNote,
     PreOperativeChecklist,
     SurgeryLog,
-    SurgeryTypeEquipment
+    SurgeryTypeEquipment,
 )
 from accounts.models import CustomUser
 from .forms import (
-    OperationTheatreForm, 
-    SurgeryTypeForm, 
-    SurgeryForm, 
+    OperationTheatreForm,
+    SurgeryTypeForm,
+    SurgeryForm,
     SurgicalTeamInlineFormSet,
     SurgicalEquipmentForm,
     EquipmentUsageInlineFormSet,
     SurgeryScheduleForm,
     PostOperativeNoteForm,
     SurgeryFilterForm,
-    PreOperativeChecklistForm
+    PreOperativeChecklistForm,
 )
 
-# Operation Theatre Views
-class OperationTheatreListView(LoginRequiredMixin, ListView):
-    model = OperationTheatre
-    template_name = 'theatre/theatre_list.html'
-    context_object_name = 'theatres'
 
-class OperationTheatreDetailView(LoginRequiredMixin, DetailView):
+# Operation Theatre Views
+class OperationTheatreListView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, ListView
+):
     model = OperationTheatre
-    template_name = 'theatre/theatre_detail.html'
+    template_name = "theatre/theatre_list.html"
+    context_object_name = "theatres"
+
+
+class OperationTheatreDetailView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, DetailView
+):
+    model = OperationTheatre
+    template_name = "theatre/theatre_detail.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         # Get upcoming surgeries for this theatre
-        context['upcoming_surgeries'] = self.object.surgeries.filter(
-            scheduled_date__gte=timezone.now(),
-            status__in=['scheduled', 'in_progress']
-        ).order_by('scheduled_date')[:5]
+        context["upcoming_surgeries"] = self.object.surgeries.filter(
+            scheduled_date__gte=timezone.now(), status__in=["scheduled", "in_progress"]
+        ).order_by("scheduled_date")[:5]
         return context
 
-class OperationTheatreCreateView(LoginRequiredMixin, CreateView):
+
+class OperationTheatreCreateView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, CreateView
+):
     model = OperationTheatre
     form_class = OperationTheatreForm
-    template_name = 'theatre/theatre_form.html'
-    success_url = reverse_lazy('theatre:theatre_list')
+    template_name = "theatre/theatre_form.html"
+    success_url = reverse_lazy("theatre:theatre_list")
 
-class OperationTheatreUpdateView(LoginRequiredMixin, UpdateView):
+
+class OperationTheatreUpdateView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, UpdateView
+):
     model = OperationTheatre
     form_class = OperationTheatreForm
-    template_name = 'theatre/theatre_form.html'
-    success_url = reverse_lazy('theatre:theatre_list')
+    template_name = "theatre/theatre_form.html"
+    success_url = reverse_lazy("theatre:theatre_list")
 
-class OperationTheatreDeleteView(LoginRequiredMixin, DeleteView):
+
+class OperationTheatreDeleteView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, DeleteView
+):
     model = OperationTheatre
-    template_name = 'theatre/theatre_confirm_delete.html'
-    success_url = reverse_lazy('theatre:theatre_list')
+    template_name = "theatre/theatre_confirm_delete.html"
+    success_url = reverse_lazy("theatre:theatre_list")
+
 
 # Surgery Type Views
-class SurgeryTypeListView(LoginRequiredMixin, ListView):
+class SurgeryTypeListView(LoginRequiredMixin, ReceptionistHROAccessMixin, ListView):
     model = SurgeryType
-    template_name = 'theatre/surgery_type_list.html'
-    context_object_name = 'surgery_types'
+    template_name = "theatre/surgery_type_list.html"
+    context_object_name = "surgery_types"
 
-class SurgeryTypeDetailView(LoginRequiredMixin, DetailView):
+
+class SurgeryTypeDetailView(LoginRequiredMixin, ReceptionistHROAccessMixin, DetailView):
     model = SurgeryType
-    template_name = 'theatre/surgery_type_detail.html'
+    template_name = "theatre/surgery_type_detail.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         # Prefetch required equipment with their availability status
-        context['required_equipment'] = self.object.required_equipment.all().select_related('equipment')
-        
-        # Calculate statistics
-        equipment_list = list(context['required_equipment'])
-        context['total_required'] = len(equipment_list)
-        context['mandatory_count'] = sum(1 for e in equipment_list if e.is_mandatory)
-        context['available_count'] = sum(
-            1 for e in equipment_list 
-            if e.equipment.is_available and e.equipment.quantity_available >= e.quantity_required
+        context["required_equipment"] = (
+            self.object.required_equipment.all().select_related("equipment")
         )
-        
+
+        # Calculate statistics
+        equipment_list = list(context["required_equipment"])
+        context["total_required"] = len(equipment_list)
+        context["mandatory_count"] = sum(1 for e in equipment_list if e.is_mandatory)
+        context["available_count"] = sum(
+            1
+            for e in equipment_list
+            if e.equipment.is_available
+            and e.equipment.quantity_available >= e.quantity_required
+        )
+
         return context
 
-class SurgeryTypeCreateView(LoginRequiredMixin, CreateView):
+
+class SurgeryTypeCreateView(LoginRequiredMixin, ReceptionistHROAccessMixin, CreateView):
     model = SurgeryType
     form_class = SurgeryTypeForm
-    template_name = 'theatre/surgery_type_form.html'
-    success_url = reverse_lazy('theatre:surgery_type_list')
+    template_name = "theatre/surgery_type_form.html"
+    success_url = reverse_lazy("theatre:surgery_type_list")
 
-class SurgeryTypeUpdateView(LoginRequiredMixin, UpdateView):
+
+class SurgeryTypeUpdateView(LoginRequiredMixin, ReceptionistHROAccessMixin, UpdateView):
     model = SurgeryType
     form_class = SurgeryTypeForm
-    template_name = 'theatre/surgery_type_form.html'
-    success_url = reverse_lazy('theatre:surgery_type_list')
+    template_name = "theatre/surgery_type_form.html"
+    success_url = reverse_lazy("theatre:surgery_type_list")
 
-class SurgeryTypeDeleteView(LoginRequiredMixin, DeleteView):
+
+class SurgeryTypeDeleteView(LoginRequiredMixin, ReceptionistHROAccessMixin, DeleteView):
     model = SurgeryType
-    template_name = 'theatre/surgery_type_confirm_delete.html'
-    success_url = reverse_lazy('theatre:surgery_type_list')
+    template_name = "theatre/surgery_type_confirm_delete.html"
+    success_url = reverse_lazy("theatre:surgery_type_list")
+
 
 # Surgery Views
-class SurgeryListView(LoginRequiredMixin, ListView):
+class SurgeryListView(LoginRequiredMixin, ReceptionistHROAccessMixin, ListView):
     model = Surgery
-    template_name = 'theatre/surgery_list.html'
-    context_object_name = 'surgeries'
+    template_name = "theatre/surgery_list.html"
+    context_object_name = "surgeries"
     paginate_by = 10
 
     def get_queryset(self):
         queryset = super().get_queryset()
         self.filter_form = SurgeryFilterForm(self.request.GET)
         if self.filter_form.is_valid():
-            if self.filter_form.cleaned_data.get('start_date'):
-                queryset = queryset.filter(scheduled_date__gte=self.filter_form.cleaned_data['start_date'])
-            if self.filter_form.cleaned_data.get('end_date'):
-                queryset = queryset.filter(scheduled_date__lte=self.filter_form.cleaned_data['end_date'])
-            if self.filter_form.cleaned_data.get('status'):
-                queryset = queryset.filter(status=self.filter_form.cleaned_data['status'])
-            if self.filter_form.cleaned_data.get('surgeon'):
-                queryset = queryset.filter(primary_surgeon=self.filter_form.cleaned_data['surgeon'])
-            if self.filter_form.cleaned_data.get('theatre'):
-                queryset = queryset.filter(theatre=self.filter_form.cleaned_data['theatre'])
+            if self.filter_form.cleaned_data.get("start_date"):
+                queryset = queryset.filter(
+                    scheduled_date__gte=self.filter_form.cleaned_data["start_date"]
+                )
+            if self.filter_form.cleaned_data.get("end_date"):
+                queryset = queryset.filter(
+                    scheduled_date__lte=self.filter_form.cleaned_data["end_date"]
+                )
+            if self.filter_form.cleaned_data.get("status"):
+                queryset = queryset.filter(
+                    status=self.filter_form.cleaned_data["status"]
+                )
+            if self.filter_form.cleaned_data.get("surgeon"):
+                queryset = queryset.filter(
+                    primary_surgeon=self.filter_form.cleaned_data["surgeon"]
+                )
+            if self.filter_form.cleaned_data.get("theatre"):
+                queryset = queryset.filter(
+                    theatre=self.filter_form.cleaned_data["theatre"]
+                )
         return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['filter_form'] = self.filter_form
-        
-        # Get patients booked for surgery (unique patients with scheduled/in_progress/pending surgeries)
-        booked_patients = Surgery.objects.filter(
-            status__in=['scheduled', 'in_progress', 'pending']
-        ).select_related('patient').values(
-            'patient__id', 'patient__first_name', 'patient__last_name', 'patient__patient_id'
-        ).distinct()
+        context["filter_form"] = self.filter_form
 
-        context['total_patients_booked'] = booked_patients.count()
-        context['scheduled_patients_count'] = Surgery.objects.filter(
-            status='scheduled'
-        ).values('patient').distinct().count()
-        context['in_progress_patients_count'] = Surgery.objects.filter(
-            status='in_progress'
-        ).values('patient').distinct().count()
-        context['pending_patients_count'] = Surgery.objects.filter(
-            status='pending'
-        ).values('patient').distinct().count()
+        # Get patients booked for surgery (unique patients with scheduled/in_progress/pending surgeries)
+        booked_patients = (
+            Surgery.objects.filter(status__in=["scheduled", "in_progress", "pending"])
+            .select_related("patient")
+            .values(
+                "patient__id",
+                "patient__first_name",
+                "patient__last_name",
+                "patient__patient_id",
+            )
+            .distinct()
+        )
+
+        context["total_patients_booked"] = booked_patients.count()
+        context["scheduled_patients_count"] = (
+            Surgery.objects.filter(status="scheduled")
+            .values("patient")
+            .distinct()
+            .count()
+        )
+        context["in_progress_patients_count"] = (
+            Surgery.objects.filter(status="in_progress")
+            .values("patient")
+            .distinct()
+            .count()
+        )
+        context["pending_patients_count"] = (
+            Surgery.objects.filter(status="pending")
+            .values("patient")
+            .distinct()
+            .count()
+        )
 
         # Today's booked patients
         from datetime import date
-        context['todays_booked_patients'] = Surgery.objects.filter(
-            scheduled_date__date=date.today(),
-            status__in=['scheduled', 'in_progress', 'pending']
-        ).select_related('patient').order_by('scheduled_date')
-        
+
+        context["todays_booked_patients"] = (
+            Surgery.objects.filter(
+                scheduled_date__date=date.today(),
+                status__in=["scheduled", "in_progress", "pending"],
+            )
+            .select_related("patient")
+            .order_by("scheduled_date")
+        )
+
         return context
 
-class SurgeryDetailView(LoginRequiredMixin, DetailView):
+
+class SurgeryDetailView(LoginRequiredMixin, ReceptionistHROAccessMixin, DetailView):
     model = Surgery
-    template_name = 'theatre/surgery_detail.html'
+    template_name = "theatre/surgery_detail.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         surgery = self.get_object()
-        context['post_op_notes'] = surgery.post_op_notes.all()
-        context['pre_op_checklist'] = None
-        context['checklist_form'] = None
+        context["post_op_notes"] = surgery.post_op_notes.all()
+        context["pre_op_checklist"] = None
+        context["checklist_form"] = None
 
         try:
-            context['pre_op_checklist'] = surgery.pre_op_checklist
-            context['checklist_form'] = PreOperativeChecklistForm(instance=surgery.pre_op_checklist)
+            context["pre_op_checklist"] = surgery.pre_op_checklist
+            context["checklist_form"] = PreOperativeChecklistForm(
+                instance=surgery.pre_op_checklist
+            )
         except PreOperativeChecklist.DoesNotExist:
-            context['checklist_form'] = PreOperativeChecklistForm()
-        
+            context["checklist_form"] = PreOperativeChecklistForm()
+
         # Add pack orders for this surgery, handling the case where the relationship might not exist
         try:
-            context['pack_orders'] = surgery.pack_orders.all().order_by('-ordered_at')
+            context["pack_orders"] = surgery.pack_orders.all().order_by("-ordered_at")
         except AttributeError:
             # If pack_orders relationship doesn't exist, provide an empty queryset
-            context['pack_orders'] = []
+            context["pack_orders"] = []
 
         return context
 
@@ -226,63 +333,92 @@ class SurgeryDetailView(LoginRequiredMixin, DetailView):
             checklist.surgery = self.object
             checklist.completed_by = request.user
             checklist.save()
-            messages.success(request, 'Pre-operative checklist updated successfully.')
-            return redirect('theatre:surgery_detail', pk=self.object.pk)
+            messages.success(request, "Pre-operative checklist updated successfully.")
+            return redirect("theatre:surgery_detail", pk=self.object.pk)
         else:
-            messages.error(request, 'Error updating pre-operative checklist.')
+            messages.error(request, "Error updating pre-operative checklist.")
             return self.render_to_response(self.get_context_data(checklist_form=form))
 
-class PreOperativeChecklistCreateView(LoginRequiredMixin, CreateView):
+
+class PreOperativeChecklistCreateView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, CreateView
+):
     model = PreOperativeChecklist
     form_class = PreOperativeChecklistForm
-    template_name = 'theatre/pre_op_checklist_form.html'
+    template_name = "theatre/pre_op_checklist_form.html"
 
     def form_valid(self, form):
-        surgery = get_object_or_404(Surgery, pk=self.kwargs['surgery_id'])
+        surgery = get_object_or_404(Surgery, pk=self.kwargs["surgery_id"])
         form.instance.surgery = surgery
         form.instance.completed_by = self.request.user
-        messages.success(self.request, 'Pre-operative checklist created successfully.')
+        messages.success(self.request, "Pre-operative checklist created successfully.")
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse_lazy('theatre:surgery_detail', kwargs={'pk': self.kwargs['surgery_id']})
+        return reverse_lazy(
+            "theatre:surgery_detail", kwargs={"pk": self.kwargs["surgery_id"]}
+        )
 
-class SurgeryLogListView(LoginRequiredMixin, ListView):
+
+class SurgeryLogListView(LoginRequiredMixin, ReceptionistHROAccessMixin, ListView):
     model = SurgeryLog
-    template_name = 'theatre/surgery_log_list.html'
-    context_object_name = 'logs'
+    template_name = "theatre/surgery_log_list.html"
+    context_object_name = "logs"
 
     def get_queryset(self):
-        surgery = get_object_or_404(Surgery, pk=self.kwargs['surgery_id'])
-        return SurgeryLog.objects.filter(surgery=surgery).order_by('timestamp')
+        surgery = get_object_or_404(Surgery, pk=self.kwargs["surgery_id"])
+        return SurgeryLog.objects.filter(surgery=surgery).order_by("timestamp")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['surgery'] = get_object_or_404(Surgery, pk=self.kwargs['surgery_id'])
+        context["surgery"] = get_object_or_404(Surgery, pk=self.kwargs["surgery_id"])
         return context
+
 
 class SurgeryCreateView(LoginRequiredMixin, CreateView):
     model = Surgery
     form_class = SurgeryForm
-    template_name = 'theatre/surgery_form.html'
-    success_url = reverse_lazy('theatre:surgery_list')
+    template_name = "theatre/surgery_form.html"
+    success_url = reverse_lazy("theatre:surgery_list")
+
+    def dispatch(self, request, *args, **kwargs):
+        # Block receptionists and health record officers from accessing surgery creation
+        if not request.user.is_superuser:
+            user_roles = list(request.user.roles.values_list("name", flat=True))
+            profile_role = getattr(getattr(request.user, "profile", None), "role", None)
+            if profile_role and profile_role not in user_roles:
+                user_roles.append(profile_role)
+
+            if "receptionist" in user_roles or "health_record_officer" in user_roles:
+                messages.error(
+                    request, "You don't have permission to create surgeries."
+                )
+                return redirect("theatre:surgery_list")
+
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
-        
+
         # Add all active patients for the dropdown
-        data['all_patients'] = Patient.objects.filter(is_active=True).select_related().order_by('first_name', 'last_name')
-        
-        if 'team_formset' not in kwargs:
+        data["all_patients"] = (
+            Patient.objects.filter(is_active=True)
+            .select_related()
+            .order_by("first_name", "last_name")
+        )
+
+        if "team_formset" not in kwargs:
             if self.request.POST:
-                data['team_formset'] = SurgicalTeamInlineFormSet(self.request.POST)
+                data["team_formset"] = SurgicalTeamInlineFormSet(self.request.POST)
             else:
-                data['team_formset'] = SurgicalTeamInlineFormSet()
-        if 'equipment_formset' not in kwargs:
+                data["team_formset"] = SurgicalTeamInlineFormSet()
+        if "equipment_formset" not in kwargs:
             if self.request.POST:
-                data['equipment_formset'] = EquipmentUsageInlineFormSet(self.request.POST)
+                data["equipment_formset"] = EquipmentUsageInlineFormSet(
+                    self.request.POST
+                )
             else:
-                data['equipment_formset'] = EquipmentUsageInlineFormSet()
+                data["equipment_formset"] = EquipmentUsageInlineFormSet()
         return data
 
     def post(self, request, *args, **kwargs):
@@ -290,21 +426,21 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
         form = self.get_form()
         team_formset = SurgicalTeamInlineFormSet(self.request.POST)
         equipment_formset = EquipmentUsageInlineFormSet(self.request.POST)
-        
+
         # Debug: Print form validation status
         print(f"Form valid: {form.is_valid()}")
         if not form.is_valid():
             print(f"Form errors: {form.errors}")
             print(f"Form data: {form.data}")
-        
+
         print(f"Team formset valid: {team_formset.is_valid()}")
         if not team_formset.is_valid():
             print(f"Team formset errors: {team_formset.errors}")
-            
+
         print(f"Equipment formset valid: {equipment_formset.is_valid()}")
         if not equipment_formset.is_valid():
             print(f"Equipment formset errors: {equipment_formset.errors}")
-        
+
         if form.is_valid() and team_formset.is_valid() and equipment_formset.is_valid():
             return self.form_valid(form, team_formset, equipment_formset)
         else:
@@ -312,122 +448,155 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
             if not form.is_valid():
                 for field, errors in form.errors.items():
                     for error in errors:
-                        if field == '__all__':
-                            messages.error(request, f'{error}')
+                        if field == "__all__":
+                            messages.error(request, f"{error}")
                         else:
-                            messages.error(request, f'{field.replace("_", " ").title()}: {error}')
-            
+                            messages.error(
+                                request, f"{field.replace('_', ' ').title()}: {error}"
+                            )
+
             if not team_formset.is_valid():
                 # Only show error if there are actual errors, not just empty forms
                 has_real_errors = False
                 for error_dict in team_formset.errors:
-                    if error_dict and not all(k == 'surgery' for k in error_dict.keys()):
+                    if error_dict and not all(
+                        k == "surgery" for k in error_dict.keys()
+                    ):
                         has_real_errors = True
                         for field, errors in error_dict.items():
                             for error in errors:
-                                messages.error(request, f'Team Member - {field.replace("_", " ").title()}: {error}')
+                                messages.error(
+                                    request,
+                                    f"Team Member - {field.replace('_', ' ').title()}: {error}",
+                                )
                 if not has_real_errors and team_formset.non_form_errors():
                     for error in team_formset.non_form_errors():
-                        messages.error(request, f'Surgical Team: {error}')
-            
+                        messages.error(request, f"Surgical Team: {error}")
+
             if not equipment_formset.is_valid():
                 # Only show error if there are actual errors, not just empty forms
                 has_real_errors = False
                 for error_dict in equipment_formset.errors:
-                    if error_dict and not all(k == 'surgery' for k in error_dict.keys()):
+                    if error_dict and not all(
+                        k == "surgery" for k in error_dict.keys()
+                    ):
                         has_real_errors = True
                         for field, errors in error_dict.items():
                             for error in errors:
-                                messages.error(request, f'Equipment - {field.replace("_", " ").title()}: {error}')
+                                messages.error(
+                                    request,
+                                    f"Equipment - {field.replace('_', ' ').title()}: {error}",
+                                )
                 if not has_real_errors and equipment_formset.non_form_errors():
                     for error in equipment_formset.non_form_errors():
-                        messages.error(request, f'Equipment: {error}')
-            
+                        messages.error(request, f"Equipment: {error}")
+
             return self.form_invalid(form, team_formset, equipment_formset)
 
     def form_valid(self, form, team_formset, equipment_formset):
         from decimal import Decimal
         from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
         from datetime import timedelta
-        
+
         # Get authorization code if provided
-        authorization_code_id = self.request.POST.get('authorization_code')
+        authorization_code_id = self.request.POST.get("authorization_code")
         authorization_code = None
         if authorization_code_id:
             try:
                 from nhia.models import AuthorizationCode
-                authorization_code = AuthorizationCode.objects.get(id=authorization_code_id)
+
+                authorization_code = AuthorizationCode.objects.get(
+                    id=authorization_code_id
+                )
                 # Verify the authorization code is valid
                 if not authorization_code.is_valid():
-                    messages.error(self.request, "The provided authorization code is not valid.")
+                    messages.error(
+                        self.request, "The provided authorization code is not valid."
+                    )
                     return self.form_invalid(form, team_formset, equipment_formset)
                 # Verify the authorization code is for this patient
-                if authorization_code.patient != form.cleaned_data['patient']:
-                    messages.error(self.request, "The provided authorization code is not for this patient.")
+                if authorization_code.patient != form.cleaned_data["patient"]:
+                    messages.error(
+                        self.request,
+                        "The provided authorization code is not for this patient.",
+                    )
                     return self.form_invalid(form, team_formset, equipment_formset)
             except AuthorizationCode.DoesNotExist:
-                messages.error(self.request, "The provided authorization code does not exist.")
+                messages.error(
+                    self.request, "The provided authorization code does not exist."
+                )
                 return self.form_invalid(form, team_formset, equipment_formset)
-        
+
         with transaction.atomic():
             self.object = form.save()
             team_formset.instance = self.object
             team_formset.save()
             equipment_formset.instance = self.object
             equipment_formset.save()
-            
+
             # Create an invoice for this surgery
             # Get surgery fee from surgery type
             surgery_fee = Decimal(str(self.object.surgery_type.fee))
 
             # NHIA patients use authorization code (no fee charged to patient)
             # Regular patients pay full surgery fee
-            if self.object.patient.patient_type == 'nhia':
+            if self.object.patient.patient_type == "nhia":
                 # NHIA patients: Surgery covered by authorization, no fee charged
-                patient_payable_fee = Decimal('0.00')
-                invoice_description = f"Theatre Procedure: {self.object.surgery_type.name} (NHIA Covered)"
+                patient_payable_fee = Decimal("0.00")
+                invoice_description = (
+                    f"Theatre Procedure: {self.object.surgery_type.name} (NHIA Covered)"
+                )
             else:
                 # Regular patients: Pay full surgery fee
                 patient_payable_fee = surgery_fee
-                invoice_description = f"Theatre Procedure: {self.object.surgery_type.name}"
+                invoice_description = (
+                    f"Theatre Procedure: {self.object.surgery_type.name}"
+                )
 
             subtotal = patient_payable_fee
-            tax_amount = Decimal('0.00')
+            tax_amount = Decimal("0.00")
             total_amount = subtotal + tax_amount
-            due_date = self.object.scheduled_date.date() + timedelta(days=7) # Example: due in 7 days
+            due_date = self.object.scheduled_date.date() + timedelta(
+                days=7
+            )  # Example: due in 7 days
 
             # If authorization code is provided, mark as paid
-            invoice_status = 'paid' if authorization_code else 'pending'
-            payment_method = 'insurance' if authorization_code else None
+            invoice_status = "paid" if authorization_code else "pending"
+            payment_method = "insurance" if authorization_code else None
             payment_date = timezone.now().date() if authorization_code else None
 
             invoice = Invoice.objects.create(
                 patient=self.object.patient,
                 invoice_date=self.object.scheduled_date.date(),
                 due_date=due_date,
-                status=invoice_status, # Mark as paid if authorization code is used
+                status=invoice_status,  # Mark as paid if authorization code is used
                 subtotal=subtotal,
                 tax_amount=tax_amount,
                 total_amount=total_amount,
-                amount_paid=total_amount if authorization_code else Decimal('0.00'),
+                amount_paid=total_amount if authorization_code else Decimal("0.00"),
                 payment_method=payment_method,
                 payment_date=payment_date,
                 created_by=self.request.user,
-                source_app='theatre'
+                source_app="theatre",
             )
 
             # Update surgery with invoice and authorization code
             self.object.invoice = invoice
             self.object.authorization_code = authorization_code
-            self.object.status = 'scheduled' if authorization_code else 'pending'
+            self.object.status = "scheduled" if authorization_code else "pending"
             self.object.save()
 
             # Create a generic InvoiceItem for the surgery
-            theatre_service_category, _ = ServiceCategory.objects.get_or_create(name="Theatre Services")
+            theatre_service_category, _ = ServiceCategory.objects.get_or_create(
+                name="Theatre Services"
+            )
             service, _ = Service.objects.get_or_create(
                 name=f"Theatre Procedure: {self.object.surgery_type.name}",
                 category=theatre_service_category,
-                defaults={'price': surgery_fee, 'description': f"Theatre procedure: {self.object.surgery_type.name}"}
+                defaults={
+                    "price": surgery_fee,
+                    "description": f"Theatre procedure: {self.object.surgery_type.name}",
+                },
             )
 
             InvoiceItem.objects.create(
@@ -437,15 +606,18 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
                 quantity=1,
                 unit_price=patient_payable_fee,
                 tax_percentage=service.tax_percentage,
-                tax_amount=Decimal('0.00'),
-                total_amount=patient_payable_fee
+                tax_amount=Decimal("0.00"),
+                total_amount=patient_payable_fee,
             )
-            
+
             # If authorization code was used, mark it as used
             if authorization_code:
                 authorization_code.mark_as_used(f"Surgery #{self.object.id}")
-            
-        messages.success(self.request, f'Surgery created successfully. Invoice #{invoice.invoice_number} generated and is {"paid via authorization code" if authorization_code else "pending payment"}.')
+
+        messages.success(
+            self.request,
+            f"Surgery created successfully. Invoice #{invoice.invoice_number} generated and is {'paid via authorization code' if authorization_code else 'pending payment'}.",
+        )
         return redirect(self.get_success_url())
 
     def form_invalid(self, form, team_formset, equipment_formset):
@@ -455,45 +627,76 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
             self.get_context_data(
                 form=form,
                 team_formset=team_formset,
-                equipment_formset=equipment_formset
+                equipment_formset=equipment_formset,
             )
         )
+
 
 class SurgeryUpdateView(LoginRequiredMixin, UpdateView):
     model = Surgery
     form_class = SurgeryForm
-    template_name = 'theatre/surgery_form.html'
-    success_url = reverse_lazy('theatre:surgery_list')
-    
+    template_name = "theatre/surgery_form.html"
+    success_url = reverse_lazy("theatre:surgery_list")
+
+    def dispatch(self, request, *args, **kwargs):
+        # Block receptionists and health record officers from accessing surgery editing
+        if not request.user.is_superuser:
+            user_roles = list(request.user.roles.values_list("name", flat=True))
+            profile_role = getattr(getattr(request.user, "profile", None), "role", None)
+            if profile_role and profile_role not in user_roles:
+                user_roles.append(profile_role)
+
+            if "receptionist" in user_roles or "health_record_officer" in user_roles:
+                messages.error(request, "You don't have permission to edit surgeries.")
+                return redirect("theatre:surgery_list")
+
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         # Add all active patients for the dropdown
-        context['all_patients'] = Patient.objects.filter(is_active=True).select_related().order_by('first_name', 'last_name')
-        
+        context["all_patients"] = (
+            Patient.objects.filter(is_active=True)
+            .select_related()
+            .order_by("first_name", "last_name")
+        )
+
         # Add formsets for team and equipment (same as CreateView)
-        if 'team_formset' not in kwargs:
+        if "team_formset" not in kwargs:
             if self.request.POST:
-                context['team_formset'] = SurgicalTeamInlineFormSet(self.request.POST, instance=self.object)
+                context["team_formset"] = SurgicalTeamInlineFormSet(
+                    self.request.POST, instance=self.object
+                )
             else:
-                context['team_formset'] = SurgicalTeamInlineFormSet(instance=self.object)
-        if 'equipment_formset' not in kwargs:
+                context["team_formset"] = SurgicalTeamInlineFormSet(
+                    instance=self.object
+                )
+        if "equipment_formset" not in kwargs:
             if self.request.POST:
-                context['equipment_formset'] = EquipmentUsageInlineFormSet(self.request.POST, instance=self.object)
+                context["equipment_formset"] = EquipmentUsageInlineFormSet(
+                    self.request.POST, instance=self.object
+                )
             else:
-                context['equipment_formset'] = EquipmentUsageInlineFormSet(instance=self.object)
+                context["equipment_formset"] = EquipmentUsageInlineFormSet(
+                    instance=self.object
+                )
         return context
-    
+
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         form = self.get_form()
-        team_formset = SurgicalTeamInlineFormSet(self.request.POST, instance=self.object)
-        equipment_formset = EquipmentUsageInlineFormSet(self.request.POST, instance=self.object)
-        
+        team_formset = SurgicalTeamInlineFormSet(
+            self.request.POST, instance=self.object
+        )
+        equipment_formset = EquipmentUsageInlineFormSet(
+            self.request.POST, instance=self.object
+        )
+
         if form.is_valid() and team_formset.is_valid() and equipment_formset.is_valid():
             return self.form_valid(form, team_formset, equipment_formset)
         else:
             return self.form_invalid(form, team_formset, equipment_formset)
-    
+
     def form_valid(self, form, team_formset, equipment_formset):
         with transaction.atomic():
             self.object = form.save()
@@ -501,52 +704,63 @@ class SurgeryUpdateView(LoginRequiredMixin, UpdateView):
             team_formset.save()
             equipment_formset.instance = self.object
             equipment_formset.save()
-            
-        messages.success(self.request, 'Surgery updated successfully.')
+
+        messages.success(self.request, "Surgery updated successfully.")
         return redirect(self.get_success_url())
-    
+
     def form_invalid(self, form, team_formset, equipment_formset):
         # Add specific error messages for formsets
         if team_formset.errors or team_formset.non_form_errors():
             for i, form_errors in enumerate(team_formset.errors):
                 if form_errors:
-                    messages.error(self.request, f"Surgical Team: Please check the team member information in form {i+1}.")
+                    messages.error(
+                        self.request,
+                        f"Surgical Team: Please check the team member information in form {i + 1}.",
+                    )
             if team_formset.non_form_errors():
                 for error in team_formset.non_form_errors():
                     messages.error(self.request, f"Surgical Team: {error}")
-        
+
         if equipment_formset.errors or equipment_formset.non_form_errors():
             for i, form_errors in enumerate(equipment_formset.errors):
                 if form_errors:
-                    messages.error(self.request, f"Equipment: Please check the equipment information in form {i+1}.")
+                    messages.error(
+                        self.request,
+                        f"Equipment: Please check the equipment information in form {i + 1}.",
+                    )
             if equipment_formset.non_form_errors():
                 for error in equipment_formset.non_form_errors():
                     messages.error(self.request, f"Equipment: {error}")
-        
+
         return self.render_to_response(
             self.get_context_data(
                 form=form,
                 team_formset=team_formset,
-                equipment_formset=equipment_formset
+                equipment_formset=equipment_formset,
             )
         )
 
 
-class SurgeryDeleteView(LoginRequiredMixin, DeleteView):
+class SurgeryDeleteView(LoginRequiredMixin, ReceptionistHROAccessMixin, DeleteView):
     model = Surgery
-    template_name = 'theatre/surgery_confirm_delete.html'
-    success_url = reverse_lazy('theatre:surgery_list')
+    template_name = "theatre/surgery_confirm_delete.html"
+    success_url = reverse_lazy("theatre:surgery_list")
 
 
 # Surgical Equipment Views
-class SurgicalEquipmentListView(LoginRequiredMixin, ListView):
+class SurgicalEquipmentListView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, ListView
+):
     model = SurgicalEquipment
-    template_name = 'theatre/equipment_list.html'
-    context_object_name = 'object_list'
+    template_name = "theatre/equipment_list.html"
+    context_object_name = "object_list"
 
-class SurgicalEquipmentDetailView(LoginRequiredMixin, DetailView):
+
+class SurgicalEquipmentDetailView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, DetailView
+):
     model = SurgicalEquipment
-    template_name = 'theatre/equipment_detail.html'
+    template_name = "theatre/equipment_detail.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -556,127 +770,151 @@ class SurgicalEquipmentDetailView(LoginRequiredMixin, DetailView):
         from django.utils import timezone
         from datetime import timedelta
 
-        context['recent_usage'] = equipment.usage_records.select_related(
-            'surgery', 'surgery__patient', 'surgery__surgery_type'
-        ).order_by('-surgery__scheduled_date')[:10]
+        context["recent_usage"] = equipment.usage_records.select_related(
+            "surgery", "surgery__patient", "surgery__surgery_type"
+        ).order_by("-surgery__scheduled_date")[:10]
 
         # Get surgery types that require this equipment
-        context['required_surgery_types'] = equipment.surgery_types_required.select_related(
-            'surgery_type'
-        ).order_by('surgery_type__name')
+        context["required_surgery_types"] = (
+            equipment.surgery_types_required.select_related("surgery_type").order_by(
+                "surgery_type__name"
+            )
+        )
 
         # Get recent maintenance logs
-        context['maintenance_logs'] = equipment.maintenance_logs.select_related(
-            'performed_by'
-        ).order_by('-scheduled_date')[:10]
+        context["maintenance_logs"] = equipment.maintenance_logs.select_related(
+            "performed_by"
+        ).order_by("-scheduled_date")[:10]
 
         # Calculate statistics
-        context['total_surgeries_used'] = equipment.usage_records.count()
-        context['usage_last_30_days'] = equipment.usage_records.filter(
+        context["total_surgeries_used"] = equipment.usage_records.count()
+        context["usage_last_30_days"] = equipment.usage_records.filter(
             surgery__scheduled_date__gte=timezone.now() - timedelta(days=30)
         ).count()
-        context['surgery_types_count'] = equipment.surgery_types_required.count()
-        
+        context["surgery_types_count"] = equipment.surgery_types_required.count()
+
         # Maintenance statistics
-        context['total_maintenance_count'] = equipment.maintenance_logs.count()
-        context['completed_maintenance_count'] = equipment.maintenance_logs.filter(
-            status='completed'
+        context["total_maintenance_count"] = equipment.maintenance_logs.count()
+        context["completed_maintenance_count"] = equipment.maintenance_logs.filter(
+            status="completed"
         ).count()
-        context['scheduled_maintenance_count'] = equipment.maintenance_logs.filter(
-            status='scheduled'
+        context["scheduled_maintenance_count"] = equipment.maintenance_logs.filter(
+            status="scheduled"
         ).count()
-        
-        context['today'] = timezone.now().date()
+
+        context["today"] = timezone.now().date()
 
         return context
 
-class SurgicalEquipmentCreateView(LoginRequiredMixin, CreateView):
+
+class SurgicalEquipmentCreateView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, CreateView
+):
     model = SurgicalEquipment
     form_class = SurgicalEquipmentForm
-    template_name = 'theatre/equipment_form.html'
-    success_url = reverse_lazy('theatre:equipment_list')
+    template_name = "theatre/equipment_form.html"
+    success_url = reverse_lazy("theatre:equipment_list")
 
-class SurgicalEquipmentUpdateView(LoginRequiredMixin, UpdateView):
+
+class SurgicalEquipmentUpdateView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, UpdateView
+):
     model = SurgicalEquipment
     form_class = SurgicalEquipmentForm
-    template_name = 'theatre/equipment_form.html'
-    success_url = reverse_lazy('theatre:equipment_list')
+    template_name = "theatre/equipment_form.html"
+    success_url = reverse_lazy("theatre:equipment_list")
 
-class SurgicalEquipmentDeleteView(LoginRequiredMixin, DeleteView):
+
+class SurgicalEquipmentDeleteView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, DeleteView
+):
     model = SurgicalEquipment
-    template_name = 'theatre/equipment_confirm_delete.html'
-    success_url = reverse_lazy('theatre:equipment_list')
+    template_name = "theatre/equipment_confirm_delete.html"
+    success_url = reverse_lazy("theatre:equipment_list")
 
 
 # Surgical Team Management Views
-class SurgicalTeamListView(LoginRequiredMixin, ListView):
+class SurgicalTeamListView(LoginRequiredMixin, ReceptionistHROAccessMixin, ListView):
     model = SurgicalTeam
-    template_name = 'theatre/team_list.html'
-    context_object_name = 'teams'
+    template_name = "theatre/team_list.html"
+    context_object_name = "teams"
     paginate_by = 20
 
     def get_queryset(self):
-        queryset = SurgicalTeam.objects.select_related('surgery', 'staff', 'surgery__patient').order_by('-surgery__scheduled_date')
+        queryset = SurgicalTeam.objects.select_related(
+            "surgery", "staff", "surgery__patient"
+        ).order_by("-surgery__scheduled_date")
 
         # Add search functionality
-        search_query = self.request.GET.get('search', '')
+        search_query = self.request.GET.get("search", "")
         if search_query:
             queryset = queryset.filter(
-                Q(staff__first_name__icontains=search_query) |
-                Q(staff__last_name__icontains=search_query) |
-                Q(surgery__patient__first_name__icontains=search_query) |
-                Q(surgery__patient__last_name__icontains=search_query) |
-                Q(role__icontains=search_query)
+                Q(staff__first_name__icontains=search_query)
+                | Q(staff__last_name__icontains=search_query)
+                | Q(surgery__patient__first_name__icontains=search_query)
+                | Q(surgery__patient__last_name__icontains=search_query)
+                | Q(role__icontains=search_query)
             )
 
         return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['search_query'] = self.request.GET.get('search', '')
+        context["search_query"] = self.request.GET.get("search", "")
         return context
 
 
-class SurgicalTeamDetailView(LoginRequiredMixin, DetailView):
+class SurgicalTeamDetailView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, DetailView
+):
     model = SurgicalTeam
-    template_name = 'theatre/team_detail.html'
+    template_name = "theatre/team_detail.html"
 
 
-class SurgicalTeamCreateView(LoginRequiredMixin, CreateView):
+class SurgicalTeamCreateView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, CreateView
+):
     model = SurgicalTeam
-    fields = ['surgery', 'staff', 'role', 'usage_notes']
-    template_name = 'theatre/team_form.html'
-    success_url = reverse_lazy('theatre:team_list')
+    fields = ["surgery", "staff", "role", "usage_notes"]
+    template_name = "theatre/team_form.html"
+    success_url = reverse_lazy("theatre:team_list")
 
     def form_valid(self, form):
-        messages.success(self.request, 'Surgical team member added successfully.')
+        messages.success(self.request, "Surgical team member added successfully.")
         return super().form_valid(form)
 
 
-class SurgicalTeamUpdateView(LoginRequiredMixin, UpdateView):
+class SurgicalTeamUpdateView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, UpdateView
+):
     model = SurgicalTeam
-    fields = ['surgery', 'staff', 'role', 'usage_notes']
-    template_name = 'theatre/team_form.html'
-    success_url = reverse_lazy('theatre:team_list')
+    fields = ["surgery", "staff", "role", "usage_notes"]
+    template_name = "theatre/team_form.html"
+    success_url = reverse_lazy("theatre:team_list")
 
     def form_valid(self, form):
-        messages.success(self.request, 'Surgical team member updated successfully.')
+        messages.success(self.request, "Surgical team member updated successfully.")
         return super().form_valid(form)
 
 
-class SurgicalTeamDeleteView(LoginRequiredMixin, DeleteView):
+class SurgicalTeamDeleteView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, DeleteView
+):
     model = SurgicalTeam
-    template_name = 'theatre/team_confirm_delete.html'
-    success_url = reverse_lazy('theatre:team_list')
+    template_name = "theatre/team_confirm_delete.html"
+    success_url = reverse_lazy("theatre:team_list")
 
     def delete(self, request, *args, **kwargs):
-        messages.success(request, 'Surgical team member deleted successfully.')
+        messages.success(request, "Surgical team member deleted successfully.")
         return super().delete(request, *args, **kwargs)
 
 
-class TheatreDashboardView(LoginRequiredMixin, TemplateView):
+class TheatreDashboardView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, TemplateView
+):
     """Enhanced Dashboard for Theatre department with charts and surgical metrics"""
-    template_name = 'theatre/dashboard.html'
+
+    template_name = "theatre/dashboard.html"
 
     def get_context_data(self, **kwargs):
         from django.db.models import Avg, F, ExpressionWrapper, DurationField
@@ -686,7 +924,7 @@ class TheatreDashboardView(LoginRequiredMixin, TemplateView):
             get_daily_trend_data,
             get_status_distribution,
             calculate_completion_rate,
-            get_active_staff
+            get_active_staff,
         )
         import json
 
@@ -703,164 +941,201 @@ class TheatreDashboardView(LoginRequiredMixin, TemplateView):
                 record_model=Surgery,
                 record_queryset=Surgery.objects.all(),
                 priority_field=None,
-                status_field='status',
-                completed_status='completed'
+                status_field="status",
+                completed_status="completed",
             )
             context.update(enhanced_context)
 
         # Theatre-specific statistics
         # Get today's surgeries
-        context['todays_surgeries'] = Surgery.objects.filter(
+        context["todays_surgeries"] = Surgery.objects.filter(
             scheduled_date__date=today
-        ).order_by('scheduled_date')
+        ).order_by("scheduled_date")
 
         # Surgeries today count
-        surgeries_today = Surgery.objects.filter(
-            scheduled_date__date=today
-        ).count()
+        surgeries_today = Surgery.objects.filter(scheduled_date__date=today).count()
 
         # Get upcoming surgeries (next 7 days)
         week_end = today + timedelta(days=7)
-        context['upcoming_surgeries'] = Surgery.objects.filter(
-            scheduled_date__date__gt=today,
-            scheduled_date__date__lte=week_end
-        ).order_by('scheduled_date')
+        context["upcoming_surgeries"] = Surgery.objects.filter(
+            scheduled_date__date__gt=today, scheduled_date__date__lte=week_end
+        ).order_by("scheduled_date")
 
         # Upcoming surgeries count
         upcoming_count = Surgery.objects.filter(
-            scheduled_date__date__gt=today,
-            scheduled_date__date__lte=week_end
+            scheduled_date__date__gt=today, scheduled_date__date__lte=week_end
         ).count()
 
         # Get theatre availability
-        context['available_theatres'] = OperationTheatre.objects.filter(is_available=True).count()
-        context['total_theatres'] = OperationTheatre.objects.count()
+        context["available_theatres"] = OperationTheatre.objects.filter(
+            is_available=True
+        ).count()
+        context["total_theatres"] = OperationTheatre.objects.count()
 
         # Theatre occupancy rate
-        if context['total_theatres'] > 0:
-            occupancy_rate = ((context['total_theatres'] - context['available_theatres']) / context['total_theatres']) * 100
-            context['occupancy_rate'] = round(occupancy_rate, 1)
+        if context["total_theatres"] > 0:
+            occupancy_rate = (
+                (context["total_theatres"] - context["available_theatres"])
+                / context["total_theatres"]
+            ) * 100
+            context["occupancy_rate"] = round(occupancy_rate, 1)
         else:
-            context['occupancy_rate'] = 0
+            context["occupancy_rate"] = 0
 
         # Get surgery statistics
-        context['total_surgeries'] = Surgery.objects.count()
-        context['completed_surgeries'] = Surgery.objects.filter(status='completed').count()
-        context['scheduled_surgeries'] = Surgery.objects.filter(status='scheduled').count()
-        context['cancelled_surgeries'] = Surgery.objects.filter(status='cancelled').count()
-        context['in_progress_surgeries'] = Surgery.objects.filter(status='in_progress').count()
+        context["total_surgeries"] = Surgery.objects.count()
+        context["completed_surgeries"] = Surgery.objects.filter(
+            status="completed"
+        ).count()
+        context["scheduled_surgeries"] = Surgery.objects.filter(
+            status="scheduled"
+        ).count()
+        context["cancelled_surgeries"] = Surgery.objects.filter(
+            status="cancelled"
+        ).count()
+        context["in_progress_surgeries"] = Surgery.objects.filter(
+            status="in_progress"
+        ).count()
 
         # Patients booked for surgery statistics
-        context['total_patients_booked'] = Surgery.objects.filter(
-            status__in=['scheduled', 'in_progress']
-        ).values('patient').distinct().count()
-        
-        context['todays_patients_count'] = Surgery.objects.filter(
-            scheduled_date__date=today,
-            status__in=['scheduled', 'in_progress']
-        ).values('patient').distinct().count()
-        
+        context["total_patients_booked"] = (
+            Surgery.objects.filter(status__in=["scheduled", "in_progress"])
+            .values("patient")
+            .distinct()
+            .count()
+        )
+
+        context["todays_patients_count"] = (
+            Surgery.objects.filter(
+                scheduled_date__date=today, status__in=["scheduled", "in_progress"]
+            )
+            .values("patient")
+            .distinct()
+            .count()
+        )
+
         # Today's booked patients with details
-        context['todays_booked_patients'] = Surgery.objects.filter(
-            scheduled_date__date=today,
-            status__in=['scheduled', 'in_progress']
-        ).select_related('patient', 'surgery_type', 'theatre', 'primary_surgeon').order_by('scheduled_date')
-        
+        context["todays_booked_patients"] = (
+            Surgery.objects.filter(
+                scheduled_date__date=today, status__in=["scheduled", "in_progress"]
+            )
+            .select_related("patient", "surgery_type", "theatre", "primary_surgeon")
+            .order_by("scheduled_date")
+        )
+
         # Upcoming booked patients (next 7 days)
-        context['upcoming_booked_patients'] = Surgery.objects.filter(
-            scheduled_date__date__gt=today,
-            scheduled_date__date__lte=week_end,
-            status='scheduled'
-        ).select_related('patient', 'surgery_type', 'theatre', 'primary_surgeon').order_by('scheduled_date')
+        context["upcoming_booked_patients"] = (
+            Surgery.objects.filter(
+                scheduled_date__date__gt=today,
+                scheduled_date__date__lte=week_end,
+                status="scheduled",
+            )
+            .select_related("patient", "surgery_type", "theatre", "primary_surgeon")
+            .order_by("scheduled_date")
+        )
 
         # Surgery type distribution (top 5)
-        surgery_type_data = Surgery.objects.values('surgery_type__name').annotate(
-            count=Count('id')
-        ).order_by('-count')[:5]
-        surgery_type_labels = [item['surgery_type__name'] for item in surgery_type_data]
-        surgery_type_counts = [item['count'] for item in surgery_type_data]
+        surgery_type_data = (
+            Surgery.objects.values("surgery_type__name")
+            .annotate(count=Count("id"))
+            .order_by("-count")[:5]
+        )
+        surgery_type_labels = [item["surgery_type__name"] for item in surgery_type_data]
+        surgery_type_counts = [item["count"] for item in surgery_type_data]
 
         # Surgery status distribution for chart
-        status_labels = ['Completed', 'Scheduled', 'In Progress', 'Cancelled']
+        status_labels = ["Completed", "Scheduled", "In Progress", "Cancelled"]
         status_counts = [
-            context['completed_surgeries'],
-            context['scheduled_surgeries'],
-            context['in_progress_surgeries'],
-            context['cancelled_surgeries']
+            context["completed_surgeries"],
+            context["scheduled_surgeries"],
+            context["in_progress_surgeries"],
+            context["cancelled_surgeries"],
         ]
-        status_colors = ['#28a745', '#17a2b8', '#ffc107', '#dc3545']
+        status_colors = ["#28a745", "#17a2b8", "#ffc107", "#dc3545"]
 
         # Average surgery duration (for completed surgeries in last 30 days)
         # Using SurgerySchedule model which has start_time and end_time
         month_start = today - timedelta(days=30)
         from theatre.models import SurgerySchedule
 
-        avg_duration = SurgerySchedule.objects.filter(
-            surgery__status='completed',
-            surgery__scheduled_date__date__gte=month_start,
-            start_time__isnull=False,
-            end_time__isnull=False
-        ).annotate(
-            duration=ExpressionWrapper(
-                F('end_time') - F('start_time'),
-                output_field=DurationField()
+        avg_duration = (
+            SurgerySchedule.objects.filter(
+                surgery__status="completed",
+                surgery__scheduled_date__date__gte=month_start,
+                start_time__isnull=False,
+                end_time__isnull=False,
             )
-        ).aggregate(avg=Avg('duration'))['avg']
+            .annotate(
+                duration=ExpressionWrapper(
+                    F("end_time") - F("start_time"), output_field=DurationField()
+                )
+            )
+            .aggregate(avg=Avg("duration"))["avg"]
+        )
 
         # Format duration
         if avg_duration:
             hours = avg_duration.total_seconds() / 3600
-            context['avg_surgery_duration'] = round(hours, 1)
+            context["avg_surgery_duration"] = round(hours, 1)
         else:
-            context['avg_surgery_duration'] = 0
+            context["avg_surgery_duration"] = 0
 
         # Get equipment statistics
-        context['total_equipment'] = SurgicalEquipment.objects.count()
-        context['available_equipment'] = SurgicalEquipment.objects.filter(is_available=True).count()
-        context['maintenance_due'] = SurgicalEquipment.objects.filter(
+        context["total_equipment"] = SurgicalEquipment.objects.count()
+        context["available_equipment"] = SurgicalEquipment.objects.filter(
+            is_available=True
+        ).count()
+        context["maintenance_due"] = SurgicalEquipment.objects.filter(
             next_maintenance_date__lte=today
         ).count()
 
         # High-risk surgeries this week (using surgery_type risk level)
         week_start = today - timedelta(days=today.weekday())
         emergency_surgeries = Surgery.objects.filter(
-            scheduled_date__date__gte=week_start,
-            surgery_type__risk_level='high'
+            scheduled_date__date__gte=week_start, surgery_type__risk_level="high"
         ).count()
 
         # Add referral integration
         if user_department:
-            context['pending_referrals'] = get_pending_referrals(user_department, limit=5)
+            context["pending_referrals"] = get_pending_referrals(
+                user_department, limit=5
+            )
             referral_stats = get_department_referral_statistics(user_department)
-            context['pending_referrals_count'] = referral_stats['pending_referrals']
-            context['pending_authorizations'] = referral_stats['requiring_authorization']
-            context['categorized_referrals'] = categorize_referrals(user_department)
-            context['user_department'] = user_department
+            context["pending_referrals_count"] = referral_stats["pending_referrals"]
+            context["pending_authorizations"] = referral_stats[
+                "requiring_authorization"
+            ]
+            context["categorized_referrals"] = categorize_referrals(user_department)
+            context["user_department"] = user_department
         else:
-            context['pending_referrals'] = []
-            context['pending_referrals_count'] = 0
-            context['pending_authorizations'] = 0
+            context["pending_referrals"] = []
+            context["pending_referrals_count"] = 0
+            context["pending_authorizations"] = 0
 
         # Add enhanced metrics to context
-        context.update({
-            'surgeries_today': surgeries_today,
-            'upcoming_count': upcoming_count,
-            'surgery_type_labels': json.dumps(surgery_type_labels),
-            'surgery_type_counts': json.dumps(surgery_type_counts),
-            'status_labels': json.dumps(status_labels),
-            'status_counts': json.dumps(status_counts),
-            'status_colors': json.dumps(status_colors),
-            'emergency_surgeries': emergency_surgeries,
-        })
+        context.update(
+            {
+                "surgeries_today": surgeries_today,
+                "upcoming_count": upcoming_count,
+                "surgery_type_labels": json.dumps(surgery_type_labels),
+                "surgery_type_counts": json.dumps(surgery_type_counts),
+                "status_labels": json.dumps(status_labels),
+                "status_counts": json.dumps(status_counts),
+                "status_colors": json.dumps(status_colors),
+                "emergency_surgeries": emergency_surgeries,
+            }
+        )
 
         return context
 
 
 # Equipment Maintenance and Calibration Views
-class EquipmentMaintenanceView(LoginRequiredMixin, ListView):
+class EquipmentMaintenanceView(
+    LoginRequiredMixin, ReceptionistHROAccessMixin, ListView
+):
     model = SurgicalEquipment
-    template_name = 'theatre/equipment_maintenance.html'
-    context_object_name = 'equipment_due'
+    template_name = "theatre/equipment_maintenance.html"
+    context_object_name = "equipment_due"
 
     def get_queryset(self):
         today = timezone.now().date()
@@ -869,33 +1144,44 @@ class EquipmentMaintenanceView(LoginRequiredMixin, ListView):
         # and potentially a custom manager or method on the model.
         return SurgicalEquipment.objects.filter(
             Q(next_maintenance_date__lte=today) | Q(last_calibration_date__lte=today)
-        ).order_by('next_maintenance_date', 'last_calibration_date')
+        ).order_by("next_maintenance_date", "last_calibration_date")
 
 
 # Reporting Views
-class SurgeryReportView(LoginRequiredMixin, TemplateView):
-    template_name = 'theatre/surgery_report.html'
+class SurgeryReportView(LoginRequiredMixin, ReceptionistHROAccessMixin, TemplateView):
+    template_name = "theatre/surgery_report.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
+
         # Total surgeries by status
-        context['surgeries_by_status'] = Surgery.objects.values('status').annotate(count=Count('id'))
+        context["surgeries_by_status"] = Surgery.objects.values("status").annotate(
+            count=Count("id")
+        )
 
         # Surgeries by type
-        context['surgeries_by_type'] = Surgery.objects.values('surgery_type__name').annotate(count=Count('id'))
+        context["surgeries_by_type"] = Surgery.objects.values(
+            "surgery_type__name"
+        ).annotate(count=Count("id"))
 
         # Surgeries by surgeon
-        context['surgeries_by_surgeon'] = Surgery.objects.values('primary_surgeon__first_name', 'primary_surgeon__last_name').annotate(count=Count('id'))
+        context["surgeries_by_surgeon"] = Surgery.objects.values(
+            "primary_surgeon__first_name", "primary_surgeon__last_name"
+        ).annotate(count=Count("id"))
 
         # Complications (simple count for now)
-        context['complications_count'] = PostOperativeNote.objects.exclude(complications__isnull=True).exclude(complications__exact='').count()
+        context["complications_count"] = (
+            PostOperativeNote.objects.exclude(complications__isnull=True)
+            .exclude(complications__exact="")
+            .count()
+        )
 
         return context
 
 
 @login_required
-@permission_required('theatre.view')
+@theatre_access_required
+@permission_required("theatre.view")
 def theatre_statistics_report(request):
     """Comprehensive theatre statistics and reporting"""
     from django.db.models import Q, Sum, Count, Avg
@@ -903,29 +1189,30 @@ def theatre_statistics_report(request):
     from decimal import Decimal
 
     # Get filter parameters
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
-    surgery_type_id = request.GET.get('surgery_type')
-    theatre_id = request.GET.get('theatre')
-    status = request.GET.get('status')
-    surgeon_id = request.GET.get('surgeon')
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+    surgery_type_id = request.GET.get("surgery_type")
+    theatre_id = request.GET.get("theatre")
+    status = request.GET.get("status")
+    surgeon_id = request.GET.get("surgeon")
 
     # Default date range (last 30 days)
     if not start_date:
         start_date = (timezone.now() - timedelta(days=30)).date()
     else:
-        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
 
     if not end_date:
         end_date = timezone.now().date()
     else:
-        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
 
     # Base queryset for surgeries
     surgeries = Surgery.objects.filter(
-        scheduled_date__date__gte=start_date,
-        scheduled_date__date__lte=end_date
-    ).select_related('patient', 'surgery_type', 'theatre', 'primary_surgeon', 'anesthetist')
+        scheduled_date__date__gte=start_date, scheduled_date__date__lte=end_date
+    ).select_related(
+        "patient", "surgery_type", "theatre", "primary_surgeon", "anesthetist"
+    )
 
     # Apply filters
     if surgery_type_id:
@@ -941,230 +1228,278 @@ def theatre_statistics_report(request):
         surgeries = surgeries.filter(primary_surgeon_id=surgeon_id)
 
     # Surgeries by theatre
-    theatre_stats = surgeries.values(
-        'theatre__name',
-        'theatre__id'
-    ).annotate(
-        total_surgeries=Count('id'),
-        completed_surgeries=Count('id', filter=Q(status='completed')),
-        cancelled_surgeries=Count('id', filter=Q(status='cancelled')),
-        avg_duration=Avg('expected_duration'),
-        unique_patients=Count('patient', distinct=True),
-        unique_surgeons=Count('primary_surgeon', distinct=True)
-    ).order_by('-total_surgeries')
+    theatre_stats = (
+        surgeries.values("theatre__name", "theatre__id")
+        .annotate(
+            total_surgeries=Count("id"),
+            completed_surgeries=Count("id", filter=Q(status="completed")),
+            cancelled_surgeries=Count("id", filter=Q(status="cancelled")),
+            avg_duration=Avg("expected_duration"),
+            unique_patients=Count("patient", distinct=True),
+            unique_surgeons=Count("primary_surgeon", distinct=True),
+        )
+        .order_by("-total_surgeries")
+    )
 
     # Top surgery types by volume
-    top_surgery_types = surgeries.values(
-        'surgery_type__name',
-        'surgery_type__id'
-    ).annotate(
-        total_surgeries=Count('id'),
-        completed_surgeries=Count('id', filter=Q(status='completed')),
-        avg_duration=Avg('expected_duration'),
-        unique_patients=Count('patient', distinct=True)
-    ).order_by('-total_surgeries')[:10]
+    top_surgery_types = (
+        surgeries.values("surgery_type__name", "surgery_type__id")
+        .annotate(
+            total_surgeries=Count("id"),
+            completed_surgeries=Count("id", filter=Q(status="completed")),
+            avg_duration=Avg("expected_duration"),
+            unique_patients=Count("patient", distinct=True),
+        )
+        .order_by("-total_surgeries")[:10]
+    )
 
     # Status distribution
-    status_stats = surgeries.values('status').annotate(
-        count=Count('id')
-    ).order_by('-count')
+    status_stats = (
+        surgeries.values("status").annotate(count=Count("id")).order_by("-count")
+    )
 
     # Daily surgery volume trend
-    daily_stats = surgeries.extra(
-        select={'day': 'DATE(scheduled_date)'}
-    ).values('day').annotate(
-        daily_surgeries=Count('id'),
-        daily_completed=Count('id', filter=Q(status='completed'))
-    ).order_by('day')
+    daily_stats = (
+        surgeries.extra(select={"day": "DATE(scheduled_date)"})
+        .values("day")
+        .annotate(
+            daily_surgeries=Count("id"),
+            daily_completed=Count("id", filter=Q(status="completed")),
+        )
+        .order_by("day")
+    )
 
     # Top surgeons
-    top_surgeons = surgeries.filter(
-        primary_surgeon__isnull=False
-    ).values(
-        'primary_surgeon__first_name',
-        'primary_surgeon__last_name',
-        'primary_surgeon__id'
-    ).annotate(
-        total_surgeries=Count('id'),
-        completed_surgeries=Count('id', filter=Q(status='completed')),
-        unique_patients=Count('patient', distinct=True),
-        avg_duration=Avg('expected_duration')
-    ).order_by('-total_surgeries')[:10]
+    top_surgeons = (
+        surgeries.filter(primary_surgeon__isnull=False)
+        .values(
+            "primary_surgeon__first_name",
+            "primary_surgeon__last_name",
+            "primary_surgeon__id",
+        )
+        .annotate(
+            total_surgeries=Count("id"),
+            completed_surgeries=Count("id", filter=Q(status="completed")),
+            unique_patients=Count("patient", distinct=True),
+            avg_duration=Avg("expected_duration"),
+        )
+        .order_by("-total_surgeries")[:10]
+    )
 
     # Theatre utilization
-    theatre_utilization = surgeries.values(
-        'theatre__name',
-        'theatre__id'
-    ).annotate(
-        scheduled_hours=Sum('expected_duration'),
-        total_surgeries=Count('id')
-    ).order_by('-scheduled_hours')
+    theatre_utilization = (
+        surgeries.values("theatre__name", "theatre__id")
+        .annotate(scheduled_hours=Sum("expected_duration"), total_surgeries=Count("id"))
+        .order_by("-scheduled_hours")
+    )
 
     # Overall statistics
     overall_stats = surgeries.aggregate(
-        total_surgeries=Count('id'),
-        completed_surgeries=Count('id', filter=Q(status='completed')),
-        cancelled_surgeries=Count('id', filter=Q(status='cancelled')),
-        in_progress_surgeries=Count('id', filter=Q(status='in_progress')),
-        scheduled_surgeries=Count('id', filter=Q(status='scheduled')),
-        avg_duration=Avg('expected_duration'),
-        unique_patients=Count('patient', distinct=True),
-        unique_surgeons=Count('primary_surgeon', distinct=True),
-        unique_theatres=Count('theatre', distinct=True)
+        total_surgeries=Count("id"),
+        completed_surgeries=Count("id", filter=Q(status="completed")),
+        cancelled_surgeries=Count("id", filter=Q(status="cancelled")),
+        in_progress_surgeries=Count("id", filter=Q(status="in_progress")),
+        scheduled_surgeries=Count("id", filter=Q(status="scheduled")),
+        avg_duration=Avg("expected_duration"),
+        unique_patients=Count("patient", distinct=True),
+        unique_surgeons=Count("primary_surgeon", distinct=True),
+        unique_theatres=Count("theatre", distinct=True),
     )
 
     # Success rate (completed vs total)
-    total_surgeries = overall_stats['total_surgeries'] or 0
-    completed_surgeries = overall_stats['completed_surgeries'] or 0
-    success_rate = (completed_surgeries / total_surgeries * 100) if total_surgeries > 0 else 0
+    total_surgeries = overall_stats["total_surgeries"] or 0
+    completed_surgeries = overall_stats["completed_surgeries"] or 0
+    success_rate = (
+        (completed_surgeries / total_surgeries * 100) if total_surgeries > 0 else 0
+    )
 
     # Cancellation rate
-    cancelled_surgeries = overall_stats['cancelled_surgeries'] or 0
-    cancellation_rate = (cancelled_surgeries / total_surgeries * 100) if total_surgeries > 0 else 0
+    cancelled_surgeries = overall_stats["cancelled_surgeries"] or 0
+    cancellation_rate = (
+        (cancelled_surgeries / total_surgeries * 100) if total_surgeries > 0 else 0
+    )
 
     # Complications count (from post-operative notes)
-    complications_count = PostOperativeNote.objects.filter(
-        surgery__in=surgeries,
-        complications__isnull=False
-    ).exclude(complications__exact='').count()
+    complications_count = (
+        PostOperativeNote.objects.filter(
+            surgery__in=surgeries, complications__isnull=False
+        )
+        .exclude(complications__exact="")
+        .count()
+    )
 
     # Get filter options
-    surgery_types = SurgeryType.objects.all().order_by('name')
-    theatres = OperationTheatre.objects.filter(is_available=True).order_by('name')
+    surgery_types = SurgeryType.objects.all().order_by("name")
+    theatres = OperationTheatre.objects.filter(is_available=True).order_by("name")
     surgeons = CustomUser.objects.filter(
-        profile__specialization__icontains='surgeon'
-    ).order_by('first_name', 'last_name')
+        profile__specialization__icontains="surgeon"
+    ).order_by("first_name", "last_name")
 
     context = {
-        'title': 'Theatre Statistics and Reports',
-        'start_date': start_date,
-        'end_date': end_date,
-        'theatre_stats': theatre_stats,
-        'top_surgery_types': top_surgery_types,
-        'top_surgeons': top_surgeons,
-        'theatre_utilization': theatre_utilization,
-        'status_stats': status_stats,
-        'daily_stats': daily_stats,
-        'overall_stats': overall_stats,
-        'success_rate': success_rate,
-        'cancellation_rate': cancellation_rate,
-        'complications_count': complications_count,
-        'surgery_types': surgery_types,
-        'theatres': theatres,
-        'surgeons': surgeons,
-        'selected_surgery_type': surgery_type_id,
-        'selected_theatre': theatre_id,
-        'selected_status': status,
-        'selected_surgeon': surgeon_id,
+        "title": "Theatre Statistics and Reports",
+        "start_date": start_date,
+        "end_date": end_date,
+        "theatre_stats": theatre_stats,
+        "top_surgery_types": top_surgery_types,
+        "top_surgeons": top_surgeons,
+        "theatre_utilization": theatre_utilization,
+        "status_stats": status_stats,
+        "daily_stats": daily_stats,
+        "overall_stats": overall_stats,
+        "success_rate": success_rate,
+        "cancellation_rate": cancellation_rate,
+        "complications_count": complications_count,
+        "surgery_types": surgery_types,
+        "theatres": theatres,
+        "surgeons": surgeons,
+        "selected_surgery_type": surgery_type_id,
+        "selected_theatre": theatre_id,
+        "selected_status": status,
+        "selected_surgeon": surgeon_id,
     }
 
-    return render(request, 'theatre/reports/theatre_statistics.html', context)
+    return render(request, "theatre/reports/theatre_statistics.html", context)
 
 
 # Theatre Dashboard View
 @login_required
-@permission_required('theatre.view')
+@theatre_access_required
+@permission_required("theatre.view")
 def get_patient_surgery_history(request):
     """
     AJAX view to get patient's surgery history and suggest surgeons/anesthetists
     """
-    patient_id = request.GET.get('patient_id')
-    
+    patient_id = request.GET.get("patient_id")
+
     if not patient_id:
-        return JsonResponse({'error': 'Patient ID is required'}, status=400)
-    
+        return JsonResponse({"error": "Patient ID is required"}, status=400)
+
     try:
         patient = Patient.objects.get(id=patient_id)
-        
+
         # Get patient's previous surgeries
-        previous_surgeries = Surgery.objects.filter(
-            patient=patient,
-            status='completed'
-        ).select_related('primary_surgeon', 'anesthetist', 'surgery_type').order_by('-scheduled_date')[:5]
-        
+        previous_surgeries = (
+            Surgery.objects.filter(patient=patient, status="completed")
+            .select_related("primary_surgeon", "anesthetist", "surgery_type")
+            .order_by("-scheduled_date")[:5]
+        )
+
         # Extract frequently used surgeons and anesthetists
         surgeons = []
         anesthetists = []
         surgery_history = []
-        
+
         for surgery in previous_surgeries:
-            surgery_history.append({
-                'surgery_type': surgery.surgery_type.name,
-                'date': surgery.scheduled_date.strftime('%Y-%m-%d'),
-                'surgeon': surgery.primary_surgeon.get_full_name() if surgery.primary_surgeon else None,
-                'anesthetist': surgery.anesthetist.get_full_name() if surgery.anesthetist else None
-            })
-            
-            if surgery.primary_surgeon and surgery.primary_surgeon.id not in [s['id'] for s in surgeons]:
-                surgeons.append({
-                    'id': surgery.primary_surgeon.id,
-                    'name': surgery.primary_surgeon.get_full_name(),
-                    'specialization': getattr(surgery.primary_surgeon.profile, 'specialization', 'Surgeon') if hasattr(surgery.primary_surgeon, 'profile') else 'Surgeon'
-                })
-            
-            if surgery.anesthetist and surgery.anesthetist.id not in [a['id'] for a in anesthetists]:
-                anesthetists.append({
-                    'id': surgery.anesthetist.id,
-                    'name': surgery.anesthetist.get_full_name(),
-                    'specialization': getattr(surgery.anesthetist.profile, 'specialization', 'Anesthetist') if hasattr(surgery.anesthetist, 'profile') else 'Anesthetist'
-                })
-        
-        return JsonResponse({
-            'surgery_history': surgery_history,
-            'suggested_surgeons': surgeons,
-            'suggested_anesthetists': anesthetists,
-            'total_surgeries': previous_surgeries.count()
-        })
-        
+            surgery_history.append(
+                {
+                    "surgery_type": surgery.surgery_type.name,
+                    "date": surgery.scheduled_date.strftime("%Y-%m-%d"),
+                    "surgeon": surgery.primary_surgeon.get_full_name()
+                    if surgery.primary_surgeon
+                    else None,
+                    "anesthetist": surgery.anesthetist.get_full_name()
+                    if surgery.anesthetist
+                    else None,
+                }
+            )
+
+            if surgery.primary_surgeon and surgery.primary_surgeon.id not in [
+                s["id"] for s in surgeons
+            ]:
+                surgeons.append(
+                    {
+                        "id": surgery.primary_surgeon.id,
+                        "name": surgery.primary_surgeon.get_full_name(),
+                        "specialization": getattr(
+                            surgery.primary_surgeon.profile, "specialization", "Surgeon"
+                        )
+                        if hasattr(surgery.primary_surgeon, "profile")
+                        else "Surgeon",
+                    }
+                )
+
+            if surgery.anesthetist and surgery.anesthetist.id not in [
+                a["id"] for a in anesthetists
+            ]:
+                anesthetists.append(
+                    {
+                        "id": surgery.anesthetist.id,
+                        "name": surgery.anesthetist.get_full_name(),
+                        "specialization": getattr(
+                            surgery.anesthetist.profile, "specialization", "Anesthetist"
+                        )
+                        if hasattr(surgery.anesthetist, "profile")
+                        else "Anesthetist",
+                    }
+                )
+
+        return JsonResponse(
+            {
+                "surgery_history": surgery_history,
+                "suggested_surgeons": surgeons,
+                "suggested_anesthetists": anesthetists,
+                "total_surgeries": previous_surgeries.count(),
+            }
+        )
+
     except Patient.DoesNotExist:
-        return JsonResponse({'error': 'Patient not found'}, status=404)
+        return JsonResponse({"error": "Patient not found"}, status=404)
     except (ValueError, TypeError, Decimal.InvalidOperation) as e:
-        return JsonResponse({'error': f'Invalid data format: {str(e)}'}, status=400)
+        return JsonResponse({"error": f"Invalid data format: {str(e)}"}, status=400)
     except Exception as e:
         # Log the error for debugging while maintaining security
         import logging
+
         logger = logging.getLogger(__name__)
-        logger.error(f'Unexpected error in surgery cost estimation: {str(e)}', exc_info=True)
-        return JsonResponse({'error': 'An unexpected error occurred. Please try again.'}, status=500)
+        logger.error(
+            f"Unexpected error in surgery cost estimation: {str(e)}", exc_info=True
+        )
+        return JsonResponse(
+            {"error": "An unexpected error occurred. Please try again."}, status=500
+        )
 
 
 @login_required
-@permission_required('theatre.create')
+@theatre_access_required
+@permission_required("theatre.create")
 def create_prescription_for_theatre(request, surgery_id):
     """Create a prescription for a theatre patient"""
     from .models import Surgery
+
     surgery = get_object_or_404(Surgery, id=surgery_id)
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         prescription_form = MedicalModulePrescriptionForm(request.POST)
         formset = PrescriptionItemFormSet(request.POST)
-        
+
         if prescription_form.is_valid() and formset.is_valid():
             try:
                 with transaction.atomic():
                     # Create the prescription
-                    diagnosis = prescription_form.cleaned_data['diagnosis']
-                    notes = prescription_form.cleaned_data['notes']
-                    prescription_type = prescription_form.cleaned_data['prescription_type']
-                    
+                    diagnosis = prescription_form.cleaned_data["diagnosis"]
+                    notes = prescription_form.cleaned_data["notes"]
+                    prescription_type = prescription_form.cleaned_data[
+                        "prescription_type"
+                    ]
+
                     prescription = Prescription.objects.create(
                         patient=surgery.patient,
                         doctor=request.user,
                         diagnosis=diagnosis,
                         notes=notes,
-                        prescription_type=prescription_type
+                        prescription_type=prescription_type,
                     )
-                    
+
                     # Add prescription items
                     for form in formset.cleaned_data:
-                        if form and not form.get('DELETE', False):
-                            medication = form['medication']
-                            dosage = form['dosage']
-                            frequency = form['frequency']
-                            duration = form['duration']
-                            quantity = form['quantity']
-                            instructions = form.get('instructions', '')
-                            
+                        if form and not form.get("DELETE", False):
+                            medication = form["medication"]
+                            dosage = form["dosage"]
+                            frequency = form["frequency"]
+                            duration = form["duration"]
+                            quantity = form["quantity"]
+                            instructions = form.get("instructions", "")
+
                             PrescriptionItem.objects.create(
                                 prescription=prescription,
                                 medication=medication,
@@ -1172,74 +1507,87 @@ def create_prescription_for_theatre(request, surgery_id):
                                 frequency=frequency,
                                 duration=duration,
                                 quantity=quantity,
-                                instructions=instructions
+                                instructions=instructions,
                             )
-                    
-                    messages.success(request, 'Prescription created successfully!')
-                    return redirect('theatre:surgery_detail', pk=surgery.id)
-                    
+
+                    messages.success(request, "Prescription created successfully!")
+                    return redirect("theatre:surgery_detail", pk=surgery.id)
+
             except (DatabaseError, IntegrityError) as e:
-                messages.error(request, 'Database error occurred while creating prescription. Please try again.')
-                logger.error(f'Database error in prescription creation: {str(e)}', exc_info=True)
+                messages.error(
+                    request,
+                    "Database error occurred while creating prescription. Please try again.",
+                )
+                logger.error(
+                    f"Database error in prescription creation: {str(e)}", exc_info=True
+                )
             except Exception as e:
-                messages.error(request, 'An unexpected error occurred while creating prescription. Please try again.')
-                logger.error(f'Unexpected error in prescription creation: {str(e)}', exc_info=True)
+                messages.error(
+                    request,
+                    "An unexpected error occurred while creating prescription. Please try again.",
+                )
+                logger.error(
+                    f"Unexpected error in prescription creation: {str(e)}",
+                    exc_info=True,
+                )
         else:
-            messages.error(request, 'Please correct the form errors.')
+            messages.error(request, "Please correct the form errors.")
     else:
         prescription_form = MedicalModulePrescriptionForm()
         formset = PrescriptionItemFormSet()
-    
+
     context = {
-        'surgery': surgery,
-        'prescription_form': prescription_form,
-        'formset': formset,
-        'title': 'Create Prescription'
+        "surgery": surgery,
+        "prescription_form": prescription_form,
+        "formset": formset,
+        "title": "Create Prescription",
     }
-    return render(request, 'theatre/create_prescription.html', context)
+    return render(request, "theatre/create_prescription.html", context)
 
 
 @login_required
-@permission_required('theatre.create')
+@theatre_access_required
+@permission_required("theatre.create")
 def order_medical_pack_for_surgery(request, surgery_id):
     """Order a medical pack for a specific surgery"""
     from .models import Surgery
+
     surgery = get_object_or_404(Surgery, id=surgery_id)
 
     # Check if NHIA patient requires authorization before ordering packs
-    if surgery.patient.patient_type == 'nhia':
+    if surgery.patient.patient_type == "nhia":
         if not surgery.authorization_code:
             messages.error(
                 request,
-                'Authorization required! This is an NHIA patient. Please request and obtain '
-                'authorization from the desk office before ordering medical packs.'
+                "Authorization required! This is an NHIA patient. Please request and obtain "
+                "authorization from the desk office before ordering medical packs.",
             )
-            return redirect('theatre:surgery_detail', pk=surgery.id)
+            return redirect("theatre:surgery_detail", pk=surgery.id)
 
         # Check if authorization is still valid
-        if hasattr(surgery.authorization_code, 'is_valid') and not surgery.authorization_code.is_valid():
+        if (
+            hasattr(surgery.authorization_code, "is_valid")
+            and not surgery.authorization_code.is_valid()
+        ):
             messages.error(
                 request,
-                'Authorization code has expired or is invalid. Please request a new authorization '
-                'from the desk office before ordering medical packs.'
+                "Authorization code has expired or is invalid. Please request a new authorization "
+                "from the desk office before ordering medical packs.",
             )
-            return redirect('theatre:surgery_detail', pk=surgery.id)
+            return redirect("theatre:surgery_detail", pk=surgery.id)
 
     # Get surgery-specific packs
-    available_packs = MedicalPack.objects.filter(
-        is_active=True,
-        pack_type='surgery'
-    )
+    available_packs = MedicalPack.objects.filter(is_active=True, pack_type="surgery")
 
     # Filter by surgery type if available
-    if hasattr(surgery.surgery_type, 'name'):
+    if hasattr(surgery.surgery_type, "name"):
         # Map surgery type name to the choice value
         surgery_type_mapping = {
-            'Appendectomy': 'appendectomy',
-            'Cholecystectomy': 'cholecystectomy',
-            'Hernia Repair': 'hernia_repair',
-            'Cesarean Section': 'cesarean_section',
-            'Tonsillectomy': 'tonsillectomy',
+            "Appendectomy": "appendectomy",
+            "Cholecystectomy": "cholecystectomy",
+            "Hernia Repair": "hernia_repair",
+            "Cesarean Section": "cesarean_section",
+            "Tonsillectomy": "tonsillectomy",
         }
 
         surgery_type = surgery_type_mapping.get(surgery.surgery_type.name)
@@ -1247,9 +1595,11 @@ def order_medical_pack_for_surgery(request, surgery_id):
             surgery_type_packs = available_packs.filter(surgery_type=surgery_type)
             if surgery_type_packs.exists():
                 available_packs = surgery_type_packs
-    
-    if request.method == 'POST':
-        form = PackOrderForm(request.POST, surgery=surgery, preselected_patient=surgery.patient)
+
+    if request.method == "POST":
+        form = PackOrderForm(
+            request.POST, surgery=surgery, preselected_patient=surgery.patient
+        )
 
         if form.is_valid():
             try:
@@ -1258,80 +1608,84 @@ def order_medical_pack_for_surgery(request, surgery_id):
                     pack_order.surgery = surgery
                     pack_order.patient = surgery.patient
                     pack_order.ordered_by = request.user
-                    
+
                     # Set scheduled date to surgery date if not provided
                     if not pack_order.scheduled_date:
                         pack_order.scheduled_date = surgery.scheduled_date
-                    
+
                     pack_order.save()
-                    
+
                     # Automatically process pack order and create prescription
                     try:
                         prescription = pack_order.process_order(request.user)
 
                         # Add pack costs to patient billing via pharmacy
-                        _add_pack_to_patient_billing(surgery.patient, pack_order, 'surgery')
+                        _add_pack_to_patient_billing(
+                            surgery.patient, pack_order, "surgery"
+                        )
 
                         messages.success(
                             request,
                             f'Medical pack "{pack_order.pack.name}" ordered successfully for surgery. '
-                            f'Prescription #{prescription.id} has been automatically created with {prescription.items.count()} medications. '
-                            f'Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to pharmacy billing.'
+                            f"Prescription #{prescription.id} has been automatically created with {prescription.items.count()} medications. "
+                            f"Pack cost (₦{pack_order.pack.get_total_cost():.2f}) has been added to pharmacy billing.",
                         )
                     except Exception as e:
                         # Pack order was created but processing failed
                         messages.warning(
                             request,
                             f'Medical pack "{pack_order.pack.name}" ordered successfully, but processing failed: {str(e)}. '
-                            f'Please process the pack order manually if needed.'
+                            f"Please process the pack order manually if needed.",
                         )
-                    
-                    return redirect('theatre:surgery_detail', pk=surgery.id)
-                    
+
+                    return redirect("theatre:surgery_detail", pk=surgery.id)
+
             except Exception as e:
-                messages.error(request, f'Error creating pack order: {str(e)}')
+                messages.error(request, f"Error creating pack order: {str(e)}")
         else:
             # Display specific form errors for debugging
             for field, errors in form.errors.items():
                 for error in errors:
-                    messages.error(request, f'{field}: {error}')
+                    messages.error(request, f"{field}: {error}")
             if not form.errors:
-                messages.error(request, 'Please correct the form errors.')
+                messages.error(request, "Please correct the form errors.")
     else:
         # Pre-populate form with surgery context
         initial_data = {
-            'scheduled_date': surgery.scheduled_date,
-            'order_notes': f'Pack order for surgery: {surgery.surgery_type.name}'
+            "scheduled_date": surgery.scheduled_date,
+            "order_notes": f"Pack order for surgery: {surgery.surgery_type.name}",
         }
-        
+
         # Pre-select authorization code if surgery already has one
         if surgery.authorization_code:
-            initial_data['authorization_code'] = surgery.authorization_code.id
-        
-        form = PackOrderForm(initial=initial_data, surgery=surgery, preselected_patient=surgery.patient)
+            initial_data["authorization_code"] = surgery.authorization_code.id
+
+        form = PackOrderForm(
+            initial=initial_data, surgery=surgery, preselected_patient=surgery.patient
+        )
 
         # Filter pack choices to surgery-specific packs
-        form.fields['pack'].queryset = available_packs
-    
+        form.fields["pack"].queryset = available_packs
+
     context = {
-        'surgery': surgery,
-        'form': form,
-        'available_packs': available_packs,
-        'page_title': 'Order Medical Pack for Surgery',
-        'pack': None  # Will be set if pack_id is in GET params
+        "surgery": surgery,
+        "form": form,
+        "available_packs": available_packs,
+        "page_title": "Order Medical Pack for Surgery",
+        "pack": None,  # Will be set if pack_id is in GET params
     }
-    
+
     # Handle pack preview
-    pack_id = request.GET.get('pack_id')
+    pack_id = request.GET.get("pack_id")
     if pack_id:
         try:
             pack = get_object_or_404(MedicalPack, id=pack_id, is_active=True)
-            context['pack'] = pack
-            context['form'].fields['pack'].initial = pack
+            context["pack"] = pack
+            context["form"].fields["pack"].initial = pack
         except:
             pass
-    
-    return render(request, 'theatre/order_medical_pack.html', context)
+
+    return render(request, "theatre/order_medical_pack.html", context)
 
 
 def _add_pack_to_surgery_invoice(surgery, pack_order):
@@ -1343,13 +1697,13 @@ def _add_pack_to_surgery_invoice(surgery, pack_order):
             patient=surgery.patient,
             invoice_date=surgery.scheduled_date.date(),
             due_date=surgery.scheduled_date.date() + timezone.timedelta(days=7),
-            status='pending',
-            subtotal=Decimal('0.00'),
-            tax_amount=Decimal('0.00'),
-            discount_amount=Decimal('0.00'),
-            total_amount=Decimal('0.00'),
+            status="pending",
+            subtotal=Decimal("0.00"),
+            tax_amount=Decimal("0.00"),
+            discount_amount=Decimal("0.00"),
+            total_amount=Decimal("0.00"),
             created_by=pack_order.ordered_by,
-            source_app='theatre'
+            source_app="theatre",
         )
         surgery.invoice = invoice
         surgery.save()
@@ -1359,31 +1713,31 @@ def _add_pack_to_surgery_invoice(surgery, pack_order):
         if not isinstance(invoice.discount_amount, Decimal):
             invoice.discount_amount = Decimal(str(invoice.discount_amount))
             invoice.save()
-    
+
     # Create or get medical pack service category
     pack_service_category, _ = ServiceCategory.objects.get_or_create(
         name="Medical Packs",
-        defaults={'description': 'Pre-packaged medical supplies and medications'}
+        defaults={"description": "Pre-packaged medical supplies and medications"},
     )
-    
+
     # Create or get service for this specific pack
     service, _ = Service.objects.get_or_create(
         name=f"Medical Pack: {pack_order.pack.name}",
         category=pack_service_category,
         defaults={
-            'price': Decimal(str(pack_order.pack.get_total_cost())),
-            'description': f"Medical pack for {pack_order.pack.get_pack_type_display()}: {pack_order.pack.name}",
-            'tax_percentage': Decimal('0.00')  # Assuming no tax on medical packs
-        }
+            "price": Decimal(str(pack_order.pack.get_total_cost())),
+            "description": f"Medical pack for {pack_order.pack.get_pack_type_display()}: {pack_order.pack.name}",
+            "tax_percentage": Decimal("0.00"),  # Assuming no tax on medical packs
+        },
     )
-    
+
     # Calculate pack cost with NHIA discount if applicable
     pack_cost = Decimal(str(pack_order.pack.get_total_cost()))
 
     # Apply 10% payment for NHIA patients (they pay 10%, NHIA covers 90%)
-    if surgery.patient.patient_type == 'nhia':
-        pack_cost = pack_cost * Decimal('0.10')  # NHIA patients pay 10%
-    
+    if surgery.patient.patient_type == "nhia":
+        pack_cost = pack_cost * Decimal("0.10")  # NHIA patients pay 10%
+
     # Add invoice item for the pack
     invoice_item = InvoiceItem.objects.create(
         invoice=invoice,
@@ -1391,43 +1745,46 @@ def _add_pack_to_surgery_invoice(surgery, pack_order):
         description=f"Medical Pack: {pack_order.pack.name} (Order #{pack_order.id}){' - NHIA Patient (10% payment)' if surgery.patient.patient_type == 'nhia' else ''}",
         quantity=1,
         unit_price=pack_cost,
-        tax_percentage=Decimal('0.00'),
-        tax_amount=Decimal('0.00'),
-        discount_amount=Decimal('0.00'),
-        total_amount=pack_cost
+        tax_percentage=Decimal("0.00"),
+        tax_amount=Decimal("0.00"),
+        discount_amount=Decimal("0.00"),
+        total_amount=pack_cost,
     )
-    
+
     # Update invoice totals
-    invoice.subtotal = invoice.items.aggregate(
-        total=models.Sum('total_amount')
-    )['total'] or Decimal('0.00')
-    invoice.tax_amount = invoice.items.aggregate(
-        total=models.Sum('tax_amount')
-    )['total'] or Decimal('0.00')
-    invoice.total_amount = invoice.subtotal + invoice.tax_amount - invoice.discount_amount
+    invoice.subtotal = invoice.items.aggregate(total=models.Sum("total_amount"))[
+        "total"
+    ] or Decimal("0.00")
+    invoice.tax_amount = invoice.items.aggregate(total=models.Sum("tax_amount"))[
+        "total"
+    ] or Decimal("0.00")
+    invoice.total_amount = (
+        invoice.subtotal + invoice.tax_amount - invoice.discount_amount
+    )
     invoice.save()
 
     return invoice_item
 
 
 @login_required
-@permission_required('theatre.edit')
+@theatre_access_required
+@permission_required("theatre.edit")
 def request_surgery_authorization(request, surgery_id):
     """Request authorization from desk office for NHIA surgery"""
     surgery = get_object_or_404(Surgery, id=surgery_id)
 
     # Check if patient is NHIA
-    if surgery.patient.patient_type != 'nhia':
-        messages.error(request, 'Authorization is only required for NHIA patients.')
-        return redirect('theatre:surgery_detail', pk=surgery.id)
+    if surgery.patient.patient_type != "nhia":
+        messages.error(request, "Authorization is only required for NHIA patients.")
+        return redirect("theatre:surgery_detail", pk=surgery.id)
 
     # Check if authorization already exists
     if surgery.authorization_code:
-        messages.info(request, 'Authorization code already exists for this surgery.')
-        return redirect('theatre:surgery_detail', pk=surgery.id)
+        messages.info(request, "Authorization code already exists for this surgery.")
+        return redirect("theatre:surgery_detail", pk=surgery.id)
 
     # Update surgery status to indicate authorization is pending
-    surgery.status = 'pending'
+    surgery.status = "pending"
     surgery.save()
 
     # TODO: Create notification for desk office
@@ -1436,24 +1793,25 @@ def request_surgery_authorization(request, surgery_id):
 
     messages.success(
         request,
-        'Authorization request sent to desk office. You will be notified once the authorization '
-        'is approved. Medical packs cannot be ordered until authorization is received.'
+        "Authorization request sent to desk office. You will be notified once the authorization "
+        "is approved. Medical packs cannot be ordered until authorization is received.",
     )
 
-    return redirect('theatre:surgery_detail', pk=surgery.id)
+    return redirect("theatre:surgery_detail", pk=surgery.id)
 
 
 @login_required
-@permission_required('theatre.view')
+@theatre_access_required
+@permission_required("theatre.view")
 def get_surgery_type_equipment(request):
     """
     AJAX view to get required equipment for a surgery type.
     Returns equipment list with quantities and availability status.
     """
-    surgery_type_id = request.GET.get('surgery_type_id')
+    surgery_type_id = request.GET.get("surgery_type_id")
 
     if not surgery_type_id:
-        return JsonResponse({'error': 'Surgery type ID is required'}, status=400)
+        return JsonResponse({"error": "Surgery type ID is required"}, status=400)
 
     try:
         surgery_type = SurgeryType.objects.get(id=surgery_type_id)
@@ -1461,31 +1819,36 @@ def get_surgery_type_equipment(request):
         # Get required equipment for this surgery type
         required_equipment = SurgeryTypeEquipment.objects.filter(
             surgery_type=surgery_type
-        ).select_related('equipment')
+        ).select_related("equipment")
 
         equipment_list = []
         for req in required_equipment:
-            equipment_list.append({
-                'id': req.equipment.id,
-                'name': req.equipment.name,
-                'equipment_type': req.equipment.equipment_type,
-                'quantity_required': req.quantity_required,
-                'is_mandatory': req.is_mandatory,
-                'notes': req.notes,
-                'is_available': req.equipment.is_available and req.equipment.quantity_available >= req.quantity_required,
-                'quantity_available': req.equipment.quantity_available,
-            })
+            equipment_list.append(
+                {
+                    "id": req.equipment.id,
+                    "name": req.equipment.name,
+                    "equipment_type": req.equipment.equipment_type,
+                    "quantity_required": req.quantity_required,
+                    "is_mandatory": req.is_mandatory,
+                    "notes": req.notes,
+                    "is_available": req.equipment.is_available
+                    and req.equipment.quantity_available >= req.quantity_required,
+                    "quantity_available": req.equipment.quantity_available,
+                }
+            )
 
-        return JsonResponse({
-            'surgery_type': surgery_type.name,
-            'equipment': equipment_list,
-            'total_required': len(equipment_list),
-            'mandatory_count': sum(1 for e in equipment_list if e['is_mandatory']),
-            'available_count': sum(1 for e in equipment_list if e['is_available']),
-        })
+        return JsonResponse(
+            {
+                "surgery_type": surgery_type.name,
+                "equipment": equipment_list,
+                "total_required": len(equipment_list),
+                "mandatory_count": sum(1 for e in equipment_list if e["is_mandatory"]),
+                "available_count": sum(1 for e in equipment_list if e["is_available"]),
+            }
+        )
 
     except SurgeryType.DoesNotExist:
-        return JsonResponse({'error': 'Surgery type not found'}, status=404)
+        return JsonResponse({"error": "Surgery type not found"}, status=404)
     except Exception as e:
-        logger.error(f'Error fetching surgery type equipment: {str(e)}', exc_info=True)
-        return JsonResponse({'error': 'An unexpected error occurred'}, status=500)
+        logger.error(f"Error fetching surgery type equipment: {str(e)}", exc_info=True)
+        return JsonResponse({"error": "An unexpected error occurred"}, status=500)
