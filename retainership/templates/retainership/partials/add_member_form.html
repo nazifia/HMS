@@ -1,18 +1,17 @@
 <form id="addMemberForm{{ wallet.id }}"
       hx-post="{% url 'retainership:add_member_to_wallet' wallet.id %}"
-      hx-target="#add-member-result-{{ wallet.id }}"
-      hx-on::after-request="if(event.detail.successful) { setTimeout(function() { bootstrap.Modal.getInstance(document.getElementById('addMemberModal{{ wallet.id }}')).hide(); htmx.trigger('#wallet-table-body', 'refresh'); }, 1500); }">
+      hx-target="#add-member-result-{{ wallet.id }}">
     {% csrf_token %}
     <div class="mb-3">
         <label for="patientSearch{{ wallet.id }}" class="form-label">Search Patient</label>
-        <input type="text" 
-               class="form-control" 
+        <input type="text"
+               class="form-control"
                id="patientSearch{{ wallet.id }}"
-               name="patient_search"
+               name="q"
                placeholder="Type to search by name or patient ID..."
                hx-get="{% url 'retainership:htmx_search_patients_for_wallet' wallet.id %}"
                hx-target="#patient-results-{{ wallet.id }}"
-               hx-trigger="keyup changed delay:300ms, focus"
+               hx-trigger="keyup changed delay:300ms"
                hx-indicator="#search-indicator-{{ wallet.id }}">
         <input type="hidden" name="patient_id" id="selectedPatientId{{ wallet.id }}">
         <div id="search-indicator-{{ wallet.id }}" class="htmx-indicator">
@@ -36,18 +35,37 @@
 </form>
 
 <script>
-function selectPatient(walletId, patientId, patientName) {
-    document.getElementById('selectedPatientId' + walletId).value = patientId;
-    document.getElementById('patientSearch' + walletId).value = patientName;
-    document.getElementById('patient-results-' + walletId).innerHTML = '';
-    document.getElementById('submitBtn' + walletId).disabled = false;
-}
+(function() {
+    const walletId = '{{ wallet.id }}';
 
-// Clear form when modal is closed
-document.getElementById('addMemberModal{{ wallet.id }}').addEventListener('hidden.bs.modal', function () {
-    document.getElementById('addMemberForm{{ wallet.id }}').reset();
-    document.getElementById('patient-results-{{ wallet.id }}').innerHTML = '';
-    document.getElementById('add-member-result-{{ wallet.id }}').innerHTML = '';
-    document.getElementById('submitBtn{{ wallet.id }}').disabled = true;
-});
+    // Handle patient selection
+    window.selectPatient = window.selectPatient || function(wid, pid, pname) {
+        const patientIdField = document.getElementById('selectedPatientId' + wid);
+        const patientSearchField = document.getElementById('patientSearch' + wid);
+        const patientResultsDiv = document.getElementById('patient-results-' + wid);
+        const submitBtn = document.getElementById('submitBtn' + wid);
+
+        if (patientIdField) patientIdField.value = pid;
+        if (patientSearchField) patientSearchField.value = pname;
+        if (patientResultsDiv) patientResultsDiv.innerHTML = '';
+        if (submitBtn) submitBtn.disabled = false;
+    };
+
+    // Clear form when modal is closed - use once to avoid duplicate listeners
+    const modalEl = document.getElementById('addMemberModal' + walletId);
+    if (modalEl && !modalEl._hasClearListener) {
+        modalEl._hasClearListener = true;
+        modalEl.addEventListener('hidden.bs.modal', function () {
+            const form = document.getElementById('addMemberForm' + walletId);
+            const results = document.getElementById('patient-results-' + walletId);
+            const resultDiv = document.getElementById('add-member-result-' + walletId);
+            const submitBtn = document.getElementById('submitBtn' + walletId);
+
+            if (form) form.reset();
+            if (results) results.innerHTML = '';
+            if (resultDiv) resultDiv.innerHTML = '';
+            if (submitBtn) submitBtn.disabled = true;
+        });
+    }
+})();
 </script>
