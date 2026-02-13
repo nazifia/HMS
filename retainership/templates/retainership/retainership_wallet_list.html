@@ -158,8 +158,8 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addMemberForm{{ wallet.id }}" 
-                      hx-post="{% url 'retainership:add_wallet_member' wallet.id %}"
+                <form id="addMemberForm{{ wallet.id }}"
+                      hx-post="{% url 'retainership:add_member_to_wallet' wallet.id %}"
                       hx-target="#add-member-result-{{ wallet.id }}">
                     {% csrf_token %}
                     <div class="mb-3">
@@ -169,7 +169,7 @@
                                id="patientSearch{{ wallet.id }}"
                                name="patient_search"
                                placeholder="Type to search by name or patient ID..."
-                               hx-get="{% url 'retainership:search_patients_for_wallet' wallet.id %}"
+                               hx-get="{% url 'retainership:htmx_search_patients_for_wallet' wallet.id %}"
                                hx-target="#patient-results-{{ wallet.id }}"
                                hx-trigger="keyup changed delay:300ms">
                         <input type="hidden" name="patient_id" id="selectedPatientId{{ wallet.id }}">

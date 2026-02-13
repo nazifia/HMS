@@ -869,3 +869,20 @@ def htmx_search_patients_for_wallet(request, wallet_id):
 
     context = {"patients": patients, "wallet": wallet}
     return render(request, "retainership/partials/patient_search_results.html", context)
+
+
+@login_required
+@login_required
+@role_required(
+    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
+)
+def wallet_members_partial(request, wallet_id):
+    """HTMX endpoint for viewing wallet members"""
+    wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type="retainership")
+    members = wallet.members.select_related("patient").all()
+
+    context = {
+        "wallet": wallet,
+        "members": members,
+    }
+    return render(request, "retainership/partials/wallet_members.html", context)

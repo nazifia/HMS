@@ -48,6 +48,11 @@ urlpatterns = [
         name="htmx_search_patients_for_wallet",
     ),
     path(
+        "wallet/<int:wallet_id>/members/",
+        views.wallet_members_partial,
+        name="wallet_members_partial",
+    ),
+    path(
         "create-wallet/<int:patient_id>/",
         views.create_retainership_wallet,
         name="create_wallet",
