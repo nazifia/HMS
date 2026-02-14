@@ -1673,7 +1673,9 @@ def edit_role(request, role_id):
             old_permissions = list(role.permissions.values_list("name", flat=True))
             logger.info(f"[Role Edit] Updating role '{role.name}' (ID: {role_id})")
             logger.info(f"[Role Edit] Old permissions: {old_permissions}")
-            logger.info(f"[Role Edit] Form cleaned_data permissions: {list(form.cleaned_data.get('permissions', []).values_list('name', flat=True))}")
+            logger.info(
+                f"[Role Edit] Form cleaned_data permissions: {list(form.cleaned_data.get('permissions', []).values_list('name', flat=True))}"
+            )
 
             role = form.save()
             new_permissions = list(role.permissions.values_list("name", flat=True))
@@ -1686,20 +1688,27 @@ def edit_role(request, role_id):
             for user in users_with_role:
                 user.clear_permission_cache()
                 cache_cleared_count += 1
-            logger.info(f"[Role Edit] Cleared permission cache for {cache_cleared_count} users with role '{role.name}'")
+            logger.info(
+                f"[Role Edit] Cleared permission cache for {cache_cleared_count} users with role '{role.name}'"
+            )
 
             # Clear UI permission cache
             try:
                 from django.core.cache import cache
+
                 # Get all cache keys matching pattern
                 cache_keys_to_delete = []
                 try:
                     # Try to get cache keys if cache backend supports it
-                    if hasattr(cache, 'keys'):
-                        cache_keys_to_delete = [k for k in cache.keys('*') if k.startswith('ui_perm_')]
+                    if hasattr(cache, "keys"):
+                        cache_keys_to_delete = [
+                            k for k in cache.keys("*") if k.startswith("ui_perm_")
+                        ]
                         if cache_keys_to_delete:
                             cache.delete_many(cache_keys_to_delete)
-                            logger.info(f"[Role Edit] Cleared {len(cache_keys_to_delete)} UI permission cache entries")
+                            logger.info(
+                                f"[Role Edit] Cleared {len(cache_keys_to_delete)} UI permission cache entries"
+                            )
                 except Exception as e:
                     logger.warning(f"[Role Edit] Could not clear UI cache: {e}")
             except Exception as e:
@@ -1718,7 +1727,10 @@ def edit_role(request, role_id):
                 timestamp=timezone.now(),
             )
 
-            messages.success(request, f'Role "{role.name}" updated successfully. Permission cache cleared for {cache_cleared_count} users.')
+            messages.success(
+                request,
+                f'Role "{role.name}" updated successfully. Permission cache cleared for {cache_cleared_count} users.',
+            )
             return redirect("accounts:role_management")
     else:
         form = RoleForm(instance=role)
@@ -1889,36 +1901,96 @@ def delete_role(request, role_id):
 @login_required
 @user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def user_privileges(request, user_id):
-    """View for managing user privileges (role assignments)"""
+    """View for managing user privileges (role and permission assignments)"""
+    from core.permissions import APP_PERMISSIONS
+    from accounts.permissions import ROLE_PERMISSIONS
+
     target_user = get_object_or_404(User, id=user_id)
+    user_permissions = target_user.user_permissions.all()
+
+    all_roles = Role.objects.all().order_by("name")
+    user_roles = target_user.roles.all()
+    user_role_ids = list(user_roles.values_list("id", flat=True))
+
+    all_permissions = Permission.objects.select_related("content_type").all()
+
+    custom_permission_codenames = set()
+    for category_perms in APP_PERMISSIONS.values():
+        custom_permission_codenames.update(category_perms.keys())
+
+    custom_permissions = []
+    model_permissions = []
+
+    for perm in all_permissions:
+        if perm.codename in custom_permission_codenames:
+            custom_permissions.append(perm)
+        else:
+            model_permissions.append(perm)
+
+    custom_permissions.sort(key=lambda p: p.name)
+    model_permissions.sort(key=lambda p: (p.content_type.model, p.name))
+    ordered_permissions = custom_permissions + model_permissions
 
     if request.method == "POST":
-        form = UserRoleAssignmentForm(request.POST, instance=target_user)
-        if form.is_valid():
-            old_roles = list(target_user.roles.values_list("name", flat=True))
-            form.save()
-            new_roles = list(target_user.roles.values_list("name", flat=True))
+        role_ids = request.POST.getlist("roles")
+        permission_ids = request.POST.getlist("permissions")
 
-            # Log the action
-            AuditLog.objects.create(
-                user=request.user,
-                target_user=target_user,
-                action="privilege_change",
-                details={"old_roles": old_roles, "new_roles": new_roles},
-                ip_address=request.META.get("REMOTE_ADDR"),
-                timestamp=timezone.now(),
-            )
+        old_roles = list(target_user.roles.values_list("name", flat=True))
+        old_permissions = list(
+            target_user.user_permissions.values_list("codename", flat=True)
+        )
 
-            messages.success(
-                request, f'Privileges updated for user "{target_user.get_full_name()}".'
-            )
-            return redirect("accounts:user_dashboard")
-    else:
-        form = UserRoleAssignmentForm(instance=target_user)
+        target_user.roles.set(role_ids)
+        target_user.user_permissions.set(permission_ids)
+
+        new_roles = list(target_user.roles.values_list("name", flat=True))
+        new_permissions = list(
+            target_user.user_permissions.values_list("codename", flat=True)
+        )
+
+        if len(role_ids) == 1:
+            selected_role = Role.objects.filter(id=role_ids[0]).first()
+            if (
+                selected_role
+                and hasattr(target_user, "profile")
+                and target_user.profile
+            ):
+                target_user.profile.role = selected_role.name
+                target_user.profile.save()
+
+        AuditLog.objects.create(
+            user=request.user,
+            target_user=target_user,
+            action="privilege_change",
+            details={
+                "old_roles": old_roles,
+                "new_roles": new_roles,
+                "old_permissions": old_permissions,
+                "new_permissions": new_permissions,
+            },
+            ip_address=request.META.get("REMOTE_ADDR"),
+            timestamp=timezone.now(),
+        )
+
+        messages.success(
+            request, f'Privileges updated for user "{target_user.get_full_name()}".'
+        )
+        return redirect("accounts:user_dashboard")
+
+    form = UserRoleAssignmentForm(instance=target_user)
 
     context = {
         "form": form,
         "target_user": target_user,
+        "user_permissions": user_permissions,
+        "all_permissions": ordered_permissions,
+        "custom_permissions": custom_permissions,
+        "model_permissions": model_permissions,
+        "app_permissions": APP_PERMISSIONS,
+        "all_roles": all_roles,
+        "user_roles": user_roles,
+        "user_role_ids": user_role_ids,
+        "role_permissions_json": json.dumps(ROLE_PERMISSIONS),
         "page_title": f"Manage Privileges: {target_user.get_full_name()}",
         "active_nav": "user_dashboard",
     }

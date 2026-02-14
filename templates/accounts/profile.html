@@ -1,130 +1,245 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load custom_filters %} {# Assuming you might have static files for custom CSS or default images #}
 
 {% block title %}
-    Profile for {{ viewed_user_object.username }}
+    Profile - {{ viewed_user_object.username }}
 {% endblock %}
 
 {% block content %}
-<div class="container mt-5 mb-5">
-    <div class="row d-flex justify-content-center">
-        <div class="col-md-10 col-lg-9">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">User Profile: {{ viewed_user_object.username }}</h4>
-                </div>
-                <div class="card-body p-4">
-                    <div class="row">
-                        <div class="col-md-4 text-center mb-3 mb-md-0">
-                            {% if viewed_user_profile.profile_picture %}
-                                <img src="{{ viewed_user_profile.profile_picture.url }}" alt="Profile Picture for {{ viewed_user_object.username }}" class="img-fluid rounded-circle" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;">
-                            {% else %}
-                                {# You can use a default placeholder image #}
-                                <img src="{% static 'images/default_profile.png' %}" alt="Default Profile Picture" class="img-fluid rounded-circle" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;">
-                                <p class="text-muted small mt-2">No profile picture</p>
-                            {% endif %}
-                            <h5 class="mt-3 mb-0">{{ viewed_user_object.get_full_name|default:viewed_user_object.username }}</h5>
-                            <p class="text-muted small">{{ viewed_user_object.email|default:"No email provided" }}</p>
-                            {% if request.user == viewed_user_object or request.user.is_staff %}
-                                <a href="{% url 'accounts:edit_profile' %}?user_id={{ viewed_user_object.id }}" class="btn btn-outline-primary btn-sm mt-2">
-                                    <i class="fas fa-edit me-1"></i> Edit Profile
-                                </a>
-                            {% endif %}
-                        </div>
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3">
+                        {% if viewed_user_profile.profile_picture %}
+                            <img src="{{ viewed_user_profile.profile_picture.url }}" 
+                                 alt="Profile Picture" 
+                                 class="rounded-circle shadow-sm"
+                                 style="width: 140px; height: 140px; object-fit: cover; border: 4px solid #fff;">
+                        {% else %}
+                            <div class="rounded-circle bg-gradient d-flex align-items-center justify-content-center mx-auto shadow-sm"
+                                 style="width: 140px; height: 140px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                <span class="text-white" style="font-size: 3rem;">
+                                    {{ viewed_user_object.first_name.0|default:viewed_user_object.username.0|upper }}
+                                </span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <h4 class="mb-1">{{ viewed_user_object.get_full_name|default:viewed_user_object.username }}</h4>
+                    <p class="text-muted mb-3">{{ viewed_user_object.email|default:"No email" }}</p>
+                    
+                    <div class="d-flex justify-content-center gap-2 mb-3">
+                        {% if viewed_user_object.is_active %}
+                            <span class="badge bg-success-subtle text-success border border-success">
+                                <i class="fas fa-check-circle me-1"></i>Active
+                            </span>
+                        {% else %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger">
+                                <i class="fas fa-times-circle me-1"></i>Inactive
+                            </span>
+                        {% endif %}
+                    </div>
 
-                        <div class="col-md-8">
-                            <h5 class="mb-3 border-bottom pb-2">Account Information</h5>
-                            <div class="row mb-3">
-                                <div class="col-sm-6">
-                                    <p class="mb-1"><strong>Login ID (Phone):</strong></p>
-                                    <p class="text-muted">{{ viewed_user_object.phone_number }}</p>
+                    {% if request.user == viewed_user_object or request.user.is_staff %}
+                        <a href="{% url 'accounts:edit_profile' %}?user_id={{ viewed_user_object.id }}" 
+                           class="btn btn-primary w-100">
+                            <i class="fas fa-edit me-2"></i>Edit Profile
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <div class="text-muted small">
+                        <i class="fas fa-clock me-1"></i>
+                        Joined: {{ viewed_user_object.date_joined|date:"M d, Y" }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="row">
+                <div class="col-12 mb-4">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white border-0 py-3">
+                            <h5 class="mb-0">
+                                <i class="fas fa-user-circle text-primary me-2"></i>Account Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-light rounded p-2 me-3">
+                                            <i class="fas fa-phone text-muted"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block">Phone Number</small>
+                                            <span>{{ viewed_user_object.phone_number|default:"N/A" }}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-sm-6">
-                                    <p class="mb-1"><strong>Username:</strong></p>
-                                    <p class="text-muted">{{ viewed_user_object.username }}</p>
-                                </div>
-                                <div class="col-sm-6">
-                                    <p class="mb-1"><strong>Joined Date:</strong></p>
-                                    <p class="text-muted">{{ viewed_user_object.date_joined|date:"M d, Y" }}</p>
-                                </div>
-                                 <div class="col-sm-6">
-                                    <p class="mb-1"><strong>Status:</strong></p>
-                                    <p class="text-muted">
-                                        {% if viewed_user_object.is_active %}
-                                            <span class="badge bg-success">Active</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">Inactive</span>
-                                        {% endif %}
-                                    </p>
+                                <div class="col-md-6 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-light rounded p-2 me-3">
+                                            <i class="fas fa-user text-muted"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block">Username</small>
+                                            <span>{{ viewed_user_object.username }}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-
-                            {% if viewed_user_profile %}
-                                <h5 class="mt-4 mb-3 border-bottom pb-2">Detailed Information</h5>
-                                <div class="row">
-                                    <div class="col-sm-6 mb-2">
-                                        <p class="mb-1"><strong>Address:</strong></p>
-                                        <p class="text-muted">{{ viewed_user_profile.address|default:"N/A" }}</p>
-                                    </div>
-                                    <div class="col-sm-6 mb-2">
-                                        <p class="mb-1"><strong>Date of Birth:</strong></p>
-                                        <p class="text-muted">{{ viewed_user_profile.date_of_birth|date:"M d, Y"|default:"N/A" }}</p>
-                                    </div>
-                                    <div class="col-sm-6 mb-2">
-                                        <p class="mb-1"><strong>Department:</strong></p>
-                                        <p class="text-muted">{{ viewed_user_profile.department|default:"N/A" }}</p>
-                                    </div>
-                                    <div class="col-sm-6 mb-2">
-                                        <p class="mb-1"><strong>Employee ID:</strong></p>
-                                        <p class="text-muted">{{ viewed_user_profile.employee_id|default:"N/A" }}</p>
-                                    </div>
-                                    <div class="col-sm-6 mb-2">
-                                        <p class="mb-1"><strong>Specialization:</strong></p>
-                                        <p class="text-muted">{{ viewed_user_profile.specialization|default:"N/A" }}</p>
-                                    </div>
-                                    <div class="col-sm-6 mb-2">
-                                        <p class="mb-1"><strong>Qualification:</strong></p>
-                                        <p class="text-muted">{{ viewed_user_profile.qualification|default:"N/A" }}</p>
-                                    </div>
-                                    <div class="col-sm-6 mb-2">
-                                        <p class="mb-1"><strong>Profile Status:</strong></p>
-                                        <p class="text-muted">
-                                            {% if viewed_user_profile.is_active %}
-                                                <span class="badge bg-success">Active</span>
-                                            {% else %}
-                                                <span class="badge bg-secondary">Inactive</span>
-                                            {% endif %}
-                                        </p>
-                                    </div>
-                                </div>
-                            {% else %}
-                                <div class="alert alert-info mt-3" role="alert">
-                                    No detailed profile information available for this user.
-                                </div>
-                            {% endif %}
-
-                            <h5 class="mt-4 mb-3 border-bottom pb-2">Roles</h5>
-                            <p>
-                                {% for role in viewed_user_object.roles.all %}
-                                    <span class="badge bg-info text-dark me-1 fs-6">{{ role.name }}</span>
-                                {% empty %}
-                                    <span class="text-muted">No roles assigned.</span>
-                                {% endfor %}
-                            </p>
                         </div>
                     </div>
                 </div>
-                <div class="card-footer text-muted text-center small">
-                    Last updated: {{ viewed_user_object.profile.updated_at|date:"M d, Y, H:i"|default:"N/A" }}
-                    {# Assuming you add an updated_at field to CustomUserProfile model that auto updates #}
-                    {# models.DateTimeField(auto_now=True) #}
+
+                <div class="col-12 mb-4">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white border-0 py-3">
+                            <h5 class="mb-0">
+                                <i class="fas fa-id-card text-info me-2"></i>Personal Details
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if viewed_user_profile or viewed_user_object %}
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">First Name</small>
+                                            <span class="fw-medium">{{ viewed_user_object.first_name|default:"N/A" }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">Last Name</small>
+                                            <span class="fw-medium">{{ viewed_user_object.last_name|default:"N/A" }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">Email</small>
+                                            <span class="fw-medium">{{ viewed_user_object.email|default:"N/A" }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">Phone Number</small>
+                                            <span class="fw-medium">{{ viewed_user_object.phone_number|default:"N/A" }}</span>
+                                        </div>
+                                    </div>
+                                    {% if viewed_user_profile %}
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">Address</small>
+                                            <span class="fw-medium">{{ viewed_user_profile.address|default:"N/A" }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">Date of Birth</small>
+                                            <span class="fw-medium">{{ viewed_user_profile.date_of_birth|date:"M d, Y"|default:"N/A" }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">Department</small>
+                                            <span class="fw-medium">{{ viewed_user_profile.department.name|default:"N/A" }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">Employee ID</small>
+                                            <span class="fw-medium">{{ viewed_user_profile.employee_id|default:"N/A" }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">Specialization</small>
+                                            <span class="fw-medium">{{ viewed_user_profile.specialization|default:"N/A" }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">Qualification</small>
+                                            <span class="fw-medium">{{ viewed_user_profile.qualification|default:"N/A" }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">Profile Status</small>
+                                            <div class="mt-1">
+                                                {% if viewed_user_profile.is_active %}
+                                                    <span class="badge bg-success">Active</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Inactive</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">Last Updated</small>
+                                            <span class="fw-medium">{{ viewed_user_profile.updated_at|date:"M d, Y, H:i"|default:"N/A" }}</span>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <div class="col-12">
+                                        <div class="alert alert-warning" role="alert">
+                                            <i class="fas fa-exclamation-circle me-2"></i>
+                                            Profile details not found. <a href="{% url 'accounts:edit_profile' %}?user_id={{ viewed_user_object.id }}">Click here to create profile</a>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info mb-0" role="alert">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    No profile information available.
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white border-0 py-3">
+                            <h5 class="mb-0">
+                                <i class="fas fa-user-shield text-warning me-2"></i>Roles & Permissions
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for role in viewed_user_object.roles.all %}
+                                    <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2">
+                                        <i class="fas fa-tag me-1"></i>{{ role.name }}
+                                    </span>
+                                {% empty %}
+                                    <span class="text-muted">No roles assigned.</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-{# Add this to your base.html or include Font Awesome if you want icons like fas fa-edit #}
-{# <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"> #}
+<style>
+    .bg-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .badge.bg-primary-subtle {
+        background-color: #e7f1ff !important;
+    }
+    .badge.bg-success-subtle {
+        background-color: #d1e7dd !important;
+    }
+    .badge.bg-danger-subtle {
+        background-color: #f8d7da !important;
+    }
+</style>
 {% endblock %}

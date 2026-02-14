@@ -379,7 +379,13 @@ class CustomUserProfile(models.Model):
         null=True,
         blank=True,
         related_name="user_profiles",
-        verbose_name="department",
+        verbose_name="primary department",
+    )
+    departments = models.ManyToManyField(
+        "accounts.Department",
+        blank=True,
+        related_name="assigned_staff",
+        verbose_name="assigned departments",
     )
     employee_id = models.CharField(
         max_length=20, blank=True, null=True, unique=True, db_index=True
