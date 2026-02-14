@@ -6,13 +6,7 @@ from django.contrib import messages
 from django.db import transaction
 from decimal import Decimal
 
-from accounts.constants import (
-    ROLE_ADMIN,
-    ROLE_ACCOUNTANT,
-    ROLE_RECEPTIONIST,
-    ROLE_HEALTH_RECORD_OFFICER,
-)
-from core.decorators import role_required
+from accounts.permissions import permission_required
 from patients.models import (
     Patient,
     SharedWallet,
@@ -49,9 +43,7 @@ import os
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.view")
 def retainership_patient_list(request):
     retainership_patients = (
         RetainershipPatient.objects.select_related("patient")
@@ -95,9 +87,7 @@ from django.db.models import Sum
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.view")
 def select_patient_for_retainership(request):
     search_form = PatientSearchForm(request.GET)
     # Only show patients who already have Retainership registration
@@ -138,9 +128,7 @@ def select_patient_for_retainership(request):
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.view")
 def retainership_wallet_list(request):
     """List all retainership wallets with management capabilities"""
     # Get all retainership wallets
@@ -207,9 +195,7 @@ def retainership_wallet_list(request):
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.view")
 def view_wallet_details(request, wallet_id):
     """View detailed information about a specific retainership wallet"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type="retainership")
@@ -261,9 +247,7 @@ def view_wallet_details(request, wallet_id):
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.edit")
 def manage_wallet_by_id(request, wallet_id):
     """Manage a retainership wallet by wallet ID (not patient ID)"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type="retainership")
@@ -388,9 +372,7 @@ def manage_wallet_by_id(request, wallet_id):
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.create")
 def register_patient_for_retainership(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
 
@@ -426,9 +408,7 @@ def register_patient_for_retainership(request, patient_id):
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.create")
 def register_independent_retainership_patient(request):
     if request.method == "POST":
         form = RetainershipIndependentPatientForm(request.POST, request.FILES)
@@ -508,9 +488,7 @@ def register_independent_retainership_patient(request):
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.edit")
 def create_retainership_wallet(request, patient_id):
     """Create a shared wallet for a retainership patient"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -572,9 +550,7 @@ def create_retainership_wallet(request, patient_id):
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.edit")
 def manage_retainership_wallet(request, patient_id):
     """Manage retainership wallet transactions and settings"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -705,9 +681,7 @@ def manage_retainership_wallet(request, patient_id):
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.edit")
 def link_retainership_patient_to_wallet(request, patient_id):
     """Link a retainership patient to an existing retainership wallet"""
     patient = get_object_or_404(Patient, id=patient_id)
@@ -783,9 +757,7 @@ def link_retainership_patient_to_wallet(request, patient_id):
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.edit")
 def add_member_to_retainership_wallet(request, wallet_id):
     """Add a patient to a retainership wallet - supports HTMX requests"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type="retainership")
@@ -915,9 +887,7 @@ def add_member_to_retainership_wallet(request, wallet_id):
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.view")
 def htmx_search_patients_for_wallet(request, wallet_id):
     """HTMX endpoint for searching patients to add to a wallet"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type="retainership")
@@ -944,9 +914,7 @@ def htmx_search_patients_for_wallet(request, wallet_id):
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.view")
 def wallet_members_partial(request, wallet_id):
     """HTMX endpoint for viewing wallet members"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type="retainership")
@@ -960,9 +928,7 @@ def wallet_members_partial(request, wallet_id):
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.edit")
 def remove_wallet_member(request, wallet_id, member_id):
     """Remove a member from a retainership wallet"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type="retainership")
@@ -1018,9 +984,7 @@ def remove_wallet_member(request, wallet_id, member_id):
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.view")
 def print_wallet_transactions(request, wallet_id):
     """Generate a printable PDF of wallet transactions with optional date range filter"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type="retainership")
@@ -1245,9 +1209,7 @@ def print_wallet_transactions(request, wallet_id):
 
 
 @login_required
-@role_required(
-    [ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_RECEPTIONIST, ROLE_HEALTH_RECORD_OFFICER]
-)
+@permission_required("retainership.view")
 def print_wallet_transactions_html(request, wallet_id):
     """Generate a printable HTML view of wallet transactions with optional date range filter"""
     wallet = get_object_or_404(SharedWallet, id=wallet_id, wallet_type="retainership")
