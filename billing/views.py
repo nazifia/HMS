@@ -10,7 +10,13 @@ from django.core.cache import cache
 from decimal import Decimal
 import csv
 from .models import Invoice, InvoiceItem, Payment, Service
-from .forms import InvoiceForm, InvoiceItemForm, PaymentForm, ServiceForm, InvoiceSearchForm
+from .forms import (
+    InvoiceForm,
+    InvoiceItemForm,
+    PaymentForm,
+    ServiceForm,
+    InvoiceSearchForm,
+)
 from patients.models import Patient
 from appointments.models import Appointment
 from laboratory.models import TestRequest
@@ -19,28 +25,33 @@ from inpatient.models import Admission
 from core.audit_utils import log_audit_action
 from core.models import InternalNotification, send_notification_email
 from core.billing_office_integration import BillingOfficePaymentProcessor
+from core.patient_search_utils import (
+    search_patients_by_query,
+    format_patient_search_results,
+)
 from accounts.permissions import permission_required
 
+
 @login_required
-@permission_required('billing.view')
+@permission_required("billing.view")
 def invoice_list(request):
     """View for listing all invoices with search and filter functionality - Optimized"""
     search_form = InvoiceSearchForm(request.GET)
-    invoices = Invoice.objects.select_related('patient').all().order_by('-created_at')
+    invoices = Invoice.objects.select_related("patient").all().order_by("-created_at")
 
     # Apply filters if the form is valid
     if search_form.is_valid():
-        search_query = search_form.cleaned_data.get('search')
-        status = search_form.cleaned_data.get('status')
-        date_from = search_form.cleaned_data.get('date_from')
-        date_to = search_form.cleaned_data.get('date_to')
+        search_query = search_form.cleaned_data.get("search")
+        status = search_form.cleaned_data.get("status")
+        date_from = search_form.cleaned_data.get("date_from")
+        date_to = search_form.cleaned_data.get("date_to")
 
         if search_query:
             invoices = invoices.filter(
-                Q(invoice_number__icontains=search_query) |
-                Q(patient__first_name__icontains=search_query) |
-                Q(patient__last_name__icontains=search_query) |
-                Q(patient__patient_id__icontains=search_query)
+                Q(invoice_number__icontains=search_query)
+                | Q(patient__first_name__icontains=search_query)
+                | Q(patient__last_name__icontains=search_query)
+                | Q(patient__patient_id__icontains=search_query)
             )
 
         if status:
@@ -53,152 +64,192 @@ def invoice_list(request):
             invoices = invoices.filter(created_at__date__lte=date_to)
 
     # Build cache key for computed data only (excluding page_obj which is not picklable)
-    cache_key = f'invoice_list_data_{hash(request.GET.urlencode())}' if request.GET else 'invoice_list_data_all'
+    cache_key = (
+        f"invoice_list_data_{hash(request.GET.urlencode())}"
+        if request.GET
+        else "invoice_list_data_all"
+    )
     cached_data = cache.get(cache_key)
 
     if cached_data:
         # Reconstruct paginator from cached IDs
-        invoice_ids = cached_data['invoice_ids']
-        invoices = Invoice.objects.filter(id__in=invoice_ids).select_related('patient').order_by('-created_at')
+        invoice_ids = cached_data["invoice_ids"]
+        invoices = (
+            Invoice.objects.filter(id__in=invoice_ids)
+            .select_related("patient")
+            .order_by("-created_at")
+        )
         paginator = Paginator(invoices, 10)
-        page_number = request.GET.get('page')
+        page_number = request.GET.get("page")
         page_obj = paginator.get_page(page_number)
 
         context = {
-            'page_obj': page_obj,
-            'search_form': search_form,
-            'total_invoices': cached_data['total_invoices'],
-            'pending_count': cached_data['pending_count'],
-            'paid_count': cached_data['paid_count'],
-            'partially_paid_count': cached_data['partially_paid_count'],
-            'overdue_count': cached_data['overdue_count'],
-            'cancelled_count': cached_data['cancelled_count'],
-            'total_amount': cached_data['total_amount'],
-            'paid_amount': cached_data['paid_amount'],
-            'pending_amount': cached_data['pending_amount'],
-            'overdue_amount': cached_data['overdue_amount'],
+            "page_obj": page_obj,
+            "search_form": search_form,
+            "total_invoices": cached_data["total_invoices"],
+            "pending_count": cached_data["pending_count"],
+            "paid_count": cached_data["paid_count"],
+            "partially_paid_count": cached_data["partially_paid_count"],
+            "overdue_count": cached_data["overdue_count"],
+            "cancelled_count": cached_data["cancelled_count"],
+            "total_amount": cached_data["total_amount"],
+            "paid_amount": cached_data["paid_amount"],
+            "pending_amount": cached_data["pending_amount"],
+            "overdue_amount": cached_data["overdue_amount"],
         }
-        return render(request, 'billing/invoice_list.html', context)
+        return render(request, "billing/invoice_list.html", context)
 
     # Pagination
     paginator = Paginator(invoices, 10)  # Show 10 invoices per page
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
     # Get counts for different statuses - use aggregate for efficiency
-    status_counts = Invoice.objects.values('status').annotate(count=Count('id'))
-    status_count_dict = {item['status']: item['count'] for item in status_counts}
+    status_counts = Invoice.objects.values("status").annotate(count=Count("id"))
+    status_count_dict = {item["status"]: item["count"] for item in status_counts}
 
-    pending_count = status_count_dict.get('pending', 0)
-    paid_count = status_count_dict.get('paid', 0)
-    partially_paid_count = status_count_dict.get('partially_paid', 0)
-    overdue_count = status_count_dict.get('overdue', 0)
-    cancelled_count = status_count_dict.get('cancelled', 0)
+    pending_count = status_count_dict.get("pending", 0)
+    paid_count = status_count_dict.get("paid", 0)
+    partially_paid_count = status_count_dict.get("partially_paid", 0)
+    overdue_count = status_count_dict.get("overdue", 0)
+    cancelled_count = status_count_dict.get("cancelled", 0)
 
     # Get total amounts - use aggregate for efficiency
     total_stats = Invoice.objects.aggregate(
-        total_sum=Sum('total_amount'),
-        paid_sum=Sum('total_amount', filter=Q(status='paid')),
-        pending_sum=Sum('total_amount', filter=Q(status='pending')),
-        overdue_sum=Sum('total_amount', filter=Q(status='overdue'))
+        total_sum=Sum("total_amount"),
+        paid_sum=Sum("total_amount", filter=Q(status="paid")),
+        pending_sum=Sum("total_amount", filter=Q(status="pending")),
+        overdue_sum=Sum("total_amount", filter=Q(status="overdue")),
     )
 
-    total_amount = total_stats['total_sum'] or 0
-    paid_amount = total_stats['paid_sum'] or 0
-    pending_amount = total_stats['pending_sum'] or 0
-    overdue_amount = total_stats['overdue_sum'] or 0
+    total_amount = total_stats["total_sum"] or 0
+    paid_amount = total_stats["paid_sum"] or 0
+    pending_amount = total_stats["pending_sum"] or 0
+    overdue_amount = total_stats["overdue_sum"] or 0
 
     # Cache computed data (excluding page_obj)
     cache_data = {
-        'invoice_ids': list(invoices.values_list('id', flat=True)),
-        'total_invoices': invoices.count(),
-        'pending_count': pending_count,
-        'paid_count': paid_count,
-        'partially_paid_count': partially_paid_count,
-        'overdue_count': overdue_count,
-        'cancelled_count': cancelled_count,
-        'total_amount': total_amount,
-        'paid_amount': paid_amount,
-        'pending_amount': pending_amount,
-        'overdue_amount': overdue_amount,
+        "invoice_ids": list(invoices.values_list("id", flat=True)),
+        "total_invoices": invoices.count(),
+        "pending_count": pending_count,
+        "paid_count": paid_count,
+        "partially_paid_count": partially_paid_count,
+        "overdue_count": overdue_count,
+        "cancelled_count": cancelled_count,
+        "total_amount": total_amount,
+        "paid_amount": paid_amount,
+        "pending_amount": pending_amount,
+        "overdue_amount": overdue_amount,
     }
     cache.set(cache_key, cache_data, 60)
 
     context = {
-        'page_obj': page_obj,
-        'search_form': search_form,
-        'total_invoices': invoices.count(),
-        'pending_count': pending_count,
-        'paid_count': paid_count,
-        'partially_paid_count': partially_paid_count,
-        'overdue_count': overdue_count,
-        'cancelled_count': cancelled_count,
-        'total_amount': total_amount,
-        'paid_amount': paid_amount,
-        'pending_amount': pending_amount,
-        'overdue_amount': overdue_amount,
+        "page_obj": page_obj,
+        "search_form": search_form,
+        "total_invoices": invoices.count(),
+        "pending_count": pending_count,
+        "paid_count": paid_count,
+        "partially_paid_count": partially_paid_count,
+        "overdue_count": overdue_count,
+        "cancelled_count": cancelled_count,
+        "total_amount": total_amount,
+        "paid_amount": paid_amount,
+        "pending_amount": pending_amount,
+        "overdue_amount": overdue_amount,
     }
 
-    return render(request, 'billing/invoice_list.html', context)
+    return render(request, "billing/invoice_list.html", context)
+
 
 @login_required
-@permission_required('billing.create')
+@permission_required("billing.create")
 def create_invoice(request):
     """View for creating a new invoice"""
     # Pre-fill patient_id if provided in GET parameters
-    patient_id = request.GET.get('patient_id')
+    patient_id = request.GET.get("patient_id")
     initial_data = {}
 
     if patient_id:
         try:
             patient = Patient.objects.get(id=patient_id)
-            initial_data['patient'] = patient
+            initial_data["patient"] = patient
+            initial_data["patient_search"] = (
+                f"{patient.first_name} {patient.last_name} ({patient.patient_id})"
+            )
         except Patient.DoesNotExist:
             pass
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = InvoiceForm(request.POST)
         if form.is_valid():
             invoice = form.save(commit=False)
             invoice.created_by = request.user
             invoice.save()
             # Audit log
-            log_audit_action(request.user, 'create', invoice, f"Created invoice {invoice.invoice_number}")
+            log_audit_action(
+                request.user,
+                "create",
+                invoice,
+                f"Created invoice {invoice.invoice_number}",
+            )
             # Notification to billing/admin
             if invoice.created_by:
                 InternalNotification.objects.create(
                     user=invoice.created_by,
-                    message=f"Invoice {invoice.invoice_number} created for {invoice.patient.get_full_name()}"
+                    message=f"Invoice {invoice.invoice_number} created for {invoice.patient.get_full_name()}",
                 )
             # Send email notification if user has email
-            if invoice.created_by and hasattr(invoice.created_by, 'email') and invoice.created_by.email:
+            if (
+                invoice.created_by
+                and hasattr(invoice.created_by, "email")
+                and invoice.created_by.email
+            ):
                 send_notification_email(
                     subject="New Invoice Created",
                     message=f"Invoice {invoice.invoice_number} has been created for {invoice.patient.get_full_name()}.",
-                    recipient_list=[invoice.created_by.email]
+                    recipient_list=[invoice.created_by.email],
                 )
-            messages.success(request, f'Invoice {invoice.invoice_number} has been created successfully.')
-            return redirect('billing:detail', invoice_id=invoice.id)
+            messages.success(
+                request,
+                f"Invoice {invoice.invoice_number} has been created successfully.",
+            )
+            return redirect("billing:detail", invoice_id=invoice.id)
     else:
         form = InvoiceForm(initial=initial_data)
 
-    context = {
-        'form': form,
-        'title': 'Create New Invoice'
-    }
+    context = {"form": form, "title": "Create New Invoice"}
 
-    return render(request, 'billing/invoice_form.html', context)
+    return render(request, "billing/invoice_form.html", context)
+
 
 @login_required
-@permission_required('billing.view')
+def search_billing_patients(request):
+    """AJAX view for searching patients in billing module"""
+    search_term = request.GET.get("term", "")
+
+    if len(search_term) < 2:
+        return HttpResponse(content_type="application/json")
+
+    patients = search_patients_by_query(search_term)
+    results = format_patient_search_results(patients)
+
+    import json
+
+    return HttpResponse(json.dumps(results), content_type="application/json")
+
+
+@login_required
+@permission_required("billing.view")
 def invoice_detail(request, invoice_id):
     """View for displaying invoice details"""
-    invoice = get_object_or_404(Invoice.objects.select_related('patient'), id=invoice_id)
-    invoice_items = invoice.items.select_related('service').all()
-    payments = invoice.payments.all().order_by('-payment_date')
+    invoice = get_object_or_404(
+        Invoice.objects.select_related("patient"), id=invoice_id
+    )
+    invoice_items = invoice.items.select_related("service").all()
+    payments = invoice.payments.all().order_by("-payment_date")
 
     # Handle adding new invoice item
-    if request.method == 'POST' and 'add_item' in request.POST:
+    if request.method == "POST" and "add_item" in request.POST:
         item_form = InvoiceItemForm(request.POST)
         if item_form.is_valid():
             item = item_form.save(commit=False)
@@ -207,113 +258,124 @@ def invoice_detail(request, invoice_id):
             item.save()
 
             # Update invoice total amount
-            subtotal = invoice.items.aggregate(total=Sum('total_amount'))['total'] or 0
+            subtotal = invoice.items.aggregate(total=Sum("total_amount"))["total"] or 0
             invoice.subtotal = subtotal
-            invoice.total_amount = subtotal + invoice.tax_amount - invoice.discount_amount
+            invoice.total_amount = (
+                subtotal + invoice.tax_amount - invoice.discount_amount
+            )
             invoice.save()
 
-            messages.success(request, f'Item {item.description} added to invoice.')
-            return redirect('billing:detail', invoice_id=invoice.id)
+            messages.success(request, f"Item {item.description} added to invoice.")
+            return redirect("billing:detail", invoice_id=invoice.id)
     else:
         item_form = InvoiceItemForm()
 
     context = {
-        'invoice': invoice,
-        'invoice_items': invoice_items,
-        'payments': payments,
-        'item_form': item_form,
+        "invoice": invoice,
+        "invoice_items": invoice_items,
+        "payments": payments,
+        "item_form": item_form,
     }
 
-    return render(request, 'billing/invoice_detail.html', context)
+    return render(request, "billing/invoice_detail.html", context)
+
 
 @login_required
-@permission_required('billing.edit')
+@permission_required("billing.edit")
 def edit_invoice(request, invoice_id):
     """View for editing an invoice"""
     invoice = get_object_or_404(Invoice, id=invoice_id)
 
     # Don't allow editing of paid or cancelled invoices
-    if invoice.status in ['paid', 'cancelled']:
-        messages.error(request, f'Cannot edit invoice with status: {invoice.get_status_display()}')
-        return redirect('billing:detail', invoice_id=invoice.id)
+    if invoice.status in ["paid", "cancelled"]:
+        messages.error(
+            request, f"Cannot edit invoice with status: {invoice.get_status_display()}"
+        )
+        return redirect("billing:detail", invoice_id=invoice.id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = InvoiceForm(request.POST, instance=invoice)
         if form.is_valid():
             form.save()
-            messages.success(request, f'Invoice {invoice.invoice_number} has been updated successfully.')
-            return redirect('billing:detail', invoice_id=invoice.id)
+            messages.success(
+                request,
+                f"Invoice {invoice.invoice_number} has been updated successfully.",
+            )
+            return redirect("billing:detail", invoice_id=invoice.id)
     else:
         form = InvoiceForm(instance=invoice)
 
     context = {
-        'form': form,
-        'invoice': invoice,
-        'title': f'Edit Invoice: {invoice.invoice_number}'
+        "form": form,
+        "invoice": invoice,
+        "title": f"Edit Invoice: {invoice.invoice_number}",
     }
 
-    return render(request, 'billing/invoice_form.html', context)
+    return render(request, "billing/invoice_form.html", context)
+
 
 @login_required
-@permission_required('billing.edit')
+@permission_required("billing.edit")
 def delete_invoice(request, invoice_id):
     """View for deleting an invoice"""
     invoice = get_object_or_404(Invoice, id=invoice_id)
 
     # Don't allow deleting of paid invoices
-    if invoice.status == 'paid':
-        messages.error(request, 'Cannot delete a paid invoice.')
-        return redirect('billing:detail', invoice_id=invoice.id)
+    if invoice.status == "paid":
+        messages.error(request, "Cannot delete a paid invoice.")
+        return redirect("billing:detail", invoice_id=invoice.id)
 
     # Check if there are payments associated with this invoice
     if invoice.payments.exists():
-        messages.error(request, 'Cannot delete an invoice with payments. Cancel it instead.')
-        return redirect('billing:detail', invoice_id=invoice.id)
+        messages.error(
+            request, "Cannot delete an invoice with payments. Cancel it instead."
+        )
+        return redirect("billing:detail", invoice_id=invoice.id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         invoice_number = invoice.invoice_number
         invoice.delete()
-        messages.success(request, f'Invoice {invoice_number} has been deleted.')
-        return redirect('billing:list')
+        messages.success(request, f"Invoice {invoice_number} has been deleted.")
+        return redirect("billing:list")
 
-    context = {
-        'invoice': invoice
-    }
+    context = {"invoice": invoice}
 
-    return render(request, 'billing/delete_invoice.html', context)
+    return render(request, "billing/delete_invoice.html", context)
+
 
 @login_required
-@permission_required('billing.view')
+@permission_required("billing.view")
 def print_invoice(request, invoice_id):
     """View for printing an invoice"""
     invoice = get_object_or_404(Invoice, id=invoice_id)
     invoice_items = invoice.items.all()
-    payments = invoice.payments.all().order_by('-payment_date')
+    payments = invoice.payments.all().order_by("-payment_date")
 
     context = {
-        'invoice': invoice,
-        'invoice_items': invoice_items,
-        'payments': payments,
-        'print_view': True
+        "invoice": invoice,
+        "invoice_items": invoice_items,
+        "payments": payments,
+        "print_view": True,
     }
 
-    return render(request, 'billing/print_invoice.html', context)
+    return render(request, "billing/print_invoice.html", context)
+
 
 @login_required
-@permission_required('billing.process_payment')
+@permission_required("billing.process_payment")
 def record_payment(request, invoice_id):
     context = {}
     """Enhanced view for recording payments with billing office integration"""
     from patients.models import PatientWallet
-    
+
     invoice = get_object_or_404(Invoice, id=invoice_id)
 
     # Calculate remaining amount
     remaining_amount = invoice.get_balance()
 
-    if remaining_amount <= 0 and invoice.status == 'paid':
-        messages.info(request, 'This invoice has already been fully paid.')
-        return redirect('billing:detail', invoice_id=invoice.id)
+    if remaining_amount <= 0 and invoice.status == "paid":
+        messages.info(request, "This invoice has already been fully paid.")
+        return redirect("billing:detail", invoice_id=invoice.id)
 
     # Get or create patient wallet
     patient_wallet = None
@@ -322,17 +384,16 @@ def record_payment(request, invoice_id):
     except PatientWallet.DoesNotExist:
         # Create wallet if it doesn't exist
         patient_wallet = PatientWallet.objects.create(
-            patient=invoice.patient,
-            balance=0
+            patient=invoice.patient, balance=0
         )
 
-    if request.method == 'POST':
-        amount = request.POST.get('amount', '0')
-        payment_source = request.POST.get('payment_source', 'billing_office')
-        payment_method = request.POST.get('payment_method', 'cash')
-        transaction_id = request.POST.get('transaction_id', '')
-        notes = request.POST.get('notes', '')
-        
+    if request.method == "POST":
+        amount = request.POST.get("amount", "0")
+        payment_source = request.POST.get("payment_source", "billing_office")
+        payment_method = request.POST.get("payment_method", "cash")
+        transaction_id = request.POST.get("transaction_id", "")
+        notes = request.POST.get("notes", "")
+
         # Process payment using billing office integration
         success, message, payment = BillingOfficePaymentProcessor.process_payment(
             request=request,
@@ -342,236 +403,264 @@ def record_payment(request, invoice_id):
             payment_method=payment_method,
             transaction_id=transaction_id,
             notes=notes,
-            module_name='Billing'
+            module_name="Billing",
         )
-        
+
         if success:
             messages.success(request, message)
-            
+
             # Send email notification if user has email
-            if invoice.created_by and hasattr(invoice.created_by, 'email') and invoice.created_by.email:
+            if (
+                invoice.created_by
+                and hasattr(invoice.created_by, "email")
+                and invoice.created_by.email
+            ):
                 send_notification_email(
                     subject="Payment Recorded",
                     message=f"A payment of ₦{payment.amount:.2f} was recorded for invoice {invoice.invoice_number} via {payment_source.replace('_', ' ').title()}.",
-                    recipient_list=[invoice.created_by.email]
+                    recipient_list=[invoice.created_by.email],
                 )
-            
-            return redirect('billing:detail', invoice_id=invoice.id)
+
+            return redirect("billing:detail", invoice_id=invoice.id)
         else:
             messages.error(request, message)
     else:
         # Use enhanced context from billing office integration
         context = BillingOfficePaymentProcessor.get_payment_context(
-            request, invoice, 'Billing'
+            request, invoice, "Billing"
         )
-        
+
         # Create form for initial rendering
         form = PaymentForm(
             invoice=invoice,
-            patient_wallet=context['patient_wallet'],
+            patient_wallet=context["patient_wallet"],
             initial={
-                'amount': context['remaining_amount'],
-                'payment_date': timezone.now().date(),
-                'payment_method': 'cash'
-            }
+                "amount": context["remaining_amount"],
+                "payment_date": timezone.now().date(),
+                "payment_method": "cash",
+            },
         )
-        context['form'] = form
-        context['title'] = f'Record Payment for Invoice #{invoice.invoice_number}'
+        context["form"] = form
+        context["title"] = f"Record Payment for Invoice #{invoice.invoice_number}"
 
-    return render(request, 'billing/payment_form.html', context)
+    return render(request, "billing/payment_form.html", context)
+
 
 @login_required
-@permission_required('billing.view')
+@permission_required("billing.view")
 def service_list(request):
     """View for listing all services"""
-    services = Service.objects.all().order_by('name')
+    services = Service.objects.all().order_by("name")
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = ServiceForm(request.POST)
         if form.is_valid():
             service = form.save()
-            messages.success(request, f'Service {service.name} has been added successfully.')
-            return redirect('billing:services')
+            messages.success(
+                request, f"Service {service.name} has been added successfully."
+            )
+            return redirect("billing:services")
     else:
         form = ServiceForm()
 
-    context = {
-        'services': services,
-        'form': form,
-        'title': 'Manage Services'
-    }
+    context = {"services": services, "form": form, "title": "Manage Services"}
 
-    return render(request, 'billing/service_list.html', context)
+    return render(request, "billing/service_list.html", context)
+
 
 @login_required
-@permission_required('billing.create')
+@permission_required("billing.create")
 def add_service(request):
     """Redirect to service_list view which handles both listing and adding"""
     # The request parameter is required by the decorator but not used
-    return redirect('billing:services')
+    return redirect("billing:services")
+
 
 @login_required
-@permission_required('billing.edit')
+@permission_required("billing.edit")
 def edit_service(request, service_id):
     """View for editing a service"""
     service = get_object_or_404(Service, id=service_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = ServiceForm(request.POST, instance=service)
         if form.is_valid():
             form.save()
-            messages.success(request, f'Service {service.name} has been updated successfully.')
-            return redirect('billing:services')
+            messages.success(
+                request, f"Service {service.name} has been updated successfully."
+            )
+            return redirect("billing:services")
     else:
         form = ServiceForm(instance=service)
 
     context = {
-        'form': form,
-        'service': service,
-        'title': f'Edit Service: {service.name}'
+        "form": form,
+        "service": service,
+        "title": f"Edit Service: {service.name}",
     }
 
-    return render(request, 'billing/service_form.html', context)
+    return render(request, "billing/service_form.html", context)
+
 
 @login_required
-@permission_required('billing.edit')
+@permission_required("billing.edit")
 def delete_service(request, service_id):
     """View for deleting a service"""
     service = get_object_or_404(Service, id=service_id)
 
     # Check if service is used in any invoice items
     if InvoiceItem.objects.filter(service=service).exists():
-        messages.error(request, f'Cannot delete service {service.name} because it is used in invoices.')
-        return redirect('billing:services')
+        messages.error(
+            request,
+            f"Cannot delete service {service.name} because it is used in invoices.",
+        )
+        return redirect("billing:services")
 
-    if request.method == 'POST':
+    if request.method == "POST":
         service.delete()
-        messages.success(request, f'Service {service.name} has been deleted.')
-        return redirect('billing:services')
+        messages.success(request, f"Service {service.name} has been deleted.")
+        return redirect("billing:services")
 
-    context = {
-        'service': service
-    }
+    context = {"service": service}
 
-    return render(request, 'billing/delete_service.html', context)
+    return render(request, "billing/delete_service.html", context)
+
 
 @login_required
-@permission_required('billing.view')
+@permission_required("billing.view")
 def patient_invoices(request, patient_id):
     """View for displaying invoices for a specific patient"""
     patient = get_object_or_404(Patient, id=patient_id)
-    invoices = Invoice.objects.select_related('patient').filter(patient=patient).order_by('-created_at')
+    invoices = (
+        Invoice.objects.select_related("patient")
+        .filter(patient=patient)
+        .order_by("-created_at")
+    )
 
     # Get total amounts
-    total_amount = invoices.aggregate(total=Sum('total_amount'))['total'] or 0
-    paid_amount = invoices.filter(status='paid').aggregate(total=Sum('total_amount'))['total'] or 0
-    pending_amount = invoices.filter(status__in=['pending', 'partially_paid', 'overdue']).aggregate(total=Sum('total_amount'))['total'] or 0
+    total_amount = invoices.aggregate(total=Sum("total_amount"))["total"] or 0
+    paid_amount = (
+        invoices.filter(status="paid").aggregate(total=Sum("total_amount"))["total"]
+        or 0
+    )
+    pending_amount = (
+        invoices.filter(status__in=["pending", "partially_paid", "overdue"]).aggregate(
+            total=Sum("total_amount")
+        )["total"]
+        or 0
+    )
 
     context = {
-        'patient': patient,
-        'invoices': invoices,
-        'total_amount': total_amount,
-        'paid_amount': paid_amount,
-        'pending_amount': pending_amount,
+        "patient": patient,
+        "invoices": invoices,
+        "total_amount": total_amount,
+        "paid_amount": paid_amount,
+        "pending_amount": pending_amount,
     }
 
-    return render(request, 'billing/patient_invoices.html', context)
+    return render(request, "billing/patient_invoices.html", context)
+
 
 @login_required
-@permission_required('billing.view')
+@permission_required("billing.view")
 def admission_invoices(request):
     """View for listing all admissions with their billing status"""
-    admissions = Admission.objects.all().order_by('-admission_date')
+    admissions = Admission.objects.all().order_by("-admission_date")
 
     for admission in admissions:
         admission.balance_due = admission.billed_amount - admission.amount_paid
         if admission.balance_due <= 0:
-            admission.payment_status_display = 'Paid'
-            admission.status_badge_class = 'success'
+            admission.payment_status_display = "Paid"
+            admission.status_badge_class = "success"
         elif admission.amount_paid > 0:
-            admission.payment_status_display = 'Partially Paid'
-            admission.status_badge_class = 'warning'
+            admission.payment_status_display = "Partially Paid"
+            admission.status_badge_class = "warning"
         else:
-            admission.payment_status_display = 'Pending'
-            admission.status_badge_class = 'danger'
+            admission.payment_status_display = "Pending"
+            admission.status_badge_class = "danger"
 
-    context = {
-        'admissions': admissions,
-        'title': 'Admission Invoices'
-    }
+    context = {"admissions": admissions, "title": "Admission Invoices"}
 
-    return render(request, 'admissions/admission_invoices.html', context)
+    return render(request, "admissions/admission_invoices.html", context)
+
 
 @login_required
-@permission_required('billing.view')
+@permission_required("billing.view")
 def billing_reports(request):
     """View for billing summary and reporting"""
     # Revenue by month (last 12 months)
     from django.utils import timezone
     from datetime import timedelta
+
     today = timezone.now().date()
     months = []
     revenue_data = []
     for i in range(11, -1, -1):
-        month = (today.replace(day=1) - timedelta(days=30*i)).replace(day=1)
+        month = (today.replace(day=1) - timedelta(days=30 * i)).replace(day=1)
         next_month = (month + timedelta(days=32)).replace(day=1)
-        total = Invoice.objects.filter(
-            invoice_date__gte=month,
-            invoice_date__lt=next_month,
-            status__in=['paid', 'partially_paid']
-        ).aggregate(total=Sum('total_amount'))['total'] or 0
-        months.append(month.strftime('%b %Y'))
+        total = (
+            Invoice.objects.filter(
+                invoice_date__gte=month,
+                invoice_date__lt=next_month,
+                status__in=["paid", "partially_paid"],
+            ).aggregate(total=Sum("total_amount"))["total"]
+            or 0
+        )
+        months.append(month.strftime("%b %Y"))
         revenue_data.append(float(total))
     # Outstanding balances
-    outstanding = Invoice.objects.filter(status__in=['pending', 'partially_paid', 'overdue']).aggregate(total=Sum('total_amount'))['total'] or 0
+    outstanding = (
+        Invoice.objects.filter(
+            status__in=["pending", "partially_paid", "overdue"]
+        ).aggregate(total=Sum("total_amount"))["total"]
+        or 0
+    )
     # Invoice count by status
-    status_counts = Invoice.objects.values('status').annotate(count=Count('id'))
+    status_counts = Invoice.objects.values("status").annotate(count=Count("id"))
     # Revenue by department (ServiceCategory)
     from billing.models import ServiceCategory
+
     dept_revenue = (
-        InvoiceItem.objects
-        .values('service__category__name')
-        .annotate(total=Sum('total_amount'))
-        .order_by('-total')
+        InvoiceItem.objects.values("service__category__name")
+        .annotate(total=Sum("total_amount"))
+        .order_by("-total")
     )
     # Revenue by service
     service_revenue = (
-        InvoiceItem.objects
-        .values('service__name')
-        .annotate(total=Sum('total_amount'))
-        .order_by('-total')
+        InvoiceItem.objects.values("service__name")
+        .annotate(total=Sum("total_amount"))
+        .order_by("-total")
     )
     # Revenue by provider (created_by)
     provider_revenue = (
-        Invoice.objects
-        .values('created_by__username')
-        .annotate(total=Sum('total_amount'))
-        .order_by('-total')
+        Invoice.objects.values("created_by__username")
+        .annotate(total=Sum("total_amount"))
+        .order_by("-total")
     )
     context = {
-        'months': months,
-        'revenue_data': revenue_data,
-        'outstanding': outstanding,
-        'status_counts': status_counts,
-        'dept_revenue': dept_revenue,
-        'service_revenue': service_revenue,
-        'provider_revenue': provider_revenue,
-        'page_title': 'Billing Reports',
+        "months": months,
+        "revenue_data": revenue_data,
+        "outstanding": outstanding,
+        "status_counts": status_counts,
+        "dept_revenue": dept_revenue,
+        "service_revenue": service_revenue,
+        "provider_revenue": provider_revenue,
+        "page_title": "Billing Reports",
     }
-    return render(request, 'billing/billing_reports.html', context)
+    return render(request, "billing/billing_reports.html", context)
 
 
 @login_required
-@permission_required('billing.process_payment')
+@permission_required("billing.process_payment")
 def surgery_billing(request, surgery_id):
     """View for managing surgery billing including pack costs"""
     from theatre.models import Surgery
     from patients.models import PatientWallet
     from .forms import PaymentForm
     from decimal import Decimal
-    
+
     surgery = get_object_or_404(Surgery, id=surgery_id)
-    
+
     # Get or create invoice for surgery
     invoice = surgery.invoice
     if not invoice:
@@ -580,162 +669,191 @@ def surgery_billing(request, surgery_id):
             patient=surgery.patient,
             invoice_date=surgery.scheduled_date.date(),
             due_date=surgery.scheduled_date.date() + timezone.timedelta(days=7),
-            status='pending',
-            subtotal=Decimal('0.00'),
-            tax_amount=Decimal('0.00'),
-            total_amount=Decimal('0.00'),
-            source_app='theatre',
-            created_by=request.user
+            status="pending",
+            subtotal=Decimal("0.00"),
+            tax_amount=Decimal("0.00"),
+            total_amount=Decimal("0.00"),
+            source_app="theatre",
+            created_by=request.user,
         )
         surgery.invoice = invoice
         surgery.save()
-    
+
     # Get pack orders for this surgery
-    pack_orders = surgery.pack_orders.all().select_related('pack')
-    
+    pack_orders = surgery.pack_orders.all().select_related("pack")
+
     # Calculate pack costs breakdown with NHIA pricing
     pack_costs = []
-    total_pack_cost = Decimal('0.00')
-    total_original_cost = Decimal('0.00')
-    is_nhia_patient = surgery.patient.patient_type == 'nhia'
-    
+    total_pack_cost = Decimal("0.00")
+    total_original_cost = Decimal("0.00")
+    is_nhia_patient = surgery.patient.patient_type == "nhia"
+
     for pack_order in pack_orders:
         original_cost = pack_order.pack.get_total_cost()
         total_original_cost += original_cost
-        
+
         # Apply 10% payment for NHIA patients
         if is_nhia_patient:
-            pack_cost = original_cost * Decimal('0.10')  # NHIA patients pay 10%
+            pack_cost = original_cost * Decimal("0.10")  # NHIA patients pay 10%
         else:
             pack_cost = original_cost
-            
-        pack_costs.append({
-            'pack_order': pack_order,
-            'original_cost': original_cost,
-            'cost': pack_cost
-        })
+
+        pack_costs.append(
+            {
+                "pack_order": pack_order,
+                "original_cost": original_cost,
+                "cost": pack_cost,
+            }
+        )
         total_pack_cost += pack_cost
-    
+
     # Get or create patient wallet
     patient_wallet, created = PatientWallet.objects.get_or_create(
-        patient=surgery.patient,
-        defaults={'balance': Decimal('0.00')}
+        patient=surgery.patient, defaults={"balance": Decimal("0.00")}
     )
-    
+
     # Handle payment processing
-    if request.method == 'POST':
-        form = PaymentForm(
-            request.POST,
-            invoice=invoice,
-            patient_wallet=patient_wallet
-        )
+    if request.method == "POST":
+        form = PaymentForm(request.POST, invoice=invoice, patient_wallet=patient_wallet)
         if form.is_valid():
             try:
                 with transaction.atomic():
                     payment = form.save(commit=False)
                     payment.invoice = invoice
                     payment.received_by = request.user
-                    
-                    payment_source = form.cleaned_data['payment_source']
-                    if payment_source == 'patient_wallet':
-                        payment.payment_method = 'wallet'
-                    
+
+                    payment_source = form.cleaned_data["payment_source"]
+                    if payment_source == "patient_wallet":
+                        payment.payment_method = "wallet"
+
                     payment.save()
-                    
+
                     messages.success(
-                        request, 
-                        f'Payment of ₦{payment.amount:.2f} recorded successfully via {payment_source.replace("_", " ").title()}.'
+                        request,
+                        f"Payment of ₦{payment.amount:.2f} recorded successfully via {payment_source.replace('_', ' ').title()}.",
                     )
-                    return redirect('billing:surgery_billing', surgery_id=surgery.id)
-                    
+                    return redirect("billing:surgery_billing", surgery_id=surgery.id)
+
             except Exception as e:
-                messages.error(request, f'Error processing payment: {str(e)}')
+                messages.error(request, f"Error processing payment: {str(e)}")
     else:
         # Pre-fill the amount with the remaining balance
         form = PaymentForm(
             invoice=invoice,
             patient_wallet=patient_wallet,
             initial={
-                'amount': invoice.get_balance(),
-                'payment_date': timezone.now().date(),
-                'payment_method': 'cash'
-            }
+                "amount": invoice.get_balance(),
+                "payment_date": timezone.now().date(),
+                "payment_method": "cash",
+            },
         )
-    
+
     # Get payment history
-    payments = invoice.payments.all().order_by('-payment_date')
-    
+    payments = invoice.payments.all().order_by("-payment_date")
+
     context = {
-        'surgery': surgery,
-        'invoice': invoice,
-        'pack_orders': pack_orders,
-        'pack_costs': pack_costs,
-        'total_pack_cost': total_pack_cost,
-        'total_original_cost': total_original_cost,
-        'is_nhia_patient': is_nhia_patient,
-        'nhia_discount_amount': total_original_cost - total_pack_cost if is_nhia_patient else Decimal('0.00'),
-        'form': form,
-        'patient_wallet': patient_wallet,
-        'payments': payments,
-        'remaining_balance': invoice.get_balance(),
-        'title': f'Surgery Billing - {surgery.surgery_type.name}'
+        "surgery": surgery,
+        "invoice": invoice,
+        "pack_orders": pack_orders,
+        "pack_costs": pack_costs,
+        "total_pack_cost": total_pack_cost,
+        "total_original_cost": total_original_cost,
+        "is_nhia_patient": is_nhia_patient,
+        "nhia_discount_amount": total_original_cost - total_pack_cost
+        if is_nhia_patient
+        else Decimal("0.00"),
+        "form": form,
+        "patient_wallet": patient_wallet,
+        "payments": payments,
+        "remaining_balance": invoice.get_balance(),
+        "title": f"Surgery Billing - {surgery.surgery_type.name}",
     }
-    
-    return render(request, 'billing/surgery_billing.html', context)
+
+    return render(request, "billing/surgery_billing.html", context)
+
 
 @login_required
-@permission_required('billing.view')
+@permission_required("billing.view")
 def export_billing_report_csv(request):
     """Export billing report as CSV (by department, service, provider)"""
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="billing_report.csv"'
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="billing_report.csv"'
     writer = csv.writer(response)
-    writer.writerow(['Type', 'Name', 'Total'])
+    writer.writerow(["Type", "Name", "Total"])
     # Department
-    for row in InvoiceItem.objects.values('service__category__name').annotate(total=Sum('total_amount')).order_by('-total'):
-        writer.writerow(['Department', row['service__category__name'] or 'Uncategorized', row['total']])
+    for row in (
+        InvoiceItem.objects.values("service__category__name")
+        .annotate(total=Sum("total_amount"))
+        .order_by("-total")
+    ):
+        writer.writerow(
+            [
+                "Department",
+                row["service__category__name"] or "Uncategorized",
+                row["total"],
+            ]
+        )
     # Service
-    for row in InvoiceItem.objects.values('service__name').annotate(total=Sum('total_amount')).order_by('-total'):
-        writer.writerow(['Service', row['service__name'] or 'Custom/Other', row['total']])
+    for row in (
+        InvoiceItem.objects.values("service__name")
+        .annotate(total=Sum("total_amount"))
+        .order_by("-total")
+    ):
+        writer.writerow(
+            ["Service", row["service__name"] or "Custom/Other", row["total"]]
+        )
     # Provider
-    for row in Invoice.objects.values('created_by__username').annotate(total=Sum('total_amount')).order_by('-total'):
-        writer.writerow(['Provider', row['created_by__username'] or 'Unknown', row['total']])
+    for row in (
+        Invoice.objects.values("created_by__username")
+        .annotate(total=Sum("total_amount"))
+        .order_by("-total")
+    ):
+        writer.writerow(
+            ["Provider", row["created_by__username"] or "Unknown", row["total"]]
+        )
     return response
 
+
 @login_required
-@permission_required('billing.create')
+@permission_required("billing.create")
 def create_invoice_for_prescription(request, prescription_id):
     """Create an invoice for a prescription if not already created."""
     prescription = get_object_or_404(Prescription, id=prescription_id)
-    if hasattr(prescription, 'invoice') and prescription.invoice:
-        messages.info(request, 'Invoice already exists for this prescription.')
-        return redirect('billing:detail', invoice_id=prescription.invoice.id)
+    if hasattr(prescription, "invoice") and prescription.invoice:
+        messages.info(request, "Invoice already exists for this prescription.")
+        return redirect("billing:detail", invoice_id=prescription.invoice.id)
 
     # You may want to select a Service for dispensing medication
-    service = Service.objects.filter(name__icontains='Medication Dispensing').first()
+    service = Service.objects.filter(name__icontains="Medication Dispensing").first()
     if not service:
-        messages.error(request, 'Medication Dispensing service not found. Please create it in Billing > Services.')
-        return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+        messages.error(
+            request,
+            "Medication Dispensing service not found. Please create it in Billing > Services.",
+        )
+        return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
     # Calculate patient payable amount (10% for NHIA, 100% for others)
     from decimal import Decimal
+
     patient_payable_amount = prescription.get_patient_payable_amount()
 
     # Get pricing breakdown for logging
     pricing_breakdown = prescription.get_pricing_breakdown()
 
     # Calculate tax on patient payable amount
-    tax_amount = (patient_payable_amount * Decimal(str(service.tax_percentage))) / Decimal('100')
+    tax_amount = (
+        patient_payable_amount * Decimal(str(service.tax_percentage))
+    ) / Decimal("100")
     total = patient_payable_amount + tax_amount
 
     invoice = Invoice.objects.create(
         patient=prescription.patient,
-        status='pending',
+        status="pending",
         total_amount=total,
         subtotal=patient_payable_amount,
         tax_amount=tax_amount,
         created_by=request.user,
-        prescription=prescription
+        prescription=prescription,
     )
     # Link invoice to prescription if not already linked
     prescription.invoice = invoice
@@ -748,47 +866,54 @@ def create_invoice_for_prescription(request, prescription_id):
         item_total_cost = item.medication.price * item.quantity
 
         # Apply NHIA discount if applicable
-        if pricing_breakdown['is_nhia_patient']:
-            item_patient_pays = item_total_cost * Decimal('0.10')  # 10% for NHIA
+        if pricing_breakdown["is_nhia_patient"]:
+            item_patient_pays = item_total_cost * Decimal("0.10")  # 10% for NHIA
         else:
             item_patient_pays = item_total_cost  # 100% for non-NHIA
 
-        item_tax = (item_patient_pays * Decimal(str(service.tax_percentage))) / Decimal('100')
+        item_tax = (item_patient_pays * Decimal(str(service.tax_percentage))) / Decimal(
+            "100"
+        )
         item_total = item_patient_pays + item_tax
 
         InvoiceItem.objects.create(
             invoice=invoice,
             service=service,
-            description=f"{item.medication.name} x {item.quantity}" +
-                       (f" (NHIA 10%)" if pricing_breakdown['is_nhia_patient'] else ""),
+            description=f"{item.medication.name} x {item.quantity}"
+            + (f" (NHIA 10%)" if pricing_breakdown["is_nhia_patient"] else ""),
             quantity=item.quantity,
-            unit_price=item.medication.price if not pricing_breakdown['is_nhia_patient']
-                      else item.medication.price * Decimal('0.10'),
+            unit_price=item.medication.price
+            if not pricing_breakdown["is_nhia_patient"]
+            else item.medication.price * Decimal("0.10"),
             tax_percentage=service.tax_percentage,
             tax_amount=item_tax,
-            total_amount=item_total
+            total_amount=item_total,
         )
 
-    messages.success(request, f'Invoice created for prescription #{prescription.id}.')
-    return redirect('billing:detail', invoice_id=invoice.id)
+    messages.success(request, f"Invoice created for prescription #{prescription.id}.")
+    return redirect("billing:detail", invoice_id=invoice.id)
 
 
 @login_required
-@permission_required('billing.view')
+@permission_required("billing.view")
 def medication_billing_dashboard(request):
     """Dashboard for medication billing management"""
     from pharmacy.models import Prescription
     from pharmacy_billing.models import Invoice as PharmacyInvoice
 
     # Get prescriptions with pending payments
-    pending_prescriptions = Prescription.objects.filter(
-        payment_status='unpaid'
-    ).select_related('patient', 'doctor').order_by('-prescription_date')
+    pending_prescriptions = (
+        Prescription.objects.filter(payment_status="unpaid")
+        .select_related("patient", "doctor")
+        .order_by("-prescription_date")
+    )
 
     # Get pharmacy invoices
-    pharmacy_invoices = PharmacyInvoice.objects.filter(
-        status__in=['pending', 'partially_paid']
-    ).select_related('patient', 'prescription').order_by('-invoice_date')
+    pharmacy_invoices = (
+        PharmacyInvoice.objects.filter(status__in=["pending", "partially_paid"])
+        .select_related("patient", "prescription")
+        .order_by("-invoice_date")
+    )
 
     # Statistics
     total_pending_amount = sum(inv.get_balance() for inv in pharmacy_invoices)
@@ -796,26 +921,29 @@ def medication_billing_dashboard(request):
     total_invoices = pharmacy_invoices.count()
 
     context = {
-        'pending_prescriptions': pending_prescriptions[:10],  # Show latest 10
-        'pharmacy_invoices': pharmacy_invoices[:10],  # Show latest 10
-        'total_pending_amount': total_pending_amount,
-        'total_prescriptions': total_prescriptions,
-        'total_invoices': total_invoices,
-        'title': 'Medication Billing Dashboard'
+        "pending_prescriptions": pending_prescriptions[:10],  # Show latest 10
+        "pharmacy_invoices": pharmacy_invoices[:10],  # Show latest 10
+        "total_pending_amount": total_pending_amount,
+        "total_prescriptions": total_prescriptions,
+        "total_invoices": total_invoices,
+        "title": "Medication Billing Dashboard",
     }
 
-    return render(request, 'billing/medication_billing_dashboard.html', context)
+    return render(request, "billing/medication_billing_dashboard.html", context)
 
 
 @login_required
-@permission_required('billing.view')
+@permission_required("billing.view")
 def prescription_billing_detail(request, prescription_id):
     """Detailed view for prescription billing with individual item breakdown"""
     from pharmacy.models import Prescription
-    from pharmacy_billing.models import Invoice as PharmacyInvoice, Payment as PharmacyPayment
+    from pharmacy_billing.models import (
+        Invoice as PharmacyInvoice,
+        Payment as PharmacyPayment,
+    )
 
     prescription = get_object_or_404(Prescription, id=prescription_id)
-    prescription_items = prescription.items.all().select_related('medication')
+    prescription_items = prescription.items.all().select_related("medication")
 
     # Get pricing breakdown
     pricing_breakdown = prescription.get_pricing_breakdown()
@@ -830,51 +958,62 @@ def prescription_billing_detail(request, prescription_id):
     # Get payments if invoice exists
     payments = []
     if pharmacy_invoice:
-        payments = PharmacyPayment.objects.filter(invoice=pharmacy_invoice).order_by('-payment_date')
+        payments = PharmacyPayment.objects.filter(invoice=pharmacy_invoice).order_by(
+            "-payment_date"
+        )
 
     # Calculate item-level pricing
     items_with_pricing = []
     for item in prescription_items:
         item_total = item.medication.price * item.quantity
-        if pricing_breakdown['is_nhia_patient']:
-            patient_pays = item_total * Decimal('0.10')
-            nhia_covers = item_total * Decimal('0.90')
+        if pricing_breakdown["is_nhia_patient"]:
+            patient_pays = item_total * Decimal("0.10")
+            nhia_covers = item_total * Decimal("0.90")
         else:
             patient_pays = item_total
-            nhia_covers = Decimal('0.00')
+            nhia_covers = Decimal("0.00")
 
-        items_with_pricing.append({
-            'item': item,
-            'total_cost': item_total,
-            'patient_pays': patient_pays,
-            'nhia_covers': nhia_covers
-        })
+        items_with_pricing.append(
+            {
+                "item": item,
+                "total_cost": item_total,
+                "patient_pays": patient_pays,
+                "nhia_covers": nhia_covers,
+            }
+        )
 
     # Enhanced context for NHIA medication payment display
     context = {
-        'prescription': prescription,
-        'prescription_items': prescription_items,
-        'items_with_pricing': items_with_pricing,
-        'pricing_breakdown': pricing_breakdown,
-        'pharmacy_invoice': pharmacy_invoice,
-        'payments': payments,
-        'title': f'Prescription Billing - #{prescription.id}',
+        "prescription": prescription,
+        "prescription_items": prescription_items,
+        "items_with_pricing": items_with_pricing,
+        "pricing_breakdown": pricing_breakdown,
+        "pharmacy_invoice": pharmacy_invoice,
+        "payments": payments,
+        "title": f"Prescription Billing - #{prescription.id}",
         # Additional context for enhanced NHIA display
-        'nhia_patient_pays_percentage': '10%' if pricing_breakdown['is_nhia_patient'] else '100%',
-        'nhia_covers_percentage': '90%' if pricing_breakdown['is_nhia_patient'] else '0%',
-        'patient_payment_amount': pricing_breakdown['patient_portion'],
-        'total_medication_cost': pricing_breakdown['total_medication_cost'],
+        "nhia_patient_pays_percentage": "10%"
+        if pricing_breakdown["is_nhia_patient"]
+        else "100%",
+        "nhia_covers_percentage": "90%"
+        if pricing_breakdown["is_nhia_patient"]
+        else "0%",
+        "patient_payment_amount": pricing_breakdown["patient_portion"],
+        "total_medication_cost": pricing_breakdown["total_medication_cost"],
     }
 
-    return render(request, 'billing/prescription_billing_detail.html', context)
+    return render(request, "billing/prescription_billing_detail.html", context)
 
 
 @login_required
-@permission_required('billing.process_payment')
+@permission_required("billing.process_payment")
 def process_medication_payment(request, prescription_id):
     """Process payment for medication prescription from billing office"""
     from pharmacy.models import Prescription
-    from pharmacy_billing.models import Invoice as PharmacyInvoice, Payment as PharmacyPayment
+    from pharmacy_billing.models import (
+        Invoice as PharmacyInvoice,
+        Payment as PharmacyPayment,
+    )
     from pharmacy_billing.utils import create_pharmacy_invoice
     from django.db import transaction
 
@@ -888,26 +1027,39 @@ def process_medication_payment(request, prescription_id):
         # Create invoice using the utility function
         # Use patient payable amount (10% for NHIA patients, 100% for others)
         patient_payable_amount = prescription.get_patient_payable_amount()
-        pharmacy_invoice = create_pharmacy_invoice(request, prescription, patient_payable_amount)
+        pharmacy_invoice = create_pharmacy_invoice(
+            request, prescription, patient_payable_amount
+        )
         if not pharmacy_invoice:
-            messages.error(request, 'Failed to create invoice for this prescription.')
-            return redirect('billing:prescription_billing_detail', prescription_id=prescription.id)
+            messages.error(request, "Failed to create invoice for this prescription.")
+            return redirect(
+                "billing:prescription_billing_detail", prescription_id=prescription.id
+            )
 
-    if request.method == 'POST':
-        amount = request.POST.get('amount')
-        payment_method = request.POST.get('payment_method')
-        transaction_id = request.POST.get('transaction_id', '')
-        notes = request.POST.get('notes', '')
+    if request.method == "POST":
+        amount = request.POST.get("amount")
+        payment_method = request.POST.get("payment_method")
+        transaction_id = request.POST.get("transaction_id", "")
+        notes = request.POST.get("notes", "")
 
         try:
             amount = Decimal(amount)
             if amount <= 0:
-                messages.error(request, 'Payment amount must be greater than zero.')
-                return redirect('billing:prescription_billing_detail', prescription_id=prescription.id)
+                messages.error(request, "Payment amount must be greater than zero.")
+                return redirect(
+                    "billing:prescription_billing_detail",
+                    prescription_id=prescription.id,
+                )
 
             if amount > pharmacy_invoice.get_balance():
-                messages.error(request, f'Payment amount cannot exceed the remaining balance of ₦{pharmacy_invoice.get_balance():.2f}.')
-                return redirect('billing:prescription_billing_detail', prescription_id=prescription.id)
+                messages.error(
+                    request,
+                    f"Payment amount cannot exceed the remaining balance of ₦{pharmacy_invoice.get_balance():.2f}.",
+                )
+                return redirect(
+                    "billing:prescription_billing_detail",
+                    prescription_id=prescription.id,
+                )
 
             with transaction.atomic():
                 # Create payment record
@@ -917,77 +1069,92 @@ def process_medication_payment(request, prescription_id):
                     payment_method=payment_method,
                     transaction_id=transaction_id,
                     notes=notes,
-                    received_by=request.user
+                    received_by=request.user,
                 )
 
                 # Update invoice
                 pharmacy_invoice.amount_paid += amount
                 if pharmacy_invoice.amount_paid >= pharmacy_invoice.total_amount:
-                    pharmacy_invoice.status = 'paid'
+                    pharmacy_invoice.status = "paid"
                     # Mark that this is a manual payment processed by billing staff
                     pharmacy_invoice._manual_payment_processed = True
-                    prescription.payment_status = 'paid'
-                    prescription.save(update_fields=['payment_status'])
+                    prescription.payment_status = "paid"
+                    prescription.save(update_fields=["payment_status"])
                 else:
-                    pharmacy_invoice.status = 'partially_paid'
+                    pharmacy_invoice.status = "partially_paid"
 
                 pharmacy_invoice.save()
 
-                messages.success(request, f'Payment of ₦{amount:.2f} recorded successfully.')
-                return redirect('billing:prescription_billing_detail', prescription_id=prescription.id)
+                messages.success(
+                    request, f"Payment of ₦{amount:.2f} recorded successfully."
+                )
+                return redirect(
+                    "billing:prescription_billing_detail",
+                    prescription_id=prescription.id,
+                )
 
         except (ValueError, TypeError):
-            messages.error(request, 'Invalid payment amount.')
+            messages.error(request, "Invalid payment amount.")
         except Exception as e:
-            messages.error(request, f'Error processing payment: {str(e)}')
+            messages.error(request, f"Error processing payment: {str(e)}")
 
-    return redirect('billing:prescription_billing_detail', prescription_id=prescription.id)
+    return redirect(
+        "billing:prescription_billing_detail", prescription_id=prescription.id
+    )
+
 
 @login_required
-@permission_required('billing.create')
+@permission_required("billing.create")
 def create_invoice_for_admission(request, admission_id):
     """Create an invoice for an admission if not already created."""
     admission = get_object_or_404(Admission, id=admission_id)
 
     # Check if patient is NHIA - NHIA patients are exempt from admission fees
-    is_nhia_patient = hasattr(admission.patient, 'nhia_info') and admission.patient.nhia_info.is_active
+    is_nhia_patient = (
+        hasattr(admission.patient, "nhia_info")
+        and admission.patient.nhia_info.is_active
+    )
 
     if is_nhia_patient:
-        messages.info(request,
-            f'Patient {admission.patient.get_full_name()} is an NHIA patient and is exempt from admission fees. '
-            'No invoice will be created.'
+        messages.info(
+            request,
+            f"Patient {admission.patient.get_full_name()} is an NHIA patient and is exempt from admission fees. "
+            "No invoice will be created.",
         )
-        return redirect('inpatient:admission_detail', pk=admission.id)
-    
+        return redirect("inpatient:admission_detail", pk=admission.id)
+
     # All other patient types (regular, private, insurance, corporate, staff, dependant, emergency)
     # are subject to admission charges and will have invoices created
 
     # Check if an invoice already exists for this admission
-    if hasattr(admission, 'invoices') and admission.invoices.exists():
-        messages.info(request, 'Invoice already exists for this admission.')
-        return redirect('billing:admission_payment', admission_id=admission.id)
+    if hasattr(admission, "invoices") and admission.invoices.exists():
+        messages.info(request, "Invoice already exists for this admission.")
+        return redirect("billing:admission_payment", admission_id=admission.id)
 
     # Calculate total from admission cost
     total_cost = admission.get_total_cost()
 
     # You may want to select a Service for admission charges
     # For simplicity, let's assume a generic 'Admission Charges' service exists
-    service = Service.objects.filter(name__icontains='Admission Charges').first()
+    service = Service.objects.filter(name__icontains="Admission Charges").first()
     if not service:
-        messages.error(request, 'Admission Charges service not found. Please create it in Billing > Services.')
-        return redirect('inpatient:admission_detail', admission_id=admission.id)
+        messages.error(
+            request,
+            "Admission Charges service not found. Please create it in Billing > Services.",
+        )
+        return redirect("inpatient:admission_detail", admission_id=admission.id)
 
     # Create the invoice
     invoice = Invoice.objects.create(
         patient=admission.patient,
-        status='pending',
+        status="pending",
         total_amount=total_cost,
-        subtotal=total_cost, # Assuming no separate tax/discount for simplicity here
+        subtotal=total_cost,  # Assuming no separate tax/discount for simplicity here
         tax_amount=0,
         discount_amount=0,
         created_by=request.user,
-        admission=admission, # Link the invoice to the admission
-        source_app='inpatient'
+        admission=admission,  # Link the invoice to the admission
+        source_app="inpatient",
     )
 
     # Add invoice item for admission charges
@@ -1000,15 +1167,15 @@ def create_invoice_for_admission(request, admission_id):
         tax_percentage=0,
         tax_amount=0,
         discount_amount=0,
-        total_amount=total_cost
+        total_amount=total_cost,
     )
 
-    messages.success(request, f'Invoice created for admission #{admission.id}.')
-    return redirect('billing:admission_payment', admission_id=admission.id)
+    messages.success(request, f"Invoice created for admission #{admission.id}.")
+    return redirect("billing:admission_payment", admission_id=admission.id)
 
 
 @login_required
-@permission_required('billing.process_payment')
+@permission_required("billing.process_payment")
 def admission_payment(request, admission_id):
     """Enhanced view for processing admission payments with billing office integration"""
     from inpatient.models import Admission
@@ -1018,42 +1185,49 @@ def admission_payment(request, admission_id):
     admission = get_object_or_404(Admission, id=admission_id)
 
     # Check if patient is NHIA - NHIA patients are exempt from admission fees
-    is_nhia_patient = hasattr(admission.patient, 'nhia_info') and admission.patient.nhia_info.is_active
+    is_nhia_patient = (
+        hasattr(admission.patient, "nhia_info")
+        and admission.patient.nhia_info.is_active
+    )
 
     if is_nhia_patient:
-        messages.info(request,
-            f'Patient {admission.patient.get_full_name()} is an NHIA patient and is exempt from admission fees. '
-            'No payment is required.'
+        messages.info(
+            request,
+            f"Patient {admission.patient.get_full_name()} is an NHIA patient and is exempt from admission fees. "
+            "No payment is required.",
         )
-        return redirect('inpatient:admission_detail', pk=admission.id)
-    
+        return redirect("inpatient:admission_detail", pk=admission.id)
+
     # All other patient types (regular, private, insurance, corporate, staff, dependant, emergency)
     # are subject to admission charges and payment requirements
 
     # Get or create invoice for this admission
     invoice = None
-    if hasattr(admission, 'invoices') and admission.invoices.exists():
+    if hasattr(admission, "invoices") and admission.invoices.exists():
         invoice = admission.invoices.first()
     else:
         # Create invoice if it doesn't exist
         from billing.models import Service
+
         try:
             service = Service.objects.get(name__iexact="Admission")
         except Service.DoesNotExist:
-            messages.error(request, 'Admission service not found. Please contact administrator.')
-            return redirect('inpatient:admission_detail', pk=admission.id)
+            messages.error(
+                request, "Admission service not found. Please contact administrator."
+            )
+            return redirect("inpatient:admission_detail", pk=admission.id)
 
         total_cost = service.price
         invoice = Invoice.objects.create(
             patient=admission.patient,
-            status='pending',
+            status="pending",
             total_amount=total_cost,
             subtotal=total_cost,
             tax_amount=0,
             discount_amount=0,
             created_by=request.user,
             admission=admission,
-            source_app='inpatient'
+            source_app="inpatient",
         )
 
         InvoiceItem.objects.create(
@@ -1065,16 +1239,16 @@ def admission_payment(request, admission_id):
             tax_percentage=0,
             tax_amount=0,
             discount_amount=0,
-            total_amount=total_cost
+            total_amount=total_cost,
         )
 
-    if request.method == 'POST':
-        amount = request.POST.get('amount', '0')
-        payment_source = request.POST.get('payment_source', 'billing_office')
-        payment_method = request.POST.get('payment_method', 'cash')
-        transaction_id = request.POST.get('transaction_id', '')
-        notes = request.POST.get('notes', '')
-        
+    if request.method == "POST":
+        amount = request.POST.get("amount", "0")
+        payment_source = request.POST.get("payment_source", "billing_office")
+        payment_method = request.POST.get("payment_method", "cash")
+        transaction_id = request.POST.get("transaction_id", "")
+        notes = request.POST.get("notes", "")
+
         # Process payment using billing office integration
         success, message, payment = BillingOfficePaymentProcessor.process_payment(
             request=request,
@@ -1084,49 +1258,51 @@ def admission_payment(request, admission_id):
             payment_method=payment_method,
             transaction_id=transaction_id,
             notes=notes,
-            module_name='Admission'
+            module_name="Admission",
         )
-        
+
         if success:
             messages.success(request, message)
-            
+
             # Additional notification for admissions
             notification_user = request.user
-            if hasattr(admission.patient, 'primary_doctor') and admission.patient.primary_doctor:
+            if (
+                hasattr(admission.patient, "primary_doctor")
+                and admission.patient.primary_doctor
+            ):
                 notification_user = admission.patient.primary_doctor
-            elif hasattr(admission, 'attending_doctor') and admission.attending_doctor:
+            elif hasattr(admission, "attending_doctor") and admission.attending_doctor:
                 notification_user = admission.attending_doctor
 
             InternalNotification.objects.create(
                 user=notification_user,
-                message=f"Payment of ₦{payment.amount:.2f} recorded for admission {admission.id} via {payment_source}"
+                message=f"Payment of ₦{payment.amount:.2f} recorded for admission {admission.id} via {payment_source}",
             )
-            
-            return redirect('inpatient:admission_detail', pk=admission.id)
+
+            return redirect("inpatient:admission_detail", pk=admission.id)
         else:
             messages.error(request, message)
     else:
         # Use enhanced context from billing office integration
         context = BillingOfficePaymentProcessor.get_payment_context(
-            request, invoice, 'Admission'
+            request, invoice, "Admission"
         )
-        
+
         # Add admission-specific context
-        context.update({
-            'admission': admission,
-            'title': f'Payment for Admission #{admission.id}'
-        })
-        
+        context.update(
+            {"admission": admission, "title": f"Payment for Admission #{admission.id}"}
+        )
+
         # Create form for initial rendering
         form = AdmissionPaymentForm(
             invoice=invoice,
-            patient_wallet=context['patient_wallet'],
+            patient_wallet=context["patient_wallet"],
             initial={
-                'amount': context['remaining_amount'],
-                'payment_date': timezone.now().date(),
-                'payment_method': 'cash'
-            }
+                "amount": context["remaining_amount"],
+                "payment_date": timezone.now().date(),
+                "payment_method": "cash",
+            },
         )
-        context['form'] = form
+        context["form"] = form
 
-    return render(request, 'billing/admission_payment.html', context)
+    return render(request, "billing/admission_payment.html", context)

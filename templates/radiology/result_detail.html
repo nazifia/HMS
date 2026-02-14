@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Radiology Result - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Radiology Result: {{ result.order.test.name }}</h4>
+                <div>
+                    <a href="{% url 'radiology:patient_results' result.order.patient.id %}" class="btn btn-light me-2">
+                        <i class="fas fa-arrow-left"></i> Back to Patient
+                    </a>
+                    {% if result.image_file %}
+                    <a href="{{ result.image_file.url }}" download class="btn btn-light">
+                        <i class="fas fa-download"></i> Download Image
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Patient Information -->
+                    <div class="col-md-6">
+                        <h5 class="border-bottom pb-2 mb-3">Patient Information</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Patient Name:</div>
+                            <div class="col-md-8">{{ result.order.patient.get_full_name }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Patient ID:</div>
+                            <div class="col-md-8">{{ result.order.patient.id }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Date of Birth:</div>
+                            <div class="col-md-8">{{ result.order.patient.date_of_birth|date:"F d, Y" }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Gender:</div>
+                            <div class="col-md-8">{{ result.order.patient.get_gender_display }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Test Information -->
+                    <div class="col-md-6">
+                        <h5 class="border-bottom pb-2 mb-3">Test Information</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Test Name:</div>
+                            <div class="col-md-8">{{ result.order.test.name }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Category:</div>
+                            <div class="col-md-8">{{ result.order.test.category.name }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Order Date:</div>
+                            <div class="col-md-8">{{ result.order.order_date|date:"F d, Y" }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Result Date:</div>
+                            <div class="col-md-8">{{ result.result_date|date:"F d, Y" }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row">
+                    <!-- Results -->
+                    <div class="col-md-12">
+                        <h5 class="border-bottom pb-2 mb-3">Findings</h5>
+                        <div class="p-3 bg-light rounded">
+                            {{ result.findings|linebreaks }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <h5 class="border-bottom pb-2 mb-3">Impression</h5>
+                        <div class="p-3 bg-light rounded">
+                            {{ result.impression|linebreaks }}
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row">
+                    <!-- Additional Information -->
+                    <div class="col-md-6">
+                        <h5 class="border-bottom pb-2 mb-3">Technical Details</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-5 text-muted">Performed By:</div>
+                            <div class="col-md-7">{{ result.performed_by.get_full_name|default:"Not specified" }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-5 text-muted">Abnormal Findings:</div>
+                            <div class="col-md-7">
+                                {% if result.is_abnormal %}
+                                    <span class="badge bg-danger">Abnormal</span>
+                                {% else %}
+                                    <span class="badge bg-success">Normal</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-5 text-muted">Created:</div>
+                            <div class="col-md-7">{{ result.created_at|date:"F d, Y H:i" }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-5 text-muted">Last Updated:</div>
+                            <div class="col-md-7">{{ result.updated_at|date:"F d, Y H:i" }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Image -->
+                    <div class="col-md-6">
+                        {% if result.image_file %}
+                        <h5 class="border-bottom pb-2 mb-3">Radiology Image</h5>
+                        <div class="text-center">
+                            <img src="{{ result.image_file.url }}" alt="Radiology Image" class="img-fluid rounded" style="max-height: 400px;">
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

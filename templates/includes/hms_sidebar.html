@@ -250,7 +250,7 @@
         {% endif %}
 
         <!-- Nav Item - Appointments -->
-        {% if user.is_superuser or user|can_show_ui:'menu_appointments' %}
+        {% if user.is_superuser or user|can_show_ui:'menu_appointments' or user|has_permission:'view_appointments' %}
         <li class="nav-item {% if '/appointments/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/appointments/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseAppointments" aria-expanded="{% if '/appointments/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseAppointments">
                 <i class="fas fa-fw fa-calendar-check text-white"></i>
@@ -324,7 +324,7 @@
         </div>
 
         <!-- Nav Item - Pharmacy -->
-        {% if user.is_superuser or user|can_show_ui:'menu_pharmacy' %}
+        {% if user.is_superuser or user|can_show_ui:'menu_pharmacy' or user|has_permission:'pharmacy.view' %}
         <li class="nav-item {% if '/pharmacy/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/pharmacy/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePharmacy" aria-expanded="{% if '/pharmacy/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapsePharmacy">
                 <i class="fas fa-fw fa-pills text-white"></i>
@@ -407,7 +407,7 @@
         </li> -->
 
         <!-- Nav Item - Laboratory (Available to lab technicians, doctors, and admins only) -->
-        {% if user.is_superuser or user|can_show_ui:'menu_laboratory' %}
+        {% if user.is_superuser or user|can_show_ui:'menu_laboratory' or user|has_permission:'laboratory.view' %}
         <li class="nav-item {% if '/laboratory/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/laboratory/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLaboratory" aria-expanded="{% if '/laboratory/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseLaboratory">
                 <i class="fas fa-fw fa-flask text-white"></i>
@@ -443,7 +443,7 @@
         {% endif %}
 
         <!-- Nav Item - Radiology (Radiology Staff full access, Doctors request, Admin full) -->
-        {% if user.is_superuser or user|can_show_ui:'menu_radiology' %}
+        {% if user.is_superuser or user|can_show_ui:'menu_radiology' or user|has_permission:'radiology.view' %}
         <li class="nav-item {% if '/radiology/' in request.path %}active{% endif %}">
             <a class="nav-link" href="{% url 'radiology:index' %}">
                 <i class="fas fa-fw fa-x-ray text-white"></i>
@@ -862,7 +862,7 @@
         {% endif %}
 
         <!-- Nav Item - Financial Reports (Available to admins and accountants) -->
-        {% if user.is_superuser or user|can_show_ui:'menu_reports' %}
+        {% if user.is_superuser or user|can_show_ui:'menu_reports' or user|has_permission:'view_reports' %}
         <li class="nav-item {% if '/billing/reports/' in request.path or '/pharmacy/revenue/' in request.path or '/core/revenue/' in request.path or '/radiology/sales-report/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/billing/reports/' in request.path and not '/pharmacy/revenue/' in request.path and not '/core/revenue/' in request.path and not '/radiology/sales-report/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseFinancialReports" aria-expanded="{% if '/billing/reports/' in request.path or '/pharmacy/revenue/' in request.path or '/core/revenue/' in request.path or '/radiology/sales-report/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseFinancialReports">
                 <i class="fas fa-fw fa-chart-bar text-white"></i>

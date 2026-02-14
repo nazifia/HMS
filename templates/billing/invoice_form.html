@@ -15,14 +15,20 @@
                 <form method="post">
                     {% csrf_token %}
 
-                    <div class="mb-3">
-                        <label for="{{ form.patient.id_for_label }}" class="form-label">Patient</label>
-                        {{ form.patient|add_class:"form-control select2" }}
-                        {% if form.patient.errors %}
-                            <div class="text-danger">
-                                {{ form.patient.errors }}
-                            </div>
-                        {% endif %}
+                    <!-- Patient Selection -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.patient_search.id_for_label }}" class="form-label">Search Patient *</label>
+                            {{ form.patient_search }}
+                            {% if form.patient.errors %}
+                                <div class="text-danger">{{ form.patient.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Search patient by name, ID, or phone number</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.patient.id_for_label }}" class="form-label">Selected Patient *</label>
+                            {{ form.patient }}
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -81,11 +87,71 @@
 
 {% block extra_js %}
 <script>
-    $(document).ready(function() {
+// Initialize select2 for all dropdowns
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle patient search
+    if (typeof $ !== 'undefined') {
+        // Initialize Select2 for all select fields
         $('.select2').select2({
+            placeholder: "Select an option",
+            allowClear: true,
             theme: 'bootstrap-5',
             width: '100%'
         });
-    });
+        
+        // Initialize patient search functionality
+        $('.patient-search').on('keyup', function() {
+            const searchValue = $(this).val();
+            
+            if (searchValue.length >= 2) {
+                $.ajax({
+                    url: "{% url 'billing:search_billing_patients' %}",
+                    dataType: 'json',
+                    data: {
+                        term: searchValue
+                    },
+                    success: function(data) {
+                        // Update patient dropdown with search results
+                        const $patientSelect = $('#{{ form.patient.id_for_label|safe }}');
+                        $patientSelect.empty();
+                        
+                        // Add default option
+                        $patientSelect.append('<option value="">Select a patient...</option>');
+                        
+                        // Add search results
+                        data.forEach(function(item) {
+                            const option = new Option(item.text, item.id);
+                            $patientSelect.append(option);
+                        });
+                        
+                        // Trigger select2 update
+                        $patientSelect.trigger('change.select2');
+                    }
+                });
+            }
+        });
+        
+        // Handle patient selection from dropdown
+        $('#{{ form.patient.id_for_label|safe }}').on('change', function() {
+            const selectedId = $(this).val();
+            if (selectedId) {
+                // Update search field with selected patient name
+                $.ajax({
+                    url: "{% url 'billing:search_billing_patients' %}",
+                    dataType: 'json',
+                    data: {
+                        term: ''
+                    },
+                    success: function(data) {
+                        const selectedPatient = data.find(item => item.id == selectedId);
+                        if (selectedPatient) {
+                            $('.patient-search').val(selectedPatient.text);
+                        }
+                    }
+                });
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

@@ -450,6 +450,71 @@ PERMISSION_DEFINITIONS = {
         "model": "Appointment",
         "is_custom": False,
     },
+    # Aliases for backward compatibility (used in sidebar templates)
+    "create_appointment": {
+        "django_codename": "appointments.add_appointment",
+        "category": "appointments",
+        "description": "Can create appointments (alias for appointments.create)",
+        "model": "Appointment",
+        "is_custom": True,
+    },
+    "view_consultations": {
+        "django_codename": "consultations.view_consultation",
+        "category": "consultations",
+        "description": "Can view consultations (alias for consultations.view)",
+        "model": "Consultation",
+        "is_custom": True,
+    },
+    "enter_lab_results": {
+        "django_codename": "laboratory.add_labresult",
+        "category": "laboratory",
+        "description": "Can enter laboratory test results",
+        "model": "LabResult",
+        "is_custom": False,
+    },
+    "manage_departments": {
+        "django_codename": "core.view_department",
+        "category": "administration",
+        "description": "Can manage departments",
+        "model": "Department",
+        "is_custom": True,
+    },
+    # UI Permission aliases (used in sidebar can_show_ui checks)
+    "view_appointments": {
+        "django_codename": "appointments.view_appointment",
+        "category": "appointments",
+        "description": "Can view appointments (alias for appointments.view)",
+        "model": "Appointment",
+        "is_custom": True,
+    },
+    "manage_inventory": {
+        "django_codename": "pharmacy.view_dispensary",
+        "category": "pharmacy",
+        "description": "Can manage pharmacy inventory",
+        "model": "Dispensary",
+        "is_custom": True,
+    },
+    "view_prescriptions": {
+        "django_codename": "pharmacy.view_prescription",
+        "category": "pharmacy",
+        "description": "Can view prescriptions",
+        "model": "Prescription",
+        "is_custom": True,
+    },
+    "view_tests": {
+        "django_codename": "laboratory.view_test",
+        "category": "laboratory",
+        "description": "Can view laboratory tests",
+        "model": "LabTest",
+        "is_custom": True,
+    },
+    "view_reports": {
+        "django_codename": "reporting.view_report",
+        "category": "reports",
+        "description": "Can view reports",
+        "model": "Report",
+        "is_custom": True,
+    },
     # --------------------------------------------------------------------------
     # Inpatient Management (inpatient app)
     # --------------------------------------------------------------------------
@@ -667,6 +732,21 @@ PERMISSION_DEFINITIONS = {
         "description": "Can edit Retainership patients",
         "model": "RetainershipPatient",
         "is_custom": False,
+    },
+    # Additional management permissions (used in sidebar)
+    "nhia.manage": {
+        "django_codename": "nhia.change_nhiapatient",
+        "category": "patient_management",
+        "description": "Can manage NHIA patients (view, create, edit)",
+        "model": "NHIAPatient",
+        "is_custom": True,
+    },
+    "retainership.manage": {
+        "django_codename": "retainership.change_retainershippatient",
+        "category": "patient_management",
+        "description": "Can manage Retainership patients (view, create, edit)",
+        "model": "RetainershipPatient",
+        "is_custom": True,
     },
     # --------------------------------------------------------------------------
     # Specialty Medical Modules

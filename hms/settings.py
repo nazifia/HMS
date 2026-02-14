@@ -440,6 +440,9 @@ LOGGING = {
             "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
             "style": "{",
         },
+        "django.server": {
+            "format": "%(message)s",
+        },
     },
     "handlers": {
         "console": {
