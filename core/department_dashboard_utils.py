@@ -9,10 +9,10 @@ from django.db.models import Count, Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import TruncDate
 from consultations.models import Referral
 from consultations.referral_mappings import (
-    get_department_for_unit, 
+    get_department_for_unit,
     get_department_for_specialty,
     get_all_units_for_department,
-    get_all_specialties_for_department
+    get_all_specialties_for_department,
 )
 import json
 
@@ -41,7 +41,7 @@ def model_has_field(model, field_name):
 
 def get_user_department(user):
     """
-    Get the department assigned to a user
+    Get the primary department assigned to a user (for backward compatibility).
 
     Args:
         user: CustomUser instance
@@ -56,87 +56,128 @@ def get_user_department(user):
     """
     # Superusers don't need a department assignment but should have access everywhere
     # Return None but views should check is_superuser separately
-    if hasattr(user, 'profile') and user.profile and user.profile.department:
+    if hasattr(user, "profile") and user.profile and user.profile.department:
         return user.profile.department
     return None
 
 
+def get_user_departments(user):
+    """
+    Get all departments assigned to a user (supports multiple departments).
+
+    Args:
+        user: CustomUser instance
+
+    Returns:
+        QuerySet of Department instances (can be empty)
+
+    Note:
+        Superusers are treated as having access to all departments.
+    """
+    from accounts.models import Department
+
+    if not user or not user.is_authenticated:
+        return Department.objects.none()
+
+    # Superusers have access to all departments
+    if user.is_superuser:
+        return Department.objects.all()
+
+    departments = []
+
+    # Check primary department (single department field - backward compatibility)
+    if hasattr(user, "profile") and user.profile and user.profile.department:
+        departments.append(user.profile.department)
+
+    # Check multiple departments (ManyToMany field)
+    if (
+        hasattr(user, "profile")
+        and user.profile
+        and hasattr(user.profile, "departments")
+    ):
+        departments.extend(list(user.profile.departments.all()))
+
+    # Remove duplicates and return
+    return Department.objects.filter(id__in=[d.id for d in set(departments)])
+
+
 def verify_department_access(user, required_department_name):
     """
-    Verify that a user has access to a specific department
-    
+    Verify that a user has access to a specific department.
+
     Args:
         user: CustomUser instance
         required_department_name: String name of the department (case-insensitive)
-        
+
     Returns:
-        tuple: (has_access: bool, user_department: Department or None)
+        tuple: (has_access: bool, user_departments: list of Department or None)
     """
-    user_department = get_user_department(user)
-    
-    if not user_department:
-        return False, None
-    
-    # Case-insensitive comparison
-    if user_department.name.upper() == required_department_name.upper():
-        return True, user_department
-    
     # Superusers have access to all departments
     if user.is_superuser:
-        return True, user_department
-    
-    return False, user_department
+        return True, []
+
+    user_departments = list(get_user_departments(user))
+
+    if not user_departments:
+        return False, None
+
+    # Case-insensitive comparison - check if any of user's departments match
+    for dept in user_departments:
+        if dept.name.upper() == required_department_name.upper():
+            return True, user_departments
+
+    return False, user_departments
 
 
 def get_referrals_for_department_strict(department):
     """
     STRICT filtering for referrals - only returns referrals explicitly meant for this department.
-    
+
     This function filters referrals based on:
     1. Direct department ID match (referred_to_department = department)
     2. Unit mapping (referred_to_unit maps to this department via referral_mappings)
     3. Specialty mapping (referred_to_specialty maps to this department via referral_mappings)
-    
+
     Unlike the enhanced version, this does NOT use case-insensitive string matching
     or fuzzy matching - it requires explicit mapping in the referral_mappings.py file.
-    
+
     Args:
         department: Department instance
-        
+
     Returns:
         QuerySet: Strictly filtered referrals for the department
     """
     if not department:
         return Referral.objects.none()
-    
+
     from consultations.referral_mappings import (
         get_all_units_for_department,
-        get_all_specialties_for_department
+        get_all_specialties_for_department,
     )
-    
+
     # Get all units and specialties that EXPLICITLY map to this department
     units = get_all_units_for_department(department.name)
     specialties = get_all_specialties_for_department(department.name)
-    
+
     # Build STRICT query - only exact matches
     query = Q()
-    
+
     # 1. Direct department ID match (strictest match)
     query |= Q(referred_to_department=department)
-    
+
     # 2. Unit match - only if unit is in the predefined mapping list
     if units:
         query |= Q(referred_to_unit__in=units)
-    
+
     # 3. Specialty match - only if specialty is in the predefined mapping list
     if specialties:
         query |= Q(referred_to_specialty__in=specialties)
-    
+
     # 4. Special case: If department name matches exactly (for backward compatibility)
     # This handles cases where department name is stored as text in unit/specialty fields
     query |= Q(referred_to_unit__exact=department.name)
     query |= Q(referred_to_specialty__exact=department.name)
-    
+
     return Referral.objects.filter(query).distinct()
 
 
@@ -144,13 +185,13 @@ def get_referrals_for_department_enhanced(department):
     """
     Enhanced filtering for referrals using the mapping system.
     This replaces the iterative approach with a more efficient query.
-    
+
     NOTE: This function has been updated to use STRICT filtering by default.
     Each department will only see referrals explicitly meant for that department.
-    
+
     Args:
         department: Department instance
-        
+
     Returns:
         QuerySet: Filtered referrals for the department
     """
@@ -172,22 +213,21 @@ def get_department_referral_statistics(department):
     referrals = get_referrals_for_department_enhanced(department)
 
     stats = {
-        'total_referrals': referrals.count(),
-        'pending_referrals': referrals.filter(status='pending').count(),
-        'accepted_referrals': referrals.filter(status='accepted').count(),
-        'completed_referrals': referrals.filter(status='completed').count(),
-        'cancelled_referrals': referrals.filter(status='cancelled').count(),
-
+        "total_referrals": referrals.count(),
+        "pending_referrals": referrals.filter(status="pending").count(),
+        "accepted_referrals": referrals.filter(status="accepted").count(),
+        "completed_referrals": referrals.filter(status="completed").count(),
+        "cancelled_referrals": referrals.filter(status="cancelled").count(),
         # Authorization statistics
-        'requiring_authorization': referrals.filter(
+        "requiring_authorization": referrals.filter(
             requires_authorization=True,
-            authorization_status__in=['required', 'pending']
+            authorization_status__in=["required", "pending"],
         ).count(),
-        'authorized_referrals': referrals.filter(
-            authorization_status='authorized'
+        "authorized_referrals": referrals.filter(
+            authorization_status="authorized"
         ).count(),
-        'rejected_authorizations': referrals.filter(
-            authorization_status='rejected'
+        "rejected_authorizations": referrals.filter(
+            authorization_status="rejected"
         ).count(),
     }
 
@@ -206,17 +246,20 @@ def get_pending_referrals(department, limit=None):
         QuerySet: Pending referrals with related data
     """
     # Use enhanced filtering and apply pending status
-    referrals = get_referrals_for_department_enhanced(department).filter(
-        status='pending'
-    ).select_related(
-        'patient',
-        'referring_doctor',
-        'referring_doctor__profile',
-        'referring_doctor__profile__department',
-        'referred_to_department',  # Added to ensure department data is loaded
-        'assigned_doctor',
-        'authorization_code'
-    ).order_by('-referral_date')
+    referrals = (
+        get_referrals_for_department_enhanced(department)
+        .filter(status="pending")
+        .select_related(
+            "patient",
+            "referring_doctor",
+            "referring_doctor__profile",
+            "referring_doctor__profile__department",
+            "referred_to_department",  # Added to ensure department data is loaded
+            "assigned_doctor",
+            "authorization_code",
+        )
+        .order_by("-referral_date")
+    )
 
     if limit:
         referrals = referrals[:limit]
@@ -227,108 +270,103 @@ def get_pending_referrals(department, limit=None):
 def get_department_time_periods():
     """
     Get common time period boundaries for statistics
-    
+
     Returns:
         dict: Dictionary with today, week_start, month_start, year_start
     """
     today = timezone.now().date()
-    
+
     return {
-        'today': today,
-        'week_start': today - timedelta(days=today.weekday()),
-        'month_start': today.replace(day=1),
-        'year_start': today.replace(month=1, day=1),
+        "today": today,
+        "week_start": today - timedelta(days=today.weekday()),
+        "month_start": today.replace(day=1),
+        "year_start": today.replace(month=1, day=1),
     }
 
 
 def build_department_dashboard_context(
-    department,
-    record_model,
-    record_queryset=None,
-    additional_stats=None
+    department, record_model, record_queryset=None, additional_stats=None
 ):
     """
     Build a standardized context dictionary for department dashboards
-    
+
     Args:
         department: Department instance
         record_model: Model class for department records (e.g., DentalRecord)
         record_queryset: Optional custom queryset for records (defaults to all)
         additional_stats: Optional dict of additional statistics to include
-        
+
     Returns:
         dict: Context dictionary for dashboard template
     """
     time_periods = get_department_time_periods()
-    
+
     # Get base queryset
     if record_queryset is None:
         record_queryset = record_model.objects.all()
-    
+
     # Calculate record statistics
     total_records = record_queryset.count()
     records_today = record_queryset.filter(
-        created_at__date=time_periods['today']
+        created_at__date=time_periods["today"]
     ).count()
     records_this_week = record_queryset.filter(
-        created_at__date__gte=time_periods['week_start']
+        created_at__date__gte=time_periods["week_start"]
     ).count()
     records_this_month = record_queryset.filter(
-        created_at__date__gte=time_periods['month_start']
+        created_at__date__gte=time_periods["month_start"]
     ).count()
-    
+
     # Get recent records
-    recent_records = record_queryset.select_related('patient').order_by('-created_at')[:10]
+    recent_records = record_queryset.select_related("patient").order_by("-created_at")[
+        :10
+    ]
 
     # Get referral statistics (only if department is provided)
     if department:
         referral_stats = get_department_referral_statistics(department)
         pending_referrals = get_pending_referrals(department, limit=20)
         department_name = department.name
-        page_title = f'{department.name} Department Dashboard'
+        page_title = f"{department.name} Department Dashboard"
     else:
         # For superusers without department assignment
         referral_stats = {
-            'total_referrals': 0,
-            'pending_referrals': 0,
-            'requiring_authorization': 0,
+            "total_referrals": 0,
+            "pending_referrals": 0,
+            "requiring_authorization": 0,
         }
         pending_referrals = []
-        department_name = 'All Departments'
-        page_title = 'Department Dashboard'
+        department_name = "All Departments"
+        page_title = "Department Dashboard"
 
     # Build context
     context = {
-        'department': department,
-        'department_name': department_name,
-        
+        "department": department,
+        "department_name": department_name,
         # Time periods
-        'today': time_periods['today'],
-        'week_start': time_periods['week_start'],
-        'month_start': time_periods['month_start'],
-        
+        "today": time_periods["today"],
+        "week_start": time_periods["week_start"],
+        "month_start": time_periods["month_start"],
         # Record statistics
-        'total_records': total_records,
-        'records_today': records_today,
-        'records_this_week': records_this_week,
-        'records_this_month': records_this_month,
-        'recent_records': recent_records,
-        
+        "total_records": total_records,
+        "records_today": records_today,
+        "records_this_week": records_this_week,
+        "records_this_month": records_this_month,
+        "recent_records": recent_records,
         # Referral statistics
-        'referral_stats': referral_stats,
-        'pending_referrals': pending_referrals,
-        'pending_referrals_count': referral_stats['pending_referrals'],
-        'pending_authorizations': referral_stats['requiring_authorization'],
-        
+        "referral_stats": referral_stats,
+        "pending_referrals": pending_referrals,
+        "pending_referrals_count": referral_stats["pending_referrals"],
+        "pending_authorizations": referral_stats["requiring_authorization"],
         # Page metadata
-        'page_title': page_title,
-        'active_nav': 'dashboard',
+        "page_title": page_title,
+        "active_nav": "dashboard",
     }
-    
+
     # Add any additional statistics
     if additional_stats:
         context.update(additional_stats)
-    
+
     return context
 
 
@@ -344,15 +382,19 @@ def get_authorized_referrals(department, limit=None):
         QuerySet: Authorized pending referrals
     """
     # Use enhanced filtering and apply authorization status
-    referrals = get_referrals_for_department_enhanced(department).filter(
-        status='pending',
-        authorization_status__in=['authorized', 'not_required']
-    ).select_related(
-        'patient',
-        'referring_doctor',
-        'referred_to_department',  # Added to ensure department data is loaded
-        'authorization_code'
-    ).order_by('-referral_date')
+    referrals = (
+        get_referrals_for_department_enhanced(department)
+        .filter(
+            status="pending", authorization_status__in=["authorized", "not_required"]
+        )
+        .select_related(
+            "patient",
+            "referring_doctor",
+            "referred_to_department",  # Added to ensure department data is loaded
+            "authorization_code",
+        )
+        .order_by("-referral_date")
+    )
 
     if limit:
         referrals = referrals[:limit]
@@ -372,16 +414,21 @@ def get_unauthorized_referrals(department, limit=None):
         QuerySet: Unauthorized pending referrals
     """
     # Use enhanced filtering and apply unauthorized status
-    referrals = get_referrals_for_department_enhanced(department).filter(
-        status='pending',
-        requires_authorization=True,
-        authorization_status__in=['required', 'pending']
-    ).select_related(
-        'patient',
-        'referring_doctor',
-        'referred_to_department',  # Added to ensure department data is loaded
-        'authorization_code'
-    ).order_by('-referral_date')
+    referrals = (
+        get_referrals_for_department_enhanced(department)
+        .filter(
+            status="pending",
+            requires_authorization=True,
+            authorization_status__in=["required", "pending"],
+        )
+        .select_related(
+            "patient",
+            "referring_doctor",
+            "referred_to_department",  # Added to ensure department data is loaded
+            "authorization_code",
+        )
+        .order_by("-referral_date")
+    )
 
     if limit:
         referrals = referrals[:limit]
@@ -410,37 +457,42 @@ def categorize_referrals(department):
     # CRITICAL FIX: Also include 'referred_to_department' in select_related
     # to ensure proper filtering and data access
     base_queryset = base_queryset.select_related(
-        'patient',
-        'patient__nhia_info',
-        'referring_doctor',
-        'referring_doctor__profile',
-        'referring_doctor__profile__department',
-        'referred_to_department',  # Added to ensure department data is loaded
-        'authorization_code',
-        'assigned_doctor'
-    ).order_by('-referral_date')
+        "patient",
+        "patient__nhia_info",
+        "referring_doctor",
+        "referring_doctor__profile",
+        "referring_doctor__profile__department",
+        "referred_to_department",  # Added to ensure department data is loaded
+        "authorization_code",
+        "assigned_doctor",
+    ).order_by("-referral_date")
 
-    pending_referrals = base_queryset.filter(status='pending')
-    accepted_referrals = base_queryset.filter(status='accepted')
+    pending_referrals = base_queryset.filter(status="pending")
+    accepted_referrals = base_queryset.filter(status="accepted")
 
     categorized = {
-        'ready_to_accept': [],  # Authorized or not requiring authorization (pending)
-        'awaiting_authorization': [],  # Requires authorization but not yet authorized (pending)
-        'rejected_authorization': [],  # Authorization was rejected (pending)
-        'under_care': list(accepted_referrals),  # Accepted referrals - patients currently under department care
+        "ready_to_accept": [],  # Authorized or not requiring authorization (pending)
+        "awaiting_authorization": [],  # Requires authorization but not yet authorized (pending)
+        "rejected_authorization": [],  # Authorization was rejected (pending)
+        "under_care": list(
+            accepted_referrals
+        ),  # Accepted referrals - patients currently under department care
     }
 
     # Categorize pending referrals
     for referral in pending_referrals:
-        if referral.authorization_status == 'rejected':
-            categorized['rejected_authorization'].append(referral)
-        elif referral.authorization_status in ['authorized', 'not_required']:
-            categorized['ready_to_accept'].append(referral)
-        elif referral.requires_authorization and referral.authorization_status in ['required', 'pending']:
-            categorized['awaiting_authorization'].append(referral)
+        if referral.authorization_status == "rejected":
+            categorized["rejected_authorization"].append(referral)
+        elif referral.authorization_status in ["authorized", "not_required"]:
+            categorized["ready_to_accept"].append(referral)
+        elif referral.requires_authorization and referral.authorization_status in [
+            "required",
+            "pending",
+        ]:
+            categorized["awaiting_authorization"].append(referral)
         else:
             # Default to ready to accept for any other case
-            categorized['ready_to_accept'].append(referral)
+            categorized["ready_to_accept"].append(referral)
 
     return categorized
 
@@ -449,7 +501,8 @@ def categorize_referrals(department):
 # DASHBOARD ENHANCEMENT FUNCTIONS
 # ============================================================================
 
-def get_daily_trend_data(record_model, days=7, date_field='created_at'):
+
+def get_daily_trend_data(record_model, days=7, date_field="created_at"):
     """
     Get daily trend data for charts
 
@@ -466,21 +519,20 @@ def get_daily_trend_data(record_model, days=7, date_field='created_at'):
         }
     """
     today = timezone.now().date()
-    start_date = today - timedelta(days=days-1)
+    start_date = today - timedelta(days=days - 1)
 
     # Get daily counts
     daily_data = (
-        record_model.objects
-        .filter(**{f'{date_field}__date__gte': start_date})
+        record_model.objects.filter(**{f"{date_field}__date__gte": start_date})
         .annotate(date=TruncDate(date_field))
-        .values('date')
-        .annotate(count=Count('id'))
-        .order_by('date')
+        .values("date")
+        .annotate(count=Count("id"))
+        .order_by("date")
     )
 
     # Create a complete date range
     date_range = [start_date + timedelta(days=x) for x in range(days)]
-    data_dict = {item['date']: item['count'] for item in daily_data}
+    data_dict = {item["date"]: item["count"] for item in daily_data}
 
     # Fill in missing dates with 0
     labels = []
@@ -488,18 +540,18 @@ def get_daily_trend_data(record_model, days=7, date_field='created_at'):
     dates = []
 
     for date in date_range:
-        labels.append(date.strftime('%a'))  # Mon, Tue, Wed, etc.
+        labels.append(date.strftime("%a"))  # Mon, Tue, Wed, etc.
         data.append(data_dict.get(date, 0))
-        dates.append(date.strftime('%Y-%m-%d'))
+        dates.append(date.strftime("%Y-%m-%d"))
 
     return {
-        'labels': json.dumps(labels),
-        'data': json.dumps(data),
-        'dates': dates,
+        "labels": json.dumps(labels),
+        "data": json.dumps(data),
+        "dates": dates,
     }
 
 
-def get_status_distribution(record_model, status_field='status'):
+def get_status_distribution(record_model, status_field="status"):
     """
     Get status distribution for pie/doughnut charts
 
@@ -518,29 +570,28 @@ def get_status_distribution(record_model, status_field='status'):
     # Return empty data if no status field
     if status_field is None:
         return {
-            'labels': json.dumps([]),
-            'data': json.dumps([]),
-            'colors': json.dumps([]),
+            "labels": json.dumps([]),
+            "data": json.dumps([]),
+            "colors": json.dumps([]),
         }
 
     status_data = (
-        record_model.objects
-        .values(status_field)
-        .annotate(count=Count('id'))
-        .order_by('-count')
+        record_model.objects.values(status_field)
+        .annotate(count=Count("id"))
+        .order_by("-count")
     )
 
     # Color mapping for common statuses
     color_map = {
-        'pending': '#ffc107',  # Yellow
-        'in_progress': '#17a2b8',  # Blue
-        'processing': '#17a2b8',  # Blue
-        'completed': '#28a745',  # Green
-        'cancelled': '#dc3545',  # Red
-        'rejected': '#dc3545',  # Red
-        'planned': '#6c757d',  # Gray
-        'scheduled': '#007bff',  # Primary blue
-        'awaiting_payment': '#fd7e14',  # Orange
+        "pending": "#ffc107",  # Yellow
+        "in_progress": "#17a2b8",  # Blue
+        "processing": "#17a2b8",  # Blue
+        "completed": "#28a745",  # Green
+        "cancelled": "#dc3545",  # Red
+        "rejected": "#dc3545",  # Red
+        "planned": "#6c757d",  # Gray
+        "scheduled": "#007bff",  # Primary blue
+        "awaiting_payment": "#fd7e14",  # Orange
     }
 
     labels = []
@@ -550,14 +601,14 @@ def get_status_distribution(record_model, status_field='status'):
     for item in status_data:
         status = item[status_field]
         if status:
-            labels.append(status.replace('_', ' ').title())
-            data.append(item['count'])
-            colors.append(color_map.get(status, '#6c757d'))
+            labels.append(status.replace("_", " ").title())
+            data.append(item["count"])
+            colors.append(color_map.get(status, "#6c757d"))
 
     return {
-        'labels': json.dumps(labels),
-        'data': json.dumps(data),
-        'colors': json.dumps(colors),
+        "labels": json.dumps(labels),
+        "data": json.dumps(data),
+        "colors": json.dumps(colors),
     }
 
 
@@ -580,42 +631,47 @@ def calculate_trend_percentage(current_value, previous_value):
     if previous_value == 0:
         if current_value > 0:
             return {
-                'percentage': 100.0,
-                'direction': 'up',
-                'icon': 'fa-arrow-up',
-                'color': 'success'
+                "percentage": 100.0,
+                "direction": "up",
+                "icon": "fa-arrow-up",
+                "color": "success",
             }
         return {
-            'percentage': 0.0,
-            'direction': 'neutral',
-            'icon': 'fa-minus',
-            'color': 'secondary'
+            "percentage": 0.0,
+            "direction": "neutral",
+            "icon": "fa-minus",
+            "color": "secondary",
         }
 
     percentage = ((current_value - previous_value) / previous_value) * 100
 
     if percentage > 0:
-        direction = 'up'
-        icon = 'fa-arrow-up'
-        color = 'success'
+        direction = "up"
+        icon = "fa-arrow-up"
+        color = "success"
     elif percentage < 0:
-        direction = 'down'
-        icon = 'fa-arrow-down'
-        color = 'danger'
+        direction = "down"
+        icon = "fa-arrow-down"
+        color = "danger"
     else:
-        direction = 'neutral'
-        icon = 'fa-minus'
-        color = 'secondary'
+        direction = "neutral"
+        icon = "fa-minus"
+        color = "secondary"
 
     return {
-        'percentage': abs(round(percentage, 1)),
-        'direction': direction,
-        'icon': icon,
-        'color': color
+        "percentage": abs(round(percentage, 1)),
+        "direction": direction,
+        "icon": icon,
+        "color": color,
     }
 
 
-def get_urgent_items(record_model, priority_field='priority', urgent_values=['urgent', 'emergency'], limit=10):
+def get_urgent_items(
+    record_model,
+    priority_field="priority",
+    urgent_values=["urgent", "emergency"],
+    limit=10,
+):
     """
     Get urgent/priority items requiring immediate attention
 
@@ -632,25 +688,28 @@ def get_urgent_items(record_model, priority_field='priority', urgent_values=['ur
     if priority_field is None:
         return record_model.objects.none()
 
-    filter_kwargs = {f'{priority_field}__in': urgent_values}
+    filter_kwargs = {f"{priority_field}__in": urgent_values}
 
     try:
         return (
-            record_model.objects
-            .filter(**filter_kwargs)
-            .select_related('patient', 'doctor')
-            .order_by('-created_at')[:limit]
+            record_model.objects.filter(**filter_kwargs)
+            .select_related("patient", "doctor")
+            .order_by("-created_at")[:limit]
         )
     except Exception:
         # If select_related fails (missing relations), try without it
-        return (
-            record_model.objects
-            .filter(**filter_kwargs)
-            .order_by('-created_at')[:limit]
-        )
+        return record_model.objects.filter(**filter_kwargs).order_by("-created_at")[
+            :limit
+        ]
 
 
-def calculate_completion_rate(record_model, status_field='status', completed_status='completed', days=30, date_field='created_at'):
+def calculate_completion_rate(
+    record_model,
+    status_field="status",
+    completed_status="completed",
+    days=30,
+    date_field="created_at",
+):
     """
     Calculate completion rate for records
 
@@ -672,16 +731,11 @@ def calculate_completion_rate(record_model, status_field='status', completed_sta
     """
     # Return zeros if no status field
     if status_field is None:
-        return {
-            'total': 0,
-            'completed': 0,
-            'rate': 0.0,
-            'pending': 0
-        }
+        return {"total": 0, "completed": 0, "rate": 0.0, "pending": 0}
 
     start_date = timezone.now() - timedelta(days=days)
 
-    filter_kwargs = {f'{date_field}__gte': start_date}
+    filter_kwargs = {f"{date_field}__gte": start_date}
     total = record_model.objects.filter(**filter_kwargs).count()
 
     completed_filter = {**filter_kwargs, status_field: completed_status}
@@ -690,10 +744,10 @@ def calculate_completion_rate(record_model, status_field='status', completed_sta
     rate = (completed / total * 100) if total > 0 else 0
 
     return {
-        'total': total,
-        'completed': completed,
-        'rate': round(rate, 1),
-        'pending': total - completed
+        "total": total,
+        "completed": completed,
+        "rate": round(rate, 1),
+        "pending": total - completed,
     }
 
 
@@ -715,9 +769,8 @@ def get_active_staff(department, hours=24):
 
     # Get users who have audit log entries in the time period
     active_user_ids = (
-        AuditLog.objects
-        .filter(timestamp__gte=cutoff_time)
-        .values_list('user_id', flat=True)
+        AuditLog.objects.filter(timestamp__gte=cutoff_time)
+        .values_list("user_id", flat=True)
         .distinct()
     )
 
@@ -725,26 +778,23 @@ def get_active_staff(department, hours=24):
     # If department is None (superuser), get all active staff
     if department:
         active_staff = (
-            CustomUserProfile.objects
-            .filter(
-                user_id__in=active_user_ids,
-                department=department
+            CustomUserProfile.objects.filter(
+                user_id__in=active_user_ids, department=department
             )
-            .select_related('user')
-            .order_by('user__first_name')
+            .select_related("user")
+            .order_by("user__first_name")
         )
     else:
         active_staff = (
-            CustomUserProfile.objects
-            .filter(user_id__in=active_user_ids)
-            .select_related('user')
-            .order_by('user__first_name')
+            CustomUserProfile.objects.filter(user_id__in=active_user_ids)
+            .select_related("user")
+            .order_by("user__first_name")
         )
 
     return active_staff
 
 
-def get_performance_metrics(record_model, date_field='created_at', days=30):
+def get_performance_metrics(record_model, date_field="created_at", days=30):
     """
     Calculate various performance metrics
 
@@ -757,35 +807,43 @@ def get_performance_metrics(record_model, date_field='created_at', days=30):
         dict: Performance metrics
     """
     start_date = timezone.now() - timedelta(days=days)
-    records = record_model.objects.filter(**{f'{date_field}__gte': start_date})
+    records = record_model.objects.filter(**{f"{date_field}__gte": start_date})
 
     total_records = records.count()
     avg_per_day = total_records / days if days > 0 else 0
 
     # Get today's count
     today = timezone.now().date()
-    today_count = record_model.objects.filter(**{f'{date_field}__date': today}).count()
+    today_count = record_model.objects.filter(**{f"{date_field}__date": today}).count()
 
     # Get yesterday's count for comparison
     yesterday = today - timedelta(days=1)
-    yesterday_count = record_model.objects.filter(**{f'{date_field}__date': yesterday}).count()
+    yesterday_count = record_model.objects.filter(
+        **{f"{date_field}__date": yesterday}
+    ).count()
 
     # Calculate trend
     trend = calculate_trend_percentage(today_count, yesterday_count)
 
     return {
-        'total_records': total_records,
-        'avg_per_day': round(avg_per_day, 1),
-        'today_count': today_count,
-        'yesterday_count': yesterday_count,
-        'trend': trend,
+        "total_records": total_records,
+        "avg_per_day": round(avg_per_day, 1),
+        "today_count": today_count,
+        "yesterday_count": yesterday_count,
+        "trend": trend,
     }
 
 
-def build_enhanced_dashboard_context(department, record_model, record_queryset=None,
-                                     additional_stats=None, priority_field=None,
-                                     status_field='status', completed_status='completed',
-                                     date_field='created_at'):
+def build_enhanced_dashboard_context(
+    department,
+    record_model,
+    record_queryset=None,
+    additional_stats=None,
+    priority_field=None,
+    status_field="status",
+    completed_status="completed",
+    date_field="created_at",
+):
     """
     Build an enhanced context dictionary for department dashboards with charts and trends
 
@@ -817,28 +875,33 @@ def build_enhanced_dashboard_context(department, record_model, record_queryset=N
         department=department,
         record_model=record_model,
         record_queryset=record_queryset,
-        additional_stats=additional_stats
+        additional_stats=additional_stats,
     )
 
     # Add chart data (with correct date field)
-    base_context['daily_trend'] = get_daily_trend_data(record_model, days=7, date_field=date_field)
+    base_context["daily_trend"] = get_daily_trend_data(
+        record_model, days=7, date_field=date_field
+    )
 
     # Add status distribution (only if status field exists)
-    base_context['status_distribution'] = get_status_distribution(record_model, status_field)
+    base_context["status_distribution"] = get_status_distribution(
+        record_model, status_field
+    )
 
     # Add performance metrics (with correct date field)
-    base_context['performance'] = get_performance_metrics(record_model, date_field=date_field)
+    base_context["performance"] = get_performance_metrics(
+        record_model, date_field=date_field
+    )
 
     # Add completion rate (only if status field exists)
-    base_context['completion_rate'] = calculate_completion_rate(
+    base_context["completion_rate"] = calculate_completion_rate(
         record_model, status_field, completed_status, date_field=date_field
     )
 
     # Add urgent items (only if priority field exists)
-    base_context['urgent_items'] = get_urgent_items(record_model, priority_field)
+    base_context["urgent_items"] = get_urgent_items(record_model, priority_field)
 
     # Add active staff
-    base_context['active_staff'] = get_active_staff(department)
+    base_context["active_staff"] = get_active_staff(department)
 
     return base_context
-

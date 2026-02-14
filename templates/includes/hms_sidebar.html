@@ -34,7 +34,7 @@
         <hr class="sidebar-divider my-0">
 
         <!-- Nav Item - Dashboard -->
-        {% if user.is_superuser or user|can_show_ui:'menu_dashboard' %}
+        {% if user.is_authenticated %}
         <li class="nav-item {% if request.path == '/dashboard/' %}active{% endif %}">
             <a class="nav-link" href="{% url 'dashboard:dashboard' %}">
                 <i class="fas fa-fw fa-tachometer-alt text-white"></i>
@@ -51,7 +51,7 @@
             </a>
             <div id="collapseAccessControl" class="collapse {% if 'rbac' in request.path or 'role_management' in request.path or 'create_role' in request.path or 'permission_management' in request.path or 'role_demo' in request.path or 'user_permissions' in request.path or 'user_privileges' in request.path %}show{% endif %}" aria-labelledby="headingAccessControl" data-parent="#accordionSidebar">
                 <div class="bg-white py-2 collapse-inner rounded">
-                    <h6 class="collapse-header">RBAC Admin Control:</h6>
+                    <h6 class="collapse-header">RBAC Overview:</h6>
                     {% if user.is_superuser or user|has_permission:'roles.view' %}
                     <a class="collapse-item {% if 'rbac/dashboard' in request.path %}active{% endif %}" href="{% url 'accounts:rbac_dashboard' %}">
                         <i class="fas fa-tachometer-alt me-2"></i>RBAC Dashboard
@@ -62,27 +62,52 @@
                         <i class="fas fa-th me-2"></i>User-Role Matrix
                     </a>
                     {% endif %}
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">User Access Management:</h6>
+                    {% if user.is_superuser or user|has_permission:'users.view' %}
+                    <a class="collapse-item {% if 'user-dashboard' in request.path and 'user_privileges' in request.path %}active{% endif %}" href="{% url 'accounts:user_dashboard' %}">
+                        <i class="fas fa-users me-2"></i>All Users
+                    </a>
+                    {% endif %}
+                    {% if user.is_superuser or user|has_permission:'users.edit' %}
+                    <a class="collapse-item {% if 'user_privileges' in request.path %}active{% endif %}" href="{% url 'accounts:user_dashboard' %}">
+                        <i class="fas fa-user-cog me-2"></i>Assign Role/Permission
+                        <small class="text-muted d-block" style="font-size:0.7rem;">Manage individual user privileges</small>
+                    </a>
+                    {% endif %}
+                    {% if user.is_superuser or user|has_permission:'users.view' %}
+                    <a class="collapse-item {% if 'user_permissions' in request.path and 'superuser' not in request.path %}active{% endif %}" href="{% url 'accounts:superuser_user_permissions' %}">
+                        <i class="fas fa-list-ol me-2"></i>User Permissions List
+                    </a>
+                    {% endif %}
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Role Administration:</h6>
+                    {% if user.is_superuser or user|has_permission:'roles.view' %}
+                    <a class="collapse-item {% if 'role_management' in request.path and 'rbac' not in request.path %}active{% endif %}" href="{% url 'accounts:role_management' %}">
+                        <i class="fas fa-user-shield me-2"></i>Manage Roles
+                    </a>
+                    {% endif %}
+                    {% if user.is_superuser or user|has_permission:'roles.edit' %}
+                    <a class="collapse-item {% if 'create_role' in request.path %}active{% endif %}" href="{% url 'accounts:create_role' %}">
+                        <i class="fas fa-plus-circle me-2"></i>Create Role
+                    </a>
+                    {% endif %}
+                    {% if user.is_superuser or user|has_permission:'roles.view' %}
+                    <a class="collapse-item {% if 'permission_management' in request.path %}active{% endif %}" href="{% url 'accounts:permission_management' %}">
+                        <i class="fas fa-key me-2"></i>System Permissions
+                    </a>
+                    {% endif %}
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Monitoring:</h6>
                     {% if user.is_superuser or user|has_permission:'roles.view' %}
                     <a class="collapse-item {% if 'rbac/audit-trail' in request.path %}active{% endif %}" href="{% url 'accounts:rbac_audit_trail' %}">
                         <i class="fas fa-history me-2"></i>Audit Trail
                     </a>
                     {% endif %}
-                    <div class="collapse-divider"></div>
-                    <h6 class="collapse-header">Role Management:</h6>
-                    {% if user.is_superuser or user|has_permission:'roles.view' %}
-                    <a class="collapse-item {% if 'role_management' in request.path and 'rbac' not in request.path %}active{% endif %}" href="{% url 'accounts:role_management' %}">Manage Roles</a>
-                    {% endif %}
-                    {% if user.is_superuser or user|has_permission:'roles.edit' %}
-                    <a class="collapse-item {% if 'create_role' in request.path %}active{% endif %}" href="{% url 'accounts:create_role' %}">Create Role</a>
-                    {% endif %}
-                    {% if user.is_superuser or user|has_permission:'roles.view' %}
-                    <a class="collapse-item {% if 'permission_management' in request.path %}active{% endif %}" href="{% url 'accounts:permission_management' %}">System Permissions</a>
-                    {% endif %}
-                    {% if user.is_superuser or user|has_permission:'users.view' %}
-                    <a class="collapse-item {% if 'user_permissions' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_user_permissions' %}">User Permissions</a>
-                    {% endif %}
                     {% if user.is_superuser %}
-                    <a class="collapse-item {% if 'role_demo' in request.path %}active{% endif %}" href="{% url 'accounts:role_demo' %}">Role Demo</a>
+                    <a class="collapse-item {% if 'role_demo' in request.path %}active{% endif %}" href="{% url 'accounts:role_demo' %}">
+                        <i class="fas fa-flask me-2"></i>Role Demo
+                    </a>
                     {% endif %}
                 </div>
             </div>

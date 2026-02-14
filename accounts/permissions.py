@@ -60,6 +60,16 @@ DEBUG_PERMISSIONS = False
 
 PERMISSION_DEFINITIONS = {
     # --------------------------------------------------------------------------
+    # Dashboard Access
+    # --------------------------------------------------------------------------
+    "view_dashboard": {
+        "django_codename": "accounts.view_dashboard",
+        "category": "dashboard",
+        "description": "Can access the main dashboard",
+        "model": "CustomUser",
+        "is_custom": True,
+    },
+    # --------------------------------------------------------------------------
     # Patient Management (patients app)
     # --------------------------------------------------------------------------
     "patients.view": {
@@ -1287,6 +1297,7 @@ ROLE_PERMISSIONS = {
     "doctor": {
         "description": "Medical Doctor - Patient care and medical operations",
         "permissions": [
+            "view_dashboard",
             "patients.view",
             "patients.edit",
             "medical.view",
@@ -1316,6 +1327,7 @@ ROLE_PERMISSIONS = {
     "nurse": {
         "description": "Registered Nurse - Patient care and vitals monitoring",
         "permissions": [
+            "view_dashboard",
             "patients.view",
             "patients.edit",
             "medical.view",
@@ -1338,6 +1350,7 @@ ROLE_PERMISSIONS = {
     "receptionist": {
         "description": "Front Desk Receptionist & Health Records - Patient registration, appointments, and records",
         "permissions": [
+            "view_dashboard",
             "patients.view",
             "patients.create",
             "patients.edit",
@@ -1365,6 +1378,7 @@ ROLE_PERMISSIONS = {
     "pharmacist": {
         "description": "Licensed Pharmacist - Medication management and dispensing",
         "permissions": [
+            "view_dashboard",
             "patients.view",
             "pharmacy.view",
             "pharmacy.create",
@@ -1378,6 +1392,7 @@ ROLE_PERMISSIONS = {
     "lab_technician": {
         "description": "Laboratory Technician - Test management and results",
         "permissions": [
+            "view_dashboard",
             "patients.view",
             "lab.view",
             "lab.create",
@@ -1390,6 +1405,7 @@ ROLE_PERMISSIONS = {
     "accountant": {
         "description": "Hospital Accountant - Financial management and billing",
         "permissions": [
+            "view_dashboard",
             "patients.view",
             "billing.view",
             "billing.create",
@@ -1405,6 +1421,7 @@ ROLE_PERMISSIONS = {
     "health_record_officer": {
         "description": "Health Record Officer & Receptionist - Medical records and front desk operations",
         "permissions": [
+            "view_dashboard",
             "patients.view",
             "patients.create",
             "patients.edit",
@@ -1428,6 +1445,7 @@ ROLE_PERMISSIONS = {
     "radiology_staff": {
         "description": "Radiology Technician - Imaging services",
         "permissions": [
+            "view_dashboard",
             "patients.view",
             "radiology.view",
             "radiology.create",
@@ -1438,6 +1456,7 @@ ROLE_PERMISSIONS = {
     "desk_officer": {
         "description": "Desk Officer - Front desk operations and NHIA authorization management",
         "permissions": [
+            "view_dashboard",
             # Patient Management
             "patients.view",
             "patients.create",
@@ -1464,6 +1483,7 @@ ROLE_PERMISSIONS = {
     "cashier_accountant": {
         "description": "Cashier/Accountant - Financial operations, billing, and payment processing",
         "permissions": [
+            "view_dashboard",
             # Patient View (needed for billing)
             "patients.view",
             # Full Billing Access
