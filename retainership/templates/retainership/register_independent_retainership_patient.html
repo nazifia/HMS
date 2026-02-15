@@ -4,6 +4,88 @@
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #fff;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e9ecef;
+    }
+    .form-section-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+    .form-section-header i {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.5rem;
+        margin-right: 0.75rem;
+    }
+    .info-card {
+        background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+        border: none;
+        border-radius: 0.75rem;
+    }
+    .wallet-option-card {
+        border: 2px solid #e9ecef;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .wallet-option-card:hover {
+        border-color: #0d6efd;
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+    }
+    .wallet-option-card.selected {
+        border-color: #0d6efd;
+        background-color: #f0f7ff;
+    }
+    .wallet-select-card {
+        border: 2px solid #e9ecef;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        background-color: #f8f9fa;
+    }
+    .wallet-select-card.active {
+        border-color: #198754;
+        background-color: #f0fdf4;
+    }
+    .btn-save {
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+    }
+    .required-label::after {
+        content: " *";
+        color: #dc3545;
+    }
+    .form-label-icon {
+        width: 20px;
+        text-align: center;
+        margin-right: 0.5rem;
+        color: #6c757d;
+    }
+    @media (max-width: 768px) {
+        .form-section {
+            padding: 1rem;
+        }
+        .btn-save {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block page_title %}{{ title }}{% endblock %}
 
 {% block breadcrumbs %}
@@ -13,79 +95,235 @@
 {% endblock breadcrumbs %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid py-3">
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">{{ title }}</h4>
+        <div class="col-lg-10 col-xl-8">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="mb-1">
+                        <i class="fas fa-user-plus text-primary me-2"></i>{{ title }}
+                    </h4>
+                    <p class="text-muted mb-0">Register a new patient as an Independent Retainership Patient</p>
                 </div>
-                <div class="card-body">
-                    <div class="alert alert-info mb-3">
-                        <strong>Note:</strong> This form registers a patient as an <span class="badge bg-success">Independent Retainership Patient</span>.<br>
-                        The patient will be assigned a unique Retainership Patient ID and type.
+                <a href="{% url 'retainership:retainership_patient_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to List
+                </a>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
-                    <form method="post" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        {{ form|crispy }}
-                        
-                        <!-- Wallet Selection Section -->
-                        <div class="card border-secondary mt-4">
-                            <div class="card-header bg-light">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-wallet text-primary"></i> Wallet Options
-                                </h5>
+                {% endfor %}
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data" id="retainership-form">
+                {% csrf_token %}
+
+                <!-- Info Card -->
+                <div class="card info-card mb-4">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start">
+                            <div class="bg-white rounded-circle p-2 me-3">
+                                <i class="fas fa-info-circle text-primary fs-4"></i>
                             </div>
-                            <div class="card-body">
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="addToExistingWallet" 
-                                           name="add_to_existing_wallet" onchange="toggleWalletSelection()">
-                                    <label class="form-check-label" for="addToExistingWallet">
-                                        <strong>Add to Existing Retainership Wallet</strong>
-                                    </label>
-                                    <small class="form-text text-muted d-block">
-                                        Check this box if you want to add this patient to an existing retainership wallet instead of creating a new one.
-                                    </small>
-                                </div>
-                                
-                                <div id="walletSelectionDiv" style="display: none;">
-                                    <div class="mb-3">
-                                        <label for="existingWallet" class="form-label">Select Wallet</label>
-                                        <select class="form-select" id="existingWallet" name="existing_wallet" disabled>
-                                            <option value="">-- Choose a wallet --</option>
-                                            {% for wallet in existing_wallets %}
-                                            <option value="{{ wallet.id }}">
-                                                {{ wallet.wallet_name }} 
-                                                {% if wallet.retainership_registration %}
-                                                (Reg: {{ wallet.retainership_registration }})
-                                                {% endif %}
-                                                - Balance: ₦{{ wallet.balance }}
-                                            </option>
-                                            {% empty %}
-                                            <option value="" disabled>No existing wallets found</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="makePrimaryMember" 
-                                               name="make_primary_member" disabled>
-                                        <label class="form-check-label" for="makePrimaryMember">
-                                            Make this patient the primary member
-                                        </label>
-                                        <small class="form-text text-muted d-block">
-                                            Primary members have special status in the wallet. Only one primary member is allowed per wallet.
-                                        </small>
-                                    </div>
-                                </div>
+                            <div>
+                                <h6 class="mb-1">Independent Retainership Patient</h6>
+                                <p class="mb-0 text-muted small">
+                                    This form registers a new patient as an <span class="badge bg-success">Independent Retainership Patient</span>.
+                                    The patient will be assigned a unique Retainership Patient ID and can have their own wallet.
+                                </p>
                             </div>
                         </div>
-                        
-                        <button type="submit" class="btn btn-primary mt-4">Register Retainership Patient</button>
-                        <a href="{% url 'retainership:retainership_patient_list' %}" class="btn btn-secondary mt-4 ms-2">Cancel</a>
-                    </form>
+                    </div>
                 </div>
-            </div>
+
+                <!-- Patient Information -->
+                <div class="form-section">
+                    <div class="form-section-header">
+                        <i class="bg-primary text-white"><i class="fas fa-user"></i></i>
+                        <h5 class="mb-0">Patient Information</h5>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.first_name.id_for_label }}" class="form-label required-label">
+                                <i class="form-label-icon fas fa-user"></i>First Name
+                            </label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.first_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.last_name.id_for_label }}" class="form-label required-label">
+                                <i class="form-label-icon fas fa-user"></i>Last Name
+                            </label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.last_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.date_of_birth.id_for_label }}" class="form-label required-label">
+                                <i class="form-label-icon fas fa-calendar"></i>Date of Birth
+                            </label>
+                            {{ form.date_of_birth }}
+                            {% if form.date_of_birth.errors %}
+                                <div class="text-danger small mt-1">{{ form.date_of_birth.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.gender.id_for_label }}" class="form-label required-label">
+                                <i class="form-label-icon fas fa-venus-mars"></i>Gender
+                            </label>
+                            {{ form.gender }}
+                            {% if form.gender.errors %}
+                                <div class="text-danger small mt-1">{{ form.gender.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.phone_number.id_for_label }}" class="form-label">
+                                <i class="form-label-icon fas fa-phone"></i>Phone Number
+                            </label>
+                            {{ form.phone_number }}
+                            {% if form.phone_number.errors %}
+                                <div class="text-danger small mt-1">{{ form.phone_number.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.email.id_for_label }}" class="form-label">
+                                <i class="form-label-icon fas fa-envelope"></i>Email
+                            </label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="text-danger small mt-1">{{ form.email.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.address.id_for_label }}" class="form-label">
+                            <i class="form-label-icon fas fa-map-marker-alt"></i>Address
+                        </label>
+                        {{ form.address }}
+                        {% if form.address.errors %}
+                            <div class="text-danger small mt-1">{{ form.address.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.emergency_contact_name.id_for_label }}" class="form-label">
+                                <i class="form-label-icon fas fa-user-friends"></i>Emergency Contact Name
+                            </label>
+                            {{ form.emergency_contact_name }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.emergency_contact_phone.id_for_label }}" class="form-label">
+                                <i class="form-label-icon fas fa-phone-alt"></i>Emergency Contact Phone
+                            </label>
+                            {{ form.emergency_contact_phone }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Retainership Information -->
+                <div class="form-section">
+                    <div class="form-section-header">
+                        <i class="bg-success text-white"><i class="fas fa-id-card"></i></i>
+                        <h5 class="mb-0">Retainership Information</h5>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.retainership_reg_number.id_for_label }}" class="form-label required-label">
+                            <i class="form-label-icon fas fa-hashtag"></i>Retainership Registration Number
+                        </label>
+                        {{ form.retainership_reg_number }}
+                        {% if form.retainership_reg_number.errors %}
+                            <div class="text-danger small mt-1">{{ form.retainership_reg_number.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text">10-digit number starting with 3 (e.g., 3000000001)</div>
+                    </div>
+                </div>
+
+                <!-- Wallet Options -->
+                <div class="form-section">
+                    <div class="form-section-header">
+                        <i class="bg-warning text-dark"><i class="fas fa-wallet"></i></i>
+                        <h5 class="mb-0">Wallet Options</h5>
+                    </div>
+                    
+                    <div class="wallet-option-card" id="newWalletOption" onclick="selectWalletOption('new')">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="wallet_option" id="walletNew" value="new" checked>
+                            <label class="form-check-label fw-semibold" for="walletNew">
+                                <i class="fas fa-plus-circle text-success me-2"></i>Create New Wallet
+                            </label>
+                            <p class="mb-0 text-muted small mt-1 ms-4">
+                                Create a new retainership wallet for this patient
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="wallet-option-card" id="existingWalletOption" onclick="selectWalletOption('existing')">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="wallet_option" id="walletExisting" value="existing">
+                            <label class="form-check-label fw-semibold" for="walletExisting">
+                                <i class="fas fa-folder-open text-primary me-2"></i>Add to Existing Wallet
+                            </label>
+                            <p class="mb-0 text-muted small mt-1 ms-4">
+                                Add this patient to an existing retainership wallet
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="wallet-select-card" id="walletSelectionDiv" style="display: none;">
+                        <div class="mb-3">
+                            <label for="existingWallet" class="form-label fw-semibold">
+                                <i class="fas fa-list-alt me-2"></i>Select Wallet
+                            </label>
+                            <select class="form-select" id="existingWallet" name="existing_wallet">
+                                <option value="">-- Choose a wallet --</option>
+                                {% for wallet in existing_wallets %}
+                                <option value="{{ wallet.id }}">
+                                    {{ wallet.wallet_name }} 
+                                    {% if wallet.retainership_registration %}
+                                    (Reg: {{ wallet.retainership_registration }})
+                                    {% endif %}
+                                    - Balance: ₦{{ wallet.balance }}
+                                </option>
+                                {% empty %}
+                                <option value="" disabled>No existing wallets found</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="makePrimaryMember" name="make_primary_member">
+                            <label class="form-check-label" for="makePrimaryMember">
+                                <strong>Make this patient the primary member</strong>
+                            </label>
+                            <p class="mb-0 text-muted small">
+                                Primary members have special status in the wallet. Only one primary member is allowed per wallet.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="d-flex justify-content-end gap-3 pb-4">
+                    <a href="{% url 'retainership:retainership_patient_list' %}" class="btn btn-outline-secondary btn-save">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-save">
+                        <i class="fas fa-save me-2"></i>Register Patient
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -93,25 +331,36 @@
 
 {% block extra_js %}
 <script>
-function toggleWalletSelection() {
-    var checkbox = document.getElementById('addToExistingWallet');
-    var walletDiv = document.getElementById('walletSelectionDiv');
-    var walletSelect = document.getElementById('existingWallet');
-    var primaryCheckbox = document.getElementById('makePrimaryMember');
+function selectWalletOption(option) {
+    document.getElementById('walletNew').checked = (option === 'new');
+    document.getElementById('walletExisting').checked = (option === 'existing');
     
-    if (checkbox.checked) {
-        walletDiv.style.display = 'block';
-        walletSelect.disabled = false;
-        primaryCheckbox.disabled = false;
-        walletSelect.required = true;
+    document.getElementById('newWalletOption').classList.toggle('selected', option === 'new');
+    document.getElementById('existingWalletOption').classList.toggle('selected', option === 'existing');
+    
+    const walletSelectionDiv = document.getElementById('walletSelectionDiv');
+    const existingWallet = document.getElementById('existingWallet');
+    const makePrimaryMember = document.getElementById('makePrimaryMember');
+    
+    if (option === 'existing') {
+        walletSelectionDiv.style.display = 'block';
+        walletSelectionDiv.classList.add('active');
+        existingWallet.disabled = false;
+        makePrimaryMember.disabled = false;
+        existingWallet.required = true;
     } else {
-        walletDiv.style.display = 'none';
-        walletSelect.disabled = true;
-        primaryCheckbox.disabled = true;
-        walletSelect.required = false;
-        walletSelect.value = '';
-        primaryCheckbox.checked = false;
+        walletSelectionDiv.style.display = 'none';
+        walletSelectionDiv.classList.remove('active');
+        existingWallet.disabled = true;
+        makePrimaryMember.disabled = true;
+        existingWallet.required = false;
+        existingWallet.value = '';
+        makePrimaryMember.checked = false;
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    selectWalletOption('new');
+});
 </script>
 {% endblock %}

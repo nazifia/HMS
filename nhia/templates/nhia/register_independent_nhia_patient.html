@@ -4,6 +4,62 @@
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #fff;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e9ecef;
+    }
+    .form-section-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+    .form-section-header i {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.5rem;
+        margin-right: 0.75rem;
+    }
+    .info-card {
+        background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+        border: none;
+        border-radius: 0.75rem;
+    }
+    .btn-save {
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+    }
+    .required-label::after {
+        content: " *";
+        color: #dc3545;
+    }
+    .form-label-icon {
+        width: 20px;
+        text-align: center;
+        margin-right: 0.5rem;
+        color: #6c757d;
+    }
+    @media (max-width: 768px) {
+        .form-section {
+            padding: 1rem;
+        }
+        .btn-save {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block page_title %}{{ title }}{% endblock %}
 
 {% block breadcrumbs %}
@@ -13,28 +69,172 @@
 {% endblock breadcrumbs %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid py-3">
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">{{ title }}</h4>
+        <div class="col-lg-10 col-xl-8">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="mb-1">
+                        <i class="fas fa-user-plus text-primary me-2"></i>{{ title }}
+                    </h4>
+                    <p class="text-muted mb-0">Register a new patient as an Independent NHIA Patient</p>
                 </div>
-                <div class="card-body">
-                    <div class="alert alert-info mb-3">
-                        <strong>Note:</strong> This form registers a patient as an <span class="badge bg-success">Independent NHIA Patient</span>.<br>
-                        The patient will be assigned a unique NHIA Patient ID and type.
-                    </div>
-                    <form method="post" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        {{ form|crispy }}
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                            <button type="submit" class="btn btn-primary me-md-2">Register NHIA Patient</button>
-                            <a href="{% url 'nhia:nhia_patient_list' %}" class="btn btn-secondary">Cancel</a>
-                        </div>
-                    </form>
-                </div>
+                <a href="{% url 'nhia:nhia_patient_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to List
+                </a>
             </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data" id="nhia-form">
+                {% csrf_token %}
+
+                <!-- Info Card -->
+                <div class="card info-card mb-4">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start">
+                            <div class="bg-white rounded-circle p-2 me-3">
+                                <i class="fas fa-info-circle text-primary fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">Independent NHIA Patient</h6>
+                                <p class="mb-0 text-muted small">
+                                    This form registers a new patient as an <span class="badge bg-success">Independent NHIA Patient</span>.
+                                    The patient will be assigned a unique NHIA Registration Number and can access NHIA-covered services.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Patient Information -->
+                <div class="form-section">
+                    <div class="form-section-header">
+                        <i class="bg-primary text-white"><i class="fas fa-user"></i></i>
+                        <h5 class="mb-0">Patient Information</h5>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.first_name.id_for_label }}" class="form-label required-label">
+                                <i class="form-label-icon fas fa-user"></i>First Name
+                            </label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.first_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.last_name.id_for_label }}" class="form-label required-label">
+                                <i class="form-label-icon fas fa-user"></i>Last Name
+                            </label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.last_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.date_of_birth.id_for_label }}" class="form-label required-label">
+                                <i class="form-label-icon fas fa-calendar"></i>Date of Birth
+                            </label>
+                            {{ form.date_of_birth }}
+                            {% if form.date_of_birth.errors %}
+                                <div class="text-danger small mt-1">{{ form.date_of_birth.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.gender.id_for_label }}" class="form-label required-label">
+                                <i class="form-label-icon fas fa-venus-mars"></i>Gender
+                            </label>
+                            {{ form.gender }}
+                            {% if form.gender.errors %}
+                                <div class="text-danger small mt-1">{{ form.gender.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.phone_number.id_for_label }}" class="form-label">
+                                <i class="form-label-icon fas fa-phone"></i>Phone Number
+                            </label>
+                            {{ form.phone_number }}
+                            {% if form.phone_number.errors %}
+                                <div class="text-danger small mt-1">{{ form.phone_number.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.email.id_for_label }}" class="form-label">
+                                <i class="form-label-icon fas fa-envelope"></i>Email
+                            </label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="text-danger small mt-1">{{ form.email.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.address.id_for_label }}" class="form-label">
+                            <i class="form-label-icon fas fa-map-marker-alt"></i>Address
+                        </label>
+                        {{ form.address }}
+                        {% if form.address.errors %}
+                            <div class="text-danger small mt-1">{{ form.address.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.emergency_contact_name.id_for_label }}" class="form-label">
+                                <i class="form-label-icon fas fa-user-friends"></i>Emergency Contact Name
+                            </label>
+                            {{ form.emergency_contact_name }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.emergency_contact_phone.id_for_label }}" class="form-label">
+                                <i class="form-label-icon fas fa-phone-alt"></i>Emergency Contact Phone
+                            </label>
+                            {{ form.emergency_contact_phone }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NHIA Information -->
+                <div class="form-section">
+                    <div class="form-section-header">
+                        <i class="bg-info text-white"><i class="fas fa-id-card"></i></i>
+                        <h5 class="mb-0">NHIA Information</h5>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.nhia_reg_number.id_for_label }}" class="form-label required-label">
+                            <i class="form-label-icon fas fa-hashtag"></i>NHIA Registration Number
+                        </label>
+                        {{ form.nhia_reg_number }}
+                        {% if form.nhia_reg_number.errors %}
+                            <div class="text-danger small mt-1">{{ form.nhia_reg_number.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text">Format: NHIA-YYYYMMDD-XXXX (e.g., NHIA-20240101-0001)</div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="d-flex justify-content-end gap-3 pb-4">
+                    <a href="{% url 'nhia:nhia_patient_list' %}" class="btn btn-outline-secondary btn-save">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-save">
+                        <i class="fas fa-save me-2"></i>Register Patient
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
