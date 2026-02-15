@@ -2,417 +2,512 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
 {% load core_tags %}
-{% block title %}Modern Dashboard - HMS{% endblock %}
+
+{% block title %}Dashboard - HMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        border: none;
+        border-radius: 1rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+        overflow: hidden;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+    }
+    .stat-card .card-body {
+        padding: 1.25rem;
+    }
+    .stat-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+    .stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+    .stat-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.85;
+    }
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #344767;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .section-title i {
+        color: #0d6efd;
+    }
+    .list-card {
+        border: none;
+        border-radius: 1rem;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .list-item {
+        padding: 0.875rem 1rem;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background-color 0.2s;
+    }
+    .list-item:last-child {
+        border-bottom: none;
+    }
+    .list-item:hover {
+        background-color: #fa;
+    }
+    .list-item .badge {
+        padding: 0.4rem 0f8f9.75rem;
+        font-weight: 500;
+    }
+    .quick-action-btn {
+        border-radius: 0.75rem;
+        padding: 1rem;
+        font-weight: 600;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    .quick-action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .quick-action-btn i {
+        font-size: 1.1rem;
+    }
+    .module-stat-card {
+        border-radius: 0.75rem;
+        padding: 1rem;
+        text-align: center;
+        transition: all 0.2s;
+    }
+    .module-stat-card:hover {
+        transform: scale(1.02);
+    }
+    .module-stat-card .module-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+    .module-stat-card .module-count {
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .module-stat-card .module-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .bg-gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .bg-gradient-success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .bg-gradient-info { background: linear-gradient(135deg, #36d1dc 0%, #5b86e5 100%); }
+    .bg-gradient-warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .bg-gradient-purple { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
+    .bg-gradient-teal { background: linear-gradient(135deg, #1cb5e0 0%, #000851 100%); }
+    .bg-gradient-orange { background: linear-gradient(135deg, #ff9966 0%, #ff5e62 100%); }
+    .bg-gradient-pink { background: linear-gradient(135deg, #ec008c 0%, #fc6767 100%); }
+    .bg-gradient-blue { background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%); }
+    .text-gradient { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <!-- Page Heading -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <a href="{% url 'dashboard:system_overview' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-                <i class="fas fa-cogs fa-sm text-white-50"></i> System Overview
-            </a>
+            <h4 class="mb-1">
+                <i class="fas fa-th-large text-primary me-2"></i>Dashboard
+            </h4>
+            <p class="text-muted mb-0">Welcome back, {{ user.get_full_name|default:user.username }}!</p>
+        </div>
+        <a href="{% url 'dashboard:system_overview' %}" class="btn btn-outline-primary">
+            <i class="fas fa-cogs me-2"></i>System Overview
+        </a>
+    </div>
+
+    <!-- Core Statistics Row -->
+    <div class="row mb-4">
+        <div class="col-12 mb-3">
+            <h6 class="section-title">
+                <i class="fas fa-chart-line"></i>Overview Statistics
+            </h6>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label text-primary">Total Patients</div>
+                            <div class="stat-value text-gray-800">{{ total_patients }}</div>
+                        </div>
+                        <div class="stat-icon bg-primary text-white">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label text-success">Appointments</div>
+                            <div class="stat-value text-gray-800">{{ total_appointments }}</div>
+                        </div>
+                        <div class="stat-icon bg-success text-white">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label text-info">Prescriptions</div>
+                            <div class="stat-value text-gray-800">{{ total_prescriptions }}</div>
+                        </div>
+                        <div class="stat-icon bg-info text-white">
+                            <i class="fas fa-pills"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label text-warning">Lab Tests</div>
+                            <div class="stat-value text-gray-800">{{ total_tests }}</div>
+                        </div>
+                        <div class="stat-icon bg-warning text-white">
+                            <i class="fas fa-flask"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Content Row -->
+    <!-- Wallet Statistics -->
+    <div class="row mb-4">
+        <div class="col-12 mb-3">
+            <h6 class="section-title">
+                <i class="fas fa-wallet"></i>Wallet Statistics
+            </h6>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label text-success">Total Balance</div>
+                            <div class="stat-value text-gray-800">{{ total_wallet_balance|currency }}</div>
+                        </div>
+                        <div class="stat-icon bg-gradient-success text-white">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label text-primary">Positive Wallets</div>
+                            <div class="stat-value text-gray-800">{{ positive_wallets }}</div>
+                        </div>
+                        <div class="stat-icon bg-gradient-primary text-white">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label" style="color: #6c757d;">Zero Balance</div>
+                            <div class="stat-value text-gray-800">{{ zero_wallets }}</div>
+                        </div>
+                        <div class="stat-icon bg-light text-dark">
+                            <i class="fas fa-minus"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label text-danger">Negative Wallets</div>
+                            <div class="stat-value text-gray-800">{{ negative_wallets }}</div>
+                        </div>
+                        <div class="stat-icon bg-gradient-warning text-white">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Module Statistics -->
+    <div class="row mb-4">
+        <div class="col-12 mb-3">
+            <h6 class="section-title">
+                <i class="fas fa-stethoscope"></i>Department Records
+            </h6>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card module-stat-card shadow-sm h-100">
+                <div class="module-icon bg-gradient-blue text-white">
+                    <i class="fas fa-eye"></i>
+                </div>
+                <div class="module-count text-gray-800">{{ total_ophthalmic_records }}</div>
+                <div class="module-label text-muted">Ophthalmic</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card module-stat-card shadow-sm h-100">
+                <div class="module-icon bg-gradient-purple text-white">
+                    <i class="fas fa-head-side-cough"></i>
+                </div>
+                <div class="module-count text-gray-800">{{ total_ent_records }}</div>
+                <div class="module-label text-muted">ENT</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card module-stat-card shadow-sm h-100">
+                <div class="module-icon bg-gradient-pink text-white">
+                    <i class="fas fa-dna"></i>
+                </div>
+                <div class="module-count text-gray-800">{{ total_oncology_records }}</div>
+                <div class="module-label text-muted">Oncology</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card module-stat-card shadow-sm h-100">
+                <div class="module-icon bg-gradient-info text-white">
+                    <i class="fas fa-baby"></i>
+                </div>
+                <div class="module-count text-gray-800">{{ total_scbu_records }}</div>
+                <div class="module-label text-muted">SCBU</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card module-stat-card shadow-sm h-100">
+                <div class="module-icon bg-gradient-teal text-white">
+                    <i class="fas fa-female"></i>
+                </div>
+                <div class="module-count text-gray-800">{{ total_anc_records }}</div>
+                <div class="module-label text-muted">ANC</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card module-stat-card shadow-sm h-100">
+                <div class="module-icon bg-gradient-orange text-white">
+                    <i class="fas fa-baby-carriage"></i>
+                </div>
+                <div class="module-count text-gray-800">{{ total_labor_records }}</div>
+                <div class="module-label text-muted">Labor</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card module-stat-card shadow-sm h-100">
+                <div class="module-icon bg-gradient-success text-white">
+                    <i class="fas fa-heartbeat"></i>
+                </div>
+                <div class="module-count text-gray-800">{{ total_icu_records }}</div>
+                <div class="module-label text-muted">ICU</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card module-stat-card shadow-sm h-100">
+                <div class="module-icon bg-gradient-primary text-white">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="module-count text-gray-800">{{ total_family_planning_records }}</div>
+                <div class="module-label text-muted">Family Planning</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card module-stat-card shadow-sm h-100">
+                <div class="module-icon bg-gradient-warning text-white">
+                    <i class="fas fa-ambulance"></i>
+                </div>
+                <div class="module-count text-gray-800">{{ total_gynae_emergency_records }}</div>
+                <div class="module-label text-muted">Gynae Emergency</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12 mb-3">
+            <h6 class="section-title">
+                <i class="fas fa-bolt"></i>Quick Actions
+            </h6>
+        </div>
+        {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer" %}
+        <div class="col-md-3 mb-3">
+            <a href="{% url 'patients:register' %}" class="btn btn-primary quick-action-btn shadow-sm">
+                <i class="fas fa-user-plus"></i>Register Patient
+            </a>
+        </div>
+        {% endif %}
+        
+        {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer,doctor" %}
+        <div class="col-md-3 mb-3">
+            <a href="{% url 'appointments:create' %}" class="btn btn-info quick-action-btn shadow-sm">
+                <i class="fas fa-calendar-plus"></i>Book Appointment
+            </a>
+        </div>
+        {% endif %}
+        
+        {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse" %}
+        <div class="col-md-3 mb-3">
+            <a href="{% url 'inpatient:create_admission' %}" class="btn btn-warning quick-action-btn shadow-sm text-dark">
+                <i class="fas fa-bed"></i>Admit Patient
+            </a>
+        </div>
+        {% endif %}
+        
+        {% if user.is_superuser or user|has_any_role:"admin,accountant" %}
+        <div class="col-md-3 mb-3">
+            <a href="{% url 'billing:create' %}" class="btn btn-success quick-action-btn shadow-sm">
+                <i class="fas fa-file-invoice"></i>Create Invoice
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Activity Section -->
     <div class="row">
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-primary shadow h-100 py-2">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Patients</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_patients }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-users fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-success shadow h-100 py-2">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Appointments</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_appointments }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-calendar-check fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-info shadow h-100 py-2">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Prescriptions</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_prescriptions }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-pills fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-warning shadow h-100 py-2 stat-card">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Total Lab Tests</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_tests }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-flask fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Wallet Statistics -->
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-success shadow h-100 py-2">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Wallet Balance</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_wallet_balance|currency }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-wallet fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-primary shadow h-100 py-2">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Positive Wallets</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ positive_wallets }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-arrow-up fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-warning shadow h-100 py-2">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Zero Balance</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ zero_wallets }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-minus fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-danger shadow h-100 py-2">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Negative Wallets</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ negative_wallets }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-arrow-down fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- New Module Statistics -->
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-info shadow h-100 py-2 stat-card">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Ophthalmic Records</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_ophthalmic_records }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-eye fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-primary shadow h-100 py-2 stat-card">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">ENT Records</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_ent_records }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-head-side-cough fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-success shadow h-100 py-2 stat-card">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Oncology Records</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_oncology_records }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-dna fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-warning shadow h-100 py-2 stat-card">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">SCBU Records</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_scbu_records }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-baby fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-info shadow h-100 py-2 stat-card">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">ANC Records</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_anc_records }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-female fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-primary shadow h-100 py-2 stat-card">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Labor Records</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_labor_records }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-baby-carriage fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-success shadow h-100 py-2 stat-card">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">ICU Records</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_icu_records }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-heartbeat fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-warning shadow h-100 py-2 stat-card">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Family Planning</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_family_planning_records }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-users fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-info shadow h-100 py-2 stat-card">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Gynae Emergency</div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_gynae_emergency_records }}</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-ambulance fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <!-- Today's Appointments -->
+        <div class="col-lg-4 mb-4">
+            <div class="card list-card shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0 fw-bold">
+                        <i class="fas fa-calendar-day text-primary me-2"></i>Today's Appointments
+                    </h6>
                 </div>
-
-                <div class="row">
-                    <div class="col-lg-4 mb-4">
-                        <div class="card shadow mb-4 chart-container">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Today's Appointments</h6>
-                            </div>
-                            <div class="card-body">
-                                {% if today_appointments %}
-                                    <ul class="list-group list-group-flush">
-                                        {% for appointment in today_appointments %}
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <div>
-                                                    <strong>{{ appointment.patient.get_full_name }}</strong> with Dr. {{ appointment.doctor.get_full_name }}
-                                                    <br>
-                                                    <small class="text-muted">{{ appointment.appointment_time }}</small>
-                                                </div>
-                                                <span class="badge bg-primary rounded-pill">{{ appointment.status }}</span>
-                                            </li>
-                                        {% endfor %}
-                                    </ul>
-                                {% else %}
-                                    <p>No appointments scheduled for today.</p>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-4 mb-4">
-                        <div class="card shadow mb-4 chart-container">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Recent Wallet Transactions</h6>
-                            </div>
-                            <div class="card-body">
-                                {% if recent_wallet_transactions %}
-                                    <ul class="list-group list-group-flush">
-                                        {% for transaction in recent_wallet_transactions %}
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <div>
-                                                    <strong>{{ transaction.get_transaction_type_display }}</strong>
-                                                    {% if transaction.patient %}
-                                                        - {{ transaction.patient.get_full_name }}
-                                                    {% endif %}
-                                                    <br>
-                                                    <small class="text-muted">{{ transaction.created_at|date:'M d, H:i' }}</small>
-                                                </div>
-                                                <div class="text-right">
-                                                    {% if transaction.transaction_type in "credit deposit" %}
-                                                        <span class="text-success">+{{ transaction.amount|currency }}</span>
-                                                    {% else %}
-                                                        <span class="text-danger">-{{ transaction.amount|currency }}</span>
-                                                    {% endif %}
-                                                    <br>
-                                                    <small class="text-muted">Bal: {{ transaction.balance_after|currency }}</small>
-                                                </div>
-                                            </li>
-                                        {% endfor %}
-                                    </ul>
-                                {% else %}
-                                    <p>No recent wallet transactions.</p>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-4 mb-4">
-                        <div class="card shadow mb-4 chart-container">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Revenue Overview</h6>
-                            </div>
-                            <div class="card-body">
-                                <canvas id="revenueChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Quick Actions Section -->
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer" %}
-                                    <div class="col-md-3 mb-3">
-                                        <a href="{% url 'patients:register' %}" class="btn btn-primary btn-block">
-                                            <i class="fas fa-user-plus me-2"></i>Register Patient
-                                        </a>
+                <div class="card-body p-0">
+                    {% if today_appointments %}
+                        {% for appointment in today_appointments %}
+                            <div class="list-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="fw-semibold">{{ appointment.patient.get_full_name }}</div>
+                                        <small class="text-muted">
+                                            <i class="fas fa-user-md me-1"></i>Dr. {{ appointment.doctor.get_full_name }}
+                                        </small>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="far fa-clock me-1"></i>{{ appointment.appointment_time }}
+                                        </small>
                                     </div>
-                                    {% endif %}
-                                    
-                                    {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer,doctor" %}
-                                    <div class="col-md-3 mb-3">
-                                        <a href="{% url 'appointments:create' %}" class="btn btn-info btn-block">
-                                            <i class="fas fa-calendar-plus me-2"></i>Book Appointment
-                                        </a>
-                                    </div>
-                                    {% endif %}
-                                    
-                                    {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse" %}
-                                    <div class="col-md-3 mb-3">
-                                        <a href="{% url 'inpatient:create_admission' %}" class="btn btn-warning btn-block">
-                                            <i class="fas fa-bed me-2"></i>Admit Patient
-                                        </a>
-                                    </div>
-                                    {% endif %}
-                                    
-                                    {% if user.is_superuser or user|has_any_role:"admin,accountant" %}
-                                    <div class="col-md-3 mb-3">
-                                        <a href="{% url 'billing:create' %}" class="btn btn-success btn-block">
-                                            <i class="fas fa-file-invoice me-2"></i>Create Invoice
-                                        </a>
-                                    </div>
-                                    {% endif %}
+                                    <span class="badge bg-{{ appointment.status|default:'secondary' }}">{{ appointment.status }}</span>
                                 </div>
                             </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-4 text-center text-muted">
+                            <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                            <p class="mb-0">No appointments today</p>
                         </div>
-                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Wallet Transactions -->
+        <div class="col-lg-4 mb-4">
+            <div class="card list-card shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0 fw-bold">
+                        <i class="fas fa-wallet text-success me-2"></i>Recent Transactions
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_wallet_transactions %}
+                        {% for transaction in recent_wallet_transactions %}
+                            <div class="list-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="fw-semibold">{{ transaction.get_transaction_type_display }}</div>
+                                        {% if transaction.patient %}
+                                            <small class="text-muted">{{ transaction.patient.get_full_name }}</small>
+                                        {% endif %}
+                                        <br>
+                                        <small class="text-muted">{{ transaction.created_at|date:'M d, H:i' }}</small>
+                                    </div>
+                                    <div class="text-end">
+                                        {% if transaction.transaction_type in "credit deposit" %}
+                                            <span class="text-success fw-bold">+{{ transaction.amount|currency }}</span>
+                                        {% else %}
+                                            <span class="text-danger fw-bold">-{{ transaction.amount|currency }}</span>
+                                        {% endif %}
+                                        <br>
+                                        <small class="text-muted">Bal: {{ transaction.balance_after|currency }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-4 text-center text-muted">
+                            <i class="fas fa-receipt fa-2x mb-2"></i>
+                            <p class="mb-0">No recent transactions</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Revenue Overview -->
+        <div class="col-lg-4 mb-4">
+            <div class="card list-card shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0 fw-bold">
+                        <i class="fas fa-chart-bar text-warning me-2"></i>Revenue Overview
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="revenueChart"></canvas>
                 </div>
             </div>
         </div>
@@ -433,22 +528,38 @@
                 label: 'Revenue',
                 data: [{{ today_revenue }}, {{ this_week_revenue }}, {{ this_month_revenue }}],
                 backgroundColor: [
-                    'rgba(255, 99, 132, 0.2)',
-                    'rgba(54, 162, 235, 0.2)',
-                    'rgba(255, 206, 86, 0.2)'
+                    'rgba(102, 126, 234, 0.8)',
+                    'rgba(56, 239, 125, 0.8)',
+                    'rgba(255, 159, 67, 0.8)'
                 ],
                 borderColor: [
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(255, 206, 86, 1)'
+                    'rgba(102, 126, 234, 1)',
+                    'rgba(56, 239, 125, 1)',
+                    'rgba(255, 159, 67, 1)'
                 ],
-                borderWidth: 1
+                borderWidth: 1,
+                borderRadius: 8
             }]
         },
         options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
                 }
             }
         }

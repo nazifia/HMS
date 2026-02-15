@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.db import transaction
 from decimal import Decimal
 
-from accounts.permissions import permission_required
+from accounts.permissions import permission_required, role_required
 from patients.models import (
     Patient,
     SharedWallet,
