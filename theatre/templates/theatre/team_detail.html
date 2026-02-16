@@ -184,9 +184,19 @@
                     <div class="mb-3">
                         <div class="info-label">Surgery Status</div>
                         <div class="info-value">
-                            <span class="badge bg-{{ object.surgery.status|get_status_badge_color }}">
-                                {{ object.surgery.get_status_display }}
-                            </span>
+                            {% if object.surgery.status == 'scheduled' %}
+                                <span class="badge bg-primary">{{ object.surgery.get_status_display }}</span>
+                            {% elif object.surgery.status == 'in_progress' %}
+                                <span class="badge bg-warning text-dark">{{ object.surgery.get_status_display }}</span>
+                            {% elif object.surgery.status == 'completed' %}
+                                <span class="badge bg-success">{{ object.surgery.get_status_display }}</span>
+                            {% elif object.surgery.status == 'cancelled' %}
+                                <span class="badge bg-danger">{{ object.surgery.get_status_display }}</span>
+                            {% elif object.surgery.status == 'postponed' %}
+                                <span class="badge bg-secondary">{{ object.surgery.get_status_display }}</span>
+                            {% else %}
+                                <span class="badge bg-info">{{ object.surgery.get_status_display }}</span>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
