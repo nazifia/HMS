@@ -149,7 +149,7 @@
                     <div class="mb-3">
                         <div class="info-label">Patient</div>
                         <div class="info-value">
-                            <a href="{% url 'patients:patient_detail' object.surgery.patient.pk %}" class="text-decoration-none">
+                            <a href="{% url 'patients:detail' object.surgery.patient.pk %}" class="text-decoration-none">
                                 {{ object.surgery.patient.get_full_name }}
                             </a>
                             <br><small class="text-muted">{{ object.surgery.patient.patient_id }}</small>

@@ -201,7 +201,7 @@
                                 <br><small class="text-muted">Duration: {{ team_member.surgery.expected_duration }}</small>
                             </td>
                             <td>
-                                <a href="{% url 'patients:patient_detail' team_member.surgery.patient.id %}">
+                                <a href="{% url 'patients:detail' team_member.surgery.patient.id %}">
                                     {{ team_member.surgery.patient.get_full_name }}
                                 </a>
                                 <br><small class="text-muted">PID: {{ team_member.surgery.patient.patient_id }}</small>
