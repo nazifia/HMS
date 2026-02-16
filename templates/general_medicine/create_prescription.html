@@ -24,7 +24,7 @@
                     <div class="col-md-6">
                         <h5>Record Information</h5>
                         <p><strong>Record ID:</strong> {{ record.id }}</p>
-                        <p><strong>Date:</strong> {{ record.visit_date|date:"F d, Y" }}</p>
+                        <p><strong>Date:</strong> {{ record.visit_date|date:"M d, Y H:i" }}</p>
                         <p><strong>Doctor:</strong> Dr. {{ record.doctor.get_full_name }}</p>
                     </div>
                 </div>

@@ -37,13 +37,13 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Result Date:</div>
-                            <div class="col-md-8">{{ result.result_date|date:"F d, Y" }}</div>
+                            <div class="col-md-8">{{ result.result_date|date:"F d, Y H:i" }}</div>
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Sample Collection:</div>
                             <div class="col-md-8">
                                 {% if result.sample_collection_date %}
-                                    {{ result.sample_collection_date|date:"F d, Y" }}
+                                    {{ result.sample_collection_date|date:"F d, Y H:i" }}
                                 {% else %}
                                     Not recorded
                                 {% endif %}
@@ -120,7 +120,7 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Request Date:</div>
-                            <div class="col-md-8">{{ result.test_request.request_date|date:"F d, Y" }}</div>
+                            <div class="col-md-8">{{ result.test_request.request_date|date:"F d, Y H:i" }}</div>
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Request Status:</div>

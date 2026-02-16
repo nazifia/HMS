@@ -150,7 +150,7 @@
                                 <tbody>
                                     {% for appointment in upcoming_appointments %}
                                     <tr>
-                                        <td>{{ appointment.appointment_date|date:"M d, Y" }}</td>
+                                        <td>{{ appointment.appointment_date|date:"M d, Y H:i" }}</td>
                                         <td>{{ appointment.appointment_time|time:"H:i" }}</td>
                                         <td>{{ appointment.doctor.get_full_name }}</td>
                                         <td>
@@ -232,7 +232,7 @@
                                 <tbody>
                                     {% for prescription in recent_prescriptions %}
                                     <tr>
-                                        <td>{{ prescription.prescription_date|date:"M d, Y" }}</td>
+                                        <td>{{ prescription.prescription_date|date:"M d, Y H:i" }}</td>
                                         <td>{{ prescription.doctor.get_full_name }}</td>
                                         <td>
                                             <span class="badge bg-{% if prescription.status == 'dispensed' %}success{% elif prescription.status == 'pending' %}warning{% else %}secondary{% endif %}">

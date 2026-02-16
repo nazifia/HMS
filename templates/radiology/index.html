@@ -267,7 +267,7 @@
                                         <td>{{ order.patient.get_full_name }}<br><small class="text-muted">ID: {{ order.patient.patient_id }}</small></td>
                                         <td>{{ order.test.name }}</td>
                                         <td>
-                                            {{ order.order_date|date:'Y-m-d H:i' }}
+{{ order.order_date|date:'M d, Y H:i' }}
                                             {% if order.order_date|date:'Y-m-d' == today|date:'Y-m-d' %}
                                                 <span class="badge bg-primary ms-2">Today</span>
                                             {% endif %}

@@ -169,7 +169,7 @@
                                 <tr>
                                     <td>{{ prescription.patient.get_full_name }}</td>
                                     <td>{{ prescription.doctor.get_full_name }}</td>
-                                    <td>{{ prescription.prescription_date|date:"Y-m-d" }}</td>
+                                    <td>{{ prescription.prescription_date|date:"Y-m-d H:i" }}</td>
                                     <td>
                                         <span class="badge {% if prescription.status == 'pending' %}bg-warning{% elif prescription.status == 'approved' %}bg-info{% elif prescription.status == 'dispensed' %}bg-success{% elif prescription.status == 'cancelled' %}bg-danger{% endif %}">
                                             {{ prescription.get_status_display }}

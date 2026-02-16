@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.conf import settings
 from patients.models import Patient
 
+
 class TestCategory(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
@@ -14,16 +15,21 @@ class TestCategory(models.Model):
     class Meta:
         verbose_name_plural = "Test Categories"
 
+
 class Test(models.Model):
     name = models.CharField(max_length=100)
-    category = models.ForeignKey(TestCategory, on_delete=models.SET_NULL, null=True, related_name='tests')
+    category = models.ForeignKey(
+        TestCategory, on_delete=models.SET_NULL, null=True, related_name="tests"
+    )
     description = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     preparation_instructions = models.TextField(blank=True, null=True)
     normal_range = models.CharField(max_length=100, blank=True, null=True)
     unit = models.CharField(max_length=50, blank=True, null=True)  # e.g., mg/dL, mmol/L
     sample_type = models.CharField(max_length=50)  # e.g., blood, urine, stool
-    duration = models.CharField(max_length=50, blank=True, null=True)  # e.g., 1 day, 3 hours
+    duration = models.CharField(
+        max_length=50, blank=True, null=True
+    )  # e.g., 1 day, 3 hours
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -31,8 +37,9 @@ class Test(models.Model):
     def __str__(self):
         return self.name
 
+
 class TestParameter(models.Model):
-    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name='parameters')
+    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="parameters")
     name = models.CharField(max_length=100)
     normal_range = models.CharField(max_length=100, blank=True, null=True)
     unit = models.CharField(max_length=50, blank=True, null=True)
@@ -42,68 +49,102 @@ class TestParameter(models.Model):
         return f"{self.test.name} - {self.name}"
 
     class Meta:
-        ordering = ['order']
+        ordering = ["order"]
+
 
 class TestRequest(models.Model):
     STATUS_CHOICES = (
-        ('pending', 'Pending'),
-        ('awaiting_payment', 'Awaiting Payment'), # New status
-        ('payment_confirmed', 'Payment Confirmed'), # New status (or could be 'ready_for_sample_collection')
-        ('sample_collected', 'Sample Collected'), # Renamed from 'collected' for clarity
-        ('processing', 'Processing'),
-        ('completed', 'Completed'),
-        ('cancelled', 'Cancelled'),
+        ("pending", "Pending"),
+        ("awaiting_payment", "Awaiting Payment"),  # New status
+        (
+            "payment_confirmed",
+            "Payment Confirmed",
+        ),  # New status (or could be 'ready_for_sample_collection')
+        (
+            "sample_collected",
+            "Sample Collected",
+        ),  # Renamed from 'collected' for clarity
+        ("processing", "Processing"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
     )
 
     AUTHORIZATION_STATUS_CHOICES = (
-        ('not_required', 'Not Required'),
-        ('required', 'Required'),
-        ('pending', 'Pending Authorization'),
-        ('authorized', 'Authorized'),
-        ('rejected', 'Rejected'),
+        ("not_required", "Not Required"),
+        ("required", "Required"),
+        ("pending", "Pending Authorization"),
+        ("authorized", "Authorized"),
+        ("rejected", "Rejected"),
     )
 
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='test_requests')
-    doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='doctor_test_requests')
-    tests = models.ManyToManyField(Test, related_name='test_requests')
-    request_date = models.DateField(default=timezone.now)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    priority = models.CharField(max_length=20, choices=(
-        ('normal', 'Normal'),
-        ('urgent', 'Urgent'),
-        ('emergency', 'Emergency'),
-    ), default='normal')
+    patient = models.ForeignKey(
+        Patient, on_delete=models.CASCADE, related_name="test_requests"
+    )
+    doctor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="doctor_test_requests",
+    )
+    tests = models.ManyToManyField(Test, related_name="test_requests")
+    request_date = models.DateTimeField(default=timezone.now)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    priority = models.CharField(
+        max_length=20,
+        choices=(
+            ("normal", "Normal"),
+            ("urgent", "Urgent"),
+            ("emergency", "Emergency"),
+        ),
+        default="normal",
+    )
     notes = models.TextField(blank=True, null=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_test_requests')
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_test_requests",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     # Link to an invoice - can be null if not yet billed or if billing is handled differently
-    invoice = models.OneToOneField('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='lab_test_request')
-
-    # Authorization code for NHIA patients
-    authorization_code = models.ForeignKey('nhia.AuthorizationCode', on_delete=models.SET_NULL, null=True, blank=True, related_name='lab_test_requests')
-
-    # Link to consultation
-    consultation = models.ForeignKey(
-        'consultations.Consultation',
+    invoice = models.OneToOneField(
+        "billing.Invoice",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='lab_test_requests',
-        help_text="Link to the consultation this test request was created from"
+        related_name="lab_test_request",
+    )
+
+    # Authorization code for NHIA patients
+    authorization_code = models.ForeignKey(
+        "nhia.AuthorizationCode",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="lab_test_requests",
+    )
+
+    # Link to consultation
+    consultation = models.ForeignKey(
+        "consultations.Consultation",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="lab_test_requests",
+        help_text="Link to the consultation this test request was created from",
     )
 
     # NHIA Authorization fields
     requires_authorization = models.BooleanField(
         default=False,
-        help_text="True if this NHIA patient test request from non-NHIA consultation requires desk office authorization"
+        help_text="True if this NHIA patient test request from non-NHIA consultation requires desk office authorization",
     )
     authorization_status = models.CharField(
         max_length=20,
         choices=AUTHORIZATION_STATUS_CHOICES,
-        default='not_required',
-        help_text="Status of authorization for this test request"
+        default="not_required",
+        help_text="Status of authorization for this test request",
     )
 
     def __str__(self):
@@ -111,7 +152,7 @@ class TestRequest(models.Model):
 
     def is_nhia_patient(self):
         """Check if the patient is an NHIA patient"""
-        return hasattr(self.patient, 'nhia_info') and self.patient.nhia_info is not None
+        return hasattr(self.patient, "nhia_info") and self.patient.nhia_info is not None
 
     def check_authorization_requirement(self):
         """
@@ -124,22 +165,22 @@ class TestRequest(models.Model):
             if self.consultation and self.consultation.requires_authorization:
                 self.requires_authorization = True
                 if not self.authorization_code:
-                    self.authorization_status = 'required'
+                    self.authorization_status = "required"
                 else:
-                    self.authorization_status = 'authorized'
+                    self.authorization_status = "authorized"
                 return True
-            
+
             # NHIA patients accessing specialty services (laboratory tests) require authorization
             # This covers cases where there's no consultation or the consultation doesn't require auth
             self.requires_authorization = True
             if not self.authorization_code:
-                self.authorization_status = 'required'
+                self.authorization_status = "required"
             else:
-                self.authorization_status = 'authorized'
+                self.authorization_status = "authorized"
             return True
 
         self.requires_authorization = False
-        self.authorization_status = 'not_required'
+        self.authorization_status = "not_required"
         return False
 
     def can_be_processed(self):
@@ -147,15 +188,21 @@ class TestRequest(models.Model):
         # Check authorization requirement for NHIA patients from non-NHIA consultations
         if self.requires_authorization:
             if not self.authorization_code:
-                return False, 'Desk office authorization required for NHIA patient from non-NHIA unit. Please obtain authorization code before processing.'
+                return (
+                    False,
+                    "Desk office authorization required for NHIA patient from non-NHIA unit. Please obtain authorization code before processing.",
+                )
             elif not self.authorization_code.is_valid():
-                return False, f'Authorization code is {self.authorization_code.status}. Please obtain a valid authorization code.'
+                return (
+                    False,
+                    f"Authorization code is {self.authorization_code.status}. Please obtain a valid authorization code.",
+                )
 
         # Check if already completed or cancelled
-        if self.status in ['completed', 'cancelled']:
-            return False, f'Test request is already {self.status}'
+        if self.status in ["completed", "cancelled"]:
+            return False, f"Test request is already {self.status}"
 
-        return True, 'Test request can be processed'
+        return True, "Test request can be processed"
 
     def save(self, *args, **kwargs):
         """Override save to auto-check authorization requirement"""
@@ -168,23 +215,43 @@ class TestRequest(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=['patient']),
-            models.Index(fields=['doctor']),
-            models.Index(fields=['status']),
-            models.Index(fields=['request_date']),
+            models.Index(fields=["patient"]),
+            models.Index(fields=["doctor"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["request_date"]),
         ]
-        ordering = ['-request_date', '-created_at']
+        ordering = ["-request_date", "-created_at"]
+
 
 class TestResult(models.Model):
-    test_request = models.ForeignKey(TestRequest, on_delete=models.CASCADE, related_name='results')
-    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name='results')
-    result_date = models.DateField(default=timezone.now)
+    test_request = models.ForeignKey(
+        TestRequest, on_delete=models.CASCADE, related_name="results"
+    )
+    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="results")
+    result_date = models.DateTimeField(default=timezone.now)
     sample_collection_date = models.DateTimeField(blank=True, null=True)
-    sample_collected_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='collected_samples')
-    result_file = models.FileField(upload_to='test_results/', blank=True, null=True)
+    sample_collected_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="collected_samples",
+    )
+    result_file = models.FileField(upload_to="test_results/", blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
-    performed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='performed_tests')
-    verified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_tests')
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="performed_tests",
+    )
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="verified_tests",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -193,14 +260,17 @@ class TestResult(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=['test_request']),
-            models.Index(fields=['test']),
-            models.Index(fields=['result_date']),
+            models.Index(fields=["test_request"]),
+            models.Index(fields=["test"]),
+            models.Index(fields=["result_date"]),
         ]
-        ordering = ['-result_date', '-created_at']
+        ordering = ["-result_date", "-created_at"]
+
 
 class TestResultParameter(models.Model):
-    test_result = models.ForeignKey(TestResult, on_delete=models.CASCADE, related_name='parameters')
+    test_result = models.ForeignKey(
+        TestResult, on_delete=models.CASCADE, related_name="parameters"
+    )
     parameter = models.ForeignKey(TestParameter, on_delete=models.CASCADE)
     value = models.CharField(max_length=100)
     is_normal = models.BooleanField(default=True)

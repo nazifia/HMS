@@ -164,7 +164,7 @@
                             {% for request in page_obj %}
                                 <tr class="{% if request.status == 'pending' %}table-warning{% elif request.status == 'collected' %}table-info{% elif request.status == 'processing' %}table-secondary{% elif request.status == 'completed' %}table-success{% elif request.status == 'cancelled' %}table-danger{% endif %}">
                                     <td>{{ request.id }}</td>
-                                    <td>{{ request.request_date|date:"M d, Y" }}</td>
+                                    <td>{{ request.request_date|date:"M d, Y H:i" }}</td>
                                     <td>
                                         <a href="{% url 'patients:detail' request.patient.id %}">
                                             {{ request.patient.get_full_name }}

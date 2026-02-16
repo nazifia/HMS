@@ -21,7 +21,7 @@
                         <p><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
                     </div>
                     <div class="col-md-6">
-                        <p><strong>Date Prescribed:</strong> {{ prescription.prescription_date|date:"F d, Y" }}</p>
+                        <p><strong>Date Prescribed:</strong> {{ prescription.prescription_date|date:"F d, Y H:i" }}</p>
                         <p><strong>Doctor:</strong> Dr. {{ prescription.doctor.get_full_name }}</p>
                     </div>
                 </div>

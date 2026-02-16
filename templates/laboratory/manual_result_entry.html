@@ -46,7 +46,7 @@
                         </div>
                         <div class="col-md-2">
                             <strong>Request Date:</strong><br>
-                            {{ test_request.request_date|date:"M d, Y" }}
+                            {{ test_request.request_date|date:"M d, Y H:i" }}
                         </div>
                         <div class="col-md-2">
                             <strong>Priority:</strong><br>
@@ -353,7 +353,7 @@
                     {% for result in previous_results %}
                     <div class="mb-2">
                         <strong>{{ result.test.name }}</strong><br>
-                        <small class="text-muted">{{ result.result_date|date:"M d, Y" }}</small>
+                        <small class="text-muted">{{ result.result_date|date:"M d, Y H:i" }}</small>
                         {% if result.parameters.exists %}
                             <div class="mt-1">
                                 {% for param in result.parameters.all %}

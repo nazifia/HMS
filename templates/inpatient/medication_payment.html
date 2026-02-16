@@ -37,7 +37,7 @@
                 <div class="card-body">
                     <p><strong>Prescription ID:</strong> {{ prescription.id }}</p>
                     <p><strong>Prescribed by:</strong> {{ prescription.doctor.get_full_name }}</p>
-                    <p><strong>Date:</strong> {{ prescription.prescription_date|date:"M d, Y" }}</p>
+                    <p><strong>Date:</strong> {{ prescription.prescription_date|date:"M d, Y H:i" }}</p>
                     <p><strong>Type:</strong> {{ prescription.get_prescription_type_display }}</p>
                     <p><strong>Total Cost:</strong> {{ prescription.get_total_prescribed_price|currency }}</p>
                     <p><strong>Status:</strong> 

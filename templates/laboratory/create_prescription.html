@@ -22,7 +22,7 @@
                     <div class="col-md-6">
                         <h5>Test Request Information</h5>
                         <p><strong>Request ID:</strong> {{ test_request.id }}</p>
-                        <p><strong>Request Date:</strong> {{ test_request.request_date|date:"F d, Y" }}</p>
+                        <p><strong>Request Date:</strong> {{ test_request.request_date|date:"F d, Y H:i" }}</p>
                         <p><strong>Doctor:</strong> Dr. {{ test_request.doctor.get_full_name }}</p>
                     </div>
                 </div>

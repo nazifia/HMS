@@ -97,7 +97,7 @@
                                             {% endif %}
                                         </td>
                                         <td>{{ prescription.get_prescription_type_display }}</td>
-                                        <td>{{ prescription.prescription_date|date:"M d, Y" }}</td>
+                                        <td>{{ prescription.prescription_date|date:"M d, Y H:i" }}</td>
                                         <td>
                                             <a href="{% url 'billing:prescription_billing_detail' prescription.id %}" 
                                                class="btn btn-sm btn-primary">

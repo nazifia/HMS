@@ -280,19 +280,19 @@
                                             <td>{{ item.patient.patient_id }}</td>
                                             <td>
                                                 {% if item.appointment_date %}
-                                                    {{ item.appointment_date|date:"Y-m-d" }}
+                                                    {{ item.appointment_date|date:"Y-m-d H:i" }}
                                                 {% elif item.visit_date %}
-                                                    {{ item.visit_date|date:"Y-m-d" }}
+                                                    {{ item.visit_date|date:"M d, Y H:i" }}
                                                 {% elif item.consultation_date %}
-                                                    {{ item.consultation_date|date:"Y-m-d" }}
+                                                    {{ item.consultation_date|date:"Y-m-d H:i" }}
                                                 {% elif item.request_date %}
-                                                    {{ item.request_date|date:"Y-m-d" }}
+                                                    {{ item.request_date|date:"Y-m-d H:i" }}
                                                 {% elif item.order_date %}
-                                                    {{ item.order_date|date:"Y-m-d" }}
+                                                    {{ item.order_date|date:"M d, Y H:i" }}
                                                 {% elif item.prescription_date %}
-                                                    {{ item.prescription_date|date:"Y-m-d" }}
+                                                    {{ item.prescription_date|date:"Y-m-d H:i" }}
                                                 {% elif item.referral_date %}
-                                                    {{ item.referral_date|date:"Y-m-d" }}
+                                                    {{ item.referral_date|date:"Y-m-d H:i" }}
                                                 {% elif item.surgery_date %}
                                                     {{ item.surgery_date|date:"Y-m-d" }}
                                                 {% elif item.admission_date %}

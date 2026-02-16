@@ -461,7 +461,7 @@
                                 <tbody>
                                     {% for payment in payments %}
                                     <tr class="payment-row">
-                                        <td>{{ payment.payment_date|date:"M d, Y g:i A" }}</td>
+                                        <td>{{ payment.payment_date|date:"M d, Y H:i" }}</td>
                                         <td class="amount-display fw-bold text-success">{{ payment.amount|currency }}</td>
                                         <td>{{ payment.get_payment_method_display }}</td>
                                         <td>{{ payment.reference_number|default:"-" }}</td>

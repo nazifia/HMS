@@ -394,7 +394,7 @@ class CustomUserProfile(models.Model):
         max_length=100, blank=True, null=True
     )  # For doctors
     qualification = models.CharField(max_length=100, blank=True, null=True)
-    joining_date = models.DateField(auto_now_add=True)  # This will set on creation
+    joining_date = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(
         auto_now=True
     )  # Add this for the profile.html footer

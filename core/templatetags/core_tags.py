@@ -193,7 +193,7 @@ def format_timestamp(timestamp, format_type="default"):
 
     if format_type == "short":
         return timestamp.strftime("%b %d, %Y %H:%M")
-    elif format_type == "date_only":
+    elif format_type == "date_time":
         return timestamp.strftime("%b %d, %Y")
     elif format_type == "time_only":
         return timestamp.strftime("%H:%M:%S")

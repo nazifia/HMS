@@ -18,7 +18,7 @@
                             <h5>Patient Information</h5>
                             <p><strong>Name:</strong> {{ prescription.patient.get_full_name }}</p>
                             <p><strong>ID:</strong> {{ prescription.patient.patient_id }}</p>
-                            <p><strong>Prescription Date:</strong> {{ prescription.prescription_date|date:"M d, Y" }}</p>
+                            <p><strong>Prescription Date:</strong> {{ prescription.prescription_date|date:"M d, Y H:i" }}</p>
                         </div>
                         <div class="col-md-6">
                             <h5>Doctor Information</h5>

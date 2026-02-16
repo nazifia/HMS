@@ -106,7 +106,7 @@
                 </div>
                 <div class="col-md-6">
                     <p><strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}</p>
-                    <p><strong>Date:</strong> {{ prescription.prescription_date|date:"M d, Y" }}</p>
+                    <p><strong>Date:</strong> {{ prescription.prescription_date|date:"M d, Y H:i" }}</p>
                     <p><strong>Status:</strong> <span class="badge badge-{{ prescription.status }}">{{ prescription.get_status_display }}</span></p>
                 </div>
             </div>

@@ -320,7 +320,7 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Request Date:</div>
-                            <div class="col-md-8">{{ test_request.request_date|date:"F d, Y" }}</div>
+                            <div class="col-md-8">{{ test_request.request_date|date:"F d, Y H:i" }}</div>
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Status:</div>
@@ -493,10 +493,10 @@
                                         {% for result in results %}
                                             <tr>
                                                 <td>{{ result.test.name }}</td>
-                                                <td>{{ result.result_date|date:"M d, Y" }}</td>
+                                                <td>{{ result.result_date|date:"M d, Y H:i" }}</td>
                                                 <td>
                                                     {% if result.sample_collection_date %}
-                                                        {{ result.sample_collection_date|date:"M d, Y" }}
+                                                        {{ result.sample_collection_date|date:"M d, Y H:i" }}
                                                         <div class="small text-muted">({{ result.sample_collection_date|timesince }} ago)</div>
                                                     {% else %}
                                                         <span class="text-muted">Not yet collected</span>
@@ -558,7 +558,7 @@
                                     {% for prescription in test_request.patient.prescriptions.all|slice:":5" %}
                                     <tr>
                                         <td>{{ prescription.id }}</td>
-                                        <td>{{ prescription.prescription_date|date:"M d, Y" }}</td>
+                                        <td>{{ prescription.prescription_date|date:"M d, Y H:i" }}</td>
                                         <td>Dr. {{ prescription.doctor.get_full_name }}</td>
                                         <td>
                                             {% if prescription.status == 'pending' %}

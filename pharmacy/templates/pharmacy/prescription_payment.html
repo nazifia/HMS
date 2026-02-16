@@ -400,7 +400,7 @@
                             <tbody>
                                 {% for payment in payments %}
                                 <tr>
-                                    <td>{{ payment.payment_date|date:"M d, Y" }}</td>
+                                    <td>{{ payment.payment_date|date:"M d, Y H:i" }}</td>
                                     <td>{{ payment.amount|currency }}</td>
                                     <td>{{ payment.get_payment_method_display }}</td>
                                     <td>{{ payment.received_by.get_full_name|default:payment.created_by.get_full_name }}</td>

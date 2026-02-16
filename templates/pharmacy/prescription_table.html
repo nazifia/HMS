@@ -29,7 +29,7 @@
                     {% endif %}
                 </td>
                 <td>
-                    <small>{{ prescription.prescription_date|date:"M d, Y" }}</small>
+                    <small>{{ prescription.prescription_date|date:"M d, Y H:i" }}</small>
                     {% if prescription.created_at %}
                     <br>
                     <small class="text-muted">{{ prescription.created_at|date:"h:i A" }}</small>

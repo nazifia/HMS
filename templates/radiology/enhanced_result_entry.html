@@ -697,7 +697,7 @@
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <strong>{{ study.test.name }}</strong><br>
-                                    <small class="text-muted">{{ study.study_date|date:"M d, Y" }}</small>
+                                    <small class="text-muted">{{ study.study_date|date:"M d, Y H:i" }}</small>
                                 </div>
                                 <span class="badge bg-{% if study.result_status == 'finalized' %}success{% elif study.result_status == 'verified' %}primary{% else %}secondary{% endif %}">
                                     {{ study.get_result_status_display }}

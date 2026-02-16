@@ -237,7 +237,7 @@
                                     </span>
                                 </h6>
                                 <p class="card-text">
-                                    <strong>Date:</strong> {{ prescription.prescription_date|date:"M d, Y" }}<br>
+                                    <strong>Date:</strong> {{ prescription.prescription_date|date:"M d, Y H:i" }}<br>
                                     <strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}<br>
                                     {% if prescription.diagnosis %}
                                         <strong>Diagnosis:</strong> {{ prescription.diagnosis }}<br>

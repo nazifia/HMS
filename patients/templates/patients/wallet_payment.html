@@ -123,7 +123,7 @@
                             {% for invoice in outstanding_invoices %}
                             <tr>
                                 <td>{{ invoice.invoice_number }}</td>
-                                <td>{{ invoice.invoice_date|date:"Y-m-d" }}</td>
+                                <td>{{ invoice.invoice_date|date:"Y-m-d H:i" }}</td>
                                 <td>{{ invoice.total_amount|currency }}</td>
                                 <td>{{ invoice.amount_paid|currency }}</td>
                                 <td>

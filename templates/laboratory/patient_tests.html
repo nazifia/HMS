@@ -81,7 +81,7 @@
                                 {% for request in test_requests %}
                                     <tr class="{% if request.status == 'pending' %}table-warning{% elif request.status == 'collected' %}table-info{% elif request.status == 'processing' %}table-secondary{% elif request.status == 'completed' %}table-success{% elif request.status == 'cancelled' %}table-danger{% endif %}">
                                         <td>{{ request.id }}</td>
-                                        <td>{{ request.request_date|date:"M d, Y" }}</td>
+                                        <td>{{ request.request_date|date:"M d, Y H:i" }}</td>
                                         <td>Dr. {{ request.doctor.get_full_name }}</td>
                                         <td>
                                             {% for test in request.tests.all %}
@@ -153,7 +153,7 @@
                                     {% for request in results %}
                                         {% for result in request.results.all %}
                                             <tr>
-                                                <td>{{ result.result_date|date:"M d, Y" }}</td>
+                                                <td>{{ result.result_date|date:"M d, Y H:i" }}</td>
                                                 <td>{{ result.test.name }}</td>
                                                 <td>Dr. {{ request.doctor.get_full_name }}</td>
                                                 <td>
@@ -207,7 +207,7 @@
                                     {% for prescription in prescriptions %}
                                         <tr>
                                             <td>{{ prescription.id }}</td>
-                                            <td>{{ prescription.prescription_date|date:"M d, Y" }}</td>
+                                            <td>{{ prescription.prescription_date|date:"M d, Y H:i" }}</td>
                                             <td>Dr. {{ prescription.doctor.get_full_name }}</td>
                                             <td>{{ prescription.diagnosis|truncatewords:5 }}</td>
                                             <td>

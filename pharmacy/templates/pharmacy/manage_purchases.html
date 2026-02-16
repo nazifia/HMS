@@ -85,7 +85,7 @@
                                 <span class="badge bg-secondary">{{ purchase.invoice_number }}</span>
                             </td>
                             <td>{{ purchase.supplier.name|default:"N/A" }}</td>
-                            <td>{{ purchase.purchase_date|date:"Y-m-d"|default:"N/A" }}</td>
+                            <td>{{ purchase.purchase_date|date:"Y-m-d H:i"|default:"N/A" }}</td>
                             <td class="text-end fw-bold">{{ purchase.total_amount|default:0|currency }}</td>
                             <td>
                                 {% if purchase.approval_status == 'draft' %}

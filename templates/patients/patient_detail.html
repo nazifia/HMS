@@ -665,7 +665,7 @@
                         <tbody>
                             {% for request in physiotherapy_requests %}
                                 <tr>
-                                    <td>{{ request.request_date|date:"M d, Y" }}</td>
+                                    <td>{{ request.request_date|date:"M d, Y H:i" }}</td>
                                     <td>{{ request.diagnosis|truncatechars:50 }}</td>
                                     <td>
                                         {% if request.referring_doctor %}
@@ -774,7 +774,7 @@
                                 <tbody>
                                     {% for appointment in appointments %}
                                     <tr>
-                                        <td>{{ appointment.appointment_date|date:"M d, Y" }}</td>
+                                        <td>{{ appointment.appointment_date|date:"M d, Y H:i" }}</td>
                                         <td>{{ appointment.appointment_time }}</td>
                                         <td>Dr. {{ appointment.doctor.get_full_name }}</td>
                                         <td>{{ appointment.purpose|truncatechars:30 }}</td>
@@ -825,7 +825,7 @@
                                     {% for prescription in prescriptions %}
                                     <tr>
                                         <td>{{ prescription.id }}</td>
-                                        <td>{{ prescription.prescription_date|date:"M d, Y" }}</td>
+                                        <td>{{ prescription.prescription_date|date:"M d, Y H:i" }}</td>
                                         <td>Dr. {{ prescription.doctor.get_full_name }}</td>
                                         <td>{{ prescription.diagnosis|truncatechars:30 }}</td>
                                         <td>

@@ -31,7 +31,7 @@
                             {% for prescription in prescriptions %}
                             <tr>
                                 <td>{{ prescription.id }}</td>
-                                <td>{{ prescription.prescription_date|date:"M d, Y" }}</td>
+                                <td>{{ prescription.prescription_date|date:"M d, Y H:i" }}</td>
                                 <td>Dr. {{ prescription.doctor.get_full_name }}</td>
                                 <td>{{ prescription.diagnosis|truncatewords:5 }}</td>
                                 <td>

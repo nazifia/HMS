@@ -27,8 +27,8 @@
                             <p><strong>Sample Type:</strong> {{ result.test.get_sample_type_display }}</p>
                         </div>
                         <div class="col-md-6">
-                            <p><strong>Request Date:</strong> {{ result.test_request.request_date|date:"M d, Y" }}</p>
-                            <p><strong>Result Date:</strong> {{ result.result_date|date:"M d, Y" }}</p>
+                            <p><strong>Request Date:</strong> {{ result.test_request.request_date|date:"M d, Y H:i" }}</p>
+                            <p><strong>Result Date:</strong> {{ result.result_date|date:"M d, Y H:i" }}</p>
                             <p><strong>Performed By:</strong> {{ result.performed_by.get_full_name }}</p>
                         </div>
                     </div>

@@ -416,7 +416,7 @@
                                 </strong>
                                 <br>
                                 <small class="text-muted">
-                                    Date: {{ prescription.prescription_date|date:"M d, Y" }}
+                                    Date: {{ prescription.prescription_date|date:"M d, Y H:i" }}
                                 </small>
                             </div>
                             <div class="btn-group btn-group-sm">
@@ -460,7 +460,7 @@
                                 <br>
                                 <small class="text-muted">
                                     Test: {{ test.test.name }} |
-                                    Date: {{ test.request_date|date:"M d, Y" }}
+                                    Date: {{ test.request_date|date:"M d, Y H:i" }}
                                 </small>
                             </div>
                         </div>
@@ -498,7 +498,7 @@
                                 <br>
                                 <small class="text-muted">
                                     Test: {{ radiology.test.name }} |
-                                    Date: {{ radiology.order_date|date:"M d, Y" }}
+                                    Date: {{ radiology.order_date|date:"M d, Y H:i" }}
                                 </small>
                             </div>
                         </div>

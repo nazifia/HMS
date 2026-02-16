@@ -31,7 +31,7 @@
         <div class="col-6 text-end">
             <h5>Prescription Details</h5>
             <p class="mb-1"><strong>Prescription #:</strong> {{ prescription.id }}</p>
-            <p class="mb-1"><strong>Date:</strong> {{ prescription.prescription_date|date:"F d, Y" }}</p>
+            <p class="mb-1"><strong>Date:</strong> {{ prescription.prescription_date|date:"F d, Y H:i" }}</p>
             <p class="mb-1"><strong>Doctor:</strong> Dr. {{ prescription.doctor.get_full_name }}</p>
             <p class="mb-1"><strong>Specialization:</strong> {{ prescription.doctor.profile.specialization|default:"General Medicine" }}</p>
         </div>

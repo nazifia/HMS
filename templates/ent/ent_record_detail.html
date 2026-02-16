@@ -201,7 +201,7 @@
                                     {% for prescription in prescriptions %}
                                     <tr>
                                         <td>{{ prescription.id }}</td>
-                                        <td>{{ prescription.prescription_date|date:"M d, Y" }}</td>
+                                        <td>{{ prescription.prescription_date|date:"M d, Y H:i" }}</td>
                                         <td>{{ prescription.diagnosis|truncatewords:5 }}</td>
                                         <td>
                                             <span class="badge bg-{% if prescription.status == 'dispensed' %}success{% elif prescription.status == 'pending' %}warning{% elif prescription.status == 'approved' %}primary{% else %}secondary{% endif %}">

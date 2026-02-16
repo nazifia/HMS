@@ -138,7 +138,7 @@
                                 {% for purchase in purchases %}
                                 <tr>
                                     <td>{{ purchase.invoice_number }}</td>
-                                    <td>{{ purchase.purchase_date|date:"M d, Y" }}</td>
+                                    <td>{{ purchase.purchase_date|date:"M d, Y H:i" }}</td>
                                     <td>{{ purchase.total_amount |currency }}</td>
                                     <td>
                                         <span class="badge {% if purchase.payment_status == 'paid' %}bg-success{% elif purchase.payment_status == 'partial' %}bg-warning{% else %}bg-secondary{% endif %}">
@@ -191,7 +191,7 @@
                                     <td>{{ item.medication.name|truncatechars:25 }}</td>
                                     <td>{{ item.quantity }}</td>
                                     <td>{{ item.unit_price |currency }}</td>
-                                    <td>{{ item.purchase.purchase_date|date:"M d" }}</td>
+                                    <td>{{ item.purchase.purchase_date|date:"M d, Y H:i" }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

@@ -30,7 +30,7 @@
                     <div class="row">
                         <div class="col-md-6">
                             <p><strong>Prescription ID:</strong> #{{ prescription.id }}</p>
-                            <p><strong>Date:</strong> {{ prescription.prescription_date|date:"F d, Y" }}</p>
+                            <p><strong>Date:</strong> {{ prescription.prescription_date|date:"F d, Y H:i" }}</p>
                             <p><strong>Status:</strong> 
                                 <span class="badge bg-{{ prescription.status|default:'secondary' }}">
                                     {{ prescription.get_status_display }}
@@ -250,7 +250,7 @@
                     <div class="border-bottom pb-2 mb-2">
                         <div class="d-flex justify-content-between">
                             <strong>{{ payment.amount|currency }}</strong>
-                            <small class="text-muted">{{ payment.payment_date|date:"M d, Y" }}</small>
+                            <small class="text-muted">{{ payment.payment_date|date:"M d, Y H:i" }}</small>
                         </div>
                         <div class="small text-muted">
                             {{ payment.get_payment_method_display }}

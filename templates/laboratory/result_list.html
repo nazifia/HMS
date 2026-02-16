@@ -110,7 +110,7 @@
                             {% for result in page_obj %}
                                 <tr>
                                     <td>{{ result.id }}</td>
-                                    <td>{{ result.result_date|date:"M d, Y" }}</td>
+                                    <td>{{ result.result_date|date:"M d, Y H:i" }}</td>
                                     <td>
                                         <a href="{% url 'patients:detail' result.test_request.patient.id %}">
                                             {{ result.test_request.patient.get_full_name }}

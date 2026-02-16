@@ -327,7 +327,7 @@
                     <tbody>
                         {% for test in recent_lab_tests %}
                         <tr>
-                            <td>{{ test.request_date|date:"M d, Y" }}</td>
+                            <td>{{ test.request_date|date:"M d, Y H:i" }}</td>
                             <td>{{ test.test.name }}</td>
                             <td>
                                 {% if test.status == 'completed' %}

@@ -263,7 +263,7 @@
                                     {% for invoice in outstanding_invoices %}
                                     <tr>
                                         <td>{{ invoice.invoice_number }}</td>
-                                        <td>{{ invoice.invoice_date|date:"M d, Y" }}</td>
+                                        <td>{{ invoice.invoice_date|date:"M d, Y H:i" }}</td>
                                         <td>{{ invoice.total_amount|currency }}</td>
                                         <td>{{ invoice.amount_paid|currency }}</td>
                                         <td class="text-warning">{{ invoice.get_balance|currency }}</td>

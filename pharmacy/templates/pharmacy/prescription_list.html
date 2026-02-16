@@ -358,7 +358,7 @@
                                 </button>
                             </td>
                             <td>{{ prescription.doctor.get_full_name }}</td>
-                            <td>{{ prescription.prescription_date|date:"Y-m-d" }}</td>
+                            <td>{{ prescription.prescription_date|date:"Y-m-d H:i" }}</td>
                             <td>
                                 <span class="badge badge-{{ prescription.status|default:'secondary' }}">
                                     {{ prescription.get_status_display }}

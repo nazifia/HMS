@@ -147,7 +147,7 @@
                                 <strong>Prescription ID:</strong> #{{ prescription.id }}
                             </p>
                             <p class="mb-1">
-                                <strong>Date:</strong> {{ prescription.prescription_date|date:"M d, Y" }}
+                                <strong>Date:</strong> {{ prescription.prescription_date|date:"M d, Y H:i" }}
                             </p>
                             <p class="mb-1">
                                 <strong>Prescribed by:</strong> {{ prescription.doctor.get_full_name|default:"Not specified" }}

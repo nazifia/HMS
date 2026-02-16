@@ -109,7 +109,7 @@
                                 <td>
                                     {% with last_appointment=patient.appointments.all.0 %}
                                     {% if last_appointment %}
-                                        <small>{{ last_appointment.appointment_date|date:"F d, Y" }}</small>
+                                        <small>{{ last_appointment.appointment_date|date:"F d, Y H:i" }}</small>
                                         {% with status=last_appointment.status %}
                                         <span class="badge bg-{% if status == 'completed' %}success{% elif status == 'in_progress' %}info{% elif status == 'pending' %}warning{% else %}secondary{% endif %}">
                                             {{ status|title }}

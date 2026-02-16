@@ -174,7 +174,7 @@
                         <tbody>
                             {% for payment in payments %}
                             <tr>
-                                <td>{{ payment.payment_date|date:"M d, Y" }}</td>
+                                <td>{{ payment.payment_date|date:"M d, Y H:i" }}</td>
                                 <td>
                                     <span class="text-success font-weight-bold">
                                         {{ payment.amount|currency }}
@@ -250,7 +250,7 @@
                     </div>
                     <div class="row mb-2">
                         <div class="col-4"><strong>Invoice Date:</strong></div>
-                        <div class="col-8">{{ invoice.invoice_date|date:"M d, Y" }}</div>
+                        <div class="col-8">{{ invoice.invoice_date|date:"M d, Y H:i" }}</div>
                     </div>
                     <div class="row mb-2">
                         <div class="col-4"><strong>Due Date:</strong></div>

@@ -272,7 +272,7 @@
                             <div class="mb-3">
                                 <i class="fas fa-calendar-plus info-icon"></i>
                                 <strong>Order Date:</strong><br>
-                                {{ order.order_date|date:"F j, Y g:i A" }}
+                                {{ order.order_date|date:"M d, Y H:i" }}
                             </div>
                             <div class="mb-3">
                                 <i class="fas fa-calendar-check info-icon"></i>
@@ -359,7 +359,7 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <i class="fas fa-calendar-day text-muted me-1"></i>
-                                    <strong>Study Date:</strong> {{ result.study_date|date:"F j, Y" }}
+                                    <strong>Study Date:</strong> {{ result.study_date|date:"F j, Y H:i" }}
                                     {% if result.study_time %}{{ result.study_time|date:"g:i A" }}{% endif %}
                                 </div>
                                 <div class="mb-3">

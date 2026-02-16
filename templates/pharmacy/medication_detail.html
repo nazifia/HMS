@@ -169,7 +169,7 @@
                                     <tbody>
                                         {% for item in purchase_items %}
                                             <tr>
-                                                <td>{{ item.purchase.purchase_date|date:"M d, Y" }}</td>
+                                                <td>{{ item.purchase.purchase_date|date:"M d, Y H:i" }}</td>
                                                 <td>{{ item.purchase.invoice_number }}</td>
                                                 <td>{{ item.purchase.supplier.name }}</td>
                                                 <td>{{ item.quantity }}</td>
@@ -220,7 +220,7 @@
                                     <tbody>
                                         {% for item in prescription_items %}
                                             <tr>
-                                                <td>{{ item.prescription.prescription_date|date:"M d, Y" }}</td>
+                                                <td>{{ item.prescription.prescription_date|date:"M d, Y H:i" }}</td>
                                                 <td>
                                                     <a href="{% url 'patients:detail' item.prescription.patient.id %}">
                                                         {{ item.prescription.patient.get_full_name }}

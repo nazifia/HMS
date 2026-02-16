@@ -314,7 +314,7 @@
                         <div class="timeline">
                             {% for prescription in prescriptions %}
                                 <div class="timeline-item mb-3 pb-3 border-bottom">
-                                    <div class="timeline-date text-muted small">{{ prescription.prescription_date|date:"M d, Y" }}</div>
+                                    <div class="timeline-date text-muted small">{{ prescription.prescription_date|date:"M d, Y H:i" }}</div>
                                     <div class="timeline-content">
                                         <div class="font-weight-bold">
                                             {{ prescription.diagnosis|default:"No diagnosis" }}
@@ -352,7 +352,7 @@
                         <div class="timeline">
                             {% for test in lab_tests %}
                                 <div class="timeline-item mb-3 pb-3 border-bottom">
-                                    <div class="timeline-date text-muted small">{{ test.request_date|date:"M d, Y" }}</div>
+                                    <div class="timeline-date text-muted small">{{ test.request_date|date:"M d, Y H:i" }}</div>
                                     <div class="timeline-content">
                                         <div class="font-weight-bold">
                                             {% for t in test.tests.all %}
@@ -386,7 +386,7 @@
                         <div class="timeline">
                             {% for order in radiology_orders %}
                                 <div class="timeline-item mb-3 pb-3 border-bottom">
-                                    <div class="timeline-date text-muted small">{{ order.order_date|date:"M d, Y" }}</div>
+                                    <div class="timeline-date text-muted small">{{ order.order_date|date:"M d, Y H:i" }}</div>
                                     <div class="timeline-content">
                                         <div class="font-weight-bold">
                                             {{ order.test.name }}

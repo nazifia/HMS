@@ -167,7 +167,7 @@
                                 <tr>
                                     <td>{{ order.invoice_number }}</td>
                                     <td>{{ order.supplier.name }}</td>
-                                    <td>{{ order.purchase_date|date:"M d" }}</td>
+                                    <td>{{ order.purchase_date|date:"M d, Y H:i" }}</td>
                                     <td>{{ order.total_amount|currency }}</td>
                                     <td>
                                         <a href="{% url 'pharmacy:purchase_detail' order.id %}" class="btn btn-sm btn-outline-primary">
@@ -263,7 +263,7 @@
                                 <tr>
                                     <td>{{ order.invoice_number }}</td>
                                     <td>{{ order.supplier.name }}</td>
-                                    <td>{{ order.purchase_date|date:"M d" }}</td>
+                                    <td>{{ order.purchase_date|date:"M d, Y H:i" }}</td>
                                     <td>
                                         <span class="badge {% if order.payment_status == 'paid' %}bg-success{% else %}bg-warning{% endif %}">
                                             {{ order.get_payment_status_display }}

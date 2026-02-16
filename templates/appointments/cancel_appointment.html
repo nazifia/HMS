@@ -21,7 +21,7 @@
                     <h5>Appointment for {{ appointment.patient.get_full_name }}</h5>
                     <p class="text-muted">
                         With Dr. {{ appointment.doctor.get_full_name }} on 
-                        {{ appointment.appointment_date|date:"F d, Y" }} at 
+                        {{ appointment.appointment_date|date:"F d, Y H:i" }} at 
                         {{ appointment.appointment_time|time:"h:i A" }}
                     </p>
                     <p class="text-muted">

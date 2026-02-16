@@ -902,7 +902,7 @@
                 <h6>Payment Details</h6>
                 {% for payment in cart.invoice.payments.all %}
                 <div class="summary-item">
-                    <span>{{ payment.payment_date|date:"M d, Y" }}:</span>
+                    <span>{{ payment.payment_date|date:"M d, Y H:i" }}:</span>
                     <span>{{ payment.amount|currency }}</span>
                 </div>
                 <div class="summary-item">
