@@ -155,7 +155,13 @@
                                 {% endif %}
                             </td>
                             <td>{{ surgery.theatre }}</td>
-                            <td>{{ surgery.primary_surgeon }}</td>
+                            <td>
+                                {% if surgery.primary_surgeon %}
+                                    {{ surgery.primary_surgeon.get_full_name|default: surgery.primary_surgeon.username }}
+                                {% else %}
+                                    <span class="text-muted">Not assigned</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if surgery.status == 'scheduled' %}
                                 <span class="badge badge-primary">{{ surgery.get_status_display }}</span>
@@ -214,7 +220,13 @@
                                 {% endif %}
                             </td>
                             <td>{{ surgery.theatre }}</td>
-                            <td>{{ surgery.primary_surgeon }}</td>
+                            <td>
+                                {% if surgery.primary_surgeon %}
+                                    {{ surgery.primary_surgeon.get_full_name|default: surgery.primary_surgeon.username }}
+                                {% else %}
+                                    <span class="text-muted">Not assigned</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if surgery.status == 'scheduled' %}
                                 <span class="badge badge-primary">{{ surgery.get_status_display }}</span>
