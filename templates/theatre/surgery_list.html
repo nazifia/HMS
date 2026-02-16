@@ -157,7 +157,9 @@
                             <td>{{ surgery.theatre }}</td>
                             <td>
                                 {% if surgery.primary_surgeon %}
-                                    {{ surgery.primary_surgeon.get_full_name|default: surgery.primary_surgeon.username }}
+                                    {% with surgeon=surgery.primary_surgeon %}
+                                        {{ surgeon.get_full_name|default:surgeon.username }}
+                                    {% endwith %}
                                 {% else %}
                                     <span class="text-muted">Not assigned</span>
                                 {% endif %}
@@ -222,7 +224,9 @@
                             <td>{{ surgery.theatre }}</td>
                             <td>
                                 {% if surgery.primary_surgeon %}
-                                    {{ surgery.primary_surgeon.get_full_name|default: surgery.primary_surgeon.username }}
+                                    {% with surgeon=surgery.primary_surgeon %}
+                                        {{ surgeon.get_full_name|default:surgeon.username }}
+                                    {% endwith %}
                                 {% else %}
                                     <span class="text-muted">Not assigned</span>
                                 {% endif %}
