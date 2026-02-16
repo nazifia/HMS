@@ -46,7 +46,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label for="{{ form.doctor.id_for_label }}">Doctor <span class="text-danger">*</span></label>
+                                <label for="{{ form.dentist.id_for_label }}">Doctor <span class="text-danger">*</span></label>
 
                                 <!-- Enhanced Doctor Search Field -->
                                 <div class="input-group mb-2">
@@ -62,7 +62,7 @@
                                 </select>
 
                                 <!-- Hidden field for form submission -->
-                                {{ form.doctor }}
+                                {{ form.dentist }}
 
                                 <!-- Selected Doctor Info -->
                                 <div id="selected_doctor_info" class="mt-2 p-2 bg-light rounded" style="display: none;">
@@ -99,10 +99,10 @@
                                 crispySearchField.style.display = 'none';
                             }
 
-                            // Remove doctor field from crispy form
-                            var crispyDoctorField = document.querySelector('div#div_id_doctor');
-                            if (crispyDoctorField) {
-                                crispyDoctorField.style.display = 'none';
+                            // Remove dentist field from crispy form
+                            var crispyDentistField = document.querySelector('div#div_id_dentist');
+                            if (crispyDentistField) {
+                                crispyDentistField.style.display = 'none';
                             }
                         });
                     </script>
@@ -176,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function() {
             url: '/accounts/api/users/?role=doctor',
             method: 'GET',
             success: function(data) {
-                doctorsData = data.users || [];
+                doctorsData = data || [];
                 populateDoctorDropdown(doctorsData);
             },
             error: function(xhr, status, error) {
@@ -192,8 +192,8 @@ document.addEventListener('DOMContentLoaded', function() {
         $dropdown.append('<option value="">Select a doctor...</option>');
 
         doctors.forEach(function(doctor) {
-            var displayName = doctor.name || doctor.username;
-            var department = doctor.department || doctor.profile__department__name || 'N/A';
+            var displayName = doctor.full_name || doctor.username;
+            var department = doctor.department || 'N/A';
             $dropdown.append(
                 $('<option></option>')
                     .attr('value', doctor.id)
@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 populateDoctorDropdown(doctorsData);
             } else {
                 var filtered = doctorsData.filter(function(doctor) {
-                    var name = (doctor.name || doctor.username || '').toLowerCase();
+                    var name = (doctor.full_name || doctor.username || '').toLowerCase();
                     return name.includes(searchTerm);
                 });
                 populateDoctorDropdown(filtered);
@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var doctorDepartment = selectedOption.data('department');
 
         // Update hidden field for form submission
-        $('#id_doctor').val(doctorId);
+        $('#id_dentist').val(doctorId);
 
         // Show/hide selected doctor info
         if (doctorId) {
@@ -258,11 +258,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Pre-fill if editing existing record
-    var existingDoctorId = $('#id_doctor').val();
-    if (existingDoctorId) {
+    var existingDentistId = $('#id_dentist').val();
+    if (existingDentistId) {
         loadDoctors();
         setTimeout(function() {
-            $('#doctor_dropdown').val(existingDoctorId).trigger('change');
+            $('#doctor_dropdown').val(existingDentistId).trigger('change');
         }, 500);
     } else {
         loadDoctors();

@@ -178,7 +178,7 @@ $(document).ready(function() {
         url: '/accounts/api/users/?role=doctor',
         method: 'GET',
         success: function(data) {
-            allDoctors = data.users || [];
+            allDoctors = data || [];
             populateDoctorDropdown(allDoctors);
 
             // Pre-fill if editing existing record
@@ -198,8 +198,8 @@ $(document).ready(function() {
         $dropdown.find('option:not(:first)').remove();
 
         doctors.forEach(function(doctor) {
-            const fullName = `${doctor.first_name} ${doctor.last_name}`.trim() || doctor.username;
-            const department = doctor.department_name || 'N/A';
+            const fullName = doctor.full_name || (`${doctor.first_name} ${doctor.last_name}`.trim()) || doctor.username || 'Unknown';
+            const department = doctor.department || doctor.department_name || 'N/A';
             $dropdown.append(
                 $('<option></option>')
                     .attr('value', doctor.id)
@@ -221,9 +221,9 @@ $(document).ready(function() {
                 populateDoctorDropdown(allDoctors);
             } else {
                 const filtered = allDoctors.filter(function(doctor) {
-                    const fullName = `${doctor.first_name} ${doctor.last_name}`.toLowerCase();
+                    const fullName = (doctor.full_name || `${doctor.first_name} ${doctor.last_name}`.trim()).toLowerCase();
                     return fullName.includes(searchTerm) ||
-                           doctor.username.toLowerCase().includes(searchTerm);
+                           (doctor.username && doctor.username.toLowerCase().includes(searchTerm));
                 });
                 populateDoctorDropdown(filtered);
             }
@@ -247,9 +247,9 @@ $(document).ready(function() {
             $('#id_doctor').val(doctor.id);
             $('#doctor_dropdown').val(doctor.id);
 
-            const fullName = `${doctor.first_name} ${doctor.last_name}`.trim() || doctor.username;
+            const fullName = doctor.full_name || (`${doctor.first_name} ${doctor.last_name}`.trim()) || doctor.username || 'Unknown';
             $('#doctor_name').text(fullName);
-            $('#doctor_department').text(doctor.department_name || 'N/A');
+            $('#doctor_department').text(doctor.department || doctor.department_name || 'N/A');
             $('#selected_doctor_info').show();
         }
     }

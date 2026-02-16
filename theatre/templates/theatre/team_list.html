@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+{% load crispy_forms_tags %}
+
+{% block title %}Surgical Team Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .team-card {
+        transition: transform 0.2s ease-in-out;
+    }
+    .team-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .role-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    .search-highlight {
+        background-color: #fff3cd;
+        padding: 0.1rem 0.2rem;
+        border-radius: 0.2rem;
+    }
+    .form-control:focus {
+        border-color: #4e73df;
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+    }
+    .table-hover tbody tr:hover {
+        background-color: rgba(78, 115, 223, 0.05);
+    }
+    .border-left-primary {
+        border-left: 0.25rem solid #4e73df !important;
+    }
+    .border-left-success {
+        border-left: 0.25rem solid #1cc88a !important;
+    }
+    .action-buttons .btn {
+        margin: 0.125rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Surgical Team Management</h1>
+        <a href="{% url 'theatre:team_create' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+            <i class="fas fa-plus fa-sm text-white-50"></i> Add Team Member
+        </a>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Team Members</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_count|default:0 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Surgeons</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ surgeons_count|default:0 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-user-md fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Nurses & Technicians</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ nurses_technicians_count|default:0 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-user-nurse fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-secondary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">Anesthetists</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ anesthetists_count|default:0 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-user-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-users"></i> Team Members List
+            </h6>
+            <div class="d-flex gap-2 align-items-center">
+                <form method="get" class="d-flex">
+                    <div class="input-group" style="width: 250px;">
+                        <input type="text" name="search" class="form-control" placeholder="Search team members..."
+                               value="{{ search_query }}" aria-label="Search">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    {% if search_query %}
+                    <a href="{% url 'theatre:team_list' %}" class="btn btn-secondary ms-2">
+                        <i class="fas fa-times"></i> Clear
+                    </a>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if teams %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Role</th>
+                            <th>Staff Details</th>
+                            <th>Surgery Info</th>
+                            <th>Patient Details</th>
+                            <th>Schedule</th>
+                            <th>Theatre</th>
+                            <th>Status</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for team_member in teams %}
+                        <tr class="team-card">
+                            <td>
+                                {% if team_member.role == 'surgeon' %}
+                                <span class="badge bg-primary">Surgeon</span>
+                                {% elif team_member.role == 'assistant_surgeon' %}
+                                <span class="badge bg-info">Assistant Surgeon</span>
+                                {% elif team_member.role == 'anesthetist' %}
+                                <span class="badge bg-warning text-dark">Anesthetist</span>
+                                {% elif team_member.role == 'nurse' %}
+                                <span class="badge bg-success">Nurse</span>
+                                {% elif team_member.role == 'technician' %}
+                                <span class="badge bg-secondary">Technician</span>
+                                {% else %}
+                                <span class="badge bg-dark">Other</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ team_member.staff.get_full_name }}</strong>
+                                <br><small class="text-muted">{{ team_member.staff.username }}</small>
+                                <br><small style="color: #000000; font-weight: bold;">
+                                    {% if team_member.staff.profile %}{{ team_member.staff.profile.get_role|default:"Staff" }}{% else %}Staff{% endif %}
+                                </small>
+                                {% if team_member.staff.phone_number %}
+                                <br><small class="text-muted"><i class="fas fa-phone"></i> {{ team_member.staff.phone_number }}</small>
+                                {% endif %}
+                                {% if team_member.staff.email %}
+                                <br><small class="text-muted"><i class="fas fa-envelope"></i> {{ team_member.staff.email|truncatechars:20 }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'theatre:surgery_detail' team_member.surgery.id %}" class="text-primary fw-bold">
+                                    {{ team_member.surgery.surgery_type.name }}
+                                </a>
+                                <br><small class="text-muted">ID: #{{ team_member.surgery.id }}</small>
+                                <br><small class="text-muted">Duration: {{ team_member.surgery.expected_duration }}</small>
+                            </td>
+                            <td>
+                                <a href="{% url 'patients:patient_detail' team_member.surgery.patient.id %}">
+                                    {{ team_member.surgery.patient.get_full_name }}
+                                </a>
+                                <br><small class="text-muted">PID: {{ team_member.surgery.patient.patient_id }}</small>
+                                {% if team_member.surgery.patient.phone_number %}
+                                <br><small class="text-muted"><i class="fas fa-phone"></i> {{ team_member.surgery.patient.phone_number }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <i class="fas fa-calendar-alt text-primary"></i> {{ team_member.surgery.scheduled_date|date:"Y-m-d" }}
+                                <br><i class="fas fa-clock text-primary"></i> {{ team_member.surgery.scheduled_date|time:"H:i" }}
+                            </td>
+                            <td>
+                                {% if team_member.surgery.theatre %}
+                                <span class="text-primary fw-bold">{{ team_member.surgery.theatre.name }}</span>
+                                <br><small class="text-muted">{{ team_member.surgery.theatre.theatre_number }}</small>
+                                {% else %}
+                                <span class="text-muted">Not Assigned</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if team_member.surgery.status == 'scheduled' %}
+                                <span class="badge bg-primary">{{ team_member.surgery.status|upper }}</span>
+                                {% elif team_member.surgery.status == 'in_progress' %}
+                                <span class="badge bg-warning text-dark">{{ team_member.surgery.status|upper }}</span>
+                                {% elif team_member.surgery.status == 'completed' %}
+                                <span class="badge bg-success">{{ team_member.surgery.status|upper }}</span>
+                                {% elif team_member.surgery.status == 'cancelled' %}
+                                <span class="badge bg-danger">{{ team_member.surgery.status|upper }}</span>
+                                {% elif team_member.surgery.status == 'postponed' %}
+                                <span class="badge bg-secondary">{{ team_member.surgery.status|upper }}</span>
+                                {% else %}
+                                <span class="badge bg-info">{{ team_member.surgery.status|upper }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if team_member.usage_notes %}
+                                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" data-bs-title="{{ team_member.usage_notes }}">
+                                        <i class="fas fa-sticky-note text-warning"></i> View
+                                    </button>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group-vertical action-buttons" role="group">
+                                    <a href="{% url 'theatre:team_detail' team_member.pk %}" class="btn btn-info btn-sm">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    <a href="{% url 'theatre:team_update' team_member.pk %}" class="btn btn-warning btn-sm">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <a href="{% url 'theatre:team_delete' team_member.pk %}" class="btn btn-danger btn-sm"
+                                       onclick="return confirm('Are you sure you want to delete this team member assignment?');">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if is_paginated %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
+                    </li>
+                    {% endif %}
+
+                    {% for i in page_obj.paginator.page_range %}
+                        {% if page_obj.number == i %}
+                        <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                        {% elif i > page_obj.number|add:-3 and i < page_obj.number|add:3 %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ i }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ i }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                <h4>No Team Members Assigned</h4>
+                <p>No surgical team members have been assigned yet. <a href="{% url 'theatre:team_create' %}">Add the first team member</a> or create a surgery with team members in the surgery form.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add tooltips for Bootstrap 5
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
+    // Highlight search terms
+    const searchTerm = new URLSearchParams(window.location.search).get('search');
+    if (searchTerm && searchTerm.length > 0) {
+        const tableRows = document.querySelectorAll('tbody tr');
+        tableRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            cells.forEach(cell => {
+                const text = cell.textContent;
+                if (text.toLowerCase().includes(searchTerm.toLowerCase())) {
+                    const regex = new RegExp(`(${searchTerm})`, 'gi');
+                    cell.innerHTML = cell.innerHTML.replace(regex, '<mark>$1</mark>');
+                }
+            });
+        });
+    }
+
+    // Keyboard shortcut for adding new team member
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+            e.preventDefault();
+            window.location.href = "{% url 'theatre:team_create' %}";
+        }
+    });
+});
+</script>
+{% endblock %}

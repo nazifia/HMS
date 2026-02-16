@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #f8f9fc;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+        border-left: 0.25rem solid #4e73df;
+    }
+    .section-title {
+        color: #4e73df;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+    }
+    .required-field::after {
+        content: " *";
+        color: #e74c3b;
+    }
+    .form-text {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    .help-icon {
+        cursor: help;
+        margin-left: 0.25rem;
+    }
+    .staff-select {
+        min-height: 200px;
+    }
+    .staff-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .staff-item {
+        padding: 0.5rem;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+    }
+    .staff-item:hover {
+        background-color: #f8f9fa;
+    }
+    .staff-item.selected {
+        background-color: #d4edda;
+    }
+    .staff-item input[type="checkbox"] {
+        margin-right: 0.5rem;
+    }
+    .info-box {
+        background: #e7f3ff;
+        border-left: 4px solid #4e73df;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <div>
+            <a href="{% url 'theatre:team_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
+
+    {% if multiple_mode %}
+    <div class="info-box">
+        <i class="fas fa-info-circle"></i>
+        <strong>Multi-Member Assignment:</strong> Select multiple staff members to assign them all at once with the same role. This is useful for adding a surgical team to a surgery.
+    </div>
+    {% endif %}
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-user-plus"></i>
+                {% if object %}Edit Team Member Assignment
+                {% elif multiple_mode %}Add Multiple Team Members
+                {% else %}Add New Team Member{% endif %}
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="post" novalidate>
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-user-md"></i> 
+                        {% if multiple_mode %}Team Members Assignment{% else %}Team Member Details{% endif %}
+                    </h5>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="required-field">Surgery</label>
+                                {% if multiple_mode %}
+                                    {{ form.surgery }}
+                                    {% if form.surgery.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.surgery.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                    {% endif %}
+                                {% else %}
+                                <select name="surgery" class="form-control {% if form.surgery.errors %}is-invalid{% endif %}"
+                                        id="id_surgery" required>
+                                    <option value="">---------</option>
+                                    {% for surgery in form.fields.surgery.queryset %}
+                                    <option value="{{ surgery.pk }}"
+                                            {% if form.surgery.value|stringformat:"i" == surgery.pk|stringformat:"i" %}selected{% endif %}>
+                                        {{ surgery }} - {{ surgery.scheduled_date|date:"Y-m-d H:i" }}
+                                        ({{ surgery.patient.get_full_name }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.surgery.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.surgery.errors %}{{ error }}{% endfor %}
+                                </div>
+                                {% endif %}
+                                {% endif %}
+                                <small class="form-text">Select the surgery this team member(s) is assigned to</small>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="required-field">
+                                    {% if multiple_mode %}Staff Members{% else %}Staff Member{% endif %}
+                                </label>
+                                {% if multiple_mode %}
+                                    {{ form.staff }}
+                                    {% if form.staff.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.staff.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    <small class="form-text">Hold Ctrl/Cmd to select multiple staff members</small>
+                                {% else %}
+                                <select name="staff" class="form-control {% if form.staff.errors %}is-invalid{% endif %}"
+                                        id="id_staff" required>
+                                    <option value="">---------</option>
+                                    {% for user in form.fields.staff.queryset %}
+                                    <option value="{{ user.pk }}"
+                                            {% if form.staff.value|stringformat:"i" == user.pk|stringformat:"i" %}selected{% endif %}>
+                                        {{ user.get_full_name }} ({{ user.username }})
+                                        {% if user.profile.role %}- {{ user.profile.get_role }}{% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.staff.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.staff.errors %}{{ error }}{% endfor %}
+                                </div>
+                                {% endif %}
+                                {% endif %}
+                                <small class="form-text">
+                                    {% if multiple_mode %}Select the staff members to assign to the surgery{% else %}Select the staff member to assign to the surgery{% endif %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="required-field">Role</label>
+                                {% if multiple_mode %}
+                                    {{ form.role }}
+                                    {% if form.role.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.role.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                    {% endif %}
+                                {% else %}
+                                <select name="role" class="form-control {% if form.role.errors %}is-invalid{% endif %}"
+                                        id="id_role" required>
+                                    <option value="">---------</option>
+                                    {% for value, label in form.fields.role.choices %}
+                                    <option value="{{ value }}"
+                                            {% if form.role.value == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.role.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.role.errors %}{{ error }}{% endfor %}
+                                </div>
+                                {% endif %}
+                                {% endif %}
+                                <small class="form-text">Select the role this staff member will perform in the surgery</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label>Usage Notes</label>
+                                {% if multiple_mode %}
+                                    {{ form.usage_notes }}
+                                    {% if form.usage_notes.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.usage_notes.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                    {% endif %}
+                                {% else %}
+                                    {{ form.usage_notes }}
+                                    {% if form.usage_notes.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.usage_notes.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                    {% endif %}
+                                {% endif %}
+                                <small class="form-text">
+                                    {% if multiple_mode %}
+                                    Add any notes about these team members' specific responsibilities or instructions (applies to all)
+                                    {% else %}
+                                    Add any notes about this team member's specific responsibilities or instructions
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{% url 'theatre:team_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        {% if object %}Update Assignment
+                        {% elif multiple_mode %}Add Team Members
+                        {% else %}Add Team Member{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if object %}
+    <!-- Danger Zone -->
+    <div class="card shadow mb-4 border-left-danger">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-danger">
+                <i class="fas fa-exclamation-triangle"></i> Danger Zone
+            </h6>
+        </div>
+        <div class="card-body">
+            <p class="mb-2">Permanently delete this team member assignment.</p>
+            <a href="{% url 'theatre:team_delete' object.pk %}" class="btn btn-danger"
+               onclick="return confirm('Are you sure you want to delete this team member assignment? This action cannot be undone.');">
+                <i class="fas fa-trash"></i> Delete Assignment
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation enhancement
+    const form = document.querySelector('form');
+
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const requiredFields = form.querySelectorAll('[required]');
+            let valid = true;
+
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    valid = false;
+                    field.classList.add('is-invalid');
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+
+            if (!valid) {
+                e.preventDefault();
+                alert('Please fill in all required fields.');
+            }
+        });
+
+        // Remove invalid class on input
+        form.querySelectorAll('input, select, textarea').forEach(field => {
+            field.addEventListener('input', function() {
+                this.classList.remove('is-invalid');
+            });
+        });
+    }
+
+    // Auto-select surgery if coming from surgery detail page
+    const urlParams = new URLSearchParams(window.location.search);
+    const surgeryId = urlParams.get('surgery');
+    if (surgeryId) {
+        const surgerySelect = document.getElementById('id_surgery');
+        if (surgerySelect) {
+            surgerySelect.value = surgeryId;
+        }
+    }
+});
+</script>
+{% endblock %}

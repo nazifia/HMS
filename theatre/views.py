@@ -95,6 +95,8 @@ from .forms import (
     OperationTheatreForm,
     SurgeryTypeForm,
     SurgeryForm,
+    SurgicalTeamForm,
+    SurgicalTeamMultipleForm,
     SurgicalTeamInlineFormSet,
     SurgicalEquipmentForm,
     EquipmentUsageInlineFormSet,
@@ -842,18 +844,44 @@ class SurgicalTeamListView(LoginRequiredMixin, ReceptionistHROAccessMixin, ListV
 
     def get_queryset(self):
         queryset = SurgicalTeam.objects.select_related(
-            "surgery", "staff", "surgery__patient"
+            "surgery",
+            "staff",
+            "staff__profile",
+            "surgery__patient",
+            "surgery__surgery_type",
+            "surgery__theatre",
         ).order_by("-surgery__scheduled_date")
 
         # Add search functionality
         search_query = self.request.GET.get("search", "")
         if search_query:
+            # Create role mapping for search (both stored value and display value)
+            role_search = Q()
+            role_display_map = {
+                "surgeon": "surgeon",
+                "surgeon": "surgeon",
+                "assistant_surgeon": "assistant_surgeon",
+                "assistant surgeon": "assistant_surgeon",
+                "anesthetist": "anesthetist",
+                "anesthetist": "anesthetist",
+                "nurse": "nurse",
+                "nurse": "nurse",
+                "technician": "technician",
+                "technician": "technician",
+                "other": "other",
+                "other": "other",
+            }
+            search_lower = search_query.lower()
+            if search_lower in role_display_map:
+                role_search = Q(role=role_display_map[search_lower])
+
             queryset = queryset.filter(
                 Q(staff__first_name__icontains=search_query)
                 | Q(staff__last_name__icontains=search_query)
                 | Q(surgery__patient__first_name__icontains=search_query)
                 | Q(surgery__patient__last_name__icontains=search_query)
                 | Q(role__icontains=search_query)
+                | role_search
             )
 
         return queryset
@@ -861,6 +889,18 @@ class SurgicalTeamListView(LoginRequiredMixin, ReceptionistHROAccessMixin, ListV
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["search_query"] = self.request.GET.get("search", "")
+
+        # Calculate statistics from the full queryset (not paginated)
+        queryset = self.get_queryset()
+        context["total_count"] = queryset.count()
+        context["surgeons_count"] = queryset.filter(
+            Q(role="surgeon") | Q(role="assistant_surgeon")
+        ).count()
+        context["anesthetists_count"] = queryset.filter(role="anesthetist").count()
+        context["nurses_technicians_count"] = queryset.filter(
+            Q(role="nurse") | Q(role="technician")
+        ).count()
+
         return context
 
 
@@ -872,25 +912,83 @@ class SurgicalTeamDetailView(
 
 
 class SurgicalTeamCreateView(
-    LoginRequiredMixin, ReceptionistHROAccessMixin, CreateView
+    LoginRequiredMixin, ReceptionistHROAccessMixin, TemplateView
 ):
-    model = SurgicalTeam
-    fields = ["surgery", "staff", "role", "usage_notes"]
     template_name = "theatre/team_form.html"
     success_url = reverse_lazy("theatre:team_list")
 
-    def form_valid(self, form):
-        messages.success(self.request, "Surgical team member added successfully.")
-        return super().form_valid(form)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = "Add Multiple Team Members"
+        context["multiple_mode"] = True
+
+        surgery_id = self.request.GET.get("surgery")
+
+        if self.request.POST:
+            context["form"] = SurgicalTeamMultipleForm(
+                self.request.POST, surgery_id=surgery_id
+            )
+        else:
+            context["form"] = SurgicalTeamMultipleForm(surgery_id=surgery_id)
+
+        return context
+
+    def post(self, request, *args, **kwargs):
+        context = self.get_context_data()
+        form = context["form"]
+
+        if form.is_valid():
+            surgery = form.cleaned_data["surgery"]
+            staff_members = form.cleaned_data["staff"]
+            role = form.cleaned_data["role"]
+            usage_notes = form.cleaned_data["usage_notes"]
+
+            created_count = 0
+            errors = []
+
+            for staff in staff_members:
+                if not SurgicalTeam.objects.filter(
+                    surgery=surgery, staff=staff, role=role
+                ).exists():
+                    team_member = SurgicalTeam(
+                        surgery=surgery, staff=staff, role=role, usage_notes=usage_notes
+                    )
+                    team_member.save()
+                    created_count += 1
+                else:
+                    errors.append(
+                        f"{staff.get_full_name()} is already assigned as {role} for this surgery."
+                    )
+
+            if created_count > 0:
+                messages.success(
+                    request, f"{created_count} team member(s) added successfully."
+                )
+                if errors:
+                    for error in errors:
+                        messages.warning(request, error)
+                return redirect(self.success_url)
+            else:
+                messages.error(
+                    request, "No team members were added. " + " ".join(errors)
+                )
+
+        return self.render_to_response(context)
 
 
 class SurgicalTeamUpdateView(
     LoginRequiredMixin, ReceptionistHROAccessMixin, UpdateView
 ):
     model = SurgicalTeam
-    fields = ["surgery", "staff", "role", "usage_notes"]
+    form_class = SurgicalTeamForm
     template_name = "theatre/team_form.html"
     success_url = reverse_lazy("theatre:team_list")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = "Edit Team Member Assignment"
+        context["multiple_mode"] = False
+        return context
 
     def form_valid(self, form):
         messages.success(self.request, "Surgical team member updated successfully.")
@@ -907,6 +1005,74 @@ class SurgicalTeamDeleteView(
     def delete(self, request, *args, **kwargs):
         messages.success(request, "Surgical team member deleted successfully.")
         return super().delete(request, *args, **kwargs)
+
+
+class BulkTeamCreateView(LoginRequiredMixin, ReceptionistHROAccessMixin, TemplateView):
+    """View to add multiple team members to a surgery at once"""
+
+    template_name = "theatre/bulk_team_form.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            user_roles = list(request.user.roles.values_list("name", flat=True))
+            profile_role = getattr(getattr(request.user, "profile", None), "role", None)
+            if profile_role and profile_role not in user_roles:
+                user_roles.append(profile_role)
+            if "receptionist" in user_roles or "health_record_officer" in user_roles:
+                messages.error(
+                    request, "You don't have permission to add team members."
+                )
+                return redirect("theatre:team_list")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        surgery = get_object_or_404(Surgery, pk=self.kwargs["surgery_id"])
+        context["surgery"] = surgery
+
+        # Get existing team members
+        context["existing_team"] = surgery.team_members.all().select_related("staff")
+
+        if self.request.POST:
+            context["team_formset"] = SurgicalTeamInlineFormSet(self.request.POST)
+        else:
+            # Create formset with extra empty forms for adding multiple members
+            context["team_formset"] = SurgicalTeamInlineFormSet(
+                queryset=SurgicalTeam.objects.none(),
+                extra=5,  # Show 5 empty forms by default
+            )
+
+        return context
+
+    def post(self, request, *args, **kwargs):
+        surgery = get_object_or_404(Surgery, pk=self.kwargs["surgery_id"])
+        team_formset = SurgicalTeamInlineFormSet(self.request.POST)
+
+        if team_formset.is_valid():
+            # Save all team members
+            count = 0
+            for form in team_formset:
+                if form.cleaned_data and not form.cleaned_data.get("DELETE", False):
+                    team_member = form.save(commit=False)
+                    team_member.surgery = surgery
+                    team_member.save()
+                    count += 1
+
+            messages.success(
+                request, f"Successfully added {count} team member(s) to the surgery."
+            )
+            return redirect("theatre:surgery_detail", pk=surgery.pk)
+        else:
+            # Handle form errors
+            for i, form_errors in enumerate(team_formset.errors):
+                if form_errors:
+                    for field, errors in form_errors.items():
+                        for error in errors:
+                            messages.error(request, f"Row {i + 1} - {field}: {error}")
+
+            return self.render_to_response(
+                self.get_context_data(team_formset=team_formset)
+            )
 
 
 class TheatreDashboardView(

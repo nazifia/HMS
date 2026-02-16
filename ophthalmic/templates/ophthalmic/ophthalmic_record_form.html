@@ -15,69 +15,25 @@
         <div class="card-body">
             <form method="POST">
                 {% csrf_token %}
-                <div class="row">
+                
+                <!-- Patient Selection Section -->
+                <div class="row mb-4">
                     <div class="col-md-6">
-                        
-                <div class="form-group">
-                    <label for="{{ form.visual_acuity_right.id_for_label }}">Visual Acuity Right</label>
-                    {{ form.visual_acuity_right|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.visual_acuity_left.id_for_label }}">Visual Acuity Left</label>
-                    {{ form.visual_acuity_left|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.refraction_right_sphere.id_for_label }}">Refraction Right Sphere</label>
-                    {{ form.refraction_right_sphere|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.refraction_right_cylinder.id_for_label }}">Refraction Right Cylinder</label>
-                    {{ form.refraction_right_cylinder|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.refraction_right_axis.id_for_label }}">Refraction Right Axis</label>
-                    {{ form.refraction_right_axis|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.refraction_left_sphere.id_for_label }}">Refraction Left Sphere</label>
-                    {{ form.refraction_left_sphere|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.refraction_left_cylinder.id_for_label }}">Refraction Left Cylinder</label>
-                    {{ form.refraction_left_cylinder|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.refraction_left_axis.id_for_label }}">Refraction Left Axis</label>
-                    {{ form.refraction_left_axis|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.iop_right.id_for_label }}">IOP Right (mmHg)</label>
-                    {{ form.iop_right|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.iop_left.id_for_label }}">IOP Left (mmHg)</label>
-                    {{ form.iop_left|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.clinical_findings.id_for_label }}">Clinical Findings</label>
-                    {{ form.clinical_findings|add_class:"form-control" }}
-                </div>
-                
-<div class="form-group">
-                            <label for="{{ form.patient.id_for_label }}">Patient *</label>
+                        <div class="form-group">
+                            <label for="{{ form.patient_search.id_for_label }}">Search Patient</label>
+                            {{ form.patient_search|add_class:"form-control" }}
+                            <small class="form-text text-muted">Search by name, ID, or phone number</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.patient.id_for_label }}">Selected Patient *</label>
                             {{ form.patient|add_class:"form-control" }}
                         </div>
                     </div>
+                </div>
+
+                <div class="row">
                     <div class="col-md-6">
                         <!-- Doctor Selection with Search -->
                         <div class="form-group">
@@ -94,10 +50,9 @@
                             <!-- Doctor Dropdown with Select2 -->
                             <select id="doctor_dropdown" class="form-control select2" data-placeholder="Select a doctor...">
                                 <option value="">Select a doctor...</option>
-                                <!-- Options will be populated by JavaScript -->
                             </select>
 
-                            <!-- Hidden field for form submission (will be updated by JavaScript) -->
+                            <!-- Hidden field for form submission -->
                             {{ form.doctor|add_class:"d-none" }}
 
                             <!-- Selected Doctor Info -->
@@ -110,38 +65,125 @@
                                 </small>
                             </div>
                         </div>
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-6">
+                        
                         <div class="form-group">
                             <label for="{{ form.visit_date.id_for_label }}">Visit Date *</label>
                             {{ form.visit_date|add_class:"form-control" }}
                         </div>
                     </div>
+                    
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.diagnosis.id_for_label }}">Diagnosis</label>
+                            {{ form.diagnosis|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.treatment_plan.id_for_label }}">Treatment Plan</label>
+                            {{ form.treatment_plan|add_class:"form-control" }}
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="form-group">
-                    <label for="{{ form.chief_complaint.id_for_label }}">Chief Complaint</label>
-                    {{ form.chief_complaint|add_class:"form-control" }}
+                <hr>
+                <h5 class="mb-3">Visual Acuity</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.visual_acuity_right.id_for_label }}">Visual Acuity Right</label>
+                            {{ form.visual_acuity_right|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.intraocular_pressure_right.id_for_label }}">Intraocular Pressure Right (mmHg)</label>
+                            {{ form.intraocular_pressure_right|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.pupil_reaction_right.id_for_label }}">Pupil Reaction Right</label>
+                            {{ form.pupil_reaction_right|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.eyelid_exam_right.id_for_label }}">Eyelid Exam Right</label>
+                            {{ form.eyelid_exam_right|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.conjunctiva_exam_right.id_for_label }}">Conjunctiva Exam Right</label>
+                            {{ form.conjunctiva_exam_right|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.cornea_exam_right.id_for_label }}">Cornea Exam Right</label>
+                            {{ form.cornea_exam_right|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.anterior_chamber_right.id_for_label }}">Anterior Chamber Right</label>
+                            {{ form.anterior_chamber_right|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.lens_exam_right.id_for_label }}">Lens Exam Right</label>
+                            {{ form.lens_exam_right|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.fundus_exam_right.id_for_label }}">Fundus Exam Right</label>
+                            {{ form.fundus_exam_right|add_class:"form-control" }}
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.visual_acuity_left.id_for_label }}">Visual Acuity Left</label>
+                            {{ form.visual_acuity_left|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.intraocular_pressure_left.id_for_label }}">Intraocular Pressure Left (mmHg)</label>
+                            {{ form.intraocular_pressure_left|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.pupil_reaction_left.id_for_label }}">Pupil Reaction Left</label>
+                            {{ form.pupil_reaction_left|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.eyelid_exam_left.id_for_label }}">Eyelid Exam Left</label>
+                            {{ form.eyelid_exam_left|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.conjunctiva_exam_left.id_for_label }}">Conjunctiva Exam Left</label>
+                            {{ form.conjunctiva_exam_left|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.cornea_exam_left.id_for_label }}">Cornea Exam Left</label>
+                            {{ form.cornea_exam_left|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.anterior_chamber_left.id_for_label }}">Anterior Chamber Left</label>
+                            {{ form.anterior_chamber_left|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.lens_exam_left.id_for_label }}">Lens Exam Left</label>
+                            {{ form.lens_exam_left|add_class:"form-control" }}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.fundus_exam_left.id_for_label }}">Fundus Exam Left</label>
+                            {{ form.fundus_exam_left|add_class:"form-control" }}
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="form-group">
-                    <label for="{{ form.history_of_present_illness.id_for_label }}">History of Present Illness</label>
-                    {{ form.history_of_present_illness|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.diagnosis.id_for_label }}">Diagnosis</label>
-                    {{ form.diagnosis|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.treatment_plan.id_for_label }}">Treatment Plan</label>
-                    {{ form.treatment_plan|add_class:"form-control" }}
-                </div>
-                
+                <hr>
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
@@ -206,8 +248,9 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/accounts/api/users/?role=doctor')
             .then(response => response.json())
             .then(data => {
-                const options = data.map(doctor => {
-                    const doctorName = `Dr. ${doctor.first_name} ${doctor.last_name}`;
+                const doctors = data || [];
+                const options = doctors.map(doctor => {
+                    const doctorName = doctor.full_name || `Dr. ${doctor.first_name} ${doctor.last_name}`;
                     const department = doctor.department || 'N/A';
                     return `<option value="${doctor.id}"
                              data-name="${doctorName}"
@@ -232,7 +275,6 @@ document.addEventListener('DOMContentLoaded', function() {
             clearTimeout(doctorSearchTimeout);
 
             if (searchTerm.length === 0) {
-                // Reload all doctors
                 loadAllDoctors();
                 return;
             }
@@ -245,13 +287,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 fetch('/accounts/api/users/?role=doctor')
                     .then(response => response.json())
                     .then(data => {
-                        // Filter doctors based on search term
-                        const filteredDoctors = data.filter(doctor =>
-                            `${doctor.first_name} ${doctor.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
+                        const doctors = data || [];
+                        const filteredDoctors = doctors.filter(doctor =>
+                            (doctor.full_name || `${doctor.first_name} ${doctor.last_name}`).toLowerCase().includes(searchTerm.toLowerCase())
                         );
 
                         const options = filteredDoctors.map(doctor => {
-                            const doctorName = `Dr. ${doctor.first_name} ${doctor.last_name}`;
+                            const doctorName = doctor.full_name || `Dr. ${doctor.first_name} ${doctor.last_name}`;
                             const department = doctor.department || 'N/A';
                             return `<option value="${doctor.id}"
                                      data-name="${doctorName}"
@@ -276,18 +318,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 const doctorName = selectedOption.dataset.name;
                 const doctorDepartment = selectedOption.dataset.department;
 
-                // Update hidden field
                 doctorHiddenField.value = doctorId;
 
-                // Update selected doctor info display
                 document.getElementById('doctor_name').textContent = doctorName;
                 document.getElementById('doctor_department').textContent = doctorDepartment;
                 selectedDoctorInfo.style.display = 'block';
 
-                // Sync search field
                 doctorSearchField.value = doctorName;
             } else {
-                // Clear selection
                 doctorHiddenField.value = '';
                 selectedDoctorInfo.style.display = 'none';
                 doctorSearchField.value = '';
@@ -301,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
             doctorSearchField.value = '';
             doctorHiddenField.value = '';
             selectedDoctorInfo.style.display = 'none';
-            loadAllDoctors(); // Reload all doctors
+            loadAllDoctors();
         });
     }
 
@@ -316,7 +354,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('doctor_department').textContent = doctorDepartment;
         selectedDoctorInfo.style.display = 'block';
 
-        // Set dropdown selection
         $(doctorDropdown).val(doctorId).trigger('change.select2');
     {% endif %}
 });

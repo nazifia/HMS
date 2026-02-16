@@ -147,8 +147,11 @@
 
             <!-- Surgical Team Card -->
             <div class="card shadow mb-4">
-                <div class="card-header py-3">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-primary">Surgical Team</h6>
+                    <a href="{% url 'theatre:bulk_team_create' object.id %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-plus fa-sm text-white-50"></i> Add Team Members
+                    </a>
                 </div>
                 <div class="card-body">
                     {% if object.team_members.all %}
@@ -159,6 +162,7 @@
                                     <th>Staff Member</th>
                                     <th>Role</th>
                                     <th>Notes</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -167,6 +171,14 @@
                                     <td>{{ member.staff }}</td>
                                     <td>{{ member.get_role_display }}</td>
                                     <td>{{ member.notes|default:"-" }}</td>
+                                    <td>
+                                        <a href="{% url 'theatre:team_update' member.id %}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'theatre:team_delete' member.id %}" class="btn btn-sm btn-outline-danger" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

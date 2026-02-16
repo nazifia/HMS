@@ -15,86 +15,60 @@
         <div class="card-body">
             <form method="POST">
                 {% csrf_token %}
+                
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {% for error in form.non_field_errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
                 <div class="row">
                     <div class="col-md-6">
-                        
-                <div class="form-group">
-                    <label for="{{ form.gcs_score.id_for_label }}">GCS Score</label>
-                    {{ form.gcs_score|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.respiratory_rate.id_for_label }}">Respiratory Rate</label>
-                    {{ form.respiratory_rate|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.oxygen_saturation.id_for_label }}">Oxygen Saturation (%)</label>
-                    {{ form.oxygen_saturation|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.blood_pressure_systolic.id_for_label }}">Blood Pressure Systolic</label>
-                    {{ form.blood_pressure_systolic|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.blood_pressure_diastolic.id_for_label }}">Blood Pressure Diastolic</label>
-                    {{ form.blood_pressure_diastolic|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.heart_rate.id_for_label }}">Heart Rate</label>
-                    {{ form.heart_rate|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.body_temperature.id_for_label }}">Body Temperature (°C)</label>
-                    {{ form.body_temperature|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.mechanical_ventilation.id_for_label }}">Mechanical Ventilation</label>
-                    {{ form.mechanical_ventilation|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.vasopressor_use.id_for_label }}">Vasopressor Use</label>
-                    {{ form.vasopressor_use|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.dialysis_required.id_for_label }}">Dialysis Required</label>
-                    {{ form.dialysis_required|add_class:"form-control" }}
-                </div>
-                
-<div class="form-group">
+                        <div class="form-group">
                             <label for="{{ form.patient.id_for_label }}">Patient *</label>
                             {{ form.patient|add_class:"form-control" }}
+                            {% if form.patient.help_text %}
+                                <div class="form-text">{{ form.patient.help_text }}</div>
+                            {% endif %}
+                            {% if form.patient.errors %}
+                                <div class="text-danger">{{ form.patient.errors }}</div>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <!-- Doctor Selection with Search -->
                         <div class="form-group">
-                            <label for="{{ form.doctor.id_for_label }}">Doctor</label>
+                            <label for="{{ form.visit_date.id_for_label }}">Visit Date *</label>
+                            {{ form.visit_date|add_class:"form-control" }}
+                            {% if form.visit_date.help_text %}
+                                <div class="form-text">{{ form.visit_date.help_text }}</div>
+                            {% endif %}
+                            {% if form.visit_date.errors %}
+                                <div class="text-danger">{{ form.visit_date.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
 
-                            <!-- Enhanced Doctor Search Field -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="doctor_search">Doctor</label>
                             <div class="input-group mb-2">
                                 <input type="text" id="doctor_search" class="form-control" placeholder="Search by name...">
                                 <button class="btn btn-outline-secondary" type="button" id="clear_doctor_search">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
-
-                            <!-- Doctor Dropdown with Select2 -->
                             <select id="doctor_dropdown" class="form-control select2" data-placeholder="Select a doctor...">
                                 <option value="">Select a doctor...</option>
                             </select>
-
-                            <!-- Hidden field for form submission -->
-                            {{ form.doctor|add_class:"d-none" }}
-
-                            <!-- Selected Doctor Info -->
+                            <input type="hidden" name="doctor" id="id_doctor" value="{% if form.doctor.value %}{{ form.doctor.value }}{% endif %}">
                             <div id="selected_doctor_info" class="mt-2 p-2 bg-light rounded" style="display: none;">
                                 <strong>Selected Doctor:</strong>
                                 <span id="doctor_name"></span>
@@ -105,57 +79,188 @@
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="{{ form.visit_date.id_for_label }}">Visit Date *</label>
-                            {{ form.visit_date|add_class:"form-control" }}
+                            <label for="{{ form.authorization_code.id_for_label }}">Authorization Code</label>
+                            {{ form.authorization_code|add_class:"form-control" }}
+                            {% if form.authorization_code.help_text %}
+                                <div class="form-text">{{ form.authorization_code.help_text }}</div>
+                            {% endif %}
+                            {% if form.authorization_code.errors %}
+                                <div class="text-danger">{{ form.authorization_code.errors }}</div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.chief_complaint.id_for_label }}">Chief Complaint</label>
-                    {{ form.chief_complaint|add_class:"form-control" }}
+
+                <hr class="mt-3 mb-3">
+
+                <h5 class="mb-3">Vital Signs</h5>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.gcs_score.id_for_label }}">GCS Score</label>
+                            {{ form.gcs_score|add_class:"form-control" }}
+                            {% if form.gcs_score.help_text %}
+                                <div class="form-text">{{ form.gcs_score.help_text }}</div>
+                            {% endif %}
+                            {% if form.gcs_score.errors %}
+                                <div class="text-danger">{{ form.gcs_score.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.respiratory_rate.id_for_label }}">Respiratory Rate</label>
+                            {{ form.respiratory_rate|add_class:"form-control" }}
+                            {% if form.respiratory_rate.errors %}
+                                <div class="text-danger">{{ form.respiratory_rate.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.history_of_present_illness.id_for_label }}">History of Present Illness</label>
-                    {{ form.history_of_present_illness|add_class:"form-control" }}
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.oxygen_saturation.id_for_label }}">Oxygen Saturation (%)</label>
+                            {{ form.oxygen_saturation|add_class:"form-control" }}
+                            {% if form.oxygen_saturation.help_text %}
+                                <div class="form-text">{{ form.oxygen_saturation.help_text }}</div>
+                            {% endif %}
+                            {% if form.oxygen_saturation.errors %}
+                                <div class="text-danger">{{ form.oxygen_saturation.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.heart_rate.id_for_label }}">Heart Rate</label>
+                            {{ form.heart_rate|add_class:"form-control" }}
+                            {% if form.heart_rate.errors %}
+                                <div class="text-danger">{{ form.heart_rate.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-                
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="{{ form.blood_pressure_systolic.id_for_label }}">BP Systolic</label>
+                            {{ form.blood_pressure_systolic|add_class:"form-control" }}
+                            {% if form.blood_pressure_systolic.errors %}
+                                <div class="text-danger">{{ form.blood_pressure_systolic.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="{{ form.blood_pressure_diastolic.id_for_label }}">BP Diastolic</label>
+                            {{ form.blood_pressure_diastolic|add_class:"form-control" }}
+                            {% if form.blood_pressure_diastolic.errors %}
+                                <div class="text-danger">{{ form.blood_pressure_diastolic.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="{{ form.body_temperature.id_for_label }}">Temperature (°C)</label>
+                            {{ form.body_temperature|add_class:"form-control" }}
+                            {% if form.body_temperature.help_text %}
+                                <div class="form-text">{{ form.body_temperature.help_text }}</div>
+                            {% endif %}
+                            {% if form.body_temperature.errors %}
+                                <div class="text-danger">{{ form.body_temperature.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="mt-3 mb-3">
+
+                <h5 class="mb-3">ICU Interventions</h5>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="{{ form.mechanical_ventilation.id_for_label }}">Mechanical Ventilation</label>
+                            {{ form.mechanical_ventilation|add_class:"form-control" }}
+                            {% if form.mechanical_ventilation.errors %}
+                                <div class="text-danger">{{ form.mechanical_ventilation.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="{{ form.vasopressor_use.id_for_label }}">Vasopressor Use</label>
+                            {{ form.vasopressor_use|add_class:"form-control" }}
+                            {% if form.vasopressor_use.errors %}
+                                <div class="text-danger">{{ form.vasopressor_use.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="{{ form.dialysis_required.id_for_label }}">Dialysis Required</label>
+                            {{ form.dialysis_required|add_class:"form-control" }}
+                            {% if form.dialysis_required.errors %}
+                                <div class="text-danger">{{ form.dialysis_required.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="mt-3 mb-3">
+
+                <h5 class="mb-3">Clinical Information</h5>
+
                 <div class="form-group">
                     <label for="{{ form.diagnosis.id_for_label }}">Diagnosis</label>
                     {{ form.diagnosis|add_class:"form-control" }}
+                    {% if form.diagnosis.errors %}
+                        <div class="text-danger">{{ form.diagnosis.errors }}</div>
+                    {% endif %}
                 </div>
-                
+
                 <div class="form-group">
                     <label for="{{ form.treatment_plan.id_for_label }}">Treatment Plan</label>
                     {{ form.treatment_plan|add_class:"form-control" }}
+                    {% if form.treatment_plan.errors %}
+                        <div class="text-danger">{{ form.treatment_plan.errors }}</div>
+                    {% endif %}
                 </div>
-                
+
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="{{ form.follow_up_required.id_for_label }}">Follow-up Required</label>
                             {{ form.follow_up_required|add_class:"form-control" }}
+                            {% if form.follow_up_required.errors %}
+                                <div class="text-danger">{{ form.follow_up_required.errors }}</div>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="{{ form.follow_up_date.id_for_label }}">Follow-up Date</label>
                             {{ form.follow_up_date|add_class:"form-control" }}
+                            {% if form.follow_up_date.errors %}
+                                <div class="text-danger">{{ form.follow_up_date.errors }}</div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="{{ form.notes.id_for_label }}">Notes</label>
                     {{ form.notes|add_class:"form-control" }}
+                    {% if form.notes.errors %}
+                        <div class="text-danger">{{ form.notes.errors }}</div>
+                    {% endif %}
                 </div>
-                
+
                 <button type="submit" class="btn btn-primary">
                     <i class="fas fa-save"></i> Save Record
                 </button>
@@ -175,7 +280,6 @@ $(document).ready(function() {
     $('#doctor_dropdown').select2({
         width: '100%',
         matcher: function(params, data) {
-            // Custom matcher to search by name
             if ($.trim(params.term) === '') {
                 return data;
             }
@@ -189,19 +293,15 @@ $(document).ready(function() {
         }
     });
 
-    // Store all doctors data
     let allDoctors = [];
 
-    // Load all doctors via AJAX
     $.get('/accounts/api/users/?role=doctor', function(response) {
         allDoctors = response.users || [];
-        // Populate dropdown
         allDoctors.forEach(function(doctor) {
             const option = new Option(doctor.full_name, doctor.id);
             $('#doctor_dropdown').append(option);
         });
 
-        // Pre-fill if editing existing record
         const existingDoctorId = $('#id_doctor').val();
         if (existingDoctorId) {
             $('#doctor_dropdown').val(existingDoctorId).trigger('change');
@@ -209,7 +309,6 @@ $(document).ready(function() {
         }
     });
 
-    // Handle doctor search input with debounce
     let searchTimeout;
     $('#doctor_search').on('input', function() {
         clearTimeout(searchTimeout);
@@ -217,22 +316,18 @@ $(document).ready(function() {
 
         searchTimeout = setTimeout(function() {
             if (searchTerm.length > 0) {
-                // Filter doctors based on search term
                 const filtered = allDoctors.filter(function(doctor) {
                     return doctor.full_name.toLowerCase().includes(searchTerm.toLowerCase());
                 });
 
-                // Update dropdown options
                 $('#doctor_dropdown').empty().append('<option value="">Select a doctor...</option>');
                 filtered.forEach(function(doctor) {
                     const option = new Option(doctor.full_name, doctor.id);
                     $('#doctor_dropdown').append(option);
                 });
 
-                // Open dropdown
                 $('#doctor_dropdown').select2('open');
             } else {
-                // Reset to all doctors
                 $('#doctor_dropdown').empty().append('<option value="">Select a doctor...</option>');
                 allDoctors.forEach(function(doctor) {
                     const option = new Option(doctor.full_name, doctor.id);
@@ -242,19 +337,15 @@ $(document).ready(function() {
         }, 300);
     });
 
-    // Handle doctor dropdown selection
     $('#doctor_dropdown').on('select2:select', function(e) {
         const doctorId = e.params.data.id;
         updateDoctorInfo(doctorId);
     });
 
-    // Function to update doctor info display
     function updateDoctorInfo(doctorId) {
         if (doctorId) {
-            // Update hidden field for form submission
             $('#id_doctor').val(doctorId);
 
-            // Find doctor details
             const doctor = allDoctors.find(d => d.id == doctorId);
             if (doctor) {
                 $('#doctor_name').text(doctor.full_name);
@@ -267,14 +358,12 @@ $(document).ready(function() {
         }
     }
 
-    // Handle clear button
     $('#clear_doctor_search').on('click', function() {
         $('#doctor_search').val('');
         $('#doctor_dropdown').val('').trigger('change');
         $('#id_doctor').val('');
         $('#selected_doctor_info').hide();
 
-        // Reset dropdown to show all doctors
         $('#doctor_dropdown').empty().append('<option value="">Select a doctor...</option>');
         allDoctors.forEach(function(doctor) {
             const option = new Option(doctor.full_name, doctor.id);

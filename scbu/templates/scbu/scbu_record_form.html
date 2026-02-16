@@ -15,86 +15,27 @@
         <div class="card-body">
             <form method="POST">
                 {% csrf_token %}
+                
                 <div class="row">
                     <div class="col-md-6">
-                        
-                <div class="form-group">
-                    <label for="{{ form.gestational_age.id_for_label }}">Gestational Age (weeks)</label>
-                    {{ form.gestational_age|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.birth_weight.id_for_label }}">Birth Weight (kg)</label>
-                    {{ form.birth_weight|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.apgar_score_1min.id_for_label }}">APGAR Score 1min</label>
-                    {{ form.apgar_score_1min|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.apgar_score_5min.id_for_label }}">APGAR Score 5min</label>
-                    {{ form.apgar_score_5min|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.respiratory_support.id_for_label }}">Respiratory Support</label>
-                    {{ form.respiratory_support|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.ventilation_type.id_for_label }}">Ventilation Type</label>
-                    {{ form.ventilation_type|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.feeding_method.id_for_label }}">Feeding Method</label>
-                    {{ form.feeding_method|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.infection_status.id_for_label }}">Infection Status</label>
-                    {{ form.infection_status|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.antibiotic_name.id_for_label }}">Antibiotic Name</label>
-                    {{ form.antibiotic_name|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.discharge_weight.id_for_label }}">Discharge Weight (kg)</label>
-                    {{ form.discharge_weight|add_class:"form-control" }}
-                </div>
-                
-<div class="form-group">
+                        <div class="form-group">
                             <label for="{{ form.patient.id_for_label }}">Patient *</label>
                             {{ form.patient|add_class:"form-control" }}
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <!-- Doctor Selection with Search -->
                         <div class="form-group">
                             <label for="{{ form.doctor.id_for_label }}">Doctor</label>
-
-                            <!-- Enhanced Doctor Search Field -->
                             <div class="input-group mb-2">
                                 <input type="text" id="doctor_search" class="form-control" placeholder="Search by name...">
                                 <button class="btn btn-outline-secondary" type="button" id="clear_doctor_search">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
-
-                            <!-- Doctor Dropdown with Select2 -->
                             <select id="doctor_dropdown" class="form-control select2" data-placeholder="Select a doctor...">
                                 <option value="">Select a doctor...</option>
                             </select>
-
-                            <!-- Hidden field for form submission -->
                             {{ form.doctor|add_class:"d-none" }}
-
-                            <!-- Selected Doctor Info -->
                             <div id="selected_doctor_info" class="mt-2 p-2 bg-light rounded" style="display: none;">
                                 <strong>Selected Doctor:</strong>
                                 <span id="doctor_name"></span>
@@ -112,6 +53,81 @@
                         <div class="form-group">
                             <label for="{{ form.visit_date.id_for_label }}">Visit Date *</label>
                             {{ form.visit_date|add_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.gestational_age.id_for_label }}">Gestational Age (weeks)</label>
+                            {{ form.gestational_age|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.birth_weight.id_for_label }}">Birth Weight (kg)</label>
+                            {{ form.birth_weight|add_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.discharge_weight.id_for_label }}">Discharge Weight (kg)</label>
+                            {{ form.discharge_weight|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.apgar_score_1min.id_for_label }}">APGAR Score 1min</label>
+                            {{ form.apgar_score_1min|add_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.apgar_score_5min.id_for_label }}">APGAR Score 5min</label>
+                            {{ form.apgar_score_5min|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.respiratory_support.id_for_label }}">Respiratory Support</label>
+                            {{ form.respiratory_support|add_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.ventilation_type.id_for_label }}">Ventilation Type</label>
+                            {{ form.ventilation_type|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.feeding_method.id_for_label }}">Feeding Method</label>
+                            {{ form.feeding_method|add_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.infection_status.id_for_label }}">Infection Status</label>
+                            {{ form.infection_status|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.antibiotic_name.id_for_label }}">Antibiotic Name</label>
+                            {{ form.antibiotic_name|add_class:"form-control" }}
                         </div>
                     </div>
                 </div>

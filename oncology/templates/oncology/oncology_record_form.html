@@ -15,89 +15,60 @@
         <div class="card-body">
             <form method="POST">
                 {% csrf_token %}
+                
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {% for error in form.non_field_errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
                 <div class="row">
                     <div class="col-md-6">
-                        
-                <div class="form-group">
-                    <label for="{{ form.cancer_type.id_for_label }}">Cancer Type</label>
-                    {{ form.cancer_type|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.stage.id_for_label }}">Stage</label>
-                    {{ form.stage|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.tumor_size.id_for_label }}">Tumor Size (cm)</label>
-                    {{ form.tumor_size|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.metastasis.id_for_label }}">Metastasis</label>
-                    {{ form.metastasis|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.treatment_protocol.id_for_label }}">Treatment Protocol</label>
-                    {{ form.treatment_protocol|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.chemotherapy_cycle.id_for_label }}">Chemotherapy Cycle</label>
-                    {{ form.chemotherapy_cycle|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.radiation_dose.id_for_label }}">Radiation Dose (Gy)</label>
-                    {{ form.radiation_dose|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.surgery_details.id_for_label }}">Surgery Details</label>
-                    {{ form.surgery_details|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.biopsy_results.id_for_label }}">Biopsy Results</label>
-                    {{ form.biopsy_results|add_class:"form-control" }}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.oncology_marker.id_for_label }}">Oncology Marker</label>
-                    {{ form.oncology_marker|add_class:"form-control" }}
-                </div>
-                
-<div class="form-group">
+                        <div class="form-group">
                             <label for="{{ form.patient.id_for_label }}">Patient *</label>
                             {{ form.patient|add_class:"form-control" }}
+                            {% if form.patient.help_text %}
+                                <div class="form-text">{{ form.patient.help_text }}</div>
+                            {% endif %}
+                            {% if form.patient.errors %}
+                                <div class="text-danger">{{ form.patient.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.visit_date.id_for_label }}">Visit Date *</label>
+                            {{ form.visit_date|add_class:"form-control" }}
+                            {% if form.visit_date.help_text %}
+                                <div class="form-text">{{ form.visit_date.help_text }}</div>
+                            {% endif %}
+                            {% if form.visit_date.errors %}
+                                <div class="text-danger">{{ form.visit_date.errors }}</div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-6">
-                        <!-- Doctor Selection with Search -->
                         <div class="form-group">
-                            <label for="{{ form.doctor.id_for_label }}">Doctor</label>
-
-                            <!-- Enhanced Doctor Search Field -->
+                            <label for="doctor_search">Doctor</label>
                             <div class="input-group mb-2">
                                 <input type="text" id="doctor_search" class="form-control" placeholder="Search by name...">
                                 <button class="btn btn-outline-secondary" type="button" id="clear_doctor_search">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
-
-                            <!-- Doctor Dropdown with Select2 -->
                             <select id="doctor_dropdown" class="form-control select2" data-placeholder="Select a doctor...">
                                 <option value="">Select a doctor...</option>
                             </select>
-
-                            <!-- Hidden field for form submission -->
-                            {{ form.doctor|add_class:"d-none" }}
-
-                            <!-- Selected Doctor Info -->
+                            <input type="hidden" name="doctor" id="id_doctor" value="{% if form.doctor.value %}{{ form.doctor.value }}{% endif %}">
                             <div id="selected_doctor_info" class="mt-2 p-2 bg-light rounded" style="display: none;">
                                 <strong>Selected Doctor:</strong>
                                 <span id="doctor_name"></span>
@@ -110,53 +81,176 @@
                     </div>
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="{{ form.visit_date.id_for_label }}">Visit Date *</label>
-                            {{ form.visit_date|add_class:"form-control" }}
+                            <label for="{{ form.authorization_code.id_for_label }}">Authorization Code</label>
+                            {{ form.authorization_code|add_class:"form-control" }}
+                            {% if form.authorization_code.help_text %}
+                                <div class="form-text">{{ form.authorization_code.help_text }}</div>
+                            {% endif %}
+                            {% if form.authorization_code.errors %}
+                                <div class="text-danger">{{ form.authorization_code.errors }}</div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
-                
-                
-                <div class="form-group">
-                    <label for="{{ form.chief_complaint.id_for_label }}">Chief Complaint</label>
-                    {{ form.chief_complaint|add_class:"form-control" }}
+
+                <hr class="mt-3 mb-3">
+
+                <h5 class="mb-3">Oncology Details</h5>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.cancer_type.id_for_label }}">Cancer Type</label>
+                            {{ form.cancer_type|add_class:"form-control" }}
+                            {% if form.cancer_type.errors %}
+                                <div class="text-danger">{{ form.cancer_type.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.stage.id_for_label }}">Stage</label>
+                            {{ form.stage|add_class:"form-control" }}
+                            {% if form.stage.errors %}
+                                <div class="text-danger">{{ form.stage.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.history_of_present_illness.id_for_label }}">History of Present Illness</label>
-                    {{ form.history_of_present_illness|add_class:"form-control" }}
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.tumor_size.id_for_label }}">Tumor Size (cm)</label>
+                            {{ form.tumor_size|add_class:"form-control" }}
+                            {% if form.tumor_size.errors %}
+                                <div class="text-danger">{{ form.tumor_size.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.metastasis.id_for_label }}">Metastasis</label>
+                            {{ form.metastasis|add_class:"form-control" }}
+                            {% if form.metastasis.errors %}
+                                <div class="text-danger">{{ form.metastasis.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-                
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.treatment_protocol.id_for_label }}">Treatment Protocol</label>
+                            {{ form.treatment_protocol|add_class:"form-control" }}
+                            {% if form.treatment_protocol.errors %}
+                                <div class="text-danger">{{ form.treatment_protocol.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.chemotherapy_cycle.id_for_label }}">Chemotherapy Cycle</label>
+                            {{ form.chemotherapy_cycle|add_class:"form-control" }}
+                            {% if form.chemotherapy_cycle.errors %}
+                                <div class="text-danger">{{ form.chemotherapy_cycle.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.radiation_dose.id_for_label }}">Radiation Dose (Gy)</label>
+                            {{ form.radiation_dose|add_class:"form-control" }}
+                            {% if form.radiation_dose.errors %}
+                                <div class="text-danger">{{ form.radiation_dose.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.oncology_marker.id_for_label }}">Oncology Marker</label>
+                            {{ form.oncology_marker|add_class:"form-control" }}
+                            {% if form.oncology_marker.errors %}
+                                <div class="text-danger">{{ form.oncology_marker.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.surgery_details.id_for_label }}">Surgery Details</label>
+                            {{ form.surgery_details|add_class:"form-control" }}
+                            {% if form.surgery_details.errors %}
+                                <div class="text-danger">{{ form.surgery_details.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.biopsy_results.id_for_label }}">Biopsy Results</label>
+                            {{ form.biopsy_results|add_class:"form-control" }}
+                            {% if form.biopsy_results.errors %}
+                                <div class="text-danger">{{ form.biopsy_results.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="mt-3 mb-3">
+
+                <h5 class="mb-3">Clinical Information</h5>
+
                 <div class="form-group">
                     <label for="{{ form.diagnosis.id_for_label }}">Diagnosis</label>
                     {{ form.diagnosis|add_class:"form-control" }}
+                    {% if form.diagnosis.errors %}
+                        <div class="text-danger">{{ form.diagnosis.errors }}</div>
+                    {% endif %}
                 </div>
-                
+
                 <div class="form-group">
                     <label for="{{ form.treatment_plan.id_for_label }}">Treatment Plan</label>
                     {{ form.treatment_plan|add_class:"form-control" }}
+                    {% if form.treatment_plan.errors %}
+                        <div class="text-danger">{{ form.treatment_plan.errors }}</div>
+                    {% endif %}
                 </div>
-                
+
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="{{ form.follow_up_required.id_for_label }}">Follow-up Required</label>
                             {{ form.follow_up_required|add_class:"form-control" }}
+                            {% if form.follow_up_required.errors %}
+                                <div class="text-danger">{{ form.follow_up_required.errors }}</div>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="{{ form.follow_up_date.id_for_label }}">Follow-up Date</label>
                             {{ form.follow_up_date|add_class:"form-control" }}
+                            {% if form.follow_up_date.errors %}
+                                <div class="text-danger">{{ form.follow_up_date.errors }}</div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="{{ form.notes.id_for_label }}">Notes</label>
                     {{ form.notes|add_class:"form-control" }}
+                    {% if form.notes.errors %}
+                        <div class="text-danger">{{ form.notes.errors }}</div>
+                    {% endif %}
                 </div>
-                
+
                 <button type="submit" class="btn btn-primary">
                     <i class="fas fa-save"></i> Save Record
                 </button>
@@ -172,11 +266,9 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-    // Initialize variables
     let allDoctors = [];
     let searchTimeout;
 
-    // Load all doctors on page load
     function loadDoctors() {
         $.ajax({
             url: '/accounts/api/users/?role=doctor',
@@ -185,7 +277,6 @@ $(document).ready(function() {
                 allDoctors = data.users || [];
                 populateDoctorDropdown(allDoctors);
 
-                // Pre-fill if editing existing record
                 const existingDoctorId = $('#id_doctor').val();
                 if (existingDoctorId) {
                     selectDoctor(existingDoctorId);
@@ -197,7 +288,6 @@ $(document).ready(function() {
         });
     }
 
-    // Populate doctor dropdown
     function populateDoctorDropdown(doctors) {
         const dropdown = $('#doctor_dropdown');
         dropdown.find('option:not(:first)').remove();
@@ -212,7 +302,6 @@ $(document).ready(function() {
         });
     }
 
-    // Filter doctors based on search
     function filterDoctors(searchTerm) {
         if (!searchTerm) {
             populateDoctorDropdown(allDoctors);
@@ -226,7 +315,6 @@ $(document).ready(function() {
         populateDoctorDropdown(filtered);
     }
 
-    // Select a doctor
     function selectDoctor(doctorId) {
         if (!doctorId) {
             clearDoctorSelection();
@@ -235,20 +323,14 @@ $(document).ready(function() {
 
         const doctor = allDoctors.find(d => d.id == doctorId);
         if (doctor) {
-            // Update hidden field
             $('#id_doctor').val(doctorId);
-
-            // Update dropdown
             $('#doctor_dropdown').val(doctorId).trigger('change');
-
-            // Show selected doctor info
             $('#doctor_name').text(doctor.full_name);
             $('#doctor_department').text(doctor.department || 'N/A');
             $('#selected_doctor_info').show();
         }
     }
 
-    // Clear doctor selection
     function clearDoctorSelection() {
         $('#id_doctor').val('');
         $('#doctor_dropdown').val('').trigger('change');
@@ -257,7 +339,6 @@ $(document).ready(function() {
         populateDoctorDropdown(allDoctors);
     }
 
-    // Event handlers
     $('#doctor_search').on('input', function() {
         clearTimeout(searchTimeout);
         const searchTerm = $(this).val();
@@ -274,7 +355,6 @@ $(document).ready(function() {
         clearDoctorSelection();
     });
 
-    // Initialize
     loadDoctors();
 });
 </script>

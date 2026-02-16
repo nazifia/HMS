@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
 {% load crispy_forms_tags %}
+{% load widget_tweaks %}
 
 {% block title %}{{ title }} - Hospital Management System{% endblock %}
 
@@ -290,16 +291,16 @@ document.addEventListener('DOMContentLoaded', function() {
             url: '/accounts/api/users/?role=doctor',
             dataType: 'json',
             success: function(data) {
-                allDoctors = data.users || data;
+                allDoctors = data || [];
                 // Populate dropdown
                 const $dropdown = $('#doctor_dropdown');
                 $dropdown.empty();
                 $dropdown.append('<option value="">Select a doctor...</option>');
                 allDoctors.forEach(function(doctor) {
-                    const fullName = doctor.first_name && doctor.last_name
+                    const fullName = doctor.full_name || (doctor.first_name && doctor.last_name
                         ? doctor.first_name + ' ' + doctor.last_name
-                        : doctor.username || doctor.name || 'Unknown';
-                    $dropdown.append('<option value="' + doctor.id + '">' + fullName + '</option>');
+                        : doctor.username || 'Unknown');
+                    $dropdown.append('<option value="' + doctor.id + '" data-name="' + fullName + '">' + fullName + '</option>');
                 });
                 // Initialize Select2 on doctor dropdown
                 $dropdown.select2({
@@ -323,11 +324,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 $dropdown.empty();
                 $dropdown.append('<option value="">Select a doctor...</option>');
                 allDoctors.forEach(function(doctor) {
-                    const fullName = doctor.first_name && doctor.last_name
+                    const fullName = doctor.full_name || (doctor.first_name && doctor.last_name
                         ? doctor.first_name + ' ' + doctor.last_name
-                        : doctor.username || doctor.name || 'Unknown';
+                        : doctor.username || 'Unknown');
                     if (fullName.toLowerCase().includes(searchTerm)) {
-                        $dropdown.append('<option value="' + doctor.id + '">' + fullName + '</option>');
+                        $dropdown.append('<option value="' + doctor.id + '" data-name="' + fullName + '">' + fullName + '</option>');
                     }
                 });
                 $dropdown.select2('destroy').select2({
@@ -340,16 +341,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Handle doctor dropdown selection
         $(document).on('select2:select', '#doctor_dropdown', function(e) {
             const doctorId = $(this).val();
+            const selectedOption = $(this).find(':selected');
+            const doctorName = selectedOption.data('name');
             const doctor = allDoctors.find(d => String(d.id) === String(doctorId));
-            if (doctor) {
+            if (doctor || doctorName) {
                 // Update hidden field
                 $('#{{ form.doctor.id_for_label|safe }}').val(doctorId);
                 // Update info display
-                const fullName = doctor.first_name && doctor.last_name
-                    ? doctor.first_name + ' ' + doctor.last_name
-                    : doctor.username || doctor.name || 'Unknown';
-                $('#doctor_name').text(fullName);
-                $('#doctor_department').text(doctor.department || 'N/A');
+                $('#doctor_name').text(doctorName);
+                $('#doctor_department').text(doctor ? (doctor.department || 'N/A') : 'N/A');
                 $('#selected_doctor_info').show();
             }
         });

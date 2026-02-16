@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% load crispy_forms_tags %}
+
+{% block title %}Add Team Members - {{ surgery }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'theatre:dashboard' %}">Theatre</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'theatre:surgery_list' %}">Surgeries</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'theatre:surgery_detail' pk=surgery.id %}">{{ surgery }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Add Team Members</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-users text-primary mr-2"></i>
+            Add Team Members - {{ surgery.surgery_type }}
+        </h1>
+        <a href="{% url 'theatre:surgery_detail' pk=surgery.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left mr-1"></i> Back to Surgery
+        </a>
+    </div>
+
+    <!-- Surgery Info Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="fas fa-info-circle mr-2"></i>Surgery Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Patient:</strong> {{ surgery.patient.get_full_name }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Surgery Type:</strong> {{ surgery.surgery_type.name }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Scheduled:</strong> {{ surgery.scheduled_date|date:"M d, Y H:i" }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Status:</strong> 
+                    <span class="badge bg-{{ surgery.status|get_status_badge_color }}">
+                        {{ surgery.get_status_display }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Existing Team Members -->
+    {% if existing_team %}
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="fas fa-user-md mr-2"></i>Current Team Members</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Staff</th>
+                        <th>Role</th>
+                        <th>Notes</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in existing_team %}
+                    <tr>
+                        <td>{{ member.staff.get_full_name }}</td>
+                        <td>{{ member.get_role_display }}</td>
+                        <td>{{ member.usage_notes|default:"-" }}</td>
+                        <td>
+                            <a href="{% url 'theatre:team_update' pk=member.id %}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'theatre:team_delete' pk=member.id %}" class="btn btn-sm btn-danger">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Add New Team Members Form -->
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-plus-circle mr-2"></i>Add New Team Members</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                {{ team_formset.management_form }}
+                
+                <div id="team-form-list">
+                    {% for form in team_formset %}
+                    <div class="team-form mb-4 p-3 border rounded">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <strong class="text-muted">Team Member {{ forloop.counter }}</strong>
+                            {% if form.instance.pk %}
+                            <div class="form-check">
+                                {{ form.DELETE }}
+                                <label class="form-check-label text-danger">Remove</label>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                {{ form.staff|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.role|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.quantity_used|as_crispy_field }}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                {{ form.usage_notes|as_crispy_field }}
+                            </div>
+                        </div>
+                        {{ form.surgery.as_hidden }}
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <button type="button" id="add-team-form" class="btn btn-outline-primary mb-4">
+                    <i class="fas fa-plus mr-1"></i> Add Another Team Member
+                </button>
+                
+                <div id="empty-team-form" style="display:none;">
+                    <div class="team-form mb-4 p-3 border rounded">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <strong class="text-muted">New Team Member</strong>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                {{ team_formset.empty_form.staff|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ team_formset.empty_form.role|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ team_formset.empty_form.quantity_used|as_crispy_field }}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                {{ team_formset.empty_form.usage_notes|as_crispy_field }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hidden surgery field -->
+                <input type="hidden" name="surgery" value="{{ surgery.id }}">
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save mr-2"></i>Save Team Members
+                    </button>
+                    <a href="{% url 'theatre:surgery_detail' pk=surgery.id %}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addTeamFormBtn = document.getElementById('add-team-form');
+    const teamFormList = document.getElementById('team-form-list');
+    const emptyForm = document.getElementById('empty-team-form');
+    const managementForm = document.querySelector('input[name="team_formset-TOTAL_FORMS"]');
+    
+    if (addTeamFormBtn && teamFormList && emptyForm) {
+        addTeamFormBtn.addEventListener('click', function() {
+            // Get current number of forms
+            let totalForms = parseInt(managementForm.value);
+            
+            // Clone the empty form
+            const newForm = emptyForm.cloneNode(true);
+            newForm.style.display = 'block';
+            newForm.removeAttribute('id');
+            
+            // Update form indices
+            const newFormHtml = newForm.innerHTML.replace(/__prefix__/g, totalForms);
+            newForm.innerHTML = newFormHtml;
+            
+            // Add the new form to the list
+            teamFormList.appendChild(newForm);
+            
+            // Update management form
+            managementForm.value = totalForms + 1;
+            
+            // Add delete button functionality to new form
+            const deleteCheck = newForm.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            if (deleteCheck) {
+                deleteCheck.addEventListener('change', function() {
+                    if (this.checked) {
+                        this.closest('.team-form').style.display = 'none';
+                    } else {
+                        this.closest('.team-form').style.display = 'block';
+                    }
+                });
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
