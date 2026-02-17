@@ -613,7 +613,7 @@ def create_admission(request):
                             # If authorization code is provided, mark as paid
                             invoice_status = 'paid' if authorization_code else 'pending'
                             payment_method = 'insurance' if authorization_code else None
-                            payment_date = timezone.now().date() if authorization_code else None
+                            payment_date = timezone.now() if authorization_code else None
                             amount_paid = admission_service.price if authorization_code else Decimal('0.00')
                             
                             # Create Invoice
