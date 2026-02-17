@@ -34,7 +34,7 @@ class WalletSignalsTestCase(TestCase):
         self.invoice = Invoice.objects.create(
             patient=self.patient,
             invoice_number='INV001',
-            invoice_date=timezone.now().date(),
+            invoice_date=timezone.now(),
             due_date=timezone.now().date(),
             subtotal=Decimal('500.00'),
             tax_amount=Decimal('0.00'),

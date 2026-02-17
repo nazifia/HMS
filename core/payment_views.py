@@ -142,7 +142,7 @@ def quick_payment(request, invoice_id):
                     invoice=invoice,
                     amount=form.cleaned_data['amount'],
                     payment_method=form.cleaned_data['payment_method'],
-                    payment_date=timezone.now().date(),
+                    payment_date=timezone.now(),
                     reference_number=form.cleaned_data.get('reference', ''),
                     created_by=request.user
                 )
@@ -330,7 +330,7 @@ def flexible_payment_processing(request, invoice_id, module_name='general'):
                             invoice=invoice,
                             amount=payment_breakdown['wallet_amount'],
                             payment_method='wallet',
-                            payment_date=timezone.now().date(),
+                            payment_date=timezone.now(),
                             notes=f"Wallet payment - {form.cleaned_data.get('notes', '')}",
                             created_by=request.user
                         )
@@ -357,7 +357,7 @@ def flexible_payment_processing(request, invoice_id, module_name='general'):
                             invoice=invoice,
                             amount=payment_breakdown['cash_amount'],
                             payment_method=payment_method,
-                            payment_date=timezone.now().date(),
+                            payment_date=timezone.now(),
                             reference_number=form.cleaned_data.get('cash_reference', ''),
                             notes=f"Cash/Card payment - {form.cleaned_data.get('notes', '')}",
                             created_by=request.user

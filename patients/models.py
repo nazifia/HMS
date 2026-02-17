@@ -1021,7 +1021,7 @@ class PatientWallet(models.Model):
                     invoice=invoice,
                     amount=payment_amount,
                     payment_method="wallet",
-                    payment_date=timezone.now().date(),
+                    payment_date=timezone.now(),
                     received_by=user,
                     notes=f"Wallet payment for outstanding balance - {description}",
                 )

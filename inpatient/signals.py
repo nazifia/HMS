@@ -49,7 +49,7 @@ def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwar
             # Create the invoice
             invoice = Invoice.objects.create(
                 patient=instance.patient,
-                invoice_date=timezone.now().date(),
+                invoice_date=timezone.now(),
                 due_date=timezone.now().date(),
                 status='pending',
                 source_app='inpatient',
@@ -79,7 +79,7 @@ def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwar
                 invoice=invoice,
                 amount=admission_cost,
                 payment_method='wallet',
-                payment_date=timezone.now().date(),
+                payment_date=timezone.now(),
                 received_by=instance.created_by,
                 notes=f'Automatic wallet deduction for admission fee'
             )

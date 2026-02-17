@@ -59,7 +59,7 @@ def create_pharmacy_invoice(request, prescription, subtotal_value):
         invoice = PharmacyInvoice.objects.create(
             patient=prescription.patient,
             prescription=prescription,
-            invoice_date=timezone.now().date(),
+            invoice_date=timezone.now(),
             due_date=timezone.now().date() + timezone.timedelta(days=7),
             subtotal=subtotal_value,
             tax_amount=tax_amount_calculated,

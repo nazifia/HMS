@@ -92,7 +92,7 @@ class BillingOfficePaymentProcessor:
                     invoice=invoice,
                     amount=amount,
                     payment_method=payment_method,
-                    payment_date=timezone.now().date(),
+                    payment_date=timezone.now(),
                     transaction_id=transaction_id,
                     notes=f"{notes} ({BillingOfficePaymentProcessor.PAYMENT_SOURCES.get(payment_source, payment_source)})",
                     received_by=request.user

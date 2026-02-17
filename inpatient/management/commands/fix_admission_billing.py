@@ -63,7 +63,7 @@ class Command(BaseCommand):
                     # Create the invoice
                     invoice = Invoice.objects.create(
                         patient=admission.patient,
-                        invoice_date=timezone.now().date(),
+                        invoice_date=timezone.now(),
                         due_date=timezone.now().date(),
                         status='pending',
                         source_app='inpatient',

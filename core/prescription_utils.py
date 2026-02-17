@@ -91,7 +91,7 @@ def create_prescription_invoice(prescription):
         # Create invoice with patient payable amount
         invoice = Invoice.objects.create(
             patient=prescription.patient,
-            invoice_date=timezone.now().date(),
+            invoice_date=timezone.now(),
             due_date=timezone.now().date() + timezone.timedelta(days=30),
             created_by=prescription.doctor,
             subtotal=patient_payable_amount,

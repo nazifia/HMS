@@ -105,15 +105,15 @@ class AppointmentForm(forms.ModelForm):
         appointment_time = cleaned_data.get('appointment_time')
         end_time = cleaned_data.get('end_time')
         doctor = cleaned_data.get('doctor')
-        
+
         # Check if appointment date is in the past
         if appointment_date and appointment_date < timezone.now().date():
             raise forms.ValidationError("Appointment date cannot be in the past.")
-        
+
         # Check if end time is after start time
         if appointment_time and end_time and end_time <= appointment_time:
             raise forms.ValidationError("End time must be after appointment time.")
-        
+
         # Check if doctor is available on the selected date and time
         if appointment_date and appointment_time and doctor:
             # Check if doctor is on leave
@@ -123,10 +123,10 @@ class AppointmentForm(forms.ModelForm):
                 end_date__gte=appointment_date,
                 is_approved=True
             )
-            
+
             if doctor_leaves.exists():
                 raise forms.ValidationError(f"Doctor {doctor.get_full_name()} is on leave on the selected date.")
-            
+
             # Check doctor's schedule for the day of the week
             weekday = appointment_date.weekday()
             doctor_schedule = DoctorSchedule.objects.filter(
@@ -134,10 +134,10 @@ class AppointmentForm(forms.ModelForm):
                 weekday=weekday,
                 is_available=True
             ).first()
-            
+
             if not doctor_schedule:
                 raise forms.ValidationError(f"Doctor {doctor.get_full_name()} is not available on this day.")
-            
+
             # Check if appointment time is within doctor's schedule
             if appointment_time < doctor_schedule.start_time or appointment_time > doctor_schedule.end_time:
                 raise forms.ValidationError(
@@ -145,35 +145,69 @@ class AppointmentForm(forms.ModelForm):
                     f"{doctor_schedule.start_time.strftime('%I:%M %p')} to "
                     f"{doctor_schedule.end_time.strftime('%I:%M %p')} on this day."
                 )
-            
+
             # Check for overlapping appointments
+            # Get all appointments for this doctor on this date with scheduled/confirmed status
             overlapping_appointments = Appointment.objects.filter(
                 doctor=doctor,
-                appointment_date=appointment_date,
+                appointment_date__date=appointment_date,
                 status__in=['scheduled', 'confirmed']
             ).exclude(id=self.instance.id if self.instance else None)
-            
+
+            # Build new appointment datetime range
+            appointment_start = timezone.make_aware(
+                datetime.datetime.combine(appointment_date, appointment_time)
+            )
+            appointment_end = None
+            if end_time:
+                appointment_end = timezone.make_aware(
+                    datetime.datetime.combine(appointment_date, end_time)
+                )
+            else:
+                # Default 30-minute duration
+                appointment_end = appointment_start + datetime.timedelta(minutes=30)
+
             for existing_appt in overlapping_appointments:
-                existing_end = existing_appt.end_time or (
-                    # Default appointment duration of 30 minutes if end_time not specified
-                    (datetime.datetime.combine(datetime.date.today(), existing_appt.appointment_time) 
-                     + datetime.timedelta(minutes=30)).time()
-                )
-                
-                new_end = end_time or (
-                    # Default appointment duration of 30 minutes if end_time not specified
-                    (datetime.datetime.combine(datetime.date.today(), appointment_time) 
-                     + datetime.timedelta(minutes=30)).time()
-                )
-                
-                # Check for overlap
-                if (appointment_time < existing_end and new_end > existing_appt.appointment_time):
+                # Existing appointment start is stored as appointment_date (datetime)
+                existing_start = existing_appt.appointment_date
+
+                # Existing appointment end time - check if end_time field is set
+                if existing_appt.end_time:
+                    # existing_appt.appointment_date is a datetime, we need to combine its date with its end_time
+                    existing_end = timezone.make_aware(
+                        datetime.datetime.combine(
+                            existing_appt.appointment_date.date(),
+                            existing_appt.end_time
+                        )
+                    )
+                else:
+                    # Default 30-minute duration
+                    existing_end = existing_start + datetime.timedelta(minutes=30)
+
+                # Check for overlap: A overlaps B if A.start < B.end AND A.end > B.start
+                if appointment_start < existing_end and appointment_end > existing_start:
                     raise forms.ValidationError(
                         f"This appointment overlaps with an existing appointment for "
                         f"{doctor.get_full_name()} at {existing_appt.appointment_time.strftime('%I:%M %p')}."
                     )
-        
+
         return cleaned_data
+
+    def save(self, commit=True):
+        """Override save to combine date and time into timezone-aware datetime"""
+        instance = super().save(commit=False)
+        appointment_date = self.cleaned_data.get('appointment_date')
+        appointment_time = self.cleaned_data.get('appointment_time')
+
+        if appointment_date and appointment_time:
+            # Combine date and time into a timezone-aware datetime
+            naive_datetime = datetime.datetime.combine(appointment_date, appointment_time)
+            instance.appointment_date = timezone.make_aware(naive_datetime)
+
+        if commit:
+            instance.save()
+
+        return instance
 
 class AppointmentFollowUpForm(forms.ModelForm):
     """Form for creating appointment follow-ups"""
