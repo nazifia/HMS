@@ -951,9 +951,10 @@ def prescription_billing_detail(request, prescription_id):
     # Get or create pharmacy invoice
     pharmacy_invoice = None
     try:
-        pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
-    except PharmacyInvoice.DoesNotExist:
-        pass
+        # Use filter().first() to handle any potential duplicates gracefully
+        pharmacy_invoice = PharmacyInvoice.objects.filter(prescription=prescription).order_by('-id').first()
+    except Exception as e:
+        pharmacy_invoice = None
 
     # Get payments if invoice exists
     payments = []
@@ -1022,8 +1023,12 @@ def process_medication_payment(request, prescription_id):
     # Get or create pharmacy invoice
     pharmacy_invoice = None
     try:
-        pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
-    except PharmacyInvoice.DoesNotExist:
+        # Use filter().first() to handle any potential duplicates gracefully
+        pharmacy_invoice = PharmacyInvoice.objects.filter(prescription=prescription).order_by('-id').first()
+    except Exception as e:
+        pharmacy_invoice = None
+
+    if not pharmacy_invoice:
         # Create invoice using the utility function
         # Use patient payable amount (10% for NHIA patients, 100% for others)
         patient_payable_amount = prescription.get_patient_payable_amount()
