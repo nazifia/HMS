@@ -636,12 +636,23 @@
                 </h3>
                 <p class="mb-1"><strong>Patient:</strong> {{ cart.prescription.patient.get_full_name }} (ID: {{ cart.prescription.patient.patient_id }})</p>
                 <p class="mb-1"><strong>Prescription:</strong> #{{ cart.prescription.id }}</p>
-                <p class="mb-0"><strong>Created by:</strong> {{ cart.created_by.get_full_name }}</p>
+                <p class="mb-0">
+                    <strong>Created by:</strong> {{ cart.created_by.get_full_name }}
+                    {% if cart.created_by == request.user %}
+                    <span class="badge bg-info ms-1">You</span>
+                    {% endif %}
+                </p>
             </div>
             <div class="col-md-4 text-md-end">
                 <span class="cart-status-badge badge bg-{{ cart.status }}">
                     {{ cart.get_status_display }}
                 </span>
+                <div class="mt-2">
+                    <span class="badge bg-light text-dark">
+                        <i class="fas fa-user-nurse"></i> 
+                        Current: {{ request.user.get_full_name|default:request.user.username }}
+                    </span>
+                </div>
             </div>
         </div>
     </div>

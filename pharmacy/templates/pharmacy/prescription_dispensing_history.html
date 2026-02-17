@@ -3,6 +3,36 @@
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .dispenser-summary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    .dispenser-badge {
+        background: rgba(255,255,255,0.2);
+        padding: 5px 10px;
+        border-radius: 20px;
+        display: inline-block;
+        margin: 3px;
+    }
+    .log-entry-card {
+        border-left: 4px solid #667eea;
+        margin-bottom: 10px;
+        transition: all 0.2s;
+    }
+    .log-entry-card:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .log-entry-card .badge {
+        font-size: 0.75rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -14,55 +44,131 @@
             <h6 class="m-0 font-weight-bold text-primary">Prescription Details - #{{ prescription.id }}</h6>
         </div>
         <div class="card-body">
-            <p><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
-            <p><strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}</p>
-            <p><strong>Prescription Date:</strong> {{ prescription.prescription_date }}</p>
-            <p><strong>Status:</strong> {{ prescription.get_status_display }}</p>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
+                    <p><strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}</p>
+                    <p><strong>Prescription Date:</strong> {{ prescription.prescription_date }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Status:</strong> {{ prescription.get_status_display }}</p>
+                    <p><strong>Total Items:</strong> {{ prescription.items.count }}</p>
+                    {% with progress=prescription.get_dispensing_progress %}
+                    <p><strong>Dispensing Progress:</strong> 
+                        <span class="badge bg-{% if progress.progress_percentage == 100 %}success{% elif progress.progress_percentage > 0 %}warning{% else %}info{% endif %}">
+                            {{ progress.progress_percentage }}% ({{ progress.fully_dispensed }}/{{ progress.total_items }} items)
+                        </span>
+                    </p>
+                    {% endwith %}
+                </div>
+            </div>
         </div>
     </div>
 
+    <!-- Dispenser Summary -->
+    {% if dispensing_logs %}
+    <div class="dispenser-summary">
+        <h6 class="mb-3">
+            <i class="fas fa-users"></i> Pharmacists Who Dispensed Medications
+        </h6>
+        <div>
+            {% for log in dispensing_logs %}
+            <span class="dispenser-badge">
+                <i class="fas fa-user-nurse"></i> 
+                {{ log.dispensed_by.get_full_name|default:log.dispensed_by.username }}
+            </span>
+            {% endfor %}
+        </div>
+        <div class="mt-3">
+            <small>
+                <i class="fas fa-info-circle"></i> 
+                Total {{ dispensing_logs|length }} dispensing action(s) recorded
+            </small>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Dispensing Log</h6>
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-history"></i> Dispensing Log
+            </h6>
+            {% if dispensing_logs %}
+            <span class="badge bg-primary">{{ dispensing_logs|length }} entries</span>
+            {% endif %}
         </div>
         <div class="card-body">
             {% if dispensing_logs %}
             <div class="table-responsive">
                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                    <thead>
+                    <thead class="table-dark">
                         <tr>
+                            <th>#</th>
                             <th>Medication</th>
-                            <th>Dispensed Quantity</th>
-                            <th>Dispensed By</th>
-                            <th>Dispensed Date</th>
+                            <th>Quantity</th>
+                            <th>Pharmacist</th>
+                            <th>Date & Time</th>
                             <th>Dispensary</th>
                             <th>Unit Price</th>
-                            <th>Total Price</th>
+                            <th>Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for log in dispensing_logs %}
                         <tr>
-                            <td>{{ log.prescription_item.medication.name }} ({{ log.prescription_item.medication.strength }})</td>
-                            <td>{{ log.dispensed_quantity }}</td>
-                            <td>{{ log.dispensed_by.get_full_name|default:"N/A" }}</td>
-                            <td>{{ log.dispensed_date|date:"Y-m-d H:i" }}</td>
+                            <td>{{ forloop.counter }}</td>
+                            <td>
+                                <strong>{{ log.prescription_item.medication.name }}</strong>
+                                <br>
+                                <small class="text-muted">{{ log.prescription_item.medication.strength }} - {{ log.prescription_item.medication.dosage_form }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-{% if log.dispensed_quantity == log.prescription_item.quantity %}success{% else %}warning{% endif %}">
+                                    {{ log.dispensed_quantity }}
+                                </span>
+                                {% if log.dispensed_quantity < log.prescription_item.quantity %}
+                                <small class="text-muted d-block">of {{ log.prescription_item.quantity }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <i class="fas fa-user-nurse text-primary"></i>
+                                {{ log.dispensed_by.get_full_name|default:log.dispensed_by.username }}
+                            </td>
+                            <td>
+                                <small>{{ log.dispensed_date|date:"M d, Y" }}</small>
+                                <br>
+                                <small class="text-muted">{{ log.dispensed_date|time:"H:i" }}</small>
+                            </td>
                             <td>{{ log.dispensary.name|default:"N/A" }}</td>
-                            <td>{{ log.unit_price_at_dispense }}</td>
-                            <td>{{ log.total_price_for_this_log }}</td>
+                            <td>{{ log.unit_price_at_dispense|currency }}</td>
+                            <td><strong>{{ log.total_price_for_this_log|currency }}</strong></td>
                         </tr>
                         {% endfor %}
                     </tbody>
+                    <tfoot class="table-secondary">
+                        <tr>
+                            <th colspan="2" class="text-end">Total:</th>
+                            <th>{{ total_dispensed_quantity }}</th>
+                            <th colspan="3"></th>
+                            <th>{{ total_dispensed_value|currency }}</th>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
             {% else %}
-            <p>No dispensing history for this prescription.</p>
+            <div class="text-center py-5">
+                <i class="fas fa-pills fa-4x text-muted mb-3"></i>
+                <h5 class="text-muted">No dispensing history for this prescription.</h5>
+                <p class="text-muted">Medications have not been dispensed yet.</p>
+            </div>
             {% endif %}
         </div>
     </div>
 
     <div class="card-footer">
-        <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-secondary">Back to Prescription</a>
+        <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Prescription
+        </a>
     </div>
 </div>
 {% endblock %}

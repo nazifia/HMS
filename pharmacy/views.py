@@ -4599,7 +4599,7 @@ def prescription_detail(request, prescription_id):
     total_medication_cost = Decimal("0.00")
 
     item_ids = [item.id for item in prescription_items]
-    first_dispensing_logs = {}
+    all_dispensing_logs = {}
     if item_ids:
         logs = (
             DispensingLog.objects.filter(prescription_item_id__in=item_ids)
@@ -4607,8 +4607,9 @@ def prescription_detail(request, prescription_id):
             .order_by("prescription_item_id", "dispensed_date")
         )
         for log in logs:
-            if log.prescription_item_id not in first_dispensing_logs:
-                first_dispensing_logs[log.prescription_item_id] = log
+            if log.prescription_item_id not in all_dispensing_logs:
+                all_dispensing_logs[log.prescription_item_id] = []
+            all_dispensing_logs[log.prescription_item_id].append(log)
 
     for item in prescription_items:
         item_total_cost = item.medication.price * item.quantity
@@ -4624,13 +4625,21 @@ def prescription_detail(request, prescription_id):
         total_patient_pays += item_patient_pays
         total_nhia_covers += item_nhia_covers
 
-        dispensing_log = first_dispensing_logs.get(item.id)
-        dispenser_name = ""
-        if dispensing_log and dispensing_log.dispensed_by:
-            dispenser_name = (
-                dispensing_log.dispensed_by.get_full_name()
-                or dispensing_log.dispensed_by.username
-            )
+        # Get all dispensers for this item
+        dispensing_logs = all_dispensing_logs.get(item.id, [])
+        dispenser_info = ""
+        if dispensing_logs:
+            # Get unique dispenser names
+            dispenser_names = set()
+            for log in dispensing_logs:
+                if log.dispensed_by:
+                    name = log.dispensed_by.get_full_name() or log.dispensed_by.username
+                    dispenser_names.add(name)
+
+            if dispenser_names:
+                dispenser_info = ", ".join(sorted(dispenser_names))
+                if len(dispensing_logs) > 1:
+                    dispenser_info += f" ({len(dispensing_logs)} actions)"
 
         items_with_pricing.append(
             {
@@ -4644,7 +4653,8 @@ def prescription_detail(request, prescription_id):
                 "nhia_percentage": "90%"
                 if pricing_breakdown["is_nhia_patient"]
                 else "0%",
-                "dispenser_name": dispenser_name,
+                "dispenser_name": dispenser_info,
+                "dispensing_logs": dispensing_logs,
             }
         )
 
@@ -5366,9 +5376,15 @@ def prescription_dispensing_history(request, prescription_id):
         .order_by("-dispensed_date")
     )
 
+    # Calculate totals
+    total_dispensed_quantity = sum(log.dispensed_quantity for log in dispensing_logs)
+    total_dispensed_value = sum(log.total_price_for_this_log for log in dispensing_logs)
+
     context = {
         "prescription": prescription,
         "dispensing_logs": dispensing_logs,
+        "total_dispensed_quantity": total_dispensed_quantity,
+        "total_dispensed_value": total_dispensed_value,
         "page_title": f"Dispensing History - Prescription #{prescription.id}",
         "active_nav": "pharmacy",
     }
