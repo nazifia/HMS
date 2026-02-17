@@ -1581,7 +1581,7 @@ def create_prescription_from_test(request, test_request_id):
                 prescription = Prescription.objects.create(
                     patient=test_request.patient,
                     doctor=test_request.doctor,  # Doctor who ordered the test
-                    prescription_date=timezone.now().date(),
+                    prescription_date=timezone.now(),
                     diagnosis=diagnosis,
                     notes=notes,
                     status='pending',

@@ -136,42 +136,23 @@ class PrescriptionCart(models.Model):
                 f"Cart status is {self.get_status_display()}, must be Paid, Partially Dispensed, or Invoiced",
             )
 
-        # Check if cart has a pharmacy_billing invoice
+        # Check if cart has its own pharmacy_billing invoice
         if not self.invoice:
-            # Check if prescription has a billing invoice that's paid
-            from billing.models import Invoice as BillingInvoice
+            # No invoice linked to this cart - cannot dispense
+            return (
+                False,
+                "No invoice associated with this cart. Please create an invoice for this cart first.",
+            )
 
-            try:
-                billing_invoice = BillingInvoice.objects.get(
-                    prescription=self.prescription
-                )
-                if billing_invoice.status == "paid":
-                    # Auto-update cart status if billing invoice is paid
-                    if self.status in ["invoiced", "active"]:
-                        self.status = "paid"
-                        self.save(update_fields=["status"])
-                    # Continue with dispensing - billing invoice is paid
-                else:
-                    return (
-                        False,
-                        f"No pharmacy invoice linked. Billing invoice status is {billing_invoice.get_status_display()}. Payment required.",
-                    )
-            except BillingInvoice.DoesNotExist:
-                return False, "No invoice associated with this cart"
-
-        # Check if invoice is paid (pharmacy_billing invoice)
-        elif self.invoice.status != "paid":
-            return False, "Invoice is not paid"
+        # Check if this cart's own invoice is paid
+        if self.invoice.status != "paid":
+            return (
+                False,
+                f"Cart invoice (#{self.invoice.invoice_number}) is not paid. Current status: {self.invoice.get_status_display()}. Payment required.",
+            )
 
         # If invoice is paid but cart status is still 'invoiced', auto-update cart status
-        if self.status == "invoiced" and (
-            self.invoice.status == "paid"
-            or (
-                hasattr(self.prescription, "invoice")
-                and self.prescription.invoice
-                and self.prescription.invoice.status == "paid"
-            )
-        ):
+        if self.status == "invoiced" and self.invoice.status == "paid":
             self.status = "paid"
             self.save(update_fields=["status"])
 

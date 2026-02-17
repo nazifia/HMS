@@ -1838,7 +1838,7 @@ def create_prescription(request, consultation_id):
     prescription = Prescription.objects.create(
         patient=consultation.patient,
         doctor=consultation.doctor or request.user,  # Use consultation doctor or current user
-        prescription_date=timezone.now().date(),
+        prescription_date=timezone.now(),
         diagnosis=consultation.diagnosis,
         status='pending',
         notes=f"Prescription created from consultation on {consultation.consultation_date.strftime('%Y-%m-%d')}"

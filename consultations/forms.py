@@ -721,7 +721,7 @@ class QuickPrescriptionForm(forms.Form):
         prescription = Prescription(
             patient=self.consultation.patient,
             doctor=doctor,
-            prescription_date=timezone.now().date(),
+            prescription_date=timezone.now(),
             diagnosis=self.cleaned_data['diagnosis'],
             prescription_type=self.cleaned_data['prescription_type'],
             notes=self.cleaned_data['notes']

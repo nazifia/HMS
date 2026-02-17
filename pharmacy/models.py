@@ -1115,9 +1115,28 @@ class Prescription(models.Model):
         elif self.payment_status == "waived":
             return True
         elif self.payment_status == "unpaid":
-            # Double-check with invoice if it exists
+            # Check billing invoice if it exists
             if self.invoice:
-                return self.invoice.status == "paid"
+                if self.invoice.status == "paid":
+                    return True
+
+            # Check if there's any active cart with paid invoice for this prescription
+            # This handles partial dispensing - each cart can have its own invoice
+            from pharmacy.cart_models import PrescriptionCart
+
+            active_cart_with_payment = (
+                PrescriptionCart.objects.filter(
+                    prescription=self, status__in=["paid", "partially_dispensed"]
+                )
+                .filter(
+                    models.Q(invoice__status="paid") | models.Q(invoice__isnull=False)
+                )
+                .exists()
+            )
+
+            if active_cart_with_payment:
+                return True
+
             return False
         return False
 
@@ -1143,7 +1162,32 @@ class Prescription(models.Model):
                     f"Authorization code is {self.authorization_code.status}. Please obtain a valid authorization code.",
                 )
 
-        # Payment verification removed - invoice will be created after dispensing based on actual quantities
+        # Check payment status - verify payment before allowing dispensing
+        if not self.is_payment_verified():
+            # Check if there's an active cart workflow that needs payment
+            from pharmacy.cart_models import PrescriptionCart
+
+            active_carts = PrescriptionCart.objects.filter(
+                prescription=self, status__in=["active", "invoiced"]
+            ).exists()
+
+            if active_carts:
+                return (
+                    False,
+                    "Payment required. Please complete payment for the cart invoice before dispensing.",
+                )
+
+            # Check if there's a pending invoice that needs payment
+            if self.invoice and self.invoice.status == "pending":
+                return (
+                    False,
+                    f"Payment required. Invoice #{self.invoice.invoice_number} is pending payment.",
+                )
+
+            return (
+                False,
+                "Payment required. Please complete payment before dispensing.",
+            )
 
         # Check if there are items to dispense (including partially dispensed items)
         pending_items = self.items.filter(
@@ -1171,7 +1215,7 @@ class Prescription(models.Model):
                 "icon": "info-circle",
             }
         else:
-            # Check invoice status if available
+            # Check billing invoice status if available
             if self.invoice:
                 if self.invoice.status == "paid":
                     return {
@@ -1194,6 +1238,39 @@ class Prescription(models.Model):
                         "css_class": "info",
                         "icon": "info-circle",
                     }
+
+            # Check if there's an active cart with paid invoice for partial dispensing
+            from pharmacy.cart_models import PrescriptionCart
+
+            paid_carts = (
+                PrescriptionCart.objects.filter(
+                    prescription=self, status__in=["paid", "partially_dispensed"]
+                )
+                .filter(invoice__status="paid")
+                .exists()
+            )
+
+            if paid_carts:
+                return {
+                    "status": "paid",
+                    "message": "Payment completed via cart invoice",
+                    "css_class": "success",
+                    "icon": "check-circle",
+                }
+
+            # Check for pending cart invoices
+            pending_carts = PrescriptionCart.objects.filter(
+                prescription=self, status__in=["invoiced", "active"]
+            ).exists()
+
+            if pending_carts:
+                return {
+                    "status": "unpaid",
+                    "message": "Payment pending - invoice generated",
+                    "css_class": "warning",
+                    "icon": "exclamation-circle",
+                }
+
             return {
                 "status": "unpaid",
                 "message": "Payment required",

@@ -61,7 +61,7 @@ class PharmacyModelsTest(TestCase):
         self.prescription = Prescription.objects.create(
             patient=self.patient,
             doctor=self.user,
-            prescription_date=timezone.now().date(),
+            prescription_date=timezone.now(),
             diagnosis="Bacterial infection"
         )
         

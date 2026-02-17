@@ -48,10 +48,11 @@ def create_cart_from_prescription(request, prescription_id):
             messages.error(request, f"❌ {message}", extra_tags="error-status")
         return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
-    # Check if there's already any cart for this prescription (active, invoiced, paid, partially_dispensed)
+    # Check if there's already any cart for this prescription (active, invoiced, paid)
+    # Note: We no longer block partially_dispensed carts - users can create new carts for remaining items
     existing_cart = PrescriptionCart.objects.filter(
         prescription=prescription,
-        status__in=["active", "invoiced", "paid", "partially_dispensed"],
+        status__in=["active", "invoiced", "paid"],
     ).first()
 
     if existing_cart:
@@ -61,6 +62,43 @@ def create_cart_from_prescription(request, prescription_id):
         )
         return redirect("pharmacy:view_cart", cart_id=existing_cart.id)
 
+    # Check for partially_dispensed cart - allow creating new cart for remaining items
+    partially_dispensed_cart = PrescriptionCart.objects.filter(
+        prescription=prescription,
+        status="partially_dispensed",
+    ).first()
+
+    if partially_dispensed_cart:
+        # Get items already in the partially_dispensed cart
+        cart_item_ids = set(
+            partially_dispensed_cart.items.values_list(
+                "prescription_item_id", flat=True
+            )
+        )
+
+        # Find prescription items not yet in cart (have remaining quantity)
+        items_not_in_cart = []
+        for p_item in prescription.items.all():
+            if (
+                p_item.id not in cart_item_ids
+                and p_item.remaining_quantity_to_dispense > 0
+            ):
+                items_not_in_cart.append(p_item)
+
+        if not items_not_in_cart:
+            # All remaining items are already in the partially_dispensed cart
+            messages.info(
+                request,
+                f"A partially_dispensed cart exists with remaining items. Redirecting to existing cart to continue dispensing.",
+            )
+            return redirect("pharmacy:view_cart", cart_id=partially_dispensed_cart.id)
+
+        # There are items not in cart - user can create new cart for them
+        messages.info(
+            request,
+            f"Found {len(items_not_in_cart)} item(s) not in existing partially_dispensed cart. Creating new cart for remaining items.",
+        )
+
     # Get selected items from POST data
     selected_item_ids = []
     if request.method == "POST":
@@ -69,6 +107,16 @@ def create_cart_from_prescription(request, prescription_id):
         selected_item_ids = [
             int(item_id) for item_id in selected_item_ids if item_id.isdigit()
         ]
+
+    # Get IDs of items already in any active cart (for filtering)
+    items_in_active_carts = set()
+    for cart in PrescriptionCart.objects.filter(
+        prescription=prescription,
+        status__in=["active", "invoiced", "paid", "partially_dispensed"],
+    ):
+        items_in_active_carts.update(
+            cart.items.values_list("prescription_item_id", flat=True)
+        )
 
     try:
         with transaction.atomic():
@@ -80,8 +128,10 @@ def create_cart_from_prescription(request, prescription_id):
             # Add prescription items to cart (include items with remaining quantities)
             items_added = 0
             if selected_item_ids:
-                # Add only selected items that have remaining quantities
+                # Add only selected items that have remaining quantities and not in other carts
                 for p_item in prescription.items.filter(id__in=selected_item_ids):
+                    if p_item.id in items_in_active_carts:
+                        continue
                     remaining_qty = p_item.remaining_quantity_to_dispense
                     if remaining_qty > 0:
                         PrescriptionCartItem.objects.create(
@@ -94,6 +144,8 @@ def create_cart_from_prescription(request, prescription_id):
             else:
                 # Add all items with remaining quantities (fallback for GET requests)
                 for p_item in prescription.items.all():
+                    if p_item.id in items_in_active_carts:
+                        continue
                     remaining_qty = p_item.remaining_quantity_to_dispense
                     if remaining_qty > 0:
                         PrescriptionCartItem.objects.create(
@@ -134,19 +186,44 @@ def create_cart_from_prescription(request, prescription_id):
                     from billing.models import Invoice as BillingInvoice
                     from django.utils import timezone
 
-                    # Check if billing invoice already exists for this prescription
+                    # Check if there's an UNPAID billing invoice for this prescription
+                    # Only reuse unpaid invoices - if previous invoices are paid, create new one
                     existing_billing_invoice = BillingInvoice.objects.filter(
-                        prescription=cart.prescription, source_app="pharmacy"
+                        prescription=cart.prescription,
+                        source_app="pharmacy",
+                        status="pending",  # Only reuse pending (unpaid) invoices
                     ).first()
 
                     if existing_billing_invoice:
+                        # Add new cart items to existing pending invoice
+                        existing_billing_invoice.subtotal += Decimal(
+                            str(patient_payable)
+                        )
+                        existing_billing_invoice.total_amount = (
+                            existing_billing_invoice.subtotal
+                        )
+                        existing_billing_invoice.description = (
+                            f"Pharmacy - Prescription #{cart.prescription.id} (Partial)"
+                        )
+                        existing_billing_invoice.save()
                         invoice = existing_billing_invoice
-                        messages.info(
+                        cart.invoice = invoice
+                        cart.status = "invoiced"
+                        cart.save()
+
+                        log_audit_action(
+                            request.user,
+                            "update",
+                            cart,
+                            f"Added items to existing billing invoice #{invoice.invoice_number}",
+                        )
+                        messages.success(
                             request,
-                            f"Using existing billing invoice #{invoice.invoice_number}",
+                            f"Added to existing pending invoice #{invoice.invoice_number}. "
+                            f"New total: ₦{patient_payable:.2f} - Please proceed to billing office for payment.",
                         )
                     else:
-                        # Create new billing invoice
+                        # Create new billing invoice (previous invoices were paid or none exist)
                         invoice = BillingInvoice.objects.create(
                             patient=cart.prescription.patient,
                             prescription=cart.prescription,
@@ -160,8 +237,6 @@ def create_cart_from_prescription(request, prescription_id):
                             total_amount=Decimal(str(patient_payable)),
                             description=f"Pharmacy - Prescription #{cart.prescription.id}",
                         )
-
-                    if invoice:
                         cart.invoice = invoice
                         cart.status = "invoiced"
                         cart.save()
@@ -175,10 +250,6 @@ def create_cart_from_prescription(request, prescription_id):
                         messages.success(
                             request,
                             f"Invoice #{invoice.invoice_number} created. Total: ₦{patient_payable:.2f} - Please proceed to billing office for payment.",
-                        )
-                    else:
-                        messages.warning(
-                            request, "Cart created but failed to generate invoice."
                         )
                 else:
                     messages.info(request, f"Cart created. {message}")
@@ -233,20 +304,11 @@ def view_cart(request, cart_id):
             '💳 Cart status updated to "Paid" - payment processed via billing office',
         )
     elif not cart.invoice and cart.status in ["invoiced", "active"]:
-        # Check if prescription has a billing invoice that's paid
-        from billing.models import Invoice as BillingInvoice
-
-        try:
-            billing_invoice = BillingInvoice.objects.get(prescription=cart.prescription)
-            if billing_invoice.status == "paid":
-                cart.status = "paid"
-                cart.save(update_fields=["status"])
-                messages.info(
-                    request,
-                    '💳 Cart status updated to "Paid" - payment processed via main billing system',
-                )
-        except BillingInvoice.DoesNotExist:
-            pass
+        # NOTE: We no longer auto-mark cart as paid based on prescription's billing invoice
+        # This is because for partial dispensing, each cart should have its own invoice
+        # and payment status. The cart's payment status should only be determined by
+        # its own invoice (cart.invoice), not by other invoices for the same prescription.
+        pass
 
     # Get all dispensaries - filter for pharmacists
     if request.user.is_superuser:

@@ -86,7 +86,33 @@
                         <i class="fas fa-history"></i> Dispensing History
                     </a>
                     {% if prescription.status != 'completed' and prescription.status != 'cancelled' %}
-                        {% if prescription.is_payment_verified %}
+                        {% if active_cart %}
+                            {# Use cart-based workflow #}
+                            {% if active_cart.status == 'paid' or active_cart.invoice and active_cart.invoice.status == 'paid' %}
+                                <a href="{% url 'pharmacy:view_cart' active_cart.id %}" class="btn btn-success me-2">
+                                    <i class="fas fa-prescription-bottle-alt"></i> Dispense Medications
+                                </a>
+                            {% else %}
+                                <button type="button" class="btn btn-success me-2" disabled title="Payment required before dispensing">
+                                    <i class="fas fa-lock"></i> Dispense Medications (Payment Required)
+                                </button>
+                                {# Show payment options for cart invoice #}
+                                <div class="btn-group me-2" role="group">
+                                    {% if active_cart.invoice %}
+                                        <a href="{% url 'pharmacy:prescription_payment' prescription.id %}" class="btn btn-warning">
+                                            <i class="fas fa-credit-card"></i> Pay Now
+                                        </a>
+                                        <a href="{% url 'billing:detail' active_cart.invoice.id %}" class="btn btn-outline-warning">
+                                            <i class="fas fa-file-invoice"></i> View Invoice
+                                        </a>
+                                    {% else %}
+                                        <a href="{% url 'pharmacy:create_cart_from_prescription' prescription.id %}" class="btn btn-primary">
+                                            <i class="fas fa-shopping-cart"></i> Create Cart
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        {% elif prescription.is_payment_verified %}
                             <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-success me-2">
                                 <i class="fas fa-prescription-bottle-alt"></i> Dispense Medications
                             </a>
@@ -130,7 +156,19 @@
                             <!-- Smart Cart/Dispensing Button -->
                             <div class="col-md-4">
                                 {% if active_cart %}
-                                    {% if active_cart.status == 'paid' or active_cart.status == 'partially_dispensed' or active_cart.invoice.status == 'paid' %}
+                                    {% if active_cart.status == 'partially_dispensed' %}
+                                        {# Cart partially dispensed - allow creating new cart for remaining items #}
+                                        <a href="{% url 'pharmacy:create_cart_from_prescription' prescription.id %}" class="btn btn-lg w-100 text-white" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border: none; padding: 20px;" onclick="return selectAllAndSubmit(event)">
+                                            <i class="fas fa-plus-circle fa-2x mb-2"></i>
+                                            <div style="font-size: 1.1rem; font-weight: 600;">Create Cart for Remaining Items</div>
+                                            <small style="opacity: 0.9;">Add remaining medications</small>
+                                        </a>
+                                        <a href="{% url 'pharmacy:view_cart' active_cart.id %}" class="btn btn-lg w-100 text-white mt-2" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border: none; padding: 15px;">
+                                            <i class="fas fa-shopping-cart fa-lg mb-1"></i>
+                                            <div style="font-size: 1rem; font-weight: 600;">Continue Existing Cart</div>
+                                            <small style="opacity: 0.9;">Current: {{ active_cart.get_status_display }}</small>
+                                        </a>
+                                    {% elif active_cart.status == 'paid' or active_cart.invoice and active_cart.invoice.status == 'paid' %}
                                         {# Payment complete - show dispense button #}
                                         <a href="{% url 'pharmacy:view_cart' active_cart.id %}" class="btn btn-lg w-100 text-white" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border: none; padding: 20px;">
                                             <i class="fas fa-pills fa-2x mb-2"></i>
@@ -221,6 +259,46 @@
                         {% endif %}
                     </div>
                 </div>
+
+                <!-- Cart Status Info -->
+                {% if active_cart %}
+                <div class="card mb-4 {% if active_cart.status == 'partially_dispensed' %}border-warning{% elif active_cart.status == 'completed' %}border-success{% else %}border-info{% endif %}">
+                    <div class="card-header {% if active_cart.status == 'partially_dispensed' %}bg-warning text-dark{% elif active_cart.status == 'completed' %}bg-success text-white{% else %}bg-info text-white{% endif %}">
+                        <h5 class="mb-0"><i class="fas fa-shopping-cart"></i> Existing Cart Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <p class="mb-1"><strong>Cart Status:</strong> 
+                                    <span class="badge bg-{{ active_cart.status }}">{{ active_cart.get_status_display }}</span>
+                                </p>
+                            </div>
+                            <div class="col-md-4">
+                                <p class="mb-1"><strong>Items in Cart:</strong> {{ active_cart.items.count }}</p>
+                            </div>
+                            <div class="col-md-4">
+                                {% if active_cart.status == 'partially_dispensed' %}
+                                    {% with progress=active_cart.get_dispensing_progress %}
+                                    <p class="mb-1"><strong>Progress:</strong> {{ progress.percentage }}% complete</p>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ progress.percentage }}%">
+                                            {{ progress.percentage }}%
+                                        </div>
+                                    </div>
+                                    {% endwith %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if active_cart.status == 'partially_dispensed' %}
+                        <div class="alert alert-warning mt-2 mb-0">
+                            <i class="fas fa-exclamation-triangle"></i> 
+                            <strong>Partial Dispensing:</strong> Some items have been dispensed. You can create a new cart for remaining items or continue with the existing cart.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
                 <div class="row">
                     <!-- Prescription Information -->
                     <div class="col-md-6">
@@ -439,10 +517,10 @@
                                     </thead>
                                     <tbody>
                                         {% for item_data in items_with_pricing %}
-                                            <tr>
+                                            <tr {% if item_data.item.is_dispensed %}class="table-success"{% elif item_data.item.quantity_dispensed_so_far > 0 %}class="table-warning"{% endif %}>
                                                 <td>
                                                     <div class="form-check">
-                                                        <input class="form-check-input item-checkbox" type="checkbox" name="selected_items" value="{{ item_data.item.id }}" id="item_{{ item_data.item.id }}">
+                                                        <input class="form-check-input item-checkbox" type="checkbox" name="selected_items" value="{{ item_data.item.id }}" id="item_{{ item_data.item.id }}" {% if item_data.item.is_dispensed %}disabled{% endif %}>
                                                         <label class="form-check-label" for="item_{{ item_data.item.id }}"></label>
                                                     </div>
                                                 </td>
@@ -475,10 +553,17 @@
                                                 <td>{{ item_data.item.instructions }}</td>
                                                 <td>
                                                     {% if item_data.item.is_dispensed %}
-                                                        <span class="badge bg-success">Dispensed</span>
+                                                        <span class="badge bg-success">Fully Dispensed</span>
                                                         <div class="small text-muted">{{ item_data.item.dispensed_date|date:"M d, Y" }}</div>
+                                                    {% elif item_data.item.quantity_dispensed_so_far > 0 %}
+                                                        <span class="badge bg-warning">Partially Dispensed</span>
+                                                        <div class="small text-muted">
+                                                            {{ item_data.item.quantity_dispensed_so_far }}/{{ item_data.item.quantity }} dispensed
+                                                            <br>
+                                                            <strong class="text-info">{{ item_data.item.remaining_quantity_to_dispense }} remaining</strong>
+                                                        </div>
                                                     {% else %}
-                                                        <span class="badge bg-warning">Pending</span>
+                                                        <span class="badge bg-info">Pending</span>
                                                     {% endif %}
                                                 </td>
                                                 <td>
@@ -714,7 +799,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle Select All checkbox
     $('#selectAllItems').change(function() {
-        $('.item-checkbox').prop('checked', $(this).prop('checked'));
+        $('.item-checkbox:not(:disabled)').prop('checked', $(this).prop('checked'));
         updateSelectedCount();
     });
     
@@ -728,11 +813,18 @@ document.addEventListener('DOMContentLoaded', function() {
         var count = $('.item-checkbox:checked').length;
         $('#selectedCount').text(count);
         
-        // Update select all checkbox state
-        var totalItems = $('.item-checkbox').length;
-        var checkedItems = $('.item-checkbox:checked').length;
-        $('#selectAllItems').prop('checked', totalItems > 0 && checkedItems === totalItems);
-        $('#selectAllItems').prop('indeterminate', checkedItems > 0 && checkedItems < totalItems);
+        // Update select all checkbox state (consider only enabled checkboxes)
+        var totalEnabledItems = $('.item-checkbox:not(:disabled)').length;
+        var checkedEnabledItems = $('.item-checkbox:checked:not(:disabled)').length;
+        $('#selectAllItems').prop('checked', totalEnabledItems > 0 && checkedEnabledItems === totalEnabledItems);
+        $('#selectAllItems').prop('indeterminate', checkedEnabledItems > 0 && checkedEnabledItems < totalEnabledItems);
+        
+        // Disable select all if no enabled items
+        if (totalEnabledItems === 0) {
+            $('#selectAllItems').prop('disabled', true);
+        } else {
+            $('#selectAllItems').prop('disabled', false);
+        }
     }
     
     // Handle form submission - validate selection
@@ -754,15 +846,15 @@ document.addEventListener('DOMContentLoaded', function() {
         var selectedCount = $('.item-checkbox:checked').length;
         
         if (selectedCount === 0) {
-            // No items manually selected - select all and submit
-            $('.item-checkbox').prop('checked', true);
+            // No items manually selected - select all ENABLED items and submit
+            $('.item-checkbox:not(:disabled)').prop('checked', true);
             updateSelectedCount();
         }
         
-        // Check if any items exist
-        var totalItems = $('.item-checkbox').length;
-        if (totalItems === 0) {
-            alert('No medications found in this prescription.');
+        // Check if any ENABLED items exist
+        var totalEnabledItems = $('.item-checkbox:not(:disabled)').length;
+        if (totalEnabledItems === 0) {
+            alert('No medications available to add to cart. All items have been fully dispensed.');
             return false;
         }
         

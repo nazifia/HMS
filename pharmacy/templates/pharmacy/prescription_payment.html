@@ -147,7 +147,7 @@
                             <span class="badge bg-{{ cart.status }}">{{ cart.get_status_display }}</span>
                         </p>
 
-                        {% if cart.status == 'paid' or cart.invoice.status == 'paid' %}
+                        {% if cart.status == 'paid' or cart.invoice and cart.invoice.status == 'paid' %}
                         <div class="alert alert-success mb-2" style="font-size: 0.85rem;">
                             <i class="fas fa-check-circle"></i> Payment complete! Ready to dispense.
                         </div>
