@@ -75,7 +75,7 @@
                 <h4 class="mb-0">Prescription Details</h4>
                 <div>
                     <!-- CREATE CART BUTTON - PROMINENT -->
-                    <a href="{% url 'pharmacy:create_cart_from_prescription' prescription.id %}" class="btn btn-sm me-2" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; font-weight: 600;">
+                    <a href="{% url 'pharmacy:create_cart_from_prescription' prescription.id %}" class="btn btn-sm me-2" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; font-weight: 600;" onclick="return selectAllAndSubmit(event)">
                         <i class="fas fa-shopping-cart"></i> Create Billing Cart
                     </a>
 
@@ -154,7 +154,7 @@
                                     {% endif %}
                                 {% else %}
                                     {# No cart - show create cart button #}
-                                    <a href="{% url 'pharmacy:create_cart_from_prescription' prescription.id %}" class="btn btn-lg w-100 text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; padding: 20px;">
+                                    <a href="{% url 'pharmacy:create_cart_from_prescription' prescription.id %}" class="btn btn-lg w-100 text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; padding: 20px;" onclick="return selectAllAndSubmit(event)">
                                         <i class="fas fa-shopping-cart fa-2x mb-2"></i>
                                         <div style="font-size: 1.1rem; font-weight: 600;">Create Billing Cart</div>
                                         <small style="opacity: 0.9;">Review items & check stock</small>
@@ -407,10 +407,20 @@
                         </div>
 
                         {% if prescription_items %}
+                            <!-- Select Medications Form -->
+                            <form id="createCartForm" method="post" action="{% url 'pharmacy:create_cart_from_prescription' prescription.id %}">
+                                {% csrf_token %}
+                            
                             <div class="table-responsive">
                                 <table class="table table-hover">
                                     <thead>
                                         <tr>
+                                            <th style="width: 40px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="selectAllItems">
+                                                    <label class="form-check-label" for="selectAllItems"></label>
+                                                </div>
+                                            </th>
                                             <th>Medication</th>
                                             <th>Dosage</th>
                                             <th>Frequency</th>
@@ -430,6 +440,12 @@
                                     <tbody>
                                         {% for item_data in items_with_pricing %}
                                             <tr>
+                                                <td>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input item-checkbox" type="checkbox" name="selected_items" value="{{ item_data.item.id }}" id="item_{{ item_data.item.id }}">
+                                                        <label class="form-check-label" for="item_{{ item_data.item.id }}"></label>
+                                                    </div>
+                                                </td>
                                                 <td>
                                                     <a href="{% url 'pharmacy:medication_detail' item_data.item.medication.id %}">
                                                         {{ item_data.item.medication.name }}
@@ -478,7 +494,7 @@
                                     {% if is_nhia_patient %}
                                     <tfoot class="table-light">
                                         <tr class="fw-bold">
-                                            <td colspan="5" class="text-end">TOTAL:</td>
+                                            <td colspan="6" class="text-end">TOTAL:</td>
                                             <td class="text-end">{{ total_medication_cost|currency }}</td>
                                             <td class="text-end bg-warning bg-opacity-10">
                                                 <span class="text-warning">{{ total_patient_pays|currency }}</span>
@@ -492,7 +508,7 @@
                                     {% else %}
                                     <tfoot class="table-light">
                                         <tr class="fw-bold">
-                                            <td colspan="5" class="text-end">TOTAL:</td>
+                                            <td colspan="6" class="text-end">TOTAL:</td>
                                             <td class="text-end">{{ total_medication_cost|currency }}</td>
                                             <td colspan="3"></td>
                                         </tr>
@@ -500,6 +516,14 @@
                                     {% endif %}
                                 </table>
                             </div>
+                            
+                            <!-- Create Cart Button -->
+                            <div class="mt-3">
+                                <button type="submit" class="btn btn-lg" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                                    <i class="fas fa-shopping-cart"></i> Create Billing Cart (<span id="selectedCount">0</span> items selected)
+                                </button>
+                            </div>
+                            </form>
                         {% else %}
                             <div class="alert alert-info">
                                 <i class="fas fa-info-circle me-2"></i>
@@ -687,6 +711,60 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+    
+    // Handle Select All checkbox
+    $('#selectAllItems').change(function() {
+        $('.item-checkbox').prop('checked', $(this).prop('checked'));
+        updateSelectedCount();
+    });
+    
+    // Handle individual checkbox change
+    $('.item-checkbox').change(function() {
+        updateSelectedCount();
+    });
+    
+    // Update selected count
+    function updateSelectedCount() {
+        var count = $('.item-checkbox:checked').length;
+        $('#selectedCount').text(count);
+        
+        // Update select all checkbox state
+        var totalItems = $('.item-checkbox').length;
+        var checkedItems = $('.item-checkbox:checked').length;
+        $('#selectAllItems').prop('checked', totalItems > 0 && checkedItems === totalItems);
+        $('#selectAllItems').prop('indeterminate', checkedItems > 0 && checkedItems < totalItems);
+    }
+    
+    // Handle form submission - validate selection
+    $('#createCartForm').on('submit', function(e) {
+        var selectedCount = $('.item-checkbox:checked').length;
+        if (selectedCount === 0) {
+            e.preventDefault();
+            alert('Please select at least one medication to create a cart.');
+            return false;
+        }
+        return true;
+    });
+    
+    // Select all and submit from Quick Actions link
+    window.selectAllAndSubmit = function(e) {
+        e.preventDefault();
+        
+        // Select all items
+        $('.item-checkbox').prop('checked', true);
+        updateSelectedCount();
+        
+        // Check if any items exist
+        var selectedCount = $('.item-checkbox').length;
+        if (selectedCount === 0) {
+            alert('No medications found in this prescription.');
+            return false;
+        }
+        
+        // Submit the form
+        $('#createCartForm').submit();
+        return false;
+    };
 });
 </script>
 

@@ -28,7 +28,7 @@ from core.audit_utils import log_audit_action
 def create_cart_from_prescription(request, prescription_id):
     """
     Create a new cart from prescription.
-    Adds all prescription items to cart with prescribed quantities.
+    Adds selected prescription items to cart with prescribed quantities.
     """
     prescription = get_object_or_404(Prescription, id=prescription_id)
 
@@ -57,6 +57,15 @@ def create_cart_from_prescription(request, prescription_id):
         messages.info(request, "Active cart already exists for this prescription.")
         return redirect("pharmacy:view_cart", cart_id=existing_cart.id)
 
+    # Get selected items from POST data
+    selected_item_ids = []
+    if request.method == "POST":
+        selected_item_ids = request.POST.getlist("selected_items")
+        # Convert to integers
+        selected_item_ids = [
+            int(item_id) for item_id in selected_item_ids if item_id.isdigit()
+        ]
+
     try:
         with transaction.atomic():
             # Create new cart
@@ -64,18 +73,34 @@ def create_cart_from_prescription(request, prescription_id):
                 prescription=prescription, created_by=request.user
             )
 
-            # Add all prescription items to cart
+            # Add prescription items to cart
             items_added = 0
-            for p_item in prescription.items.filter(is_dispensed=False):
-                remaining_qty = p_item.remaining_quantity_to_dispense
-                if remaining_qty > 0:
-                    PrescriptionCartItem.objects.create(
-                        cart=cart,
-                        prescription_item=p_item,
-                        quantity=remaining_qty,
-                        unit_price=p_item.medication.price or Decimal("0.00"),
-                    )
-                    items_added += 1
+            if selected_item_ids:
+                # Add only selected items
+                for p_item in prescription.items.filter(
+                    id__in=selected_item_ids, is_dispensed=False
+                ):
+                    remaining_qty = p_item.remaining_quantity_to_dispense
+                    if remaining_qty > 0:
+                        PrescriptionCartItem.objects.create(
+                            cart=cart,
+                            prescription_item=p_item,
+                            quantity=remaining_qty,
+                            unit_price=p_item.medication.price or Decimal("0.00"),
+                        )
+                        items_added += 1
+            else:
+                # Add all non-dispensed items (fallback for GET requests)
+                for p_item in prescription.items.filter(is_dispensed=False):
+                    remaining_qty = p_item.remaining_quantity_to_dispense
+                    if remaining_qty > 0:
+                        PrescriptionCartItem.objects.create(
+                            cart=cart,
+                            prescription_item=p_item,
+                            quantity=remaining_qty,
+                            unit_price=p_item.medication.price or Decimal("0.00"),
+                        )
+                        items_added += 1
 
             if items_added == 0:
                 cart.delete()
