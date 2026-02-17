@@ -125,6 +125,41 @@ def create_cart_from_prescription(request, prescription_id):
             )
 
             messages.success(request, f"Cart created with {items_added} items.")
+
+            # Auto-generate invoice after cart creation
+            try:
+                can_checkout, message = cart.can_generate_invoice()
+                if can_checkout:
+                    patient_payable = cart.get_patient_payable()
+                    invoice = create_pharmacy_invoice(
+                        request, cart.prescription, patient_payable
+                    )
+                    if invoice:
+                        cart.invoice = invoice
+                        cart.status = "invoiced"
+                        cart.save()
+                        log_audit_action(
+                            request.user,
+                            "update",
+                            cart,
+                            f"Auto-generated invoice #{invoice.id} from cart",
+                        )
+                        messages.success(
+                            request,
+                            f"Invoice created automatically. Total: ₦{patient_payable:.2f}",
+                        )
+                    else:
+                        messages.warning(
+                            request, "Cart created but failed to auto-generate invoice."
+                        )
+                else:
+                    messages.info(request, f"Cart created. {message}")
+            except Exception as e:
+                messages.warning(
+                    request,
+                    f"Cart created but failed to auto-generate invoice: {str(e)}",
+                )
+
             return redirect("pharmacy:view_cart", cart_id=cart.id)
 
     except Exception as e:
