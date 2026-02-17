@@ -564,24 +564,29 @@ $(document).ready(function() {
     });
     
     // Select all and submit from Quick Actions link
-    function selectAllAndSubmit(e) {
+    window.selectAllAndSubmit = function(e) {
         e.preventDefault();
         
-        // Select all items
-        $('.item-checkbox').prop('checked', true);
-        updateSelectedCount();
+        // Check if any items are already selected
+        var selectedCount = $('.item-checkbox:checked').length;
+        
+        if (selectedCount === 0) {
+            // No items manually selected - select all and submit
+            $('.item-checkbox').prop('checked', true);
+            updateSelectedCount();
+        }
         
         // Check if any items exist
-        var selectedCount = $('.item-checkbox').length;
-        if (selectedCount === 0) {
+        var totalItems = $('.item-checkbox').length;
+        if (totalItems === 0) {
             alert('No medications found in this prescription.');
             return false;
         }
         
-        // Submit the form
+        // Submit the form (only checked items will be submitted)
         $('#createCartForm').submit();
         return false;
-    }
+    };
     
     // Handle form submission via AJAX
      $('#addMedicationForm').on('submit', function(e) {

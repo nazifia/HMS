@@ -48,13 +48,17 @@ def create_cart_from_prescription(request, prescription_id):
             messages.error(request, f"❌ {message}", extra_tags="error-status")
         return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
-    # Check if there's already an active cart for this prescription
+    # Check if there's already any cart for this prescription (active, invoiced, paid, partially_dispensed)
     existing_cart = PrescriptionCart.objects.filter(
-        prescription=prescription, status="active"
+        prescription=prescription,
+        status__in=["active", "invoiced", "paid", "partially_dispensed"],
     ).first()
 
     if existing_cart:
-        messages.info(request, "Active cart already exists for this prescription.")
+        messages.info(
+            request,
+            f"A {existing_cart.status} cart already exists for this prescription. Redirecting to existing cart.",
+        )
         return redirect("pharmacy:view_cart", cart_id=existing_cart.id)
 
     # Get selected items from POST data
