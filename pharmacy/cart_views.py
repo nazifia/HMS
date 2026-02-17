@@ -528,17 +528,51 @@ def generate_invoice_from_cart(request, cart_id):
             # Log audit action
             log_audit_action(
                 request.user,
-                "update",
+                "create",
                 cart,
-                f"Generated invoice #{invoice.id} from cart",
+                f"Created prescription cart with {items_added} items",
             )
 
-            messages.success(
-                request, f"Invoice created successfully. Total: ₦{patient_payable:.2f}"
-            )
+            messages.success(request, f"Cart created with {items_added} items.")
 
-            # Direct to current cart for dispensing workflow
-            messages.info(request, "💊 Invoice created! Redirecting to cart.")
+            # Auto-generate invoice after cart creation (sends to billing office for payment)
+            try:
+                can_checkout, message = cart.can_generate_invoice()
+                if can_checkout:
+                    patient_payable = cart.get_patient_payable()
+                    invoice = create_pharmacy_invoice(
+                        request, cart.prescription, patient_payable
+                    )
+                    if invoice:
+                        cart.invoice = invoice
+                        cart.status = "invoiced"
+                        cart.save()
+
+                        log_audit_action(
+                            request.user,
+                            "update",
+                            cart,
+                            f"Auto-generated invoice #{invoice.id} from cart",
+                        )
+                        messages.success(
+                            request,
+                            f"Invoice created. Total: ₦{patient_payable:.2f} - Please proceed to billing office for payment.",
+                        )
+                    else:
+                        messages.warning(
+                            request, "Cart created but failed to generate invoice."
+                        )
+                else:
+                    messages.info(request, f"Cart created. {message}")
+            except Exception as e:
+                import logging
+
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error generating invoice: {str(e)}")
+                messages.warning(
+                    request, f"Cart created but failed to generate invoice: {str(e)}"
+                )
+
             return redirect("pharmacy:view_cart", cart_id=cart.id)
 
     except Exception as e:
