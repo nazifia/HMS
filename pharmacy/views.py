@@ -5789,7 +5789,7 @@ def print_prescription(request, prescription_id):
     prescription = get_object_or_404(Prescription, id=prescription_id)
 
     # Get prescription items
-    prescription_items = prescription.items.select_related("medication")
+    prescription_items = list(prescription.items.select_related("medication"))
 
     # Get pharmacy invoice if exists
     pharmacy_invoice = None
@@ -5830,10 +5830,35 @@ def print_prescription(request, prescription_id):
             }
         )
 
+    # Calculate prices for each item
+    items_with_prices = []
+    total_prescription_cost = Decimal("0.00")
+    for item in prescription_items:
+        dispensing_log = first_dispensing_logs.get(item.id)
+        dispenser_name = ""
+        if dispensing_log and dispensing_log.dispensed_by:
+            dispenser_name = (
+                dispensing_log.dispensed_by.get_full_name()
+                or dispensing_log.dispensed_by.username
+            )
+        unit_price = item.medication.price if item.medication else Decimal("0.00")
+        item_total = unit_price * item.quantity
+        total_prescription_cost += item_total
+        items_with_prices.append(
+            {
+                "item": item,
+                "unit_price": unit_price,
+                "item_total": item_total,
+                "dispenser_name": dispenser_name,
+            }
+        )
+
     context = {
         "prescription": prescription,
         "prescription_items": prescription_items,
         "prescription_items_with_dispenser": items_with_dispenser,
+        "prescription_items_with_prices": items_with_prices,
+        "total_prescription_cost": total_prescription_cost,
         "pharmacy_invoice": pharmacy_invoice,
         "title": f"Print Prescription - #{prescription.id}",
     }

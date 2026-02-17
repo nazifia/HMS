@@ -46,19 +46,27 @@
                         <th>Duration</th>
                         <th>Instructions</th>
                         <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>Total</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in prescription_items %}
+                    {% for item_data in prescription_items_with_prices %}
                     <tr>
-                        <td>{{ item.medication.name }} ({{ item.medication.strength }})</td>
-                        <td>{{ item.dosage }}</td>
-                        <td>{{ item.frequency }}</td>
-                        <td>{{ item.duration }}</td>
-                        <td>{{ item.instructions|default:"N/A" }}</td>
-                        <td>{{ item.quantity }}</td>
+                        <td>{{ item_data.item.medication.name }} ({{ item_data.item.medication.strength }})</td>
+                        <td>{{ item_data.item.dosage }}</td>
+                        <td>{{ item_data.item.frequency }}</td>
+                        <td>{{ item_data.item.duration }}</td>
+                        <td>{{ item_data.item.instructions|default:"N/A" }}</td>
+                        <td>{{ item_data.item.quantity }}</td>
+                        <td>{{ item_data.unit_price|currency }}</td>
+                        <td>{{ item_data.item_total|currency }}</td>
                     </tr>
                     {% endfor %}
+                    <tr class="table-secondary">
+                        <td colspan="7" class="text-end"><strong>Total:</strong></td>
+                        <td><strong>{{ total_prescription_cost|currency }}</strong></td>
+                    </tr>
                 </tbody>
             </table>
         </div>

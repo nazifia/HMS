@@ -64,11 +64,13 @@
                             <th style="width: 12%">Duration</th>
                             <th style="width: 8%">Quantity</th>
                             <th style="width: 13%">Instructions</th>
-                            <th style="width: 13%">Dispensed By</th>
+                            <th style="width: 10%">Unit Price</th>
+                            <th style="width: 10%">Total</th>
+                            <th style="width: 10%">Dispensed By</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for item_data in prescription_items_with_dispenser %}
+                        {% for item_data in prescription_items_with_prices %}
                         <tr>
                             <td>{{ forloop.counter }}</td>
                             <td>
@@ -80,9 +82,16 @@
                             <td>{{ item_data.item.duration }}</td>
                             <td>{{ item_data.item.quantity }}</td>
                             <td>{{ item_data.item.instructions }}</td>
+                            <td>{{ item_data.unit_price|currency }}</td>
+                            <td>{{ item_data.item_total|currency }}</td>
                             <td>{% if item_data.dispenser_name %}{{ item_data.dispenser_name }}{% else %}-{% endif %}</td>
                         </tr>
                         {% endfor %}
+                        <tr class="table-secondary">
+                            <td colspan="8" class="text-end"><strong>Total:</strong></td>
+                            <td><strong>{{ total_prescription_cost|currency }}</strong></td>
+                            <td></td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
