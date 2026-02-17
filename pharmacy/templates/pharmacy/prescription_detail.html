@@ -239,6 +239,7 @@
                             <th class="text-primary">Patient Pays</th>
                             {% endif %}
                             <th>Dispensing Status</th>
+                            <th>Dispenser</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -286,7 +287,14 @@
                                 {% endif %}
                             </td>
                             <td class="text-center">
-                                <a href="{% url 'pharmacy:delete_prescription_item' item_data.item.id %}" 
+                                {% if item_data.dispenser_name %}
+                                    <span class="text-primary">{{ item_data.dispenser_name }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'pharmacy:delete_prescription_item' item_data.item.id %}"
                                    class="btn btn-danger btn-sm" 
                                    onclick="return confirm('Are you sure you want to delete this medication?')">
                                     <i class="fas fa-trash"></i>
@@ -297,7 +305,7 @@
                     </tbody>
                     <tfoot class="table-secondary">
                         <tr>
-                            <th colspan="7" class="text-end">Totals:</th>
+                            <th colspan="8" class="text-end">Totals:</th>
                             <th class="text-end">{{ total_medication_cost|currency }}</th>
                             {% if is_nhia_patient %}
                             <th class="text-end text-warning">
@@ -311,7 +319,7 @@
                                 <strong>{{ total_patient_pays|currency }}</strong>
                             </th>
                             {% endif %}
-                            <th colspan="2"></th>
+                            <th colspan="3"></th>
                         </tr>
                     </tfoot>
                 </table>

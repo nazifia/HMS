@@ -4598,6 +4598,18 @@ def prescription_detail(request, prescription_id):
     total_nhia_covers = Decimal("0.00")
     total_medication_cost = Decimal("0.00")
 
+    item_ids = [item.id for item in prescription_items]
+    first_dispensing_logs = {}
+    if item_ids:
+        logs = (
+            DispensingLog.objects.filter(prescription_item_id__in=item_ids)
+            .select_related("dispensed_by")
+            .order_by("prescription_item_id", "dispensed_date")
+        )
+        for log in logs:
+            if log.prescription_item_id not in first_dispensing_logs:
+                first_dispensing_logs[log.prescription_item_id] = log
+
     for item in prescription_items:
         item_total_cost = item.medication.price * item.quantity
         total_medication_cost += item_total_cost
@@ -4612,6 +4624,14 @@ def prescription_detail(request, prescription_id):
         total_patient_pays += item_patient_pays
         total_nhia_covers += item_nhia_covers
 
+        dispensing_log = first_dispensing_logs.get(item.id)
+        dispenser_name = ""
+        if dispensing_log and dispensing_log.dispensed_by:
+            dispenser_name = (
+                dispensing_log.dispensed_by.get_full_name()
+                or dispensing_log.dispensed_by.username
+            )
+
         items_with_pricing.append(
             {
                 "item": item,
@@ -4624,6 +4644,7 @@ def prescription_detail(request, prescription_id):
                 "nhia_percentage": "90%"
                 if pricing_breakdown["is_nhia_patient"]
                 else "0%",
+                "dispenser_name": dispenser_name,
             }
         )
 
@@ -5763,9 +5784,40 @@ def print_prescription(request, prescription_id):
     except PharmacyInvoice.DoesNotExist:
         pharmacy_invoice = None
 
+    # Get dispensing logs for items
+    item_ids = [item.id for item in prescription_items]
+    first_dispensing_logs = {}
+    if item_ids:
+        logs = (
+            DispensingLog.objects.filter(prescription_item_id__in=item_ids)
+            .select_related("dispensed_by")
+            .order_by("prescription_item_id", "dispensed_date")
+        )
+        for log in logs:
+            if log.prescription_item_id not in first_dispensing_logs:
+                first_dispensing_logs[log.prescription_item_id] = log
+
+    # Add dispenser info to each prescription item
+    items_with_dispenser = []
+    for item in prescription_items:
+        dispensing_log = first_dispensing_logs.get(item.id)
+        dispenser_name = ""
+        if dispensing_log and dispensing_log.dispensed_by:
+            dispenser_name = (
+                dispensing_log.dispensed_by.get_full_name()
+                or dispensing_log.dispensed_by.username
+            )
+        items_with_dispenser.append(
+            {
+                "item": item,
+                "dispenser_name": dispenser_name,
+            }
+        )
+
     context = {
         "prescription": prescription,
         "prescription_items": prescription_items,
+        "prescription_items_with_dispenser": items_with_dispenser,
         "pharmacy_invoice": pharmacy_invoice,
         "title": f"Print Prescription - #{prescription.id}",
     }

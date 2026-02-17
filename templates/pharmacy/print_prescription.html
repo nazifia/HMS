@@ -58,27 +58,29 @@
                     <thead>
                         <tr>
                             <th style="width: 5%">#</th>
-                            <th style="width: 25%">Medication</th>
-                            <th style="width: 15%">Dosage</th>
-                            <th style="width: 15%">Frequency</th>
-                            <th style="width: 15%">Duration</th>
-                            <th style="width: 10%">Quantity</th>
-                            <th style="width: 15%">Instructions</th>
+                            <th style="width: 20%">Medication</th>
+                            <th style="width: 12%">Dosage</th>
+                            <th style="width: 12%">Frequency</th>
+                            <th style="width: 12%">Duration</th>
+                            <th style="width: 8%">Quantity</th>
+                            <th style="width: 13%">Instructions</th>
+                            <th style="width: 13%">Dispensed By</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for item in prescription_items %}
+                        {% for item_data in prescription_items_with_dispenser %}
                         <tr>
                             <td>{{ forloop.counter }}</td>
                             <td>
-                                <strong>{{ item.medication.name }}</strong><br>
-                                <small>{{ item.medication.strength }} - {{ item.medication.dosage_form }}</small>
+                                <strong>{{ item_data.item.medication.name }}</strong><br>
+                                <small>{{ item_data.item.medication.strength }} - {{ item_data.item.medication.dosage_form }}</small>
                             </td>
-                            <td>{{ item.dosage }}</td>
-                            <td>{{ item.frequency }}</td>
-                            <td>{{ item.duration }}</td>
-                            <td>{{ item.quantity }}</td>
-                            <td>{{ item.instructions }}</td>
+                            <td>{{ item_data.item.dosage }}</td>
+                            <td>{{ item_data.item.frequency }}</td>
+                            <td>{{ item_data.item.duration }}</td>
+                            <td>{{ item_data.item.quantity }}</td>
+                            <td>{{ item_data.item.instructions }}</td>
+                            <td>{% if item_data.dispenser_name %}{{ item_data.dispenser_name }}{% else %}-{% endif %}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
