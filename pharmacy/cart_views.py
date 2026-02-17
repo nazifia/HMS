@@ -135,7 +135,6 @@ def create_cart_from_prescription(request, prescription_id):
                     # Create billing Invoice (sent to billing office)
                     from billing.models import Invoice as BillingInvoice
                     from django.utils import timezone
-                    from decimal import Decimal
 
                     # Check if billing invoice already exists for this prescription
                     existing_billing_invoice = BillingInvoice.objects.filter(
@@ -527,6 +526,9 @@ def generate_invoice_from_cart(request, cart_id):
             # Calculate patient payable amount
             patient_payable = cart.get_patient_payable()
 
+            # Get cart items count
+            cart_items_count = cart.items.count()
+
             # Create invoice
             invoice = create_pharmacy_invoice(
                 request, cart.prescription, patient_payable
@@ -546,10 +548,12 @@ def generate_invoice_from_cart(request, cart_id):
                 request.user,
                 "create",
                 cart,
-                f"Created prescription cart with {items_added} items",
+                f"Generated invoice from cart with {cart_items_count} items",
             )
 
-            messages.success(request, f"Cart created with {items_added} items.")
+            messages.success(
+                request, f"Invoice generated with {cart_items_count} items."
+            )
 
             # Auto-generate invoice after cart creation (sends to billing office for payment)
             try:
