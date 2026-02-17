@@ -876,7 +876,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Add Medication Modal -->
 <div class="modal fade" id="addMedicationModal" tabindex="-1" aria-labelledby="addMedicationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="addMedicationModalLabel">Add Medication(s)</h5>
@@ -884,7 +884,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <form method="post" action="{% url 'pharmacy:add_prescription_item' prescription.id %}" id="addMedicationFormset">
                 {% csrf_token %}
-                <div class="modal-body">
+                <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
                     {{ item_formset.management_form }}
                     {% for form in item_formset %}
                     <div class="medication-formset-item card mb-3">

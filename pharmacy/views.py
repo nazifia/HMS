@@ -5865,6 +5865,9 @@ def print_prescription(request, prescription_id):
                 "unit_price": unit_price,
                 "item_total": item_total,
                 "dispenser_name": dispenser_name,
+                "dispensed_date": dispensing_log.dispensed_date
+                if dispensing_log
+                else None,
             }
         )
 

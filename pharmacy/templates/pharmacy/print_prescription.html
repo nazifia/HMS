@@ -48,6 +48,7 @@
                         <th>Quantity</th>
                         <th>Unit Price</th>
                         <th>Total</th>
+                        <th>Dispensed Date</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -61,10 +62,11 @@
                         <td>{{ item_data.item.quantity }}</td>
                         <td>{{ item_data.unit_price|currency }}</td>
                         <td>{{ item_data.item_total|currency }}</td>
+                        <td>{{ item_data.dispensed_date|date:"M d, Y H:i"|default:"Not dispensed" }}</td>
                     </tr>
                     {% endfor %}
                     <tr class="table-secondary">
-                        <td colspan="7" class="text-end"><strong>Total:</strong></td>
+                        <td colspan="8" class="text-end"><strong>Total:</strong></td>
                         <td><strong>{{ total_prescription_cost|currency }}</strong></td>
                     </tr>
                 </tbody>
