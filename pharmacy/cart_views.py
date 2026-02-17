@@ -126,7 +126,7 @@ def create_cart_from_prescription(request, prescription_id):
 
             messages.success(request, f"Cart created with {items_added} items.")
 
-            # Auto-generate invoice after cart creation
+            # Auto-generate PAID invoice after cart creation
             try:
                 can_checkout, message = cart.can_generate_invoice()
                 if can_checkout:
@@ -135,18 +135,33 @@ def create_cart_from_prescription(request, prescription_id):
                         request, cart.prescription, patient_payable
                     )
                     if invoice:
+                        # Mark invoice as paid directly (fresh process - no payment needed)
+                        from pharmacy_billing.models import Payment
+
+                        payment = Payment.objects.create(
+                            invoice=invoice,
+                            amount=patient_payable,
+                            payment_method="cash",
+                            status="completed",
+                            processed_by=request.user,
+                            notes="Auto-paid on cart creation",
+                        )
+                        invoice.status = "paid"
+                        invoice.save()
+
                         cart.invoice = invoice
-                        cart.status = "invoiced"
+                        cart.status = "paid"
                         cart.save()
+
                         log_audit_action(
                             request.user,
                             "update",
                             cart,
-                            f"Auto-generated invoice #{invoice.id} from cart",
+                            f"Auto-generated paid invoice #{invoice.id} from cart",
                         )
                         messages.success(
                             request,
-                            f"Invoice created automatically. Total: ₦{patient_payable:.2f}",
+                            f"Invoice created and marked as PAID. Total: ₦{patient_payable:.2f}",
                         )
                     else:
                         messages.warning(
@@ -155,6 +170,10 @@ def create_cart_from_prescription(request, prescription_id):
                 else:
                     messages.info(request, f"Cart created. {message}")
             except Exception as e:
+                import logging
+
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error auto-generating invoice: {str(e)}")
                 messages.warning(
                     request,
                     f"Cart created but failed to auto-generate invoice: {str(e)}",
