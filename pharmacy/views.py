@@ -4565,8 +4565,12 @@ def prescription_detail(request, prescription_id):
 
     # Get prescription items
     prescription_items = prescription.items.select_related("medication")
-    # Provide an empty form for the "Add Medication" modal
-    item_form = PrescriptionItemForm()
+    # Provide an empty formset for the "Add Medication" modal
+    PrescriptionItemFormSet = formset_factory(PrescriptionItemForm, extra=1)
+    item_formset = PrescriptionItemFormSet()
+
+    # Get all active medications for the form dropdown
+    medications = Medication.objects.filter(is_active=True).order_by("name")
 
     # Get pharmacy invoice if exists
     pharmacy_invoice = None
@@ -4661,7 +4665,8 @@ def prescription_detail(request, prescription_id):
     context = {
         "prescription": prescription,
         "prescription_items": prescription_items,
-        "item_form": item_form,
+        "item_formset": item_formset,
+        "medications": medications,
         "pharmacy_invoice": pharmacy_invoice,
         "active_cart": active_cart,  # Add cart for quick access
         "page_title": f"Prescription Details - #{prescription.id}",
@@ -5394,40 +5399,50 @@ def prescription_dispensing_history(request, prescription_id):
 
 @login_required
 def add_prescription_item(request, prescription_id):
-    """View for adding a prescription item"""
+    """View for adding prescription items using a formset"""
     prescription = get_object_or_404(Prescription, id=prescription_id)
-    # Handle POST from the modal form. On success redirect back to the prescription detail.
+
+    PrescriptionItemFormSet = formset_factory(PrescriptionItemForm, extra=1)
+
     if request.method == "POST":
-        form = PrescriptionItemForm(request.POST)
-        if form.is_valid():
-            item = form.save(commit=False)
-            # Associate with the prescription
-            item.prescription = prescription
-            # Set default quantity to 1 (will be adjusted at cart/dispensing level)
-            if not item.quantity:
-                item.quantity = 1
-            # Initialize quantity_dispensed_so_far to 0 for new items
-            # This field may not be in the model but is expected by the database
-            if hasattr(item, "quantity_dispensed_so_far"):
-                item.quantity_dispensed_so_far = 0
-            item.save()
-            messages.success(request, "Medication added to prescription.")
+        formset = PrescriptionItemFormSet(request.POST)
+        if formset.is_valid():
+            items_added = 0
+            for form in formset:
+                if form.cleaned_data:
+                    medication = form.cleaned_data.get("medication")
+                    if medication:
+                        item = form.save(commit=False)
+                        item.prescription = prescription
+                        if not item.quantity:
+                            item.quantity = 1
+                        if hasattr(item, "quantity_dispensed_so_far"):
+                            item.quantity_dispensed_so_far = 0
+                        item.save()
+                        items_added += 1
+
+            if items_added > 0:
+                messages.success(
+                    request, f"{items_added} medication(s) added to prescription."
+                )
+            else:
+                messages.warning(request, "No medications were selected.")
             return redirect(
                 "pharmacy:prescription_detail", prescription_id=prescription.id
             )
         else:
-            # Re-render the prescription detail with form errors so the modal can show feedback
             prescription_items = prescription.items.select_related("medication")
+            medications = Medication.objects.filter(is_active=True).order_by("name")
             context = {
                 "prescription": prescription,
                 "prescription_items": prescription_items,
-                "item_form": form,
+                "item_formset": formset,
+                "medications": medications,
                 "page_title": f"Prescription Details - #{prescription.id}",
                 "active_nav": "pharmacy",
             }
             return render(request, "pharmacy/prescription_detail.html", context)
 
-    # For non-POST requests, send user back to the prescription detail
     return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
 

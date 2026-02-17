@@ -15,12 +15,12 @@ class Invoice(models.Model):
     ]
 
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    prescription = models.OneToOneField(
+    prescription = models.ForeignKey(
         Prescription,
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name="invoice_prescription",
+        related_name="pharmacy_invoices",
     )
     invoice_date = models.DateTimeField()
     due_date = models.DateField()

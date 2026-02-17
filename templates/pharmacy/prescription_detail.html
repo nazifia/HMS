@@ -777,24 +777,33 @@
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize select2 for medication dropdown
-    $('.select2').select2({
-        theme: 'bootstrap-5',
-        width: '100%',
-        dropdownParent: $('#addMedicationModal')
+function initializeSelect2() {
+    $('.select2').each(function() {
+        var $this = $(this);
+        if (!$this.hasClass('select2-hidden-accessible')) {
+            $this.select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                dropdownParent: $('#addMedicationModal'),
+                allowClear: true,
+                placeholder: 'Select Medication'
+            });
+        }
     });
-    
-    // Handle modal shown event to reinitialize select2
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize select2 when modal is shown
     const addMedicationModal = document.getElementById('addMedicationModal');
     if (addMedicationModal) {
         addMedicationModal.addEventListener('shown.bs.modal', function () {
-            $('.select2').select2({
-                theme: 'bootstrap-5',
-                width: '100%',
-                dropdownParent: $('#addMedicationModal')
-            });
+            initializeSelect2();
         });
+        
+        // Also initialize on page load in case modal is already visible
+        if ($('#addMedicationModal').hasClass('show')) {
+            initializeSelect2();
+        }
     }
     
     // Handle Select All checkbox
@@ -870,74 +879,154 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="addMedicationModalLabel">Add Medication</h5>
+                <h5 class="modal-title" id="addMedicationModalLabel">Add Medication(s)</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post" action="{% url 'pharmacy:add_prescription_item' prescription.id %}">
+            <form method="post" action="{% url 'pharmacy:add_prescription_item' prescription.id %}" id="addMedicationFormset">
                 {% csrf_token %}
                 <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label for="{{ item_form.medication.id_for_label }}" class="form-label">Medication</label>
-                            {{ item_form.medication|add_class:"form-select select2" }}
-                            {% if item_form.medication.errors %}
-                                <div class="text-danger">
-                                    {{ item_form.medication.errors }}
+                    {{ item_formset.management_form }}
+                    {% for form in item_formset %}
+                    <div class="medication-formset-item card mb-3">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label for="{{ form.medication.id_for_label }}" class="form-label">Medication</label>
+                                    <select name="{{ form.medication.html_name }}" id="{{ form.medication.id_for_label }}" class="form-select select2" required>
+                                        <option value="">Select Medication</option>
+                                        {% for medication in medications %}
+                                            <option value="{{ medication.id }}">{{ medication.name }} ({{ medication.strength }}) - {{ medication.dosage_form }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    {% if form.medication.errors %}
+                                        <div class="text-danger">
+                                            {{ form.medication.errors }}
+                                        </div>
+                                    {% endif %}
                                 </div>
-                            {% endif %}
-                        </div>
 
-                        <div class="col-md-4 mb-3">
-                            <label for="{{ item_form.dosage.id_for_label }}" class="form-label">Dosage</label>
-                            {{ item_form.dosage|add_class:"form-control" }}
-                            {% if item_form.dosage.errors %}
-                                <div class="text-danger">
-                                    {{ item_form.dosage.errors }}
+                                <div class="col-md-4 mb-3">
+                                    <label for="{{ form.dosage.id_for_label }}" class="form-label">Dosage</label>
+                                    {{ form.dosage|add_class:"form-control" }}
+                                    {% if form.dosage.errors %}
+                                        <div class="text-danger">
+                                            {{ form.dosage.errors }}
+                                        </div>
+                                    {% endif %}
                                 </div>
-                            {% endif %}
-                        </div>
 
-                        <div class="col-md-4 mb-3">
-                            <label for="{{ item_form.frequency.id_for_label }}" class="form-label">Frequency</label>
-                            {{ item_form.frequency|add_class:"form-control" }}
-                            {% if item_form.frequency.errors %}
-                                <div class="text-danger">
-                                    {{ item_form.frequency.errors }}
+                                <div class="col-md-4 mb-3">
+                                    <label for="{{ form.frequency.id_for_label }}" class="form-label">Frequency</label>
+                                    {{ form.frequency|add_class:"form-control" }}
+                                    {% if form.frequency.errors %}
+                                        <div class="text-danger">
+                                            {{ form.frequency.errors }}
+                                        </div>
+                                    {% endif %}
                                 </div>
-                            {% endif %}
-                        </div>
 
-                        <div class="col-md-4 mb-3">
-                            <label for="{{ item_form.duration.id_for_label }}" class="form-label">Duration</label>
-                            {{ item_form.duration|add_class:"form-control" }}
-                            {% if item_form.duration.errors %}
-                                <div class="text-danger">
-                                    {{ item_form.duration.errors }}
+                                <div class="col-md-4 mb-3">
+                                    <label for="{{ form.duration.id_for_label }}" class="form-label">Duration</label>
+                                    {{ form.duration|add_class:"form-control" }}
+                                    {% if form.duration.errors %}
+                                        <div class="text-danger">
+                                            {{ form.duration.errors }}
+                                        </div>
+                                    {% endif %}
                                 </div>
-                            {% endif %}
-                        </div>
 
-
-
-                        <div class="col-md-8 mb-3">
-                            <label for="{{ item_form.instructions.id_for_label }}" class="form-label">Instructions</label>
-                            {{ item_form.instructions|add_class:"form-control" }}
-                            {% if item_form.instructions.errors %}
-                                <div class="text-danger">
-                                    {{ item_form.instructions.errors }}
+                                <div class="col-md-12 mb-3">
+                                    <label for="{{ form.instructions.id_for_label }}" class="form-label">Instructions</label>
+                                    {{ form.instructions|add_class:"form-control" }}
+                                    {% if form.instructions.errors %}
+                                        <div class="text-danger">
+                                            {{ form.instructions.errors }}
+                                        </div>
+                                    {% endif %}
                                 </div>
-                            {% endif %}
+                            </div>
                         </div>
                     </div>
+                    {% endfor %}
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="addMoreItems">
+                        <i class="fas fa-plus"></i> Add Another Medication
+                    </button>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Medication</button>
+                    <button type="submit" class="btn btn-primary">Add Medications</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const formsetPrefix = '{{ item_formset.prefix }}';
+    const totalForms = document.getElementById('id_' + formsetPrefix + '-TOTAL_FORMS');
+    const addMoreBtn = document.getElementById('addMoreItems');
+    const modalBody = document.querySelector('#addMedicationModal .modal-body');
+    const templateForm = document.querySelector('.medication-formset-item').cloneNode(true);
+    
+    // Store medications for dynamically added forms
+    const medications = [
+        {% for medication in medications %}
+        {id: {{ medication.id }}, name: "{{ medication.name|escapejs }}", strength: "{{ medication.strength|escapejs }}", dosage_form: "{{ medication.dosage_form|escapejs }}"},
+        {% endfor %}
+    ];
+    
+    addMoreBtn.addEventListener('click', function() {
+        let formCount = parseInt(totalForms.value);
+        
+        // Build medication options
+        let medOptions = '<option value="">Select Medication</option>';
+        medications.forEach(function(med) {
+            medOptions += '<option value="' + med.id + '">' + med.name + ' (' + med.strength + ') - ' + med.dosage_form + '</option>';
+        });
+        
+        // Create new form HTML with updated form index
+        const newFormDiv = document.createElement('div');
+        newFormDiv.className = 'medication-formset-item card mb-3';
+        newFormDiv.innerHTML = templateForm.innerHTML.replace(/-0-/g, '-' + formCount + '-').replace(/__prefix__/g, formCount);
+        
+        // Update the medication select dropdown
+        const newSelect = newFormDiv.querySelector('select[name$="-medication"]');
+        if (newSelect) {
+            newSelect.innerHTML = medOptions;
+            newSelect.id = newSelect.id.replace('-0-', '-' + formCount + '-');
+            newSelect.name = newSelect.name.replace('-0-', '-' + formCount + '-');
+        }
+        
+        // Update all input/select/textarea ids and names
+        newFormDiv.querySelectorAll('input, select, textarea').forEach(function(input) {
+            if (input.type !== 'hidden') {
+                input.value = '';
+            }
+            input.id = input.id.replace('-0-', '-' + formCount + '-');
+            if (input.name) {
+                input.name = input.name.replace('-0-', '-' + formCount + '-');
+            }
+        });
+        
+        const insertBeforeEl = document.getElementById('addMoreItems');
+        modalBody.insertBefore(newFormDiv, insertBeforeEl);
+        
+        totalForms.value = formCount + 1;
+        
+        // Initialize Select2 on the new medication dropdown
+        if (typeof $.fn.select2 !== 'undefined') {
+            $(newSelect).select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                dropdownParent: $('#addMedicationModal'),
+                allowClear: true,
+                placeholder: 'Select Medication'
+            });
+        }
+    });
+});
+</script>
 
 {% endblock %}
 

@@ -32,20 +32,23 @@ def create_cart_from_prescription(request, prescription_id):
     """
     prescription = get_object_or_404(Prescription, id=prescription_id)
 
-    # Check if prescription can be dispensed
-    can_dispense, message = prescription.can_be_dispensed()
-    if not can_dispense:
-        # Enhanced message styling for dispensed prescriptions
-        if prescription.status == "dispensed":
-            messages.success(
-                request,
-                f"✅ {message} - This prescription has already been fully dispensed.",
-                extra_tags="dispensed-status",
-            )
-        elif prescription.status == "cancelled":
-            messages.warning(request, f"⚠️ {message}", extra_tags="cancelled-status")
-        else:
-            messages.error(request, f"❌ {message}", extra_tags="error-status")
+    # Check if prescription status allows cart creation (not cancelled/completed)
+    if prescription.status in ["cancelled", "completed"]:
+        messages.error(
+            request,
+            f"Cannot create cart for prescription with status: {prescription.get_status_display()}",
+        )
+        return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
+
+    # Check if there are items with remaining quantity to dispense
+    has_remaining_items = any(
+        item.remaining_quantity_to_dispense > 0 for item in prescription.items.all()
+    )
+    if not has_remaining_items:
+        messages.warning(
+            request,
+            "No items remaining to dispense. All items have been fully dispensed.",
+        )
         return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
 
     # Check if there's already any cart for this prescription (active, invoiced, paid)
@@ -176,37 +179,20 @@ def create_cart_from_prescription(request, prescription_id):
 
             messages.success(request, f"Cart created with {items_added} items.")
 
-            # Auto-generate billing invoice after cart creation (sends to billing office for payment)
+            # Auto-generate pharmacy invoice after cart creation (links to cart)
+            # This uses pharmacy_billing.Invoice which is what the cart expects
             try:
                 can_checkout, message = cart.can_generate_invoice()
                 if can_checkout:
                     patient_payable = cart.get_patient_payable()
 
-                    # Create billing Invoice (sent to billing office)
-                    from billing.models import Invoice as BillingInvoice
-                    from django.utils import timezone
+                    # Use the utility function to create pharmacy invoice
+                    # This properly handles partial dispensing - creates new invoice if previous is paid
+                    invoice = create_pharmacy_invoice(
+                        request, cart.prescription, patient_payable, force_new=False
+                    )
 
-                    # Check if there's an UNPAID billing invoice for this prescription
-                    # Only reuse unpaid invoices - if previous invoices are paid, create new one
-                    existing_billing_invoice = BillingInvoice.objects.filter(
-                        prescription=cart.prescription,
-                        source_app="pharmacy",
-                        status="pending",  # Only reuse pending (unpaid) invoices
-                    ).first()
-
-                    if existing_billing_invoice:
-                        # Add new cart items to existing pending invoice
-                        existing_billing_invoice.subtotal += Decimal(
-                            str(patient_payable)
-                        )
-                        existing_billing_invoice.total_amount = (
-                            existing_billing_invoice.subtotal
-                        )
-                        existing_billing_invoice.description = (
-                            f"Pharmacy - Prescription #{cart.prescription.id} (Partial)"
-                        )
-                        existing_billing_invoice.save()
-                        invoice = existing_billing_invoice
+                    if invoice:
                         cart.invoice = invoice
                         cart.status = "invoiced"
                         cart.save()
@@ -215,41 +201,15 @@ def create_cart_from_prescription(request, prescription_id):
                             request.user,
                             "update",
                             cart,
-                            f"Added items to existing billing invoice #{invoice.invoice_number}",
+                            f"Generated pharmacy invoice #{invoice.id} from cart",
                         )
                         messages.success(
                             request,
-                            f"Added to existing pending invoice #{invoice.invoice_number}. "
-                            f"New total: ₦{patient_payable:.2f} - Please proceed to billing office for payment.",
+                            f"Invoice #{invoice.id} created. Total: ₦{patient_payable:.2f} - Please proceed to billing office for payment.",
                         )
                     else:
-                        # Create new billing invoice (previous invoices were paid or none exist)
-                        invoice = BillingInvoice.objects.create(
-                            patient=cart.prescription.patient,
-                            prescription=cart.prescription,
-                            source_app="pharmacy",
-                            invoice_date=timezone.now(),
-                            due_date=timezone.now().date(),
-                            status="pending",
-                            subtotal=Decimal(str(patient_payable)),
-                            tax_amount=Decimal("0.00"),
-                            discount_amount=Decimal("0.00"),
-                            total_amount=Decimal(str(patient_payable)),
-                            description=f"Pharmacy - Prescription #{cart.prescription.id}",
-                        )
-                        cart.invoice = invoice
-                        cart.status = "invoiced"
-                        cart.save()
-
-                        log_audit_action(
-                            request.user,
-                            "update",
-                            cart,
-                            f"Auto-generated billing invoice #{invoice.invoice_number} from cart",
-                        )
-                        messages.success(
-                            request,
-                            f"Invoice #{invoice.invoice_number} created. Total: ₦{patient_payable:.2f} - Please proceed to billing office for payment.",
+                        messages.warning(
+                            request, "Cart created but failed to generate invoice."
                         )
                 else:
                     messages.info(request, f"Cart created. {message}")
@@ -614,44 +574,6 @@ def generate_invoice_from_cart(request, cart_id):
             messages.success(
                 request, f"Invoice generated with {cart_items_count} items."
             )
-
-            # Auto-generate invoice after cart creation (sends to billing office for payment)
-            try:
-                can_checkout, message = cart.can_generate_invoice()
-                if can_checkout:
-                    patient_payable = cart.get_patient_payable()
-                    invoice = create_pharmacy_invoice(
-                        request, cart.prescription, patient_payable
-                    )
-                    if invoice:
-                        cart.invoice = invoice
-                        cart.status = "invoiced"
-                        cart.save()
-
-                        log_audit_action(
-                            request.user,
-                            "update",
-                            cart,
-                            f"Auto-generated invoice #{invoice.id} from cart",
-                        )
-                        messages.success(
-                            request,
-                            f"Invoice created. Total: ₦{patient_payable:.2f} - Please proceed to billing office for payment.",
-                        )
-                    else:
-                        messages.warning(
-                            request, "Cart created but failed to generate invoice."
-                        )
-                else:
-                    messages.info(request, f"Cart created. {message}")
-            except Exception as e:
-                import logging
-
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error generating invoice: {str(e)}")
-                messages.warning(
-                    request, f"Cart created but failed to generate invoice: {str(e)}"
-                )
 
             return redirect("pharmacy:view_cart", cart_id=cart.id)
 
