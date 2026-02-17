@@ -77,13 +77,11 @@ def create_cart_from_prescription(request, prescription_id):
                 prescription=prescription, created_by=request.user
             )
 
-            # Add prescription items to cart
+            # Add prescription items to cart (include items with remaining quantities)
             items_added = 0
             if selected_item_ids:
-                # Add only selected items
-                for p_item in prescription.items.filter(
-                    id__in=selected_item_ids, is_dispensed=False
-                ):
+                # Add only selected items that have remaining quantities
+                for p_item in prescription.items.filter(id__in=selected_item_ids):
                     remaining_qty = p_item.remaining_quantity_to_dispense
                     if remaining_qty > 0:
                         PrescriptionCartItem.objects.create(
@@ -94,8 +92,8 @@ def create_cart_from_prescription(request, prescription_id):
                         )
                         items_added += 1
             else:
-                # Add all non-dispensed items (fallback for GET requests)
-                for p_item in prescription.items.filter(is_dispensed=False):
+                # Add all items with remaining quantities (fallback for GET requests)
+                for p_item in prescription.items.all():
                     remaining_qty = p_item.remaining_quantity_to_dispense
                     if remaining_qty > 0:
                         PrescriptionCartItem.objects.create(
@@ -110,7 +108,7 @@ def create_cart_from_prescription(request, prescription_id):
                 cart.delete()
                 messages.warning(
                     request,
-                    "No items to add to cart. All items may be already dispensed.",
+                    "No items to add to cart. All items have been fully dispensed.",
                 )
                 return redirect(
                     "pharmacy:prescription_detail", prescription_id=prescription.id
