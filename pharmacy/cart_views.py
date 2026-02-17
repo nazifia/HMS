@@ -126,46 +126,62 @@ def create_cart_from_prescription(request, prescription_id):
 
             messages.success(request, f"Cart created with {items_added} items.")
 
-            # Auto-generate PAID invoice after cart creation
+            # Auto-generate billing invoice after cart creation (sends to billing office for payment)
             try:
                 can_checkout, message = cart.can_generate_invoice()
                 if can_checkout:
                     patient_payable = cart.get_patient_payable()
-                    invoice = create_pharmacy_invoice(
-                        request, cart.prescription, patient_payable
-                    )
-                    if invoice:
-                        # Mark invoice as paid directly (fresh process - no payment needed)
-                        from pharmacy_billing.models import Payment
 
-                        payment = Payment.objects.create(
-                            invoice=invoice,
-                            amount=patient_payable,
-                            payment_method="cash",
-                            status="completed",
-                            processed_by=request.user,
-                            notes="Auto-paid on cart creation",
+                    # Create billing Invoice (sent to billing office)
+                    from billing.models import Invoice as BillingInvoice
+                    from django.utils import timezone
+                    from decimal import Decimal
+
+                    # Check if billing invoice already exists for this prescription
+                    existing_billing_invoice = BillingInvoice.objects.filter(
+                        prescription=cart.prescription, source_app="pharmacy"
+                    ).first()
+
+                    if existing_billing_invoice:
+                        invoice = existing_billing_invoice
+                        messages.info(
+                            request,
+                            f"Using existing billing invoice #{invoice.invoice_number}",
                         )
-                        invoice.status = "paid"
-                        invoice.save()
+                    else:
+                        # Create new billing invoice
+                        invoice = BillingInvoice.objects.create(
+                            patient=cart.prescription.patient,
+                            prescription=cart.prescription,
+                            source_app="pharmacy",
+                            invoice_date=timezone.now(),
+                            due_date=timezone.now().date(),
+                            status="pending",
+                            subtotal=Decimal(str(patient_payable)),
+                            tax_amount=Decimal("0.00"),
+                            discount_amount=Decimal("0.00"),
+                            total_amount=Decimal(str(patient_payable)),
+                            description=f"Pharmacy - Prescription #{cart.prescription.id}",
+                        )
 
+                    if invoice:
                         cart.invoice = invoice
-                        cart.status = "paid"
+                        cart.status = "invoiced"
                         cart.save()
 
                         log_audit_action(
                             request.user,
                             "update",
                             cart,
-                            f"Auto-generated paid invoice #{invoice.id} from cart",
+                            f"Auto-generated billing invoice #{invoice.invoice_number} from cart",
                         )
                         messages.success(
                             request,
-                            f"Invoice created and marked as PAID. Total: ₦{patient_payable:.2f}",
+                            f"Invoice #{invoice.invoice_number} created. Total: ₦{patient_payable:.2f} - Please proceed to billing office for payment.",
                         )
                     else:
                         messages.warning(
-                            request, "Cart created but failed to auto-generate invoice."
+                            request, "Cart created but failed to generate invoice."
                         )
                 else:
                     messages.info(request, f"Cart created. {message}")
