@@ -158,18 +158,18 @@
                                     <i class="fas fa-circle"></i>
                                 {% endif %}
                             </div>
-                            <div class="status-step-label">{{ step|title|replace:"_"|slice:":10" }}</div>
+                            <div class="status-step-label">{{ step|replace:"_: "|title|slice:":10" }}</div>
                         </div>
                     {% endfor %}
                 {% endwith %}
             </div>
             <div class="text-center mt-3">
                 <strong>Current Status:</strong>
-                <span class="badge bg-{{ order.status|radiology_status_badge|cut:'<'|cut:'>'|cut:'span' }} ms-2">
+                <span class="badge {{ order.status|status_badge_class }} ms-2">
                     {{ order.get_status_display }}
                 </span>
                 {% if order.priority != 'normal' %}
-                <span class="badge bg-{{ order.priority|priority_badge|cut:'<'|cut:'>'|cut:'span' }} ms-1">
+                <span class="badge {{ order.priority|priority_badge_class }} ms-1">
                     {{ order.get_priority_display }}
                 </span>
                 {% endif %}
@@ -325,7 +325,7 @@
                         <i class="fas fa-file-medical-alt me-1"></i> Results
                     </h6>
                     {% if result %}
-                        <span class="badge bg-{{ result.result_status|radiology_status_badge|cut:'<'|cut:'>'|cut:'span' }}">
+                        <span class="badge {{ result.result_status|result_status_class }}">
                             {{ result.get_result_status_display }}
                         </span>
                     {% endif %}

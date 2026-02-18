@@ -239,6 +239,12 @@ class RadiologyOrder(models.Model):
 
         return True, "Result can be added to this order"
 
+    @property
+    def age_in_hours(self):
+        """Calculate the age of the order in hours"""
+        delta = timezone.now() - self.created_at
+        return round(delta.total_seconds() / 3600, 1)
+
     def save(self, *args, **kwargs):
         """Override save to auto-check authorization requirement"""
         # Auto-check authorization requirement on save
