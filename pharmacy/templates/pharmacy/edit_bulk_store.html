@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}{{ title }} - HMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+    }
+    
+    .form-card .card-header {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        border-radius: 12px 12px 0 0;
+        padding: 1.25rem 1.5rem;
+    }
+    
+    .form-label {
+        font-weight: 500;
+        color: #374151;
+    }
+    
+    .form-control:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+    
+    .info-card {
+        background: #f9fafb;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex align-items-center mb-4">
+                <a href="{% url 'pharmacy:bulk_store_list' %}" class="btn btn-outline-secondary me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h4 class="mb-1">{{ page_title }}</h4>
+                    <small class="text-muted">Update bulk store details and assign manager</small>
+                </div>
+            </div>
+
+            <div class="form-card card">
+                <div class="card-header">
+                    <h5 class="mb-0 text-white">
+                        <i class="fas fa-warehouse me-2"></i>Edit Bulk Store
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.name.id_for_label }}" class="form-label">
+                                    {{ form.name.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.name }}
+                                {% for error in form.name.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.location.id_for_label }}" class="form-label">
+                                    {{ form.location.label }}
+                                </label>
+                                {{ form.location }}
+                                {% for error in form.location.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.manager.id_for_label }}" class="form-label">
+                                    {{ form.manager.label }}
+                                </label>
+                                {{ form.manager }}
+                                {% if form.manager.help_text %}
+                                    <div class="form-text">{{ form.manager.help_text }}</div>
+                                {% endif %}
+                                {% for error in form.manager.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.capacity.id_for_label }}" class="form-label">
+                                    {{ form.capacity.label }}
+                                </label>
+                                {{ form.capacity }}
+                                {% for error in form.capacity.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">
+                                {{ form.description.label }}
+                            </label>
+                            {{ form.description }}
+                            {% for error in form.description.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {{ form.is_active }}
+                                <label for="{{ form.is_active.id_for_label }}" class="form-check-label">
+                                    {{ form.is_active.label }}
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="info-card mb-4">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <small class="text-muted d-block">Inventory Items</small>
+                                    <strong>{{ inventory_count }} items</strong>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted d-block">Created</small>
+                                    <strong>{{ bulk_store.created_at|date:"M d, Y" }}</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Save Changes
+                            </button>
+                            <a href="{% url 'pharmacy:bulk_store_list' %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

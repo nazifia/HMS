@@ -151,6 +151,13 @@ urlpatterns = [
     path("api/suppliers/", views.api_suppliers, name="api_suppliers"),
     # Bulk Store Management
     path("bulk-store/", views.bulk_store_dashboard, name="bulk_store_dashboard"),
+    path("bulk-stores/", views.bulk_store_list, name="bulk_store_list"),
+    path("bulk-stores/add/", views.add_bulk_store, name="add_bulk_store"),
+    path(
+        "bulk-stores/<int:bulk_store_id>/edit/",
+        views.edit_bulk_store,
+        name="edit_bulk_store",
+    ),
     path(
         "bulk-store/transfer/request/",
         views.request_medication_transfer,

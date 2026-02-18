@@ -2519,6 +2519,104 @@ def bulk_store_dashboard(request):
 
 
 @login_required
+def bulk_store_list(request):
+    """View for listing all bulk stores with manager assignments"""
+    from django.db.models import Sum, Count
+
+    bulk_stores = BulkStore.objects.all().select_related("manager")
+
+    for bulk_store in bulk_stores:
+        inventory_stats = BulkStoreInventory.objects.filter(
+            bulk_store=bulk_store
+        ).aggregate(
+            total_items=Count("id"),
+            total_quantity=Sum("stock_quantity"),
+            total_value=Sum(models.F("stock_quantity") * models.F("unit_cost")),
+        )
+        bulk_store.total_items = inventory_stats["total_items"] or 0
+        bulk_store.total_quantity = inventory_stats["total_quantity"] or 0
+        bulk_store.total_value = inventory_stats["total_value"] or 0
+        bulk_store.can_edit = user_has_dispensary_edit_permission(request.user)
+
+    context = {
+        "bulk_stores": bulk_stores,
+        "title": "Bulk Stores",
+        "page_title": "Manage Bulk Stores",
+        "active_nav": "pharmacy",
+    }
+
+    return render(request, "pharmacy/bulk_store_list.html", context)
+
+
+@login_required
+def add_bulk_store(request):
+    """View for adding a new bulk store"""
+    from .forms import BulkStoreForm
+
+    if not user_has_dispensary_edit_permission(request.user):
+        messages.error(request, "You do not have permission to add bulk stores.")
+        return redirect("pharmacy:bulk_store_list")
+
+    if request.method == "POST":
+        form = BulkStoreForm(request.POST)
+        if form.is_valid():
+            bulk_store = form.save()
+            messages.success(
+                request,
+                f"Bulk store '{bulk_store.name}' created successfully.",
+            )
+            return redirect("pharmacy:bulk_store_list")
+    else:
+        form = BulkStoreForm()
+
+    context = {
+        "form": form,
+        "title": "Add Bulk Store",
+        "page_title": "Add New Bulk Store",
+        "active_nav": "pharmacy",
+    }
+
+    return render(request, "pharmacy/add_bulk_store.html", context)
+
+
+@login_required
+def edit_bulk_store(request, bulk_store_id):
+    """View for editing a bulk store"""
+    from .forms import BulkStoreForm
+
+    bulk_store = get_object_or_404(BulkStore, id=bulk_store_id)
+
+    if not user_has_dispensary_edit_permission(request.user):
+        messages.error(request, "You do not have permission to edit bulk stores.")
+        return redirect("pharmacy:bulk_store_list")
+
+    if request.method == "POST":
+        form = BulkStoreForm(request.POST, instance=bulk_store)
+        if form.is_valid():
+            bulk_store = form.save()
+            messages.success(
+                request,
+                f"Bulk store '{bulk_store.name}' updated successfully.",
+            )
+            return redirect("pharmacy:bulk_store_list")
+    else:
+        form = BulkStoreForm(instance=bulk_store)
+
+    inventory_count = BulkStoreInventory.objects.filter(bulk_store=bulk_store).count()
+
+    context = {
+        "form": form,
+        "bulk_store": bulk_store,
+        "inventory_count": inventory_count,
+        "title": f"Edit Bulk Store - {bulk_store.name}",
+        "page_title": f"Edit {bulk_store.name}",
+        "active_nav": "pharmacy",
+    }
+
+    return render(request, "pharmacy/edit_bulk_store.html", context)
+
+
+@login_required
 @permission_required("pharmacy.view")
 def active_store_detail(request, dispensary_id):
     """View for displaying active store details and managing transfers"""

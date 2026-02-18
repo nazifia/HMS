@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}{{ title }} - HMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        border-radius: 12px;
+        padding: 1.5rem 2rem;
+        margin-bottom: 1.5rem;
+        color: white;
+    }
+    
+    .bulk-store-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+    }
+    
+    .bulk-store-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .manager-badge {
+        background: #dbeafe;
+        color: #1e40af;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8125rem;
+    }
+    
+    .stat-mini {
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+    
+    .stat-mini-value {
+        font-weight: 600;
+        color: #1f2937;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-2">Bulk Stores</h1>
+                <p class="mb-0 opacity-75">Manage bulk stores and assign managers for inventory control</p>
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <a href="{% url 'pharmacy:add_bulk_store' %}" class="btn btn-light">
+                    <i class="fas fa-plus me-2"></i>Add Bulk Store
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if bulk_stores %}
+    <div class="row">
+        {% for bulk_store in bulk_stores %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="bulk-store-card card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="card-title mb-1">{{ bulk_store.name }}</h5>
+                            <small class="text-muted">
+                                <i class="fas fa-map-marker-alt me-1"></i>
+                                {{ bulk_store.location|default:"No location" }}
+                            </small>
+                        </div>
+                        <span class="badge bg-{% if bulk_store.is_active %}success{% else %}secondary{% endif %}">
+                            {% if bulk_store.is_active %}Active{% else %}Inactive{% endif %}
+                        </span>
+                    </div>
+
+                    {% if bulk_store.manager %}
+                    <div class="mb-3">
+                        <span class="manager-badge">
+                            <i class="fas fa-user-tie me-1"></i>
+                            {{ bulk_store.manager.get_full_name|default:bulk_store.manager.username }}
+                        </span>
+                    </div>
+                    {% else %}
+                    <div class="mb-3">
+                        <span class="badge bg-warning text-dark">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            No Manager Assigned
+                        </span>
+                    </div>
+                    {% endif %}
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-4">
+                            <div class="stat-mini">Items</div>
+                            <div class="stat-mini-value">{{ bulk_store.total_items }}</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-mini">Quantity</div>
+                            <div class="stat-mini-value">{{ bulk_store.total_quantity }}</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-mini">Value</div>
+                            <div class="stat-mini-value">{{ bulk_store.total_value|currency }}</div>
+                        </div>
+                    </div>
+
+                    {% if bulk_store.description %}
+                    <p class="card-text small text-muted mb-3">
+                        {{ bulk_store.description|truncatewords:20 }}
+                    </p>
+                    {% endif %}
+
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'pharmacy:edit_bulk_store' bulk_store.id %}" class="btn btn-outline-primary btn-sm flex-grow-1">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </a>
+                        <a href="{% url 'pharmacy:bulk_store_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-warehouse"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <div class="mb-4">
+            <i class="fas fa-warehouse fa-4x text-muted opacity-50"></i>
+        </div>
+        <h4 class="text-muted">No Bulk Stores Found</h4>
+        <p class="text-muted mb-4">Get started by creating your first bulk store.</p>
+        <a href="{% url 'pharmacy:add_bulk_store' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Add Bulk Store
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

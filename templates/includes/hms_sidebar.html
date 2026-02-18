@@ -368,6 +368,7 @@
                     <a class="collapse-item {% if '/pharmacy/expenses/' in request.path %}active{% endif %}" href="{% url 'pharmacy:expense_list' %}">Manage Expenses</a>
                     <a class="collapse-item {% if '/pharmacy/purchases/' in request.path %}active{% endif %}" href="{% url 'pharmacy:manage_purchases' %}">Purchase Management</a>
                     <a class="collapse-item {% if '/pharmacy/bulk-store/' in request.path %}active{% endif %}" href="{% url 'pharmacy:bulk_store_dashboard' %}">Bulk Store</a>
+                    <a class="collapse-item {% if '/pharmacy/bulk-stores/' in request.path %}active{% endif %}" href="{% url 'pharmacy:bulk_store_list' %}">Manage Bulk Stores</a>
 
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Reports:</h6>

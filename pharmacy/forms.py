@@ -1042,9 +1042,47 @@ class DispensaryForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filter manager choices to only show staff users
         self.fields["manager"].queryset = CustomUser.objects.filter(is_active=True)
         self.fields["manager"].empty_label = "Select Manager (Optional)"
+
+
+class BulkStoreForm(forms.ModelForm):
+    """Form for creating and editing bulk stores"""
+
+    class Meta:
+        model = BulkStore
+        fields = ["name", "location", "description", "manager", "capacity", "is_active"]
+        widgets = {
+            "name": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Enter bulk store name"}
+            ),
+            "location": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Enter location"}
+            ),
+            "description": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 3,
+                    "placeholder": "Enter description",
+                }
+            ),
+            "manager": forms.Select(attrs={"class": "form-control"}),
+            "capacity": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Maximum storage capacity",
+                }
+            ),
+            "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["manager"].queryset = CustomUser.objects.filter(is_active=True)
+        self.fields["manager"].empty_label = "Select Manager (Optional)"
+        self.fields[
+            "manager"
+        ].help_text = "The user responsible for managing this bulk store's inventory"
 
 
 class PrescriptionPaymentForm(forms.ModelForm):
