@@ -916,21 +916,56 @@ def quick_procurement(request, supplier_id):
 @permission_required("pharmacy.view")
 def procurement_dashboard(request):
     """View for the procurement dashboard"""
+    from django.utils import timezone
+    from datetime import timedelta
+
     # Get procurement statistics
     total_purchases = Purchase.objects.count()
-    pending_purchases = Purchase.objects.filter(approval_status="pending").count()
-    approved_purchases = Purchase.objects.filter(approval_status="approved").count()
+    pending_orders = (
+        Purchase.objects.filter(approval_status="pending")
+        .select_related("supplier")
+        .order_by("-purchase_date")[:10]
+    )
+    total_pending_orders = pending_orders.count()
+    total_pending_value = (
+        Purchase.objects.filter(approval_status="pending").aggregate(
+            total=Sum("total_amount")
+        )["total"]
+        or 0
+    )
 
     # Get recent purchases
-    recent_purchases = Purchase.objects.select_related("supplier").order_by(
+    recent_orders = Purchase.objects.select_related("supplier").order_by(
         "-purchase_date"
     )[:10]
 
+    # Get low stock items from ActiveStoreInventory
+    low_stock_medications = ActiveStoreInventory.objects.filter(
+        stock_quantity__lte=F("reorder_level")
+    ).select_related("medication", "active_store__dispensary")[:20]
+    low_stock_count = low_stock_medications.count()
+
+    # Get top suppliers in last 90 days
+    ninety_days_ago = timezone.now() - timedelta(days=90)
+    top_suppliers = (
+        Purchase.objects.filter(purchase_date__gte=ninety_days_ago)
+        .values("supplier__name")
+        .annotate(
+            order_count=Count("id"),
+            total_value=Sum("total_amount"),
+        )
+        .order_by("-total_value")[:5]
+    )
+
     context = {
         "total_purchases": total_purchases,
-        "pending_purchases": pending_purchases,
-        "approved_purchases": approved_purchases,
-        "recent_purchases": recent_purchases,
+        "pending_orders": pending_orders,
+        "total_pending_orders": total_pending_orders,
+        "total_pending_value": total_pending_value,
+        "low_stock_medications": low_stock_medications,
+        "low_stock_count": low_stock_count,
+        "recent_orders": recent_orders,
+        "top_suppliers": top_suppliers,
         "page_title": "Procurement Dashboard",
         "active_nav": "pharmacy",
     }
@@ -955,20 +990,29 @@ def procurement_analytics(request):
         Purchase.objects.aggregate(total=Sum("total_amount"))["total"] or 0
     )
 
-    # Get supplier-wise purchase data
-    supplier_stats = (
-        Purchase.objects.values("supplier__name")
-        .annotate(total_purchases=Count("id"), total_value=Sum("total_amount"))
-        .order_by("-total_value")[:10]
+    # Get procurement expenses by payment status (purchases)
+    payment_analysis = (
+        purchases_qs.values("payment_status")
+        .annotate(total_amount=Sum("total_amount"), count=Count("id"))
+        .order_by("-total_amount")
     )
 
-    context = {
-        "purchases": purchases,
-        "total_purchases": total_purchases,
-        "total_purchase_value": total_purchase_value,
-        "supplier_stats": supplier_stats,
-        "page_title": "Procurement Analytics",
-        "active_nav": "pharmacy",
+    # Get pending payments from both purchases and pharmacy expenses
+    pending_purchases = (
+        purchases_qs.filter(payment_status="pending").aggregate(
+            total=Sum("total_amount")
+        )["total"]
+        or 0
+    )
+    pending_expenses = (
+        expenses_qs.filter(payment_status="pending").aggregate(total=Sum("amount"))[
+            "total"
+        ]
+        or 0
+    )
+
+    procurement_expenses = {
+        "pending_payments": pending_purchases + pending_expenses,
     }
 
     return render(request, "pharmacy/procurement_analytics.html", context)
@@ -978,35 +1022,122 @@ def procurement_analytics(request):
 @permission_required("pharmacy.view")
 def automated_reorder_suggestions(request):
     """View for automated reorder suggestions"""
-    # Implementation for automated reorder suggestions
+    from pharmacy.models import Supplier, Medication
+
     # Get medications that are below reorder level
     low_stock_items = ActiveStoreInventory.objects.filter(
         stock_quantity__lte=F("reorder_level")
     ).select_related("medication", "active_store__dispensary")
 
     # Get items that need reordering based on usage patterns
-    # This is a simplified implementation - in a real system, you might use more complex algorithms
-    reorder_suggestions = []
-    for item in low_stock_items:
-        # Calculate average monthly usage (simplified)
-        avg_monthly_usage = item.stock_quantity * 0.3  # Placeholder calculation
-        suggested_order_qty = max(
-            item.reorder_level,  # Using reorder_level instead of reorder_quantity
-            (avg_monthly_usage * 3)
-            - item.stock_quantity,  # 3 months supply minus current stock
-        )
+    suggestions = []
+    total_estimated_value = 0
 
-        reorder_suggestions.append(
+    for item in low_stock_items:
+        # Calculate average monthly usage based on historical dispensing data
+        # For now, use a placeholder calculation
+        avg_monthly_usage = max(1, item.stock_quantity * 0.3)
+
+        # Calculate days until reaching reorder level
+        if avg_monthly_usage > 0:
+            days_until_reorder = int(item.stock_quantity / avg_monthly_usage * 30)
+        else:
+            days_until_reorder = 999
+
+        # Determine urgency based on stock level
+        if item.stock_quantity == 0:
+            urgency = "high"
+        elif item.stock_quantity <= item.reorder_level * 0.5:
+            urgency = "high"
+        elif item.stock_quantity <= item.reorder_level:
+            urgency = "medium"
+        else:
+            urgency = "low"
+
+        # Calculate suggested order quantity (3 months supply minus current stock)
+        suggested_quantity = max(
+            item.reorder_level * 2, int(avg_monthly_usage * 3) - item.stock_quantity
+        )
+        suggested_quantity = max(1, suggested_quantity)  # At least 1 unit
+
+        # Get best supplier (from recent purchases of this medication)
+        best_supplier = None
+        if item.medication:
+            # Get supplier from recent purchases of this medication
+            recent_purchases = (
+                PurchaseItem.objects.filter(medication=item.medication)
+                .select_related("purchase__supplier")
+                .order_by("-purchase__purchase_date")[:5]
+            )
+
+            if recent_purchases:
+                # Get the most frequent supplier
+                from collections import Counter
+
+                supplier_counts = Counter(
+                    [
+                        item.purchase.supplier
+                        for item in recent_purchases
+                        if item.purchase.supplier
+                    ]
+                )
+                if supplier_counts:
+                    most_frequent_supplier = supplier_counts.most_common(1)[0][0]
+                    # Get average price from recent purchases
+                    avg_price = sum(
+                        [
+                            item.unit_price
+                            for item in recent_purchases
+                            if item.purchase.supplier == most_frequent_supplier
+                        ]
+                    ) / len(
+                        [
+                            item
+                            for item in recent_purchases
+                            if item.purchase.supplier == most_frequent_supplier
+                        ]
+                    )
+
+                    best_supplier = {
+                        "id": most_frequent_supplier.id,
+                        "name": most_frequent_supplier.name,
+                        "contact_person": most_frequent_supplier.contact_person or "",
+                        "phone": most_frequent_supplier.phone_number or "",
+                        "avg_price": avg_price,
+                        "reliability_score": 0.85,
+                    }
+
+        # Calculate estimated value
+        unit_price = (
+            best_supplier["avg_price"]
+            if best_supplier
+            else (item.medication.price if item.medication else 0)
+        )
+        estimated_value = suggested_quantity * unit_price
+        total_estimated_value += estimated_value
+
+        suggestions.append(
             {
                 "inventory_item": item,
+                "medication": item.medication,
                 "current_stock": item.stock_quantity,
                 "reorder_level": item.reorder_level,
-                "suggested_quantity": suggested_order_qty,
+                "monthly_consumption": int(avg_monthly_usage),
+                "suggested_quantity": suggested_quantity,
+                "days_until_reorder": days_until_reorder,
+                "urgency": urgency,
+                "best_supplier": best_supplier,
+                "estimated_value": estimated_value,
             }
         )
 
+    # Calculate high priority count
+    high_priority_count = sum(1 for s in suggestions if s["urgency"] == "high")
+
     context = {
-        "reorder_suggestions": reorder_suggestions,
+        "suggestions": suggestions,
+        "high_priority_count": high_priority_count,
+        "total_estimated_value": total_estimated_value,
         "page_title": "Reorder Suggestions",
         "active_nav": "pharmacy",
     }
@@ -1044,14 +1175,20 @@ def expense_analysis(request):
     month = request.GET.get("month")
     year = request.GET.get("year")
 
-    # Base queryset
+    # Base queryset for purchases
     purchases_qs = Purchase.objects.select_related("supplier")
 
-    # Apply date filters
+    # Base queryset for pharmacy expenses
+    from pharmacy.models import PharmacyExpense
+
+    expenses_qs = PharmacyExpense.objects.select_related("supplier", "created_by")
+
+    # Apply date filters to purchases
     if start_date:
         try:
             start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
             purchases_qs = purchases_qs.filter(purchase_date__gte=start_date_obj)
+            expenses_qs = expenses_qs.filter(expense_date__gte=start_date_obj)
         except ValueError:
             pass
 
@@ -1059,6 +1196,7 @@ def expense_analysis(request):
         try:
             end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
             purchases_qs = purchases_qs.filter(purchase_date__lte=end_date_obj)
+            expenses_qs = expenses_qs.filter(expense_date__lte=end_date_obj)
         except ValueError:
             pass
 
@@ -1067,6 +1205,7 @@ def expense_analysis(request):
             month_int = int(month)
             if 1 <= month_int <= 12:
                 purchases_qs = purchases_qs.filter(purchase_date__month=month_int)
+                expenses_qs = expenses_qs.filter(expense_date__month=month_int)
         except ValueError:
             pass
 
@@ -1074,20 +1213,25 @@ def expense_analysis(request):
         try:
             year_int = int(year)
             purchases_qs = purchases_qs.filter(purchase_date__year=year_int)
+            expenses_qs = expenses_qs.filter(expense_date__year=year_int)
         except ValueError:
             pass
 
-    # Get expense data with filtering
+    # Get purchase expense data
     purchases = purchases_qs.order_by("-purchase_date")[:50]
 
-    # Calculate expense statistics with filtering
-    expense_stats = purchases_qs.aggregate(
+    # Calculate purchase expense statistics
+    purchase_expense_stats = purchases_qs.aggregate(
         total=Sum("total_amount"), avg_order=Avg("total_amount"), count=Count("id")
     )
+    purchase_total = purchase_expense_stats["total"] or 0
 
-    total_expenses = expense_stats["total"] or 0
-    avg_order_value = expense_stats["avg_order"] or 0
-    total_orders = expense_stats["count"] or 0
+    # Calculate pharmacy expense statistics
+    expense_stats = expenses_qs.aggregate(total=Sum("amount"), count=Count("id"))
+    pharmacy_expense_total = expense_stats["total"] or 0
+
+    # Combined total expenses
+    total_expenses = purchase_total + pharmacy_expense_total
 
     # Calculate expense ratios
     current_date = timezone.now().date()
@@ -1109,7 +1253,7 @@ def expense_analysis(request):
         "procurement_to_revenue": procurement_to_revenue,
     }
 
-    # Get procurement expenses by payment status
+    # Get procurement expenses by payment status (purchases)
     payment_analysis = (
         purchases_qs.values("payment_status")
         .annotate(total_amount=Sum("total_amount"), count=Count("id"))
@@ -1214,6 +1358,8 @@ def expense_analysis(request):
         "title": "Expense Analysis",
         "purchases": purchases,
         "total_expenses": total_expenses,
+        "purchase_total": purchase_total,
+        "pharmacy_expense_total": pharmacy_expense_total,
         "category_expenses": category_expenses,
         "expense_ratios": expense_ratios,
         "procurement_expenses": procurement_expenses,
@@ -1234,6 +1380,198 @@ def expense_analysis(request):
     }
 
     return render(request, "pharmacy/expense_analysis.html", context)
+
+
+@login_required
+@permission_required("pharmacy.view")
+def expense_list(request):
+    """View for listing all pharmacy expenses"""
+    from pharmacy.models import PharmacyExpense
+
+    expenses = PharmacyExpense.objects.select_related(
+        "supplier", "created_by"
+    ).order_by("-expense_date", "-created_at")
+
+    # Filters
+    expense_type = request.GET.get("expense_type", "")
+    payment_status = request.GET.get("payment_status", "")
+    search = request.GET.get("search", "")
+    date_from = request.GET.get("date_from", "")
+    date_to = request.GET.get("date_to", "")
+
+    if expense_type:
+        expenses = expenses.filter(expense_type=expense_type)
+    if payment_status:
+        expenses = expenses.filter(payment_status=payment_status)
+    if search:
+        expenses = expenses.filter(
+            Q(description__icontains=search)
+            | Q(reference_number__icontains=search)
+            | Q(supplier__name__icontains=search)
+        )
+    if date_from:
+        try:
+            expenses = expenses.filter(
+                expense_date__gte=datetime.strptime(date_from, "%Y-%m-%d").date()
+            )
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            expenses = expenses.filter(
+                expense_date__lte=datetime.strptime(date_to, "%Y-%m-%d").date()
+            )
+        except ValueError:
+            pass
+
+    # Totals
+    total_expenses = expenses.aggregate(total=Sum("amount"))["total"] or 0
+    pending_total = (
+        expenses.filter(payment_status="pending").aggregate(total=Sum("amount"))[
+            "total"
+        ]
+        or 0
+    )
+    paid_total = (
+        expenses.filter(payment_status="paid").aggregate(total=Sum("amount"))["total"]
+        or 0
+    )
+
+    paginator = Paginator(expenses, 20)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "expenses": page_obj,
+        "page_obj": page_obj,
+        "is_paginated": page_obj.has_other_pages(),
+        "total_expenses": total_expenses,
+        "pending_total": pending_total,
+        "paid_total": paid_total,
+        "expense_type": expense_type,
+        "payment_status": payment_status,
+        "search": search,
+        "date_from": date_from,
+        "date_to": date_to,
+        "title": "Manage Expenses",
+        "active_nav": "pharmacy",
+    }
+    return render(request, "pharmacy/expense_list.html", context)
+
+
+@login_required
+@permission_required("pharmacy.add")
+def expense_create(request):
+    """View for creating a new expense"""
+    from pharmacy.models import PharmacyExpense
+
+    if request.method == "POST":
+        expense_type = request.POST.get("expense_type")
+        description = request.POST.get("description")
+        amount = request.POST.get("amount")
+        expense_date = request.POST.get("expense_date")
+        payment_status = request.POST.get("payment_status", "pending")
+        supplier_id = request.POST.get("supplier")
+        reference_number = request.POST.get("reference_number", "")
+        notes = request.POST.get("notes", "")
+
+        try:
+            expense = PharmacyExpense(
+                expense_type=expense_type,
+                description=description,
+                amount=amount,
+                expense_date=expense_date,
+                payment_status=payment_status,
+                reference_number=reference_number,
+                notes=notes,
+                created_by=request.user,
+            )
+            if supplier_id:
+                from pharmacy.models import Supplier
+
+                expense.supplier = Supplier.objects.get(id=supplier_id)
+            expense.save()
+            messages.success(request, "Expense created successfully.")
+            return redirect("pharmacy:expense_list")
+        except Exception as e:
+            messages.error(request, f"Error creating expense: {str(e)}")
+
+    # Get suppliers for dropdown
+    from pharmacy.models import Supplier
+
+    suppliers = Supplier.objects.filter(is_active=True).order_by("name")
+
+    context = {
+        "suppliers": suppliers,
+        "title": "Add Expense",
+        "active_nav": "pharmacy",
+    }
+    return render(request, "pharmacy/expense_form.html", context)
+
+
+@login_required
+@permission_required("pharmacy.edit")
+def expense_edit(request, expense_id):
+    """View for editing an existing expense"""
+    from pharmacy.models import PharmacyExpense
+
+    expense = get_object_or_404(PharmacyExpense, id=expense_id)
+
+    if request.method == "POST":
+        expense.expense_type = request.POST.get("expense_type")
+        expense.description = request.POST.get("description")
+        expense.amount = request.POST.get("amount")
+        expense.expense_date = request.POST.get("expense_date")
+        expense.payment_status = request.POST.get("payment_status", "pending")
+        supplier_id = request.POST.get("supplier")
+        expense.reference_number = request.POST.get("reference_number", "")
+        expense.notes = request.POST.get("notes", "")
+
+        try:
+            if supplier_id:
+                from pharmacy.models import Supplier
+
+                expense.supplier = Supplier.objects.get(id=supplier_id)
+            else:
+                expense.supplier = None
+            expense.save()
+            messages.success(request, "Expense updated successfully.")
+            return redirect("pharmacy:expense_list")
+        except Exception as e:
+            messages.error(request, f"Error updating expense: {str(e)}")
+
+    from pharmacy.models import Supplier
+
+    suppliers = Supplier.objects.filter(is_active=True).order_by("name")
+
+    context = {
+        "expense": expense,
+        "suppliers": suppliers,
+        "title": "Edit Expense",
+        "active_nav": "pharmacy",
+    }
+    return render(request, "pharmacy/expense_form.html", context)
+
+
+@login_required
+@permission_required("pharmacy.delete")
+def expense_delete(request, expense_id):
+    """View for deleting an expense"""
+    from pharmacy.models import PharmacyExpense
+
+    expense = get_object_or_404(PharmacyExpense, id=expense_id)
+
+    if request.method == "POST":
+        expense.delete()
+        messages.success(request, "Expense deleted successfully.")
+        return redirect("pharmacy:expense_list")
+
+    context = {
+        "expense": expense,
+        "title": "Delete Expense",
+        "active_nav": "pharmacy",
+    }
+    return render(request, "pharmacy/expense_confirm_delete.html", context)
 
 
 import json

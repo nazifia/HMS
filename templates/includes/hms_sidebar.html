@@ -365,6 +365,7 @@
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Procurement:</h6>
                     <a class="collapse-item {% if '/pharmacy/procurement/' in request.path %}active{% endif %}" href="{% url 'pharmacy:procurement_dashboard' %}">Procurement Dashboard</a>
+                    <a class="collapse-item {% if '/pharmacy/expenses/' in request.path %}active{% endif %}" href="{% url 'pharmacy:expense_list' %}">Manage Expenses</a>
                     <a class="collapse-item {% if '/pharmacy/purchases/' in request.path %}active{% endif %}" href="{% url 'pharmacy:manage_purchases' %}">Purchase Management</a>
                     <a class="collapse-item {% if '/pharmacy/bulk-store/' in request.path %}active{% endif %}" href="{% url 'pharmacy:bulk_store_dashboard' %}">Bulk Store</a>
 

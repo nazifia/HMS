@@ -8,230 +8,680 @@ from . import assignment_views
 from .api import urls as api_urls
 from .api.inventory_views import check_medication_inventory
 
-app_name = 'pharmacy'
+app_name = "pharmacy"
 
 urlpatterns = [
-    path('dashboard/', views.pharmacy_dashboard, name='dashboard'),
-    path('dashboard/main/', views.pharmacy_dashboard, name='pharmacy_dashboard'),
-    path('select-dispensary/', views.select_dispensary, name='select_dispensary'),
-    path('set-dispensary/', views.set_dispensary, name='set_dispensary'),
-    
+    path("dashboard/", views.pharmacy_dashboard, name="dashboard"),
+    path("dashboard/main/", views.pharmacy_dashboard, name="pharmacy_dashboard"),
+    path("select-dispensary/", views.select_dispensary, name="select_dispensary"),
+    path("set-dispensary/", views.set_dispensary, name="set_dispensary"),
     # Pharmacist-Dispensary Assignment Management
-    path('assignments/', assignment_views.manage_pharmacist_assignments, name='manage_pharmacist_assignments'),
-    path('assignments/add/', assignment_views.add_pharmacist_assignment, name='add_pharmacist_assignment'),
-    path('assignments/<int:assignment_id>/edit/', assignment_views.edit_pharmacist_assignment, name='edit_pharmacist_assignment'),
-    path('assignments/<int:assignment_id>/end/', assignment_views.end_pharmacist_assignment, name='end_pharmacist_assignment'),
-    path('assignments/<int:assignment_id>/delete/', assignment_views.delete_pharmacist_assignment, name='delete_pharmacist_assignment'),
-    path('assignments/list/', assignment_views.manage_pharmacist_assignments, name='pharmacist_assignment_list'),
-    path('assignments/reports/', assignment_views.assignment_reports, name='assignment_reports'),
-    
-    path('features/', views.features_showcase, name='features_showcase'),
+    path(
+        "assignments/",
+        assignment_views.manage_pharmacist_assignments,
+        name="manage_pharmacist_assignments",
+    ),
+    path(
+        "assignments/add/",
+        assignment_views.add_pharmacist_assignment,
+        name="add_pharmacist_assignment",
+    ),
+    path(
+        "assignments/<int:assignment_id>/edit/",
+        assignment_views.edit_pharmacist_assignment,
+        name="edit_pharmacist_assignment",
+    ),
+    path(
+        "assignments/<int:assignment_id>/end/",
+        assignment_views.end_pharmacist_assignment,
+        name="end_pharmacist_assignment",
+    ),
+    path(
+        "assignments/<int:assignment_id>/delete/",
+        assignment_views.delete_pharmacist_assignment,
+        name="delete_pharmacist_assignment",
+    ),
+    path(
+        "assignments/list/",
+        assignment_views.manage_pharmacist_assignments,
+        name="pharmacist_assignment_list",
+    ),
+    path(
+        "assignments/reports/",
+        assignment_views.assignment_reports,
+        name="assignment_reports",
+    ),
+    path("features/", views.features_showcase, name="features_showcase"),
     # Inventory Management
-    path('inventory/', views.inventory_list, name='inventory'),
-    path('inventory/list/', views.inventory_list, name='inventory_list'),
-    path('inventory/add/', views.add_medication, name='add_medication'),
-    path('inventory/<int:medication_id>/', views.medication_detail, name='medication_detail'),
-    path('inventory/<int:medication_id>/edit/', views.edit_medication, name='edit_medication'),
-    path('inventory/<int:medication_id>/delete/', views.delete_medication, name='delete_medication'),
-
+    path("inventory/", views.inventory_list, name="inventory"),
+    path("inventory/list/", views.inventory_list, name="inventory_list"),
+    path("inventory/add/", views.add_medication, name="add_medication"),
+    path(
+        "inventory/<int:medication_id>/",
+        views.medication_detail,
+        name="medication_detail",
+    ),
+    path(
+        "inventory/<int:medication_id>/edit/",
+        views.edit_medication,
+        name="edit_medication",
+    ),
+    path(
+        "inventory/<int:medication_id>/delete/",
+        views.delete_medication,
+        name="delete_medication",
+    ),
     # Category Management
-    path('categories/', views.manage_categories, name='manage_categories'),
-    path('categories/<int:category_id>/edit/', views.edit_category, name='edit_category'),
-    path('categories/<int:category_id>/delete/', views.delete_category, name='delete_category'),
-
+    path("categories/", views.manage_categories, name="manage_categories"),
+    path(
+        "categories/<int:category_id>/edit/", views.edit_category, name="edit_category"
+    ),
+    path(
+        "categories/<int:category_id>/delete/",
+        views.delete_category,
+        name="delete_category",
+    ),
     # Supplier Management
-    path('suppliers/', views.manage_suppliers, name='manage_suppliers'),
-    path('suppliers/list/', views.supplier_list, name='supplier_list'),
-    path('suppliers/<int:supplier_id>/', views.supplier_detail, name='supplier_detail'),
-    path('suppliers/<int:supplier_id>/edit/', views.edit_supplier, name='edit_supplier'),
-    path('suppliers/<int:supplier_id>/delete/', views.delete_supplier, name='delete_supplier'),
-    path('suppliers/<int:supplier_id>/quick-procurement/', views.quick_procurement, name='quick_procurement'),
-
+    path("suppliers/", views.manage_suppliers, name="manage_suppliers"),
+    path("suppliers/list/", views.supplier_list, name="supplier_list"),
+    path("suppliers/<int:supplier_id>/", views.supplier_detail, name="supplier_detail"),
+    path(
+        "suppliers/<int:supplier_id>/edit/", views.edit_supplier, name="edit_supplier"
+    ),
+    path(
+        "suppliers/<int:supplier_id>/delete/",
+        views.delete_supplier,
+        name="delete_supplier",
+    ),
+    path(
+        "suppliers/<int:supplier_id>/quick-procurement/",
+        views.quick_procurement,
+        name="quick_procurement",
+    ),
     # Procurement Management
-    path('procurement/', views.procurement_dashboard, name='procurement_dashboard'),
-    path('procurement/analytics/', views.procurement_analytics, name='procurement_analytics'),
-    path('procurement/reorder-suggestions/', views.automated_reorder_suggestions, name='reorder_suggestions'),
-    path('revenue/analysis/', views.revenue_analysis, name='revenue_analysis'),
+    path("procurement/", views.procurement_dashboard, name="procurement_dashboard"),
+    path(
+        "procurement/analytics/",
+        views.procurement_analytics,
+        name="procurement_analytics",
+    ),
+    path(
+        "procurement/reorder-suggestions/",
+        views.automated_reorder_suggestions,
+        name="reorder_suggestions",
+    ),
+    path("revenue/analysis/", views.revenue_analysis, name="revenue_analysis"),
     # Backwards-compatible redirect: old comprehensive URL -> canonical statistics view
-    path('revenue/comprehensive/', RedirectView.as_view(pattern_name='pharmacy:simple_revenue_statistics', query_string=True, permanent=False), name='revenue_comprehensive_redirect'),
-    path('revenue/test-charts/', views.simple_revenue_statistics, name='test_revenue_charts_public'),
-    path('revenue/statistics/', views.simple_revenue_statistics, name='simple_revenue_statistics'),
-    path('revenue/dispensary/', views.pharmacy_dispensary_revenue, name='pharmacy_dispensary_revenue'),
-    path('expense/analysis/', views.expense_analysis, name='expense_analysis'),
-    path('medications/<int:medication_id>/procure/', views.create_procurement_request, name='create_procurement_request'),
-    path('api/suppliers/', views.api_suppliers, name='api_suppliers'),
-
+    path(
+        "revenue/comprehensive/",
+        RedirectView.as_view(
+            pattern_name="pharmacy:simple_revenue_statistics",
+            query_string=True,
+            permanent=False,
+        ),
+        name="revenue_comprehensive_redirect",
+    ),
+    path(
+        "revenue/test-charts/",
+        views.simple_revenue_statistics,
+        name="test_revenue_charts_public",
+    ),
+    path(
+        "revenue/statistics/",
+        views.simple_revenue_statistics,
+        name="simple_revenue_statistics",
+    ),
+    path(
+        "revenue/dispensary/",
+        views.pharmacy_dispensary_revenue,
+        name="pharmacy_dispensary_revenue",
+    ),
+    path("expense/analysis/", views.expense_analysis, name="expense_analysis"),
+    path("expenses/", views.expense_list, name="expense_list"),
+    path("expenses/add/", views.expense_create, name="expense_create"),
+    path("expenses/<int:expense_id>/edit/", views.expense_edit, name="expense_edit"),
+    path(
+        "expenses/<int:expense_id>/delete/", views.expense_delete, name="expense_delete"
+    ),
+    path(
+        "medications/<int:medication_id>/procure/",
+        views.create_procurement_request,
+        name="create_procurement_request",
+    ),
+    path("api/suppliers/", views.api_suppliers, name="api_suppliers"),
     # Bulk Store Management
-    path('bulk-store/', views.bulk_store_dashboard, name='bulk_store_dashboard'),
-    path('bulk-store/transfer/request/', views.request_medication_transfer, name='request_medication_transfer'),
-    path('bulk-store/transfer/instant/', views.instant_medication_transfer, name='instant_medication_transfer'),
-    path('bulk-store/transfer/<int:transfer_id>/approve/', views.approve_medication_transfer, name='approve_medication_transfer'),
-    path('bulk-store/transfer/<int:transfer_id>/execute/', views.execute_medication_transfer, name='execute_medication_transfer'),
-    path('bulk-store/transfer/<int:transfer_id>/cancel/', views.cancel_medication_transfer, name='cancel_medication_transfer'),
-    path('bulk-store/api/batch-info/<int:medication_id>/', views.get_bulk_batch_info, name='get_bulk_batch_info'),
-
+    path("bulk-store/", views.bulk_store_dashboard, name="bulk_store_dashboard"),
+    path(
+        "bulk-store/transfer/request/",
+        views.request_medication_transfer,
+        name="request_medication_transfer",
+    ),
+    path(
+        "bulk-store/transfer/instant/",
+        views.instant_medication_transfer,
+        name="instant_medication_transfer",
+    ),
+    path(
+        "bulk-store/transfer/<int:transfer_id>/approve/",
+        views.approve_medication_transfer,
+        name="approve_medication_transfer",
+    ),
+    path(
+        "bulk-store/transfer/<int:transfer_id>/execute/",
+        views.execute_medication_transfer,
+        name="execute_medication_transfer",
+    ),
+    path(
+        "bulk-store/transfer/<int:transfer_id>/cancel/",
+        views.cancel_medication_transfer,
+        name="cancel_medication_transfer",
+    ),
+    path(
+        "bulk-store/api/batch-info/<int:medication_id>/",
+        views.get_bulk_batch_info,
+        name="get_bulk_batch_info",
+    ),
     # Purchase Management
-    path('purchases/', views.manage_purchases, name='manage_purchases'),
-    path('purchases/list/', views.manage_purchases, name='purchase_list'),
-    path('purchases/add/', views.add_purchase, name='add_purchase'),
-    path('purchases/create/', views.add_purchase, name='create_purchase'),
-    path('purchases/<int:purchase_id>/', views.purchase_detail, name='purchase_detail'),
-    path('purchases/<int:purchase_id>/payment/', views.process_purchase_payment, name='process_purchase_payment'),
-    path('purchases/<int:purchase_id>/items/add/', views.add_purchase_item, name='add_purchase_item'),
-    path('purchases/items/<int:item_id>/edit/', views.edit_purchase_item, name='edit_purchase_item'),
-    path('purchases/items/<int:item_id>/delete/', views.delete_purchase_item, name='delete_purchase_item'),
-
+    path("purchases/", views.manage_purchases, name="manage_purchases"),
+    path("purchases/list/", views.manage_purchases, name="purchase_list"),
+    path("purchases/add/", views.add_purchase, name="add_purchase"),
+    path("purchases/create/", views.add_purchase, name="create_purchase"),
+    path("purchases/<int:purchase_id>/", views.purchase_detail, name="purchase_detail"),
+    path(
+        "purchases/<int:purchase_id>/payment/",
+        views.process_purchase_payment,
+        name="process_purchase_payment",
+    ),
+    path(
+        "purchases/<int:purchase_id>/items/add/",
+        views.add_purchase_item,
+        name="add_purchase_item",
+    ),
+    path(
+        "purchases/items/<int:item_id>/edit/",
+        views.edit_purchase_item,
+        name="edit_purchase_item",
+    ),
+    path(
+        "purchases/items/<int:item_id>/delete/",
+        views.delete_purchase_item,
+        name="delete_purchase_item",
+    ),
     # Purchase Approval Workflow
-    path('purchases/<int:purchase_id>/submit/', views.submit_purchase_for_approval, name='submit_purchase_for_approval'),
-    path('purchases/<int:purchase_id>/approve/', views.approve_purchase, name='approve_purchase'),
-    path('purchases/<int:purchase_id>/reject/', views.reject_purchase, name='reject_purchase'),
-    path('purchases/<int:purchase_id>/edit-delivery-date/', views.edit_purchase_delivery_date, name='edit_purchase_delivery_date'),
-
+    path(
+        "purchases/<int:purchase_id>/submit/",
+        views.submit_purchase_for_approval,
+        name="submit_purchase_for_approval",
+    ),
+    path(
+        "purchases/<int:purchase_id>/approve/",
+        views.approve_purchase,
+        name="approve_purchase",
+    ),
+    path(
+        "purchases/<int:purchase_id>/reject/",
+        views.reject_purchase,
+        name="reject_purchase",
+    ),
+    path(
+        "purchases/<int:purchase_id>/edit-delivery-date/",
+        views.edit_purchase_delivery_date,
+        name="edit_purchase_delivery_date",
+    ),
     # Prescription Management
-    path('prescriptions/', views.prescription_list, name='prescriptions'),
-    path('prescriptions/list/', views.prescription_list, name='prescription_list'),
-    path('prescriptions/patient/<int:patient_id>/', views.patient_prescriptions, name='patient_prescriptions'),
-    path('prescriptions/create/', views.create_prescription, name='create_prescription'),
-    path('prescriptions/create/<int:patient_id>/', views.create_prescription, name='create_prescription'),
-    path('prescriptions/pharmacy-create/', views.pharmacy_create_prescription, name='pharmacy_create_prescription'),
-    path('prescriptions/pharmacy-create/<int:patient_id>/', views.pharmacy_create_prescription, name='pharmacy_create_prescription'),
-    path('prescriptions/<int:prescription_id>/', views.prescription_detail, name='prescription_detail'),
-    path('prescriptions/<int:prescription_id>/print/', views.print_prescription, name='print_prescription'),
-    path('prescriptions/<int:prescription_id>/status/', views.update_prescription_status, name='update_prescription_status'),
-    path('prescriptions/<int:prescription_id>/dispense/', views.dispense_prescription, name='dispense_prescription'),
-    path('prescriptions/<int:prescription_id>/dispense/debug/', views.debug_dispense_prescription, name='debug_dispense_prescription'),
-    path('prescriptions/<int:prescription_id>/history/', views.prescription_dispensing_history, name='prescription_dispensing_history'), # New URL for history
-    path('prescriptions/<int:prescription_id>/add-item/', views.add_prescription_item, name='add_prescription_item'),
-    path('prescriptions/items/<int:item_id>/delete/', views.delete_prescription_item, name='delete_prescription_item'),
-
+    path("prescriptions/", views.prescription_list, name="prescriptions"),
+    path("prescriptions/list/", views.prescription_list, name="prescription_list"),
+    path(
+        "prescriptions/patient/<int:patient_id>/",
+        views.patient_prescriptions,
+        name="patient_prescriptions",
+    ),
+    path(
+        "prescriptions/create/", views.create_prescription, name="create_prescription"
+    ),
+    path(
+        "prescriptions/create/<int:patient_id>/",
+        views.create_prescription,
+        name="create_prescription",
+    ),
+    path(
+        "prescriptions/pharmacy-create/",
+        views.pharmacy_create_prescription,
+        name="pharmacy_create_prescription",
+    ),
+    path(
+        "prescriptions/pharmacy-create/<int:patient_id>/",
+        views.pharmacy_create_prescription,
+        name="pharmacy_create_prescription",
+    ),
+    path(
+        "prescriptions/<int:prescription_id>/",
+        views.prescription_detail,
+        name="prescription_detail",
+    ),
+    path(
+        "prescriptions/<int:prescription_id>/print/",
+        views.print_prescription,
+        name="print_prescription",
+    ),
+    path(
+        "prescriptions/<int:prescription_id>/status/",
+        views.update_prescription_status,
+        name="update_prescription_status",
+    ),
+    path(
+        "prescriptions/<int:prescription_id>/dispense/",
+        views.dispense_prescription,
+        name="dispense_prescription",
+    ),
+    path(
+        "prescriptions/<int:prescription_id>/dispense/debug/",
+        views.debug_dispense_prescription,
+        name="debug_dispense_prescription",
+    ),
+    path(
+        "prescriptions/<int:prescription_id>/history/",
+        views.prescription_dispensing_history,
+        name="prescription_dispensing_history",
+    ),  # New URL for history
+    path(
+        "prescriptions/<int:prescription_id>/add-item/",
+        views.add_prescription_item,
+        name="add_prescription_item",
+    ),
+    path(
+        "prescriptions/items/<int:item_id>/delete/",
+        views.delete_prescription_item,
+        name="delete_prescription_item",
+    ),
     # Payment Management
-    path('prescriptions/<int:prescription_id>/payment/', views.prescription_payment, name='prescription_payment'),
-    path('prescriptions/<int:prescription_id>/payment/billing-office/', views.billing_office_medication_payment, name='billing_office_medication_payment'),
-    path('prescriptions/<int:prescription_id>/payment/process-outstanding/', views.process_outstanding_wallet_payment, name='process_outstanding_wallet_payment'),
-    path('prescriptions/<int:prescription_id>/payment/create-invoice/', views.create_prescription_invoice, name='create_prescription_invoice'),
-    path('prescriptions/<int:prescription_id>/generate-invoice/', views.pharmacist_generate_invoice, name='pharmacist_generate_invoice'),
-
+    path(
+        "prescriptions/<int:prescription_id>/payment/",
+        views.prescription_payment,
+        name="prescription_payment",
+    ),
+    path(
+        "prescriptions/<int:prescription_id>/payment/billing-office/",
+        views.billing_office_medication_payment,
+        name="billing_office_medication_payment",
+    ),
+    path(
+        "prescriptions/<int:prescription_id>/payment/process-outstanding/",
+        views.process_outstanding_wallet_payment,
+        name="process_outstanding_wallet_payment",
+    ),
+    path(
+        "prescriptions/<int:prescription_id>/payment/create-invoice/",
+        views.create_prescription_invoice,
+        name="create_prescription_invoice",
+    ),
+    path(
+        "prescriptions/<int:prescription_id>/generate-invoice/",
+        views.pharmacist_generate_invoice,
+        name="pharmacist_generate_invoice",
+    ),
     # AJAX endpoints
-    path('api/check-medication-availability/', views.check_medication_availability, name='check_medication_availability'),
-
+    path(
+        "api/check-medication-availability/",
+        views.check_medication_availability,
+        name="check_medication_availability",
+    ),
     # Payment Receipts
-    path('payments/<int:payment_id>/receipt/', views.pharmacy_payment_receipt, name='pharmacy_payment_receipt'),
-    path('payments/laboratory/<int:payment_id>/receipt/', views.laboratory_payment_receipt, name='laboratory_payment_receipt'),
-    path('payments/consultation/<int:payment_id>/receipt/', views.consultation_payment_receipt, name='consultation_payment_receipt'),
-    path('payments/admission/<int:payment_id>/receipt/', views.admission_payment_receipt, name='admission_payment_receipt'),
-
+    path(
+        "payments/<int:payment_id>/receipt/",
+        views.pharmacy_payment_receipt,
+        name="pharmacy_payment_receipt",
+    ),
+    path(
+        "payments/laboratory/<int:payment_id>/receipt/",
+        views.laboratory_payment_receipt,
+        name="laboratory_payment_receipt",
+    ),
+    path(
+        "payments/consultation/<int:payment_id>/receipt/",
+        views.consultation_payment_receipt,
+        name="consultation_payment_receipt",
+    ),
+    path(
+        "payments/admission/<int:payment_id>/receipt/",
+        views.admission_payment_receipt,
+        name="admission_payment_receipt",
+    ),
     # API Endpoints
-    path('api/medications/', views.medication_api, name='medication_api'),
-    path('api/', include(api_urls)),
-
+    path("api/medications/", views.medication_api, name="medication_api"),
+    path("api/", include(api_urls)),
     # Dispensed Items Tracking
-    path('dispensed-items/', views.dispensed_items_tracker, name='dispensed_items_tracker'),
-    path('dispensed-items/<int:log_id>/', views.dispensed_item_detail, name='dispensed_item_detail'),
-    path('dispensed-items/export/', views.dispensed_items_export, name='dispensed_items_export'),
-
+    path(
+        "dispensed-items/",
+        views.dispensed_items_tracker,
+        name="dispensed_items_tracker",
+    ),
+    path(
+        "dispensed-items/<int:log_id>/",
+        views.dispensed_item_detail,
+        name="dispensed_item_detail",
+    ),
+    path(
+        "dispensed-items/export/",
+        views.dispensed_items_export,
+        name="dispensed_items_export",
+    ),
     # Dispensary Management
-    path('dispensaries/', views.dispensary_list, name='dispensary_list'),  # Changed from manage_dispensaries
-    path('dispensaries/<int:dispensary_id>/edit/', views.edit_dispensary, name='edit_dispensary'),
-    path('dispensaries/add/', views.add_dispensary, name='add_dispensary'),
-    path('dispensaries/<int:dispensary_id>/delete/', views.delete_dispensary, name='delete_dispensary'),
-    path('dispensaries/<int:dispensary_id>/inventory/', views.dispensary_inventory, name='dispensary_inventory'),
-    path('dispensaries/<int:dispensary_id>/inventory/add/', views.add_dispensary_inventory_item, name='add_dispensary_inventory_item'),
-    path('dispensaries/<int:dispensary_id>/inventory/<int:inventory_item_id>/edit/', views.edit_dispensary_inventory_item, name='edit_dispensary_inventory_item'),
-    path('dispensaries/<int:dispensary_id>/inventory/<int:inventory_item_id>/delete/', views.delete_dispensary_inventory_item, name='delete_dispensary_inventory_item'),
+    path(
+        "dispensaries/", views.dispensary_list, name="dispensary_list"
+    ),  # Changed from manage_dispensaries
+    path(
+        "dispensaries/<int:dispensary_id>/edit/",
+        views.edit_dispensary,
+        name="edit_dispensary",
+    ),
+    path("dispensaries/add/", views.add_dispensary, name="add_dispensary"),
+    path(
+        "dispensaries/<int:dispensary_id>/delete/",
+        views.delete_dispensary,
+        name="delete_dispensary",
+    ),
+    path(
+        "dispensaries/<int:dispensary_id>/inventory/",
+        views.dispensary_inventory,
+        name="dispensary_inventory",
+    ),
+    path(
+        "dispensaries/<int:dispensary_id>/inventory/add/",
+        views.add_dispensary_inventory_item,
+        name="add_dispensary_inventory_item",
+    ),
+    path(
+        "dispensaries/<int:dispensary_id>/inventory/<int:inventory_item_id>/edit/",
+        views.edit_dispensary_inventory_item,
+        name="edit_dispensary_inventory_item",
+    ),
+    path(
+        "dispensaries/<int:dispensary_id>/inventory/<int:inventory_item_id>/delete/",
+        views.delete_dispensary_inventory_item,
+        name="delete_dispensary_inventory_item",
+    ),
     # Active Store Detail
-    path('dispensaries/<int:dispensary_id>/active-store/', views.active_store_detail, name='active_store_detail'),
-    path('dispensaries/<int:dispensary_id>/active-store/bulk-transfers/', views.active_store_bulk_transfers, name='active_store_bulk_transfers'),
-    path('dispensaries/<int:dispensary_id>/active-store/dispensary-transfers/', views.active_store_dispensary_transfers, name='active_store_dispensary_transfers'),
-    path('dispensaries/<int:dispensary_id>/transfer-to-dispensary/', views.transfer_to_dispensary, name='transfer_to_dispensary'),
-    
+    path(
+        "dispensaries/<int:dispensary_id>/active-store/",
+        views.active_store_detail,
+        name="active_store_detail",
+    ),
+    path(
+        "dispensaries/<int:dispensary_id>/active-store/bulk-transfers/",
+        views.active_store_bulk_transfers,
+        name="active_store_bulk_transfers",
+    ),
+    path(
+        "dispensaries/<int:dispensary_id>/active-store/dispensary-transfers/",
+        views.active_store_dispensary_transfers,
+        name="active_store_dispensary_transfers",
+    ),
+    path(
+        "dispensaries/<int:dispensary_id>/transfer-to-dispensary/",
+        views.transfer_to_dispensary,
+        name="transfer_to_dispensary",
+    ),
     # Transfer Management
-    path('transfers/manage/', views.manage_transfers, name='manage_transfers'),
-    path('dispensaries/<int:dispensary_id>/active-store-inventory/', views.active_store_inventory_ajax, name='active_store_inventory_ajax'),
-
+    path("transfers/manage/", views.manage_transfers, name="manage_transfers"),
+    path(
+        "dispensaries/<int:dispensary_id>/active-store-inventory/",
+        views.active_store_inventory_ajax,
+        name="active_store_inventory_ajax",
+    ),
     # Medication Inventory Management
-    path('inventory/stock/add/', views.add_medication_stock, name='add_medication_stock'),
-    path('inventory/stock/quick-add/', views.quick_add_stock, name='quick_add_stock'),
-
+    path(
+        "inventory/stock/add/", views.add_medication_stock, name="add_medication_stock"
+    ),
+    path("inventory/stock/quick-add/", views.quick_add_stock, name="quick_add_stock"),
     # Alerts
-    path('alerts/', views.low_stock_alerts, name='alerts'),
-
+    path("alerts/", views.low_stock_alerts, name="alerts"),
     # Reports
-    path('reports/expiring-medications/', views.expiring_medications_report, name='expiring_medications_report'),
-    path('reports/low-stock/', views.low_stock_medications_report, name='low_stock_medications_report'),
-
+    path(
+        "reports/expiring-medications/",
+        views.expiring_medications_report,
+        name="expiring_medications_report",
+    ),
+    path(
+        "reports/low-stock/",
+        views.low_stock_medications_report,
+        name="low_stock_medications_report",
+    ),
     # AJAX Endpoints
-    path('api/medication-autocomplete/', views.medication_autocomplete, name='medication_autocomplete'),
-    path('prescriptions/<int:prescription_id>/stock-quantities/', views.get_stock_quantities, name='get_stock_quantities'),
-    
+    path(
+        "api/medication-autocomplete/",
+        views.medication_autocomplete,
+        name="medication_autocomplete",
+    ),
+    path(
+        "prescriptions/<int:prescription_id>/stock-quantities/",
+        views.get_stock_quantities,
+        name="get_stock_quantities",
+    ),
     # Medical Pack Management
-    path('packs/', views.medical_pack_list, name='medical_pack_list'),
-    path('packs/create/', views.create_medical_pack, name='create_medical_pack'),
-    path('packs/<int:pack_id>/', views.medical_pack_detail, name='medical_pack_detail'),
-    path('packs/<int:pack_id>/edit/', views.edit_medical_pack, name='edit_medical_pack'),
-    path('packs/<int:pack_id>/items/', views.manage_pack_items, name='manage_pack_items'),
-    path('packs/<int:pack_id>/items/<int:item_id>/edit/', views.edit_pack_item, name='edit_pack_item'),
-    path('packs/<int:pack_id>/items/<int:item_id>/delete/', views.delete_pack_item, name='delete_pack_item'),
-    
+    path("packs/", views.medical_pack_list, name="medical_pack_list"),
+    path("packs/create/", views.create_medical_pack, name="create_medical_pack"),
+    path("packs/<int:pack_id>/", views.medical_pack_detail, name="medical_pack_detail"),
+    path(
+        "packs/<int:pack_id>/edit/", views.edit_medical_pack, name="edit_medical_pack"
+    ),
+    path(
+        "packs/<int:pack_id>/items/", views.manage_pack_items, name="manage_pack_items"
+    ),
+    path(
+        "packs/<int:pack_id>/items/<int:item_id>/edit/",
+        views.edit_pack_item,
+        name="edit_pack_item",
+    ),
+    path(
+        "packs/<int:pack_id>/items/<int:item_id>/delete/",
+        views.delete_pack_item,
+        name="delete_pack_item",
+    ),
     # Pack Order Management
-    path('pack-orders/', views.pack_order_list, name='pack_order_list'),
-    path('pack-orders/create/', views.create_pack_order, name='create_pack_order'),
-    path('pack-orders/create/<int:pack_id>/', views.create_pack_order, name='create_pack_order_for_pack'),
-    path('pack-orders/<int:order_id>/', views.pack_order_detail, name='pack_order_detail'),
-    path('pack-orders/<int:order_id>/approve/', views.approve_pack_order, name='approve_pack_order'),
-    path('pack-orders/<int:order_id>/process/', views.process_pack_order, name='process_pack_order'),
-    path('pack-orders/<int:order_id>/dispense/', views.dispense_pack_order, name='dispense_pack_order'),
-
+    path("pack-orders/", views.pack_order_list, name="pack_order_list"),
+    path("pack-orders/create/", views.create_pack_order, name="create_pack_order"),
+    path(
+        "pack-orders/create/<int:pack_id>/",
+        views.create_pack_order,
+        name="create_pack_order_for_pack",
+    ),
+    path(
+        "pack-orders/<int:order_id>/", views.pack_order_detail, name="pack_order_detail"
+    ),
+    path(
+        "pack-orders/<int:order_id>/approve/",
+        views.approve_pack_order,
+        name="approve_pack_order",
+    ),
+    path(
+        "pack-orders/<int:order_id>/process/",
+        views.process_pack_order,
+        name="process_pack_order",
+    ),
+    path(
+        "pack-orders/<int:order_id>/dispense/",
+        views.dispense_pack_order,
+        name="dispense_pack_order",
+    ),
     # Prescription Cart Management
-    path('carts/', cart_views.cart_list, name='cart_list'),
-    path('cart/create/<int:prescription_id>/', cart_views.create_cart_from_prescription, name='create_cart_from_prescription'),
-    path('cart/<int:cart_id>/', cart_views.view_cart, name='view_cart'),
-    path('cart/<int:cart_id>/receipt/', cart_views.cart_receipt, name='cart_receipt'),
-    path('cart/<int:cart_id>/update-dispensary/', cart_views.update_cart_dispensary, name='update_cart_dispensary'),
-    path('cart/item/<int:item_id>/update-quantity/', cart_views.update_cart_item_quantity, name='update_cart_item_quantity'),
-    path('cart/item/<int:item_id>/remove/', cart_views.remove_cart_item, name='remove_cart_item'),
-    path('cart/item/<int:item_id>/substitute/', cart_views.substitute_cart_item, name='substitute_cart_item'),
-    path('cart/item/<int:item_id>/remove-substitution/', cart_views.remove_substitution, name='remove_substitution'),
-    path('cart/<int:cart_id>/generate-invoice/', cart_views.generate_invoice_from_cart, name='generate_invoice_from_cart'),
-    path('cart/<int:cart_id>/complete-dispensing/', cart_views.complete_dispensing_from_cart, name='complete_dispensing_from_cart'),
-    path('cart/<int:cart_id>/cancel/', cart_views.cancel_cart, name='cancel_cart'),
-
+    path("carts/", cart_views.cart_list, name="cart_list"),
+    path(
+        "cart/create/<int:prescription_id>/",
+        cart_views.create_cart_from_prescription,
+        name="create_cart_from_prescription",
+    ),
+    path("cart/<int:cart_id>/", cart_views.view_cart, name="view_cart"),
+    path("cart/<int:cart_id>/receipt/", cart_views.cart_receipt, name="cart_receipt"),
+    path(
+        "cart/<int:cart_id>/update-dispensary/",
+        cart_views.update_cart_dispensary,
+        name="update_cart_dispensary",
+    ),
+    path(
+        "cart/item/<int:item_id>/update-quantity/",
+        cart_views.update_cart_item_quantity,
+        name="update_cart_item_quantity",
+    ),
+    path(
+        "cart/item/<int:item_id>/remove/",
+        cart_views.remove_cart_item,
+        name="remove_cart_item",
+    ),
+    path(
+        "cart/item/<int:item_id>/substitute/",
+        cart_views.substitute_cart_item,
+        name="substitute_cart_item",
+    ),
+    path(
+        "cart/item/<int:item_id>/remove-substitution/",
+        cart_views.remove_substitution,
+        name="remove_substitution",
+    ),
+    path(
+        "cart/<int:cart_id>/generate-invoice/",
+        cart_views.generate_invoice_from_cart,
+        name="generate_invoice_from_cart",
+    ),
+    path(
+        "cart/<int:cart_id>/complete-dispensing/",
+        cart_views.complete_dispensing_from_cart,
+        name="complete_dispensing_from_cart",
+    ),
+    path("cart/<int:cart_id>/cancel/", cart_views.cancel_cart, name="cancel_cart"),
     # Enhanced Transfer Management
-    path('transfers/', enhanced_transfer_views.enhanced_transfer_dashboard, name='enhanced_transfer_dashboard'),
-    path('transfers/list/', enhanced_transfer_views.enhanced_transfer_list, name='enhanced_transfer_list'),
-    path('transfers/single/create/', enhanced_transfer_views.create_single_transfer, name='create_single_transfer'),
-    path('transfers/bulk/create/', enhanced_transfer_views.create_bulk_transfer, name='create_bulk_transfer'),
-    path('transfers/<int:transfer_id>/', enhanced_transfer_views.enhanced_transfer_detail, name='enhanced_transfer_detail'),
-    path('transfers/<int:transfer_id>/approve/', enhanced_transfer_views.approve_transfer, name='approve_transfer'),
-    path('transfers/<int:transfer_id>/reject/', enhanced_transfer_views.reject_transfer, name='reject_transfer'),
-    path('transfers/<int:transfer_id>/execute/', enhanced_transfer_views.execute_transfer, name='execute_transfer'),
-    path('transfers/bulk/approve/', enhanced_transfer_views.approve_bulk_transfers, name='approve_bulk_transfers'),
-    path('transfers/reports/', enhanced_transfer_views.transfer_reports, name='transfer_reports'),
-
+    path(
+        "transfers/",
+        enhanced_transfer_views.enhanced_transfer_dashboard,
+        name="enhanced_transfer_dashboard",
+    ),
+    path(
+        "transfers/list/",
+        enhanced_transfer_views.enhanced_transfer_list,
+        name="enhanced_transfer_list",
+    ),
+    path(
+        "transfers/single/create/",
+        enhanced_transfer_views.create_single_transfer,
+        name="create_single_transfer",
+    ),
+    path(
+        "transfers/bulk/create/",
+        enhanced_transfer_views.create_bulk_transfer,
+        name="create_bulk_transfer",
+    ),
+    path(
+        "transfers/<int:transfer_id>/",
+        enhanced_transfer_views.enhanced_transfer_detail,
+        name="enhanced_transfer_detail",
+    ),
+    path(
+        "transfers/<int:transfer_id>/approve/",
+        enhanced_transfer_views.approve_transfer,
+        name="approve_transfer",
+    ),
+    path(
+        "transfers/<int:transfer_id>/reject/",
+        enhanced_transfer_views.reject_transfer,
+        name="reject_transfer",
+    ),
+    path(
+        "transfers/<int:transfer_id>/execute/",
+        enhanced_transfer_views.execute_transfer,
+        name="execute_transfer",
+    ),
+    path(
+        "transfers/bulk/approve/",
+        enhanced_transfer_views.approve_bulk_transfers,
+        name="approve_bulk_transfers",
+    ),
+    path(
+        "transfers/reports/",
+        enhanced_transfer_views.transfer_reports,
+        name="transfer_reports",
+    ),
     # API endpoints for transfers
-    path('api/check-inventory/', enhanced_transfer_views.check_inventory_api, name='check_inventory_api'),
-    path('api/inventory-check/', enhanced_transfer_views.get_medication_inventory_ajax, name='get_medication_inventory_ajax'),
-
+    path(
+        "api/check-inventory/",
+        enhanced_transfer_views.check_inventory_api,
+        name="check_inventory_api",
+    ),
+    path(
+        "api/inventory-check/",
+        enhanced_transfer_views.get_medication_inventory_ajax,
+        name="get_medication_inventory_ajax",
+    ),
     # Active store and dispensary transfer endpoints
-    path('api/active-store-inventory/<int:dispensary_id>/<int:medication_id>/',
-         views.active_store_inventory_detail_ajax, name='active_store_inventory_detail_ajax'),
-    path('dispensary-transfer/<int:transfer_id>/approve/',
-         views.approve_dispensary_transfer, name='approve_dispensary_transfer'),
-    path('dispensary-transfer/<int:transfer_id>/cancel/',
-         views.cancel_dispensary_transfer, name='cancel_dispensary_transfer'),
-    path('dispensary-transfer/<int:transfer_id>/deliver/',
-         views.deliver_dispensary_transfer, name='deliver_dispensary_transfer'),
-
+    path(
+        "api/active-store-inventory/<int:dispensary_id>/<int:medication_id>/",
+        views.active_store_inventory_detail_ajax,
+        name="active_store_inventory_detail_ajax",
+    ),
+    path(
+        "dispensary-transfer/<int:transfer_id>/approve/",
+        views.approve_dispensary_transfer,
+        name="approve_dispensary_transfer",
+    ),
+    path(
+        "dispensary-transfer/<int:transfer_id>/cancel/",
+        views.cancel_dispensary_transfer,
+        name="cancel_dispensary_transfer",
+    ),
+    path(
+        "dispensary-transfer/<int:transfer_id>/deliver/",
+        views.deliver_dispensary_transfer,
+        name="deliver_dispensary_transfer",
+    ),
     # Inter-Dispensary Transfer Management (Legacy)
-    path('transfers/inter/', inter_dispensary_views.inter_dispensary_transfer_list, name='inter_dispensary_transfer_list'),
-    path('transfers/inter/create/', inter_dispensary_views.create_inter_dispensary_transfer, name='create_inter_dispensary_transfer'),
-    path('transfers/inter/<int:transfer_id>/', inter_dispensary_views.inter_dispensary_transfer_detail, name='inter_dispensary_transfer_detail'),
-    path('transfers/inter/<int:transfer_id>/approve/', inter_dispensary_views.approve_inter_dispensary_transfer, name='approve_inter_dispensary_transfer'),
-    path('transfers/inter/<int:transfer_id>/reject/', inter_dispensary_views.reject_inter_dispensary_transfer, name='reject_inter_dispensary_transfer'),
-    path('transfers/inter/<int:transfer_id>/execute/', inter_dispensary_views.execute_inter_dispensary_transfer, name='execute_inter_dispensary_transfer'),
-    path('transfers/inter/<int:transfer_id>/cancel/', inter_dispensary_views.cancel_inter_dispensary_transfer, name='cancel_inter_dispensary_transfer'),
-    path('transfers/inter/statistics/', inter_dispensary_views.transfer_statistics, name='transfer_statistics'),
-
+    path(
+        "transfers/inter/",
+        inter_dispensary_views.inter_dispensary_transfer_list,
+        name="inter_dispensary_transfer_list",
+    ),
+    path(
+        "transfers/inter/create/",
+        inter_dispensary_views.create_inter_dispensary_transfer,
+        name="create_inter_dispensary_transfer",
+    ),
+    path(
+        "transfers/inter/<int:transfer_id>/",
+        inter_dispensary_views.inter_dispensary_transfer_detail,
+        name="inter_dispensary_transfer_detail",
+    ),
+    path(
+        "transfers/inter/<int:transfer_id>/approve/",
+        inter_dispensary_views.approve_inter_dispensary_transfer,
+        name="approve_inter_dispensary_transfer",
+    ),
+    path(
+        "transfers/inter/<int:transfer_id>/reject/",
+        inter_dispensary_views.reject_inter_dispensary_transfer,
+        name="reject_inter_dispensary_transfer",
+    ),
+    path(
+        "transfers/inter/<int:transfer_id>/execute/",
+        inter_dispensary_views.execute_inter_dispensary_transfer,
+        name="execute_inter_dispensary_transfer",
+    ),
+    path(
+        "transfers/inter/<int:transfer_id>/cancel/",
+        inter_dispensary_views.cancel_inter_dispensary_transfer,
+        name="cancel_inter_dispensary_transfer",
+    ),
+    path(
+        "transfers/inter/statistics/",
+        inter_dispensary_views.transfer_statistics,
+        name="transfer_statistics",
+    ),
     # Markup Management
-    path('bulk-store/markup/bulk-apply/', views.bulk_apply_markup, name='bulk_apply_markup'),
-    path('bulk-store/markup/<int:item_id>/update/', views.update_item_markup, name='update_item_markup'),
+    path(
+        "bulk-store/markup/bulk-apply/",
+        views.bulk_apply_markup,
+        name="bulk_apply_markup",
+    ),
+    path(
+        "bulk-store/markup/<int:item_id>/update/",
+        views.update_item_markup,
+        name="update_item_markup",
+    ),
 ]

@@ -2654,3 +2654,71 @@ class InterDispensaryTransfer(models.Model):
             )
 
         return True, "Transfer is feasible"
+
+
+class PharmacyExpense(models.Model):
+    """Model for tracking pharmacy expenses beyond purchases"""
+
+    EXPENSE_TYPE_CHOICES = [
+        ("purchase", "Medication Purchase"),
+        ("operational", "Operational Cost"),
+        ("equipment", "Equipment"),
+        ("maintenance", "Maintenance"),
+        ("utility", "Utilities"),
+        ("salary", "Staff Salary"),
+        ("supplies", "Medical Supplies"),
+        ("other", "Other"),
+    ]
+
+    PAYMENT_STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("paid", "Paid"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    expense_type = models.CharField(
+        max_length=20, choices=EXPENSE_TYPE_CHOICES, default="operational"
+    )
+    description = models.TextField()
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    expense_date = models.DateField()
+    payment_status = models.CharField(
+        max_length=20, choices=PAYMENT_STATUS_CHOICES, default="pending"
+    )
+    supplier = models.ForeignKey(
+        "Supplier",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="expenses",
+    )
+    reference_number = models.CharField(
+        max_length=100, blank=True, help_text="Invoice or reference number"
+    )
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="pharmacy_expenses",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-expense_date", "-created_at"]
+        verbose_name = "Pharmacy Expense"
+        verbose_name_plural = "Pharmacy Expenses"
+
+    def __str__(self):
+        return (
+            f"{self.get_expense_type_display()} - {self.amount} ({self.expense_date})"
+        )
+
+    def save(self, *args, **kwargs):
+        if not self.created_by:
+            from django.contrib.auth import get_user_model
+
+            User = get_user_model()
+            self.created_by = User.objects.filter(is_superuser=True).first()
+        super().save(*args, **kwargs)

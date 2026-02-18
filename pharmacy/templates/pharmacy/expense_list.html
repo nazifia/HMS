@@ -1,0 +1,375 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #4e73df;
+        --light-bg: #f8f9fc;
+    }
+    .expense-wrapper {
+        background: var(--light-bg);
+        min-height: 100vh;
+        padding: 1.5rem;
+    }
+    .page-header {
+        background: linear-gradient(135deg, #e74a3b 0%, #c62828 100%);
+        color: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 0.15rem 0.2rem rgba(0, 0, 0, 0.05);
+    }
+    .filter-card {
+        background: white;
+        border: none;
+        border-radius: 0.75rem;
+        box-shadow: 0 0.15rem 0.2rem rgba(0, 0, 0, 0.05);
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+    .filter-card .form-label {
+        font-weight: 500;
+        color: #5a5c69;
+        font-size: 0.875rem;
+    }
+    .filter-card .form-control,
+    .filter-card .form-select {
+        border: 1px solid #d1d3e2;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+    }
+    .filter-card .form-control:focus,
+    .filter-card .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.15rem rgba(78, 115, 223, 0.25);
+    }
+    .stat-card {
+        background: white;
+        border-radius: 0.75rem;
+        box-shadow: 0 0.15rem 0.2rem rgba(0, 0, 0, 0.05);
+        padding: 1rem 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .stat-icon {
+        width: 3rem;
+        height: 3rem;
+        border-radius: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+    .stat-icon.red { background: #fde8e8; color: #c62828; }
+    .stat-icon.orange { background: #fef3e2; color: #c77b02; }
+    .stat-icon.green { background: #d1f7ea; color: #198753; }
+    .stat-content h4 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0;
+        color: #2d3748;
+    }
+    .stat-content p {
+        margin: 0;
+        font-size: 0.75rem;
+        color: #858796;
+        text-transform: uppercase;
+    }
+    .expense-table-card {
+        background: white;
+        border: none;
+        border-radius: 0.75rem;
+        box-shadow: 0 0.15rem 0.2rem rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+    }
+    .expense-table {
+        margin-bottom: 0;
+    }
+    .expense-table thead {
+        background: #f8f9fc;
+    }
+    .expense-table th {
+        font-weight: 600;
+        color: #5a5c69;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 1rem;
+        border-bottom: 2px solid #e3e6f0;
+    }
+    .expense-table td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #e3e6f0;
+        font-size: 0.875rem;
+    }
+    .expense-table tbody tr:hover {
+        background: #f8f9fc;
+    }
+    .expense-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.375rem 0.75rem;
+        border-radius: 50rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: capitalize;
+    }
+    .status-pill.pending { background: #fef3e2; color: #c77b02; }
+    .status-pill.paid { background: #d1f7ea; color: #198753; }
+    .status-pill.cancelled { background: #fde8e8; color: #c62828; }
+    .type-badge {
+        background: #e8f4fd;
+        color: #2470c7;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.375rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .amount-value {
+        font-weight: 600;
+        color: #2d3748;
+    }
+    .action-btn {
+        padding: 0.375rem 0.625rem;
+        font-size: 0.75rem;
+        border-radius: 0.375rem;
+        margin-right: 0.25rem;
+    }
+    .action-btn:last-child { margin-right: 0; }
+    .table-pagination {
+        padding: 1rem;
+        background: #f8f9fc;
+        border-top: 1px solid #e3e6f0;
+    }
+    .pagination .page-link {
+        color: var(--primary-color);
+        border-radius: 0.375rem;
+        margin: 0 0.125rem;
+    }
+    .pagination .page-item.active .page-link {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 0.75rem;
+        box-shadow: 0 0.15rem 0.2rem rgba(0, 0, 0, 0.05);
+    }
+    .empty-state i {
+        font-size: 4rem;
+        color: #d1d3e2;
+        margin-bottom: 1rem;
+    }
+    .empty-state h4 { color: #5a5c69; font-weight: 600; }
+    .empty-state p { color: #858796; margin-bottom: 1.5rem; }
+    @media (max-width: 768px) {
+        .expense-table-card { overflow-x: auto; }
+        .expense-table { min-width: 900px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="expense-wrapper">
+    <!-- Page Header -->
+    <div class="page-header d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2 class="mb-1">
+                <i class="fas fa-money-bill-wave me-2"></i>Manage Expenses
+            </h2>
+            <p class="mb-0 opacity-75">Track and manage pharmacy expenses</p>
+        </div>
+        <a href="{% url 'pharmacy:expense_create' %}" class="btn btn-light">
+            <i class="fas fa-plus me-1"></i> Add Expense
+        </a>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4" style="gap: 1rem;">
+        <div class="col stat-card">
+            <div class="stat-icon red">
+                <i class="fas fa-wallet"></i>
+            </div>
+            <div class="stat-content">
+                <h4>{{ total_expenses|currency }}</h4>
+                <p>Total Expenses</p>
+            </div>
+        </div>
+        <div class="col stat-card">
+            <div class="stat-icon orange">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+                <h4>{{ pending_total|currency }}</h4>
+                <p>Pending Payment</p>
+            </div>
+        </div>
+        <div class="col stat-card">
+            <div class="stat-icon green">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-content">
+                <h4>{{ paid_total|currency }}</h4>
+                <p>Paid</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-card">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label for="expense_type" class="form-label">Expense Type</label>
+                <select name="expense_type" id="expense_type" class="form-select">
+                    <option value="">All Types</option>
+                    <option value="purchase" {% if expense_type == 'purchase' %}selected{% endif %}>Medication Purchase</option>
+                    <option value="operational" {% if expense_type == 'operational' %}selected{% endif %}>Operational Cost</option>
+                    <option value="equipment" {% if expense_type == 'equipment' %}selected{% endif %}>Equipment</option>
+                    <option value="maintenance" {% if expense_type == 'maintenance' %}selected{% endif %}>Maintenance</option>
+                    <option value="utility" {% if expense_type == 'utility' %}selected{% endif %}>Utilities</option>
+                    <option value="salary" {% if expense_type == 'salary' %}selected{% endif %}>Staff Salary</option>
+                    <option value="supplies" {% if expense_type == 'supplies' %}selected{% endif %}>Medical Supplies</option>
+                    <option value="other" {% if expense_type == 'other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="payment_status" class="form-label">Payment Status</label>
+                <select name="payment_status" id="payment_status" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option value="pending" {% if payment_status == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="paid" {% if payment_status == 'paid' %}selected{% endif %}>Paid</option>
+                    <option value="cancelled" {% if payment_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="search" class="form-label">Search</label>
+                <input type="text" name="search" id="search" class="form-control" 
+                       placeholder="Description, reference..." value="{{ search }}">
+            </div>
+            <div class="col-md-2">
+                <label for="date_from" class="form-label">Date From</label>
+                <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
+            </div>
+            <div class="col-md-2">
+                <label for="date_to" class="form-label">Date To</label>
+                <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Expenses Table -->
+    {% if expenses %}
+    <div class="expense-table-card">
+        <div class="table-responsive">
+            <table class="table expense-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Supplier</th>
+                        <th>Reference</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for expense in expenses %}
+                    <tr>
+                        <td>{{ expense.expense_date|date:"M d, Y" }}</td>
+                        <td>
+                            <span class="type-badge">{{ expense.get_expense_type_display }}</span>
+                        </td>
+                        <td>{{ expense.description|truncatechars:40 }}</td>
+                        <td>{{ expense.supplier.name|default:"—" }}</td>
+                        <td>{{ expense.reference_number|default:"—" }}</td>
+                        <td>
+                            <span class="amount-value">{{ expense.amount|currency }}</span>
+                        </td>
+                        <td>
+                            <span class="status-pill {{ expense.payment_status }}">
+                                {{ expense.get_payment_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{% url 'pharmacy:expense_edit' expense.id %}" class="btn btn-primary btn-sm action-btn" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'pharmacy:expense_delete' expense.id %}" class="btn btn-danger btn-sm action-btn" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="table-pagination">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if expense_type %}&expense_type={{ expense_type }}{% endif %}{% if payment_status %}&payment_status={{ payment_status }}{% endif %}{% if search %}&search={{ search }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">First</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if expense_type %}&expense_type={{ expense_type }}{% endif %}{% if payment_status %}&payment_status={{ payment_status }}{% endif %}{% if search %}&search={{ search }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if expense_type %}&expense_type={{ expense_type }}{% endif %}{% if payment_status %}&payment_status={{ payment_status }}{% endif %}{% if search %}&search={{ search }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Next</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if expense_type %}&expense_type={{ expense_type }}{% endif %}{% if payment_status %}&payment_status={{ payment_status }}{% endif %}{% if search %}&search={{ search }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Last</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="empty-state">
+        <i class="fas fa-money-bill-wave"></i>
+        <h4 class="text-muted">No Expenses Found</h4>
+        <p class="text-muted">
+            {% if expense_type or payment_status or search or date_from or date_to %}
+                No expenses match your filter criteria.
+            {% else %}
+                No expenses have been recorded yet.
+            {% endif %}
+        </p>
+        <a href="{% url 'pharmacy:expense_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> Add First Expense
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
