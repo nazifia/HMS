@@ -62,6 +62,7 @@
                             <tr>
                                 <th>Medication</th>
                                 <th>Patient</th>
+                                <th>Patient ID</th>
                                 <th>Quantity</th>
                                 <th>Dispensed By</th>
                                 <th>Dispensary</th>
@@ -74,6 +75,7 @@
                             <tr>
                                 <td>{{ log.prescription_item.medication.name }} ({{ log.prescription_item.medication.strength }})</td>
                                 <td>{{ log.prescription_item.prescription.patient.get_full_name }}</td>
+                                <td>{{ log.prescription_item.prescription.patient.patient_id }}</td>
                                 <td>{{ log.dispensed_quantity }}</td>
                                 <td>{{ log.dispensed_by.get_full_name|default:log.dispensed_by.username|default:"Unknown" }}</td>
                                 <td>{{ log.dispensary.name|default:"N/A" }}</td>
