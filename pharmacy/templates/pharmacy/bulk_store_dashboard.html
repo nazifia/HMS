@@ -42,14 +42,19 @@
             <a href="{% url 'pharmacy:procurement_dashboard' %}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Procurement
             </a>
+            {% if can_edit_bulk_store %}
             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#bulkMarkupModal">
                 <i class="fas fa-percent"></i> Apply Bulk Markup
             </button>
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#transferModal">
                 <i class="fas fa-exchange-alt"></i> Request Transfer
             </button>
-            <!-- DEBUG: Instant transfer button added -->
             <span class="badge bg-info ms-2">INSTANT TRANSFER ENABLED</span>
+            {% else %}
+            <span class="badge bg-secondary ms-2">
+                <i class="fas fa-lock me-1"></i>Read-only - Bulk Store Manager Only
+            </span>
+            {% endif %}
         </div>
     </div>
 
@@ -160,15 +165,14 @@
                                     <td>{{ transfer.requested_by.get_full_name }}</td>
                                     <td>{{ transfer.requested_at|date:"M d, Y g:i A" }}</td>
                                     <td>
+                                        {% if can_edit_bulk_store %}
                                         {% if transfer.status == 'pending' and not transfer.approved_by %}
-                                            <!-- Show Approve button for pending transfers -->
                                             <form method="post" action="{% url 'pharmacy:approve_medication_transfer' transfer.id %}" style="display: inline;">
                                                 {% csrf_token %}
                                                 <button type="submit" class="btn btn-sm btn-success">
                                                     <i class="fas fa-check"></i> Approve & Deliver
                                                 </button>
                                             </form>
-                                            <!-- Instant Transfer Button for Pending Transfers -->
                                             <button type="button" class="btn btn-sm btn-warning instant-transfer-btn"
                                                     data-transfer-id="{{ transfer.id }}"
                                                     data-instant-url="{% url 'pharmacy:instant_medication_transfer' %}">
@@ -183,13 +187,17 @@
                                                 <i class="fas fa-check-circle"></i> Delivered
                                             </span>
                                         {% endif %}
-                                        <!-- Cancel Button (always available for pending/in_transit) -->
                                         {% if transfer.status in 'pending,in_transit' %}
                                         <button type="button" class="btn btn-sm btn-danger cancel-transfer-btn"
                                                 data-transfer-id="{{ transfer.id }}"
                                                 data-cancel-url="{% url 'pharmacy:cancel_medication_transfer' transfer.id %}">
                                             <i class="fas fa-times"></i> Cancel
                                         </button>
+                                        {% endif %}
+                                        {% else %}
+                                        <span class="text-muted small">
+                                            <i class="fas fa-lock"></i> Read-only
+                                        </span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -294,6 +302,7 @@
                                         {% endif %}
                                     </td>
                                     <td>
+                                        {% if can_edit_bulk_store %}
                                         <button class="btn btn-sm btn-info edit-markup-btn"
                                                 data-item-id="{{ item.id }}"
                                                 data-current-markup="{{ item.markup_percentage }}"
@@ -301,6 +310,11 @@
                                                 data-batch-number="{{ item.batch_number }}">
                                             <i class="fas fa-edit"></i> Edit Markup
                                         </button>
+                                        {% else %}
+                                        <span class="text-muted small">
+                                            <i class="fas fa-lock"></i> Read-only
+                                        </span>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}

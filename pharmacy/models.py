@@ -473,6 +473,14 @@ class BulkStore(models.Model):
     name = models.CharField(max_length=100, unique=True)
     location = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)
+    manager = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="managed_bulk_stores",
+        help_text="User responsible for managing this bulk store inventory",
+    )
     capacity = models.IntegerField(help_text="Maximum storage capacity in units")
     temperature_controlled = models.BooleanField(default=False)
     humidity_controlled = models.BooleanField(default=False)

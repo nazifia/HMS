@@ -2404,10 +2404,8 @@ def bulk_store_dashboard(request):
     from django.db.models import Sum, Count, Q, F
     from datetime import date, timedelta
 
-    # Get bulk store information
     bulk_stores = BulkStore.objects.filter(is_active=True)
 
-    # Get total inventory statistics
     total_medications = (
         BulkStoreInventory.objects.values("medication").distinct().count()
     )
@@ -2415,26 +2413,22 @@ def bulk_store_dashboard(request):
         BulkStoreInventory.objects.aggregate(total=Sum("stock_quantity"))["total"] or 0
     )
 
-    # Get low stock items (stock_quantity < reorder_level)
     low_stock_items = (
         BulkStoreInventory.objects.filter(stock_quantity__gt=0)
         .select_related("medication", "bulk_store")
         .order_by("medication__name")
     )
 
-    # Filter manually for low stock
     low_stock_list = []
     for item in low_stock_items:
         if item.stock_quantity <= item.medication.reorder_level:
             low_stock_list.append(item)
 
-    low_stock_count = len(low_stock_list)  # Get count before limiting
-    low_stock_items = low_stock_list[:10]  # Limit to first 10
+    low_stock_count = len(low_stock_list)
+    low_stock_items = low_stock_list[:10]
 
-    # Get out of stock items
     out_of_stock_count = BulkStoreInventory.objects.filter(stock_quantity=0).count()
 
-    # Get expiring medications (expiring within 30 days)
     thirty_days_from_now = date.today() + timedelta(days=30)
     expiring_soon_queryset = (
         BulkStoreInventory.objects.filter(
@@ -2448,7 +2442,6 @@ def bulk_store_dashboard(request):
     expiring_soon_count = expiring_soon_queryset.count()
     expiring_soon = expiring_soon_queryset[:10]
 
-    # Get expired medications
     expired_items_queryset = (
         BulkStoreInventory.objects.filter(
             expiry_date__lt=date.today(), stock_quantity__gt=0
@@ -2459,7 +2452,6 @@ def bulk_store_dashboard(request):
     expired_count = expired_items_queryset.count()
     expired_items = expired_items_queryset[:10]
 
-    # Get pending transfers
     pending_transfers_queryset = (
         MedicationTransfer.objects.filter(status="pending")
         .select_related(
@@ -2470,7 +2462,6 @@ def bulk_store_dashboard(request):
     pending_transfers_count = pending_transfers_queryset.count()
     pending_transfers = pending_transfers_queryset[:10]
 
-    # Get recent transfers (last 10) - including delivered
     recent_transfers = (
         MedicationTransfer.objects.filter(
             status__in=["completed", "delivered", "in_transit"]
@@ -2479,7 +2470,6 @@ def bulk_store_dashboard(request):
         .order_by("-requested_at")[:10]
     )
 
-    # Calculate total value (approximate)
     total_value = (
         BulkStoreInventory.objects.aggregate(
             total=Sum(F("stock_quantity") * F("unit_cost"))
@@ -2487,16 +2477,18 @@ def bulk_store_dashboard(request):
         or 0
     )
 
-    # Get all dispensaries for the transfer modal
     dispensaries = Dispensary.objects.filter(is_active=True).select_related(
         "active_store", "manager"
     )
 
-    # Get bulk inventory for the transfer modal
     bulk_inventory = (
         BulkStoreInventory.objects.filter(stock_quantity__gt=0)
         .select_related("medication", "bulk_store", "supplier")
         .order_by("medication__name")
+    )
+
+    can_edit_bulk_store = any(
+        user_has_bulk_store_edit_permission(request.user, bs) for bs in bulk_stores
     )
 
     context = {
@@ -2504,7 +2496,7 @@ def bulk_store_dashboard(request):
         "total_medications": total_medications,
         "total_stock_quantity": total_stock_quantity,
         "total_value": total_value,
-        "total_stock_value": total_value,  # Add the variable expected by template
+        "total_stock_value": total_value,
         "low_stock_items": low_stock_items,
         "low_stock_count": low_stock_count,
         "out_of_stock_count": out_of_stock_count,
@@ -2515,10 +2507,12 @@ def bulk_store_dashboard(request):
         "pending_transfers": pending_transfers,
         "pending_transfers_count": pending_transfers_count,
         "recent_transfers": recent_transfers,
-        "dispensaries": dispensaries,  # Add for the transfer modal
-        "bulk_inventory": bulk_inventory,  # Add for the transfer modal
+        "dispensaries": dispensaries,
+        "bulk_inventory": bulk_inventory,
         "title": "Bulk Store Dashboard",
         "active_nav": "pharmacy",
+        "can_edit_bulk_store": can_edit_bulk_store,
+        "current_user": request.user,
     }
 
     return render(request, "pharmacy/bulk_store_dashboard.html", context)
@@ -7126,8 +7120,65 @@ def user_can_edit_dispensary(user, dispensary):
 
 
 def user_has_inventory_edit_permission(user, dispensary):
-    """Check if user has permission to edit medication inventory"""
-    return user_has_dispensary_edit_permission(user, dispensary)
+    """Check if user has permission to edit medication inventory.
+
+    Only allows:
+    - Superusers
+    - Users with admin role
+    - Users with specific pharmacy inventory permissions
+    - The dispensary manager/incharge
+    """
+    if user.is_superuser:
+        return True
+
+    user_roles = (
+        [r.lower() for r in user.roles.values_list("name", flat=True)]
+        if hasattr(user, "roles")
+        else []
+    )
+
+    if "admin" in user_roles:
+        return True
+
+    if user.has_perm("pharmacy.change_bulkstoreinventory") or user.has_perm(
+        "pharmacy.change_medicationinventory"
+    ):
+        return True
+
+    if dispensary and dispensary.manager == user:
+        return True
+
+    return False
+
+
+def user_has_bulk_store_edit_permission(user, bulk_store=None):
+    """Check if user has permission to edit bulk store inventory.
+
+    Only allows:
+    - Superusers
+    - Users with admin role
+    - Users with specific bulk store inventory permissions
+    - The bulk store manager/incharge
+    """
+    if user.is_superuser:
+        return True
+
+    user_roles = (
+        [r.lower() for r in user.roles.values_list("name", flat=True)]
+        if hasattr(user, "roles")
+        else []
+    )
+
+    if "admin" in user_roles:
+        return True
+
+    if user.has_perm("pharmacy.change_bulkstoreinventory"):
+        return True
+
+    if bulk_store and bulk_store.manager == user:
+        return True
+
+    return False
 
 
 @login_required
@@ -7344,7 +7395,6 @@ def dispensary_inventory(request, dispensary_id):
     """View for dispensary inventory"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
 
-    # Check permission for viewing inventory (viewership is more permissive than editing)
     if not (
         user_has_inventory_edit_permission(request.user, dispensary)
         or request.user.is_staff
@@ -7354,7 +7404,6 @@ def dispensary_inventory(request, dispensary_id):
         )
         return redirect("pharmacy:dispensary_list")
 
-    # Check edit permissions for template
     can_edit_inventory = user_has_inventory_edit_permission(request.user, dispensary)
 
     # Get inventory items from ActiveStoreInventory (new) and MedicationInventory (legacy)
@@ -7496,11 +7545,15 @@ def add_dispensary_inventory_item(request, dispensary_id):
     """View for adding a dispensary inventory item"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
 
-    # Check permission
     if not user_has_inventory_edit_permission(request.user, dispensary):
+        manager_name = (
+            dispensary.manager.get_full_name() or dispensary.manager.username
+            if dispensary.manager
+            else "a manager"
+        )
         messages.error(
             request,
-            "You do not have permission to add inventory items to this dispensary.",
+            f"Only the dispensary manager/incharge ({manager_name}) can add inventory items to this dispensary.",
         )
         return redirect("pharmacy:dispensary_inventory", dispensary_id=dispensary.id)
 
@@ -7550,11 +7603,15 @@ def edit_dispensary_inventory_item(request, dispensary_id, inventory_item_id):
     """View for editing a dispensary inventory item"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
 
-    # Check permission
     if not user_has_inventory_edit_permission(request.user, dispensary):
+        manager_name = (
+            dispensary.manager.get_full_name() or dispensary.manager.username
+            if dispensary.manager
+            else "a manager"
+        )
         messages.error(
             request,
-            "You do not have permission to edit inventory items in this dispensary.",
+            f"Only the dispensary manager/incharge ({manager_name}) can edit inventory items in this dispensary.",
         )
         return redirect("pharmacy:dispensary_inventory", dispensary_id=dispensary.id)
 
@@ -7607,11 +7664,15 @@ def delete_dispensary_inventory_item(request, dispensary_id, inventory_item_id):
     """View for deleting a dispensary inventory item"""
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
 
-    # Check permission
     if not user_has_inventory_edit_permission(request.user, dispensary):
+        manager_name = (
+            dispensary.manager.get_full_name() or dispensary.manager.username
+            if dispensary.manager
+            else "a manager"
+        )
         messages.error(
             request,
-            "You do not have permission to delete inventory items in this dispensary.",
+            f"Only the dispensary manager/incharge ({manager_name}) can delete inventory items in this dispensary.",
         )
         return redirect("pharmacy:dispensary_inventory", dispensary_id=dispensary.id)
 
@@ -7675,13 +7736,19 @@ def quick_add_stock(request):
                 {"success": False, "error": "Quantity must be greater than 0"}
             )
 
-        # Get medication and dispensary
         medication = get_object_or_404(Medication, id=medication_id)
         dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
 
-        # Check for existing inventory
+        if not user_has_inventory_edit_permission(request.user, dispensary):
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "You do not have permission to add stock to this dispensary. Only the dispensary manager/incharge can perform this action.",
+                },
+                status=403,
+            )
+
         try:
-            # Try MedicationInventory first (legacy)
             inventory = MedicationInventory.objects.get(
                 medication=medication, dispensary=dispensary
             )
@@ -7698,7 +7765,6 @@ def quick_add_stock(request):
             )
 
         except MedicationInventory.DoesNotExist:
-            # Create new inventory record
             inventory = MedicationInventory.objects.create(
                 medication=medication,
                 dispensary=dispensary,
@@ -8872,27 +8938,32 @@ def bulk_apply_markup(request):
             bulk_store_id = request.POST.get("bulk_store_id")
             item_ids = request.POST.getlist("item_ids[]")
 
-            # Validate markup percentage
             if markup_percentage < 0 or markup_percentage > 100:
                 messages.error(request, "Markup percentage must be between 0 and 100")
                 return redirect("pharmacy:bulk_store_dashboard")
 
-            # Get items to update
+            bulk_store = None
+            if bulk_store_id:
+                bulk_store = get_object_or_404(BulkStore, id=bulk_store_id)
+
+            if not user_has_bulk_store_edit_permission(request.user, bulk_store):
+                messages.error(
+                    request,
+                    "You do not have permission to modify bulk store inventory. Only the bulk store manager/incharge can perform this action.",
+                )
+                return redirect("pharmacy:bulk_store_dashboard")
+
             if item_ids:
-                # Apply to selected items
                 items = BulkStoreInventory.objects.filter(id__in=item_ids)
             elif bulk_store_id:
-                # Apply to all items in bulk store
                 items = BulkStoreInventory.objects.filter(bulk_store_id=bulk_store_id)
             else:
-                # Apply to all items in all bulk stores
                 items = BulkStoreInventory.objects.all()
 
-            # Update markup for each item
             updated_count = 0
             for item in items:
                 item.markup_percentage = markup_percentage
-                item.save()  # save() will auto-calculate marked_up_cost
+                item.save()
                 updated_count += 1
 
             messages.success(
@@ -8900,7 +8971,6 @@ def bulk_apply_markup(request):
                 f"Successfully applied {markup_percentage}% markup to {updated_count} items",
             )
 
-            # Create audit log
             try:
                 from core.models import AuditLog
 

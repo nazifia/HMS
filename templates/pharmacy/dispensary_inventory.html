@@ -2,601 +2,627 @@
 {% load static %}
 {% load custom_filters %}
 
-{% block title %}{{ dispensary.name }} Inventory - {{ page_title }}{% endblock %}
+{% block title %}{{ dispensary.name }} Inventory - HMS{% endblock %}
 
 {% block extra_css %}
 <style>
-    .inventory-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    :root {
+        --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+        --info-color: #3b82f6;
+    }
+    
+    .page-header {
+        background: var(--primary-gradient);
+        border-radius: 12px;
+        padding: 1.5rem 2rem;
+        margin-bottom: 1.5rem;
         color: white;
-        padding: 2rem;
-        border-radius: 8px;
-        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
-    .inventory-card {
-        transition: transform 0.2s, box-shadow 0.2s;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        overflow: hidden;
-        margin-bottom: 1rem;
+    
+    .page-header h1 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
     }
-    .inventory-card:hover {
+    
+    .page-header .meta-info {
+        font-size: 0.875rem;
+        opacity: 0.9;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.25rem;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s ease;
+    }
+    
+    .stat-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    .stock-indicator {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        display: inline-block;
-        margin-right: 0.5rem;
-    }
-    .stock-high { background-color: #28a745; }
-    .stock-medium { background-color: #ffc107; }
-    .stock-low { background-color: #dc3545; }
-    .stock-out { background-color: #6c757d; }
-    .medication-info {
-        background-color: #f8f9fa;
-        padding: 1rem;
-        border-radius: 6px;
-    }
-    .back-button {
-        margin-bottom: 1rem;
-    }
-    .no-inventory {
-        text-align: center;
-        padding: 3rem;
-        color: #6c757d;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
     
-    /* Responsive styling */
-    @media (max-width: 1200px) {
-        .inventory-header {
-            padding: 1.5rem;
-        }
-        
-        .inventory-header .row {
-            align-items: flex-start !important;
-        }
-        
-        .inventory-header h1 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .inventory-header p {
-            font-size: 0.9rem;
-            margin-bottom: 0;
-        }
+    .stat-card .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
     }
     
-    @media (max-width: 768px) {
-        .inventory-header {
-            padding: 1rem;
-        }
-        
-        .inventory-header .row {
-            flex-direction: column;
-        }
-        
-        .inventory-header h1 {
-            font-size: 1.25rem;
-            margin-bottom: 0.25rem;
-        }
-        
-        .inventory-header p {
-            font-size: 0.85rem;
-        }
-        
-        .inventory-card {
-            margin-bottom: 0.75rem;
-        }
-        
-        .dispensary-header {
-            padding: 1rem;
-        }
-        
-        .medication-info {
-            padding: 0.75rem;
-        }
-        
-        .card-body {
-            padding: 1rem;
-        }
-        
-        .badge {
-            font-size: 0.75rem;
-        }
-        
-        .btn-sm {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-        }
-        
-        .btn-group {
-            flex-wrap: wrap;
-        }
-        
-        .action-buttons .btn-group {
-            display: flex;
-            gap: 0.25rem;
-        }
-        
-        .action-buttons .btn {
-            display: block;
-            margin: 0.25rem 0;
-        }
-        
-        .text-center {
-            text-align: left !important;
-        }
-        
-        .mt-3,
-        .mb-3 {
-            margin: 1rem 0 !important;
-        }
-        
-        .d-block {
-            display: block !important;
-        }
-        
-        .d-sm-block {
-            display: block !important;
-        }
+    .stat-card .stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        line-height: 1;
     }
     
-    @media (max-width: 576px) {
-        .inventory-header {
-            padding: 0.75rem;
-        }
-        
-        .inventory-header h1 {
-            font-size: 1.1rem;
-        }
-        
-        .inventory-header p {
-            font-size: 0.8rem;
-        }
-        
-        .inventory-card {
-            margin-bottom: 0.5rem;
-        }
-        
-        .dispensary-body {
-            padding: 0.75rem;
-        }
-        
-        .medication-info {
-            padding: 0.5rem;
-        }
-        
-        .card-body {
-            padding: 0.75rem;
-        }
-        
-        .stock-indicator {
-            width: 10px;
-            height: 10px;
-        }
-        
-        .btn-sm {
-            font-size: 0.7rem;
-            padding: 0.2rem 0.4rem;
-        }
-        
-        .medication-info h5 {
-            font-size: 1rem;
-        }
-        
-        .text-muted {
-            font-size: 0.8rem;
-        }
-        
-        .flex-wrap {
-            flex-wrap: wrap;
-        }
-        
-        .action-buttons {
-            display: flex;
-            justify-content: space-between;
-            gap: 0.5rem;
-        }
-        
-        .action-buttons a {
-            flex: 1;
-            min-width: 100px;
-        }
+    .stat-card .stat-label {
+        font-size: 0.75rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 0.25rem;
     }
     
-    /* Sticky header on mobile */
-    .inventory-header {
-        position: sticky;
-        top: 0;
-        z-index: 1000;
+    .search-card {
+        background: white;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
     }
     
-    @media (max-width: 768px) {
-        .inventory-header {
-            position: relative;
-        }
-    }
-    
-    /* Loading animation */
-    .inventory-card {
-        animation: fadeInUp 0.3s ease-in-out;
-    }
-    
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    /* Responsive stats cards */
-    @media (max-width: 992px) {
-        .stats-card {
-            margin-bottom: 1rem;
-        }
-    }
-    
-    @media (max-width: 768px) {
-        .stats-card {
-            margin-bottom: 0.75rem;
-        }
-    }
-    
-    @media (max-width: 576px) {
-        .stats-card {
-            margin-bottom: 0.5rem;
-        }
-    }
-    
-    /* Search styling */
-    .search-loading {
-        display: none;
-    }
-    
-    .htmx-indicator {
-        display: none;
-    }
-    
-    .htmx-request .search-loading {
-        display: inline-block;
-    }
-    
-    .search-container {
+    .search-input-wrapper {
         position: relative;
     }
     
-    .fade-in {
-        animation: fadeIn 0.3s ease-in;
+    .search-input-wrapper .form-control {
+        padding-left: 2.75rem;
+        border-radius: 8px;
+        border: 2px solid #e5e7eb;
+        transition: border-color 0.2s;
+    }
+    
+    .search-input-wrapper .form-control:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+    
+    .search-input-wrapper .search-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+    }
+    
+    .inventory-table-wrapper {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+    }
+    
+    .inventory-table {
+        margin-bottom: 0;
+    }
+    
+    .inventory-table thead th {
+        background: #f9fafb;
+        border-bottom: 2px solid #e5e7eb;
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #4b5563;
+        padding: 1rem;
+        white-space: nowrap;
+    }
+    
+    .inventory-table tbody tr {
+        transition: background-color 0.15s;
+    }
+    
+    .inventory-table tbody tr:hover {
+        background-color: #f9fafb;
+    }
+    
+    .inventory-table td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .medication-name {
+        font-weight: 600;
+        color: #1f2937;
+    }
+    
+    .medication-generic {
+        font-size: 0.8125rem;
+        color: #6b7280;
+    }
+    
+    .stock-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: 20px;
+        font-weight: 500;
+        font-size: 0.8125rem;
+    }
+    
+    .stock-badge.in-stock {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    
+    .stock-badge.low-stock {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    
+    .stock-badge.out-of-stock {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .stock-badge .stock-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+    
+    .stock-badge.in-stock .stock-dot { background: #10b981; }
+    .stock-badge.low-stock .stock-dot { background: #f59e0b; }
+    .stock-badge.out-of-stock .stock-dot { background: #ef4444; }
+    
+    .source-badge {
+        font-size: 0.6875rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+    }
+    
+    .source-badge.active-store {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    
+    .source-badge.legacy {
+        background: #f3f4f6;
+        color: #4b5563;
+    }
+    
+    .source-badge.merged {
+        background: #ede9fe;
+        color: #5b21b6;
+    }
+    
+    .expiry-warning {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.8125rem;
+    }
+    
+    .expiry-warning.expired {
+        color: #ef4444;
+    }
+    
+    .expiry-warning.warning {
+        color: #f59e0b;
+    }
+    
+    .expiry-warning.ok {
+        color: #10b981;
+    }
+    
+    .btn-action {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: all 0.15s;
+    }
+    
+    .btn-action:hover {
+        transform: scale(1.1);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+    
+    .empty-state-icon {
+        width: 80px;
+        height: 80px;
+        background: #f3f4f6;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 2rem;
+        color: #9ca3af;
+    }
+    
+    .filter-tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .filter-tab {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid #e5e7eb;
+        background: white;
+        transition: all 0.15s;
+    }
+    
+    .filter-tab:hover {
+        background: #f9fafb;
+    }
+    
+    .filter-tab.active {
+        background: #4f46e5;
+        color: white;
+        border-color: #4f46e5;
+    }
+    
+    @media (max-width: 992px) {
+        .page-header {
+            padding: 1rem;
+        }
+        
+        .page-header h1 {
+            font-size: 1.25rem;
+        }
+        
+        .stat-card {
+            margin-bottom: 0.75rem;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .inventory-table-wrapper {
+            border-radius: 8px;
+        }
+        
+        .inventory-table thead th,
+        .inventory-table td {
+            padding: 0.75rem;
+            font-size: 0.8125rem;
+        }
+        
+        .medication-name {
+            font-size: 0.875rem;
+        }
+        
+        .page-header .btn {
+            margin-top: 0.75rem;
+        }
+        
+        .filter-tabs {
+            flex-wrap: wrap;
+        }
     }
     
     @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.3s ease-out;
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <!-- Header -->
-            <div class="d-flex align-items-center mb-4">
-                <div class="back-button">
-                    <a href="{% url 'pharmacy:dispensary_list' %}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Back to Dispensaries
+    <div class="page-header">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    <a href="{% url 'pharmacy:dispensary_list' %}" class="btn btn-sm btn-light opacity-75">
+                        <i class="fas fa-arrow-left"></i>
                     </a>
+                    <h1 class="mb-0">{{ dispensary.name }}</h1>
+                </div>
+                <div class="meta-info">
+                    <span class="me-3">
+                        <i class="fas fa-map-marker-alt me-1"></i>
+                        {{ dispensary.location|default:"No location" }}
+                    </span>
+                    {% if dispensary.manager %}
+                    <span>
+                        <i class="fas fa-user-tie me-1"></i>
+                        {{ dispensary.manager.get_full_name|default:dispensary.manager.username }}
+                    </span>
+                    {% endif %}
                 </div>
             </div>
-
-            <div class="inventory-header">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h1 class="mb-2">{{ dispensary.name }} Inventory</h1>
-                        <p class="mb-0">
-                            <i class="fas fa-map-marker-alt me-2"></i>
-                            {{ dispensary.location|default:"No location specified" }}
-                            {% if dispensary.manager %}
-                                • 
-                                <i class="fas fa-user-tie me-1"></i>
-                                Managed by: {{ dispensary.manager.get_full_name|default:dispensary.manager.username|default:"Unknown" }}
-                            {% endif %}
-                        </p>
-                    </div>
-                    <div class="col-md-4 text-md-end">
-                        {% if can_edit_inventory %}
-                            <a href="{% url 'pharmacy:add_dispensary_inventory_item' dispensary.id %}" 
-                               class="btn btn-light">
-                                <i class="fas fa-plus me-2"></i>Add Inventory Item
-                            </a>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Stats -->
-            <div class="row mb-4">
-                <div class="col-md-3">
-                    <div class="card border-left-primary shadow h-100 py-2 stats-card">
-                        <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                        Total Items
-                                    </div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                        {{ total_items }}
-                                    </div>
-                                </div>
-                                <div class="col-auto">
-                                    <i class="fas fa-boxes fa-2x text-gray-300"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-left-success shadow h-100 py-2 stats-card">
-                        <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                        In Stock
-                                    </div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                        {{ in_stock_count }}
-                                    </div>
-                                </div>
-                                <div class="col-auto">
-                                    <i class="fas fa-check-circle fa-2x text-gray-300"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-left-warning shadow h-100 py-2 stats-card">
-                        <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                        Low Stock
-                                    </div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                        {{ low_stock_count }}
-                                    </div>
-                                </div>
-                                <div class="col-auto">
-                                    <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-left-danger shadow h-100 py-2 stats-card">
-                        <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                        Out of Stock
-                                    </div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                        {{ out_of_stock_count }}
-                                    </div>
-                                </div>
-                                <div class="col-auto">
-                                    <i class="fas fa-times-circle fa-2x text-gray-300"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Search Section -->
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="card border-primary">
-                        <div class="card-header bg-primary text-white">
-                            <h6 class="m-0">
-                                <i class="fas fa-search"></i> Search Inventory
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-8">
-                                    <div class="input-group">
-                                        <span class="input-group-text">
-                                            <i class="fas fa-search"></i>
-                                        </span>
-                                        <input type="text" 
-                                               class="form-control" 
-                                               id="medication-search" 
-                                               name="search" 
-                                               placeholder="Search by medication name, generic name, or brand name..."
-                                               hx-get="/pharmacy/api/search_medication_inventory/?dispensary_id={{ dispensary.id }}"
-                                               hx-target="#inventory-results"
-                                               hx-trigger="keyup changed delay:150ms"
-                                               hx-indicator=".search-loading">
-                                        <div class="search-loading htmx-indicator spinner-border spinner-border-sm text-primary ms-2" role="status">
-                                            <span class="visually-hidden">Searching...</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <button type="button" 
-                                            class="btn btn-outline-secondary"
-                                            onclick="clearSearch()">
-                                        <i class="fas fa-times"></i> Clear Search
-                                    </button>
-                                    <button type="button" 
-                                            class="btn btn-primary"
-                                            onclick="refreshInventory()">
-                                        <i class="fas fa-sync"></i> Refresh
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="mt-2">
-                                <small class="text-muted">
-                                    <i class="fas fa-info-circle"></i> 
-                                    Start typing to search medications. Results will appear instantly.
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Inventory Items -->
-            <div id="inventory-results" class="fade-in">
-                {% if inventory_items %}
-                    <div class="row">
-                    <div class="col-12">
-                        {% for item in inventory_items %}
-                            <div class="inventory-card">
-                                <div class="card-body">
-                                    <div class="row align-items-center">
-                                        <div class="col-12 col-md-4 mb-3 mb-md-0">
-                                            <div class="medication-info">
-                                                <h5 class="mb-1">{{ item.medication.name }}</h5>
-                                                {% if item.medication.generic_name %}
-                                                    <small class="text-muted">Generic: {{ item.medication.generic_name }}</small>
-                                                {% endif %}
-                                                {% if item.medication.strength %}
-                                                    <small class="text-muted">Strength: {{ item.medication.strength }}</small>
-                                                {% endif %}
-                                                <div class="d-flex flex-wrap gap-1 align-items-center">
-                                                    {% if item.batch_number %}
-                                                        <span class="badge bg-light text-dark text-nowrap">
-                                                            <i class="fas fa-barcode"></i>
-                                                            {{ item.batch_number }}
-                                                        </span>
-                                                    {% endif %}
-                                                    {% if 'active_store' in item.sources and 'legacy' in item.sources %}
-                                                        <span class="badge bg-primary">
-                                                            <i class="fas fa-layer-group"></i>
-                                                            Merged
-                                                        </span>
-                                                    {% elif 'active_store' in item.sources %}
-                                                        <span class="badge bg-success">
-                                                            <i class="fas fa-store"></i>
-                                                            Active Store
-                                                        </span>
-                                                    {% else %}
-                                                        <span class="badge bg-secondary">
-                                                            <i class="fas fa-database"></i>
-                                                            Legacy
-                                                        </span>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-6 col-md-4 mb-3 mb-md-0">
-                                            <div class="text-center">
-                                                <div class="d-flex flex-column align-items-center h-100">
-                                                    <div class="mb-2">
-                                                        {% if item.stock_quantity > 0 %}
-                                                            <span class="stock-indicator stock-high"></span>
-                                                            <strong>{{ item.stock_quantity }}</strong>
-                                                            <small class="text-muted">units</small>
-                                                        {% else %}
-                                                            <span class="stock-indicator stock-out"></span>
-                                                            <strong>Out of Stock</strong>
-                                                            <small class="text-muted">0 units</small>
-                                                        {% endif %}
-                                                    </div>
-                                                </div>
-                                            
-                                                <div class="d-flex justify-content-between w-100">
-                                                    <div class="text-center">
-                                                        {% if item.reorder_level %}
-                                                            <small class="text-muted">Reorder at:</small>
-                                                            <strong>{{ item.reorder_level }}</strong>
-                                                            <small class="text-muted">units</small>
-                                                        {% else %}
-                                                            <small class="text-muted">No reorder level set</small>
-                                                        {% endif %}
-                                                    </div>
-                                                    <div class="text-center">
-                                                        {% if item.expiry_date %}
-                                                            {% if item.expiry_date < today %}
-                                                                <span class="text-danger">
-                                                                    <i class="fas fa-exclamation-triangle"></i>
-                                                                    Expired
-                                                                </span>
-                                                                <small>{{ item.expiry_date|date:"M d, Y" }}</small>
-                                                            {% else %}
-                                                                <span class="text-success">
-                                                                    <i class="fas fa-calendar-check"></i>
-                                                                </span>
-                                                                <small>{{ item.expiry_date|date:"M d, Y" }}</small>
-                                                            {% endif %}
-                                                        {% else %}
-                                                            <small class="text-muted">No expiry date</small>
-                                                        {% endif %}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 col-md-2">
-                                            <div class="action-buttons">
-                                                {% if can_edit_inventory %}
-                                                    <div class="btn-group d-block d-sm-flex flex-wrap gap-2 w-100">
-                                                        <a href="{% url 'pharmacy:medication_detail' item.medication.id %}" 
-                                                           class="btn btn-outline-primary btn-sm" title="View Details">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
-                                                        <a href="{% url 'pharmacy:edit_dispensary_inventory_item' dispensary.id item.ids.0 %}" 
-                                                           class="btn btn-outline-secondary btn-sm" title="Edit">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                        <a href="{% url 'pharmacy:delete_dispensary_inventory_item' dispensary.id item.ids.0 %}" 
-                                                           class="btn btn-outline-danger btn-sm" 
-                                                           title="Delete"
-                                                           onclick="return confirm('Are you sure you want to delete this inventory item?')">
-                                                            <i class="fas fa-trash"></i>
-                                                        </a>
-                                                    </div>
-                                                {% else %}
-                                                    <div class="alert alert-info my-2">
-                                                        <small class="mb-0">
-                                                            <i class="fas fa-lock me-1"></i>
-                                                            Read-only access
-                                                        </small>
-                                                    </div>
-                                                {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
+            <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+                {% if can_edit_inventory %}
+                <a href="{% url 'pharmacy:add_dispensary_inventory_item' dispensary.id %}" class="btn btn-light">
+                    <i class="fas fa-plus me-2"></i>Add Item
+                </a>
                 {% else %}
-                    <div class="no-inventory">
-                        <i class="fas fa-boxes fa-3x mb-3 text-muted"></i>
-                        <h4>No Inventory Items Found</h4>
-                        <p class="mb-3">This dispensary currently has no inventory items configured.</p>
-                        {% if can_edit_inventory %}
-                            <a href="{% url 'pharmacy:add_dispensary_inventory_item' dispensary.id %}" 
-                               class="btn btn-primary">
-                                <i class="fas fa-plus me-2"></i>Add First Inventory Item
-                            </a>
-                        {% endif %}
-                    </div>
+                <span class="badge bg-light text-dark py-2 px-3">
+                    <i class="fas fa-lock me-1"></i>Read-only - Manager Only
+                </span>
                 {% endif %}
             </div>
         </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon bg-primary bg-opacity-10 text-primary me-3">
+                        <i class="fas fa-boxes"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value text-dark">{{ total_items }}</div>
+                        <div class="stat-label">Total Items</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon bg-success bg-opacity-10 text-success me-3">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value text-success">{{ in_stock_count }}</div>
+                        <div class="stat-label">In Stock</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon bg-warning bg-opacity-10 text-warning me-3">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value text-warning">{{ low_stock_count }}</div>
+                        <div class="stat-label">Low Stock</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon bg-danger bg-opacity-10 text-danger me-3">
+                        <i class="fas fa-times-circle"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value text-danger">{{ out_of_stock_count }}</div>
+                        <div class="stat-label">Out of Stock</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="search-card">
+        <div class="row align-items-center g-3">
+            <div class="col-lg-6">
+                <div class="search-input-wrapper">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" 
+                           class="form-control" 
+                           id="medication-search" 
+                           placeholder="Search medications by name, generic name, or batch number..."
+                           hx-get="/pharmacy/api/search_medication_inventory/?dispensary_id={{ dispensary.id }}"
+                           hx-target="#inventory-results"
+                           hx-trigger="keyup changed delay:200ms"
+                           hx-indicator="#search-spinner">
+                    <span id="search-spinner" class="htmx-indicator position-absolute" style="right: 1rem; top: 50%; transform: translateY(-50%);">
+                        <i class="fas fa-spinner fa-spin text-primary"></i>
+                    </span>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="filter-tab active" data-filter="all">
+                        All Items
+                    </button>
+                    <button type="button" class="filter-tab" data-filter="in-stock">
+                        In Stock
+                    </button>
+                    <button type="button" class="filter-tab" data-filter="low-stock">
+                        Low Stock
+                    </button>
+                    <button type="button" class="filter-tab" data-filter="out-of-stock">
+                        Out of Stock
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="inventory-results" class="fade-in">
+        {% if inventory_items %}
+        <div class="inventory-table-wrapper">
+            <div class="table-responsive">
+                <table class="table inventory-table">
+                    <thead>
+                        <tr>
+                            <th>Medication</th>
+                            <th>Strength / Form</th>
+                            <th>Stock Status</th>
+                            <th>Reorder Level</th>
+                            <th>Expiry</th>
+                            <th>Source</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in inventory_items %}
+                        <tr data-stock="{{ item.stock_quantity }}" data-reorder="{{ item.reorder_level|default:10 }}">
+                            <td>
+                                <div class="medication-name">{{ item.medication.name }}</div>
+                                {% if item.medication.generic_name %}
+                                <div class="medication-generic">{{ item.medication.generic_name }}</div>
+                                {% endif %}
+                                {% if item.batch_number %}
+                                <div class="small text-muted mt-1">
+                                    <i class="fas fa-barcode me-1"></i>{{ item.batch_number }}
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.medication.strength %}
+                                <span class="badge bg-light text-dark me-1">{{ item.medication.strength }}</span>
+                                {% endif %}
+                                {% if item.medication.dosage_form %}
+                                <span class="badge bg-secondary">{{ item.medication.dosage_form }}</span>
+                                {% endif %}
+                                {% if not item.medication.strength and not item.medication.dosage_form %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.stock_quantity == 0 %}
+                                <span class="stock-badge out-of-stock">
+                                    <span class="stock-dot"></span>
+                                    Out of Stock
+                                </span>
+                                {% elif item.stock_quantity <= item.reorder_level|default:10 %}
+                                <span class="stock-badge low-stock">
+                                    <span class="stock-dot"></span>
+                                    {{ item.stock_quantity }} units
+                                </span>
+                                {% else %}
+                                <span class="stock-badge in-stock">
+                                    <span class="stock-dot"></span>
+                                    {{ item.stock_quantity }} units
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.reorder_level %}
+                                    {{ item.reorder_level }} units
+                                {% else %}
+                                    <span class="text-muted">Not set</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.expiry_date %}
+                                    {% if item.expiry_date < today %}
+                                    <span class="expiry-warning expired">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        Expired {{ item.expiry_date|date:"M d, Y" }}
+                                    </span>
+                                    {% elif item.expiry_date|date:"Ymd" == today|date:"Ymd" %}
+                                    <span class="expiry-warning warning">
+                                        <i class="fas fa-clock"></i>
+                                        Expires today
+                                    </span>
+                                    {% else %}
+                                    <span class="expiry-warning ok">
+                                        <i class="fas fa-calendar-check"></i>
+                                        {{ item.expiry_date|date:"M d, Y" }}
+                                    </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if 'active_store' in item.sources and 'legacy' in item.sources %}
+                                <span class="source-badge merged">
+                                    <i class="fas fa-layer-group me-1"></i>Merged
+                                </span>
+                                {% elif 'active_store' in item.sources %}
+                                <span class="source-badge active-store">
+                                    <i class="fas fa-store me-1"></i>Active
+                                </span>
+                                {% else %}
+                                <span class="source-badge legacy">
+                                    <i class="fas fa-database me-1"></i>Legacy
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex gap-1 justify-content-center">
+                                    <a href="{% url 'pharmacy:medication_detail' item.medication.id %}" 
+                                       class="btn btn-outline-primary btn-action" 
+                                       title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if can_edit_inventory %}
+                                    <a href="{% url 'pharmacy:edit_dispensary_inventory_item' dispensary.id item.ids.0 %}" 
+                                       class="btn btn-outline-secondary btn-action" 
+                                       title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'pharmacy:delete_dispensary_inventory_item' dispensary.id item.ids.0 %}" 
+                                       class="btn btn-outline-danger btn-action" 
+                                       title="Delete"
+                                       onclick="return confirm('Are you sure you want to delete this inventory item?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                    {% else %}
+                                    <span class="d-inline-block" tabindex="0" title="Read-only access">
+                                        <button class="btn btn-outline-secondary btn-action" disabled>
+                                            <i class="fas fa-lock"></i>
+                                        </button>
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="inventory-table-wrapper">
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-boxes"></i>
+                </div>
+                <h4 class="text-dark mb-2">No Inventory Items</h4>
+                <p class="text-muted mb-4">This dispensary has no inventory items configured yet.</p>
+                {% if can_edit_inventory %}
+                <a href="{% url 'pharmacy:add_dispensary_inventory_item' dispensary.id %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Add First Item
+                </a>
+                {% else %}
+                <div class="alert alert-info d-inline-block">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Only the dispensary manager can add inventory items.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
@@ -604,52 +630,54 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-    // Enhanced card hover effects
-    $('.inventory-card').on('mouseenter', function() {
-        $(this).find('.btn-group').css('opacity', '1');
-    }).on('mouseleave', function() {
-        $(this).find('.btn-group').css('opacity', '0.7');
-    });
+    var currentFilter = 'all';
     
-    // Stock level color coding function
-    function updateStockIndicators() {
-        $('.inventory-card').each(function() {
-            var stockQty = $(this).find('[data-stock]').data('stock');
-            var reorderLevel = $(this).find('[data-reorder]').data('reorder');
-            var indicator = $(this).find('.stock-indicator');
+    function filterTable(filter) {
+        currentFilter = filter;
+        var rows = $('#inventory-results tbody tr');
+        
+        rows.each(function() {
+            var $row = $(this);
+            var stock = parseInt($row.data('stock')) || 0;
+            var reorder = parseInt($row.data('reorder')) || 10;
             
-            if (stockQty === 0) {
-                indicator.removeClass().addClass('stock-indicator stock-out');
-            } else if (stockQty <= reorderLevel) {
-                indicator.removeClass().addClass('stock-indicator stock-low');
-            } else if (stockQty <= reorderLevel * 2) {
-                indicator.removeClass().addClass('stock-indicator stock-medium');
-            } else {
-                indicator.removeClass().addClass('stock-indicator stock-high');
+            var show = false;
+            
+            if (filter === 'all') {
+                show = true;
+            } else if (filter === 'in-stock') {
+                show = stock > reorder;
+            } else if (filter === 'low-stock') {
+                show = stock > 0 && stock <= reorder;
+            } else if (filter === 'out-of-stock') {
+                show = stock === 0;
             }
+            
+            $row.toggle(show);
         });
+        
+        $('.filter-tab').removeClass('active');
+        $('.filter-tab[data-filter="' + filter + '"]').addClass('active');
     }
     
-    // Initialize on page load
-    updateStockIndicators();
+    $('.filter-tab').on('click', function() {
+        var filter = $(this).data('filter');
+        filterTable(filter);
+    });
     
-    // Search functionality
     window.clearSearch = function() {
-        const searchInput = document.getElementById('medication-search');
-        searchInput.value = '';
-        // Trigger a search with empty value to show all items
-        htmx.trigger(searchInput, 'keyup');
+        $('#medication-search').val('');
+        if (typeof htmx !== 'undefined') {
+            htmx.trigger('#medication-search', 'keyup');
+        }
+        filterTable('all');
     };
     
-    window.refreshInventory = function() {
-        location.reload();
-    };
-    
-    // HTMX event handlers for search
     if (typeof htmx !== 'undefined') {
-        htmx.on('htmx:afterRequest', function(evt) {
-            // Update stock indicators after search results are loaded
-            setTimeout(updateStockIndicators, 100);
+        htmx.on('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.id === 'inventory-results') {
+                filterTable(currentFilter);
+            }
         });
     }
 });
