@@ -83,26 +83,22 @@
                 <p class="mb-1"><strong>Pack:</strong> {{ pack_order.pack.name }}</p>
                 <p class="mb-0"><strong>Patient:</strong> {{ pack_order.patient.get_full_name }} ({{ pack_order.patient.patient_id }})</p>
             </div>
-            <div class="col-md-4 text-center">
+                <div class="col-md-4 text-center">
                 <div class="mb-2">
                     {% if pack_order.status == 'pending' %}
                         <span class="badge status-badge bg-warning text-dark">
                             <i class="fas fa-clock"></i> Pending
                         </span>
-                    {% elif pack_order.status == 'approved' %}
+                    {% elif pack_order.status == 'in_progress' %}
                         <span class="badge status-badge bg-info">
-                            <i class="fas fa-check"></i> Approved
-                        </span>
-                    {% elif pack_order.status == 'processing' %}
-                        <span class="badge status-badge bg-primary">
-                            <i class="fas fa-cogs"></i> Processing
+                            <i class="fas fa-spinner"></i> In Progress
                         </span>
                     {% elif pack_order.status == 'ready' %}
                         <span class="badge status-badge bg-success">
                             <i class="fas fa-box"></i> Ready
                         </span>
-                    {% elif pack_order.status == 'dispensed' %}
-                        <span class="badge status-badge bg-secondary">
+                    {% elif pack_order.status == 'completed' %}
+                        <span class="badge status-badge bg-success">
                             <i class="fas fa-check-double"></i> Dispensed
                         </span>
                     {% elif pack_order.status == 'cancelled' %}
@@ -251,10 +247,12 @@
                                     <td class="text-end">{{ item.medication.price|currency }}</td>
                                     <td class="text-end">{{ item.get_total_cost|currency }}</td>
                                     <td class="text-center">
-                                        {% if pack_order.status == 'dispensed' %}
+                                        {% if pack_order.status == 'dispensed' or pack_order.status == 'completed' %}
                                             <span class="badge bg-success">Dispensed</span>
                                         {% elif pack_order.status == 'ready' %}
                                             <span class="badge bg-warning">Ready</span>
+                                        {% elif pack_order.status == 'in_progress' %}
+                                            <span class="badge bg-primary">Processing</span>
                                         {% else %}
                                             <span class="badge bg-secondary">Pending</span>
                                         {% endif %}
@@ -378,7 +376,7 @@
                                 <small>By: {{ pack_order.processed_by.get_full_name|default:"System" }}</small>
                             </div>
                         </div>
-                        {% elif pack_order.status in 'approved,processing' %}
+                        {% elif pack_order.status == 'in_progress' %}
                         <div class="timeline-item current">
                             <div>
                                 <strong>Processing Order</strong><br>
