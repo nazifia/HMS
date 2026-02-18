@@ -17,6 +17,7 @@ from django.db.models import (
     When,
     Value,
 )
+from django.db.models.functions import TruncMonth, TruncYear
 from django.db import models, transaction, IntegrityError
 from django.core.paginator import Paginator
 from django.http import JsonResponse, HttpResponse
@@ -977,42 +978,128 @@ def procurement_dashboard(request):
 @permission_required("pharmacy.view")
 def procurement_analytics(request):
     """View for procurement analytics"""
-    # Implementation for procurement analytics
+    from datetime import datetime, timedelta
 
-    # Get purchase data for analytics
-    purchases = Purchase.objects.select_related("supplier").order_by("-purchase_date")[
-        :50
-    ]
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
 
-    # Calculate procurement statistics
-    total_purchases = Purchase.objects.count()
-    total_purchase_value = (
-        Purchase.objects.aggregate(total=Sum("total_amount"))["total"] or 0
+    purchases_qs = Purchase.objects.select_related("supplier").filter(
+        approval_status="approved"
     )
 
-    # Get procurement expenses by payment status (purchases)
-    payment_analysis = (
-        purchases_qs.values("payment_status")
-        .annotate(total_amount=Sum("total_amount"), count=Count("id"))
-        .order_by("-total_amount")
+    if start_date:
+        try:
+            start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+            purchases_qs = purchases_qs.filter(purchase_date__gte=start_date_obj)
+        except ValueError:
+            pass
+
+    if end_date:
+        try:
+            end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
+            purchases_qs = purchases_qs.filter(purchase_date__lte=end_date_obj)
+        except ValueError:
+            pass
+
+    total_procurement_value = (
+        purchases_qs.aggregate(total=Sum("total_amount"))["total"] or 0
     )
 
-    # Get pending payments from both purchases and pharmacy expenses
-    pending_purchases = (
-        purchases_qs.filter(payment_status="pending").aggregate(
-            total=Sum("total_amount")
-        )["total"]
-        or 0
-    )
-    pending_expenses = (
-        expenses_qs.filter(payment_status="pending").aggregate(total=Sum("amount"))[
-            "total"
-        ]
-        or 0
+    avg_processing_days = purchases_qs.filter(
+        submitted_for_approval_at__isnull=False, approval_updated_at__isnull=False
+    ).aggregate(
+        avg_days=Avg(
+            F("approval_updated_at") - F("submitted_for_approval_at"),
+            output_field=models.DurationField(),
+        )
+    )["avg_days"]
+    avg_processing_time = avg_processing_days if avg_processing_days else timedelta(0)
+
+    supplier_performance = (
+        purchases_qs.values("supplier__name")
+        .annotate(
+            total_orders=Count("id"),
+            total_value=Sum("total_amount"),
+            avg_order_value=Avg("total_amount"),
+            on_time_deliveries=Count(
+                Case(
+                    When(
+                        expected_delivery_date__gte=F("purchase_date"),
+                        then=Value(1),
+                    ),
+                    default=Value(0),
+                    output_field=models.IntegerField(),
+                )
+            ),
+        )
+        .order_by("-total_value")[:15]
     )
 
-    procurement_expenses = {
-        "pending_payments": pending_purchases + pending_expenses,
+    category_performance = (
+        PurchaseItem.objects.filter(purchase__in=purchases_qs)
+        .values("medication__category__name")
+        .annotate(
+            total_value=Sum("total_price"),
+            total_quantity=Sum("quantity"),
+            item_count=Count("id"),
+        )
+        .order_by("-total_value")[:10]
+    )
+
+    monthly_costs = (
+        purchases_qs.annotate(month=TruncMonth("purchase_date"))
+        .values("month")
+        .annotate(total_cost=Sum("total_amount"), order_count=Count("id"))
+        .order_by("-month")[:12]
+    )
+
+    medication_analysis = (
+        PurchaseItem.objects.filter(purchase__in=purchases_qs)
+        .values("medication__name")
+        .annotate(
+            total_cost=Sum("total_price"),
+            total_quantity=Sum("quantity"),
+            purchase_count=Count("purchase"),
+        )
+        .order_by("-total_cost")[:15]
+    )
+
+    inventory_items = ActiveStoreInventory.objects.select_related(
+        "medication", "active_store__dispensary"
+    )[:50]
+
+    inventory_turnover = []
+    for item in inventory_items:
+        dispensed = (
+            DispensingLog.objects.filter(
+                prescription_item__medication=item.medication,
+                dispensary=item.active_store.dispensary,
+            ).aggregate(total=Sum("dispensed_quantity"))["total"]
+            or 0
+        )
+        stock = item.stock_quantity or 0
+        turnover_ratio = round(dispensed / stock, 2) if stock > 0 else 0
+        inventory_turnover.append(
+            {
+                "medication": item.medication,
+                "dispensary": item.active_store.dispensary,
+                "stock_quantity": stock,
+                "total_dispensed": dispensed,
+                "turnover_ratio": turnover_ratio,
+            }
+        )
+    inventory_turnover.sort(key=lambda x: x["turnover_ratio"], reverse=True)
+
+    context = {
+        "total_procurement_value": total_procurement_value,
+        "avg_processing_time": avg_processing_time,
+        "supplier_performance": supplier_performance,
+        "category_performance": category_performance,
+        "monthly_costs": monthly_costs,
+        "medication_analysis": medication_analysis,
+        "inventory_turnover": inventory_turnover,
+        "page_title": "Procurement Analytics",
+        "active_nav": "pharmacy",
     }
 
     return render(request, "pharmacy/procurement_analytics.html", context)

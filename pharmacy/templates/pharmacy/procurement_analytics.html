@@ -277,6 +277,7 @@
                             <thead>
                                 <tr>
                                     <th>Medication</th>
+                                    <th>Dispensary</th>
                                     <th>Current Stock</th>
                                     <th>Total Dispensed</th>
                                     <th>Turnover Ratio</th>
@@ -289,6 +290,7 @@
                                     {% for item in inventory_turnover|slice:":20" %}
                                     <tr>
                                         <td>{{ item.medication.name }}</td>
+                                        <td>{{ item.dispensary.name|default:"N/A" }}</td>
                                         <td>{{ item.stock_quantity }}</td>
                                         <td>{{ item.total_dispensed|default:0 }}</td>
                                         <td>{{ item.turnover_ratio|floatformat:2|default:"N/A" }}</td>
@@ -314,7 +316,7 @@
                                     {% endfor %}
                                 {% else %}
                                     <tr>
-                                        <td colspan="6" class="text-center py-3">
+                                        <td colspan="7" class="text-center py-3">
                                             <i class="fas fa-exchange-alt text-muted mb-2"></i>
                                             <p class="text-muted mb-0">No inventory turnover data available</p>
                                         </td>
@@ -417,13 +419,15 @@ function exportReport() {
 // Initialize DataTables for better table functionality
 $(document).ready(function() {
     try {
-        $('#supplierTable, #turnoverTable').DataTable({
+        $('#supplierTable').DataTable({
             pageLength: 10,
             order: [[2, 'desc']],
-            responsive: true,
-            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
-                 '<"row"<"col-sm-12"tr>>' +
-                 '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>'
+            responsive: true
+        });
+        $('#turnoverTable').DataTable({
+            pageLength: 10,
+            order: [[4, 'asc']],
+            responsive: true
         });
     } catch (e) {
         console.error('DataTable initialization error:', e);
