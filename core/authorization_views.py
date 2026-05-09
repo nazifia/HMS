@@ -133,29 +133,25 @@ def calculate_prescription_authorization_amount(prescription):
     if not isinstance(prescription, Prescription):
         return 0.00
 
-    # Calculate total prescribed price
+    # Calculate total dispensed price (use dispensed qty, fall back to prescribed qty if nothing dispensed)
     try:
-        total_prescribed_price = prescription.get_total_prescribed_price()
-        total_prescribed_price = Decimal(str(total_prescribed_price))
+        total_dispensed_price = Decimal("0")
+        for item in prescription.items.select_related("medication").all():
+            qty = item.quantity_dispensed_so_far if item.quantity_dispensed_so_far > 0 else item.quantity
+            total_dispensed_price += Decimal(str(item.medication.price)) * qty
 
-        # For NHIA patients, NHIA covers 90%, patient pays 10%
-        # For non-NHIA patients, there's no NHIA coverage (0%)
         if prescription.patient.patient_type == "nhia":
-            # NHIA covers 90% of the total cost
-            return float(total_prescribed_price * Decimal("0.90"))
+            return float(total_dispensed_price * Decimal("0.90"))
         else:
-            # Non-NHIA patients - no NHIA coverage
             return 0.00
     except Exception:
-        # Fallback calculation if method fails
-        total_prescribed_price = 0.00
+        total_dispensed_price = 0.00
         for item in prescription.items.all():
-            total_prescribed_price += float(item.medication.price * item.quantity)
+            qty = item.quantity_dispensed_so_far if item.quantity_dispensed_so_far > 0 else item.quantity
+            total_dispensed_price += float(item.medication.price * qty)
 
-        # NHIA patients: NHIA covers 90%
-        # Non-NHIA patients: NHIA covers 0%
         if prescription.patient.patient_type == "nhia":
-            return float(total_prescribed_price * 0.90)
+            return float(total_dispensed_price * 0.90)
         else:
             return 0.00
 
@@ -347,26 +343,32 @@ def generate_authorization(request, model_type, object_id):
                 # Get the NHIA covered amount (90% for NHIA patients, 0% for others)
                 nhia_covered_amount = calculate_prescription_authorization_amount(obj)
 
-                # Also calculate total for reference
-                total_prescribed_price = obj.get_total_prescribed_price()
-
-                # Calculate patient portion (10% for NHIA, 100% for non-NHIA)
+                # Calculate total using dispensed qty (fall back to prescribed qty if nothing dispensed)
                 from decimal import Decimal
 
+                total_dispensed_price = Decimal("0")
+                for item in obj.items.select_related("medication").all():
+                    qty = item.quantity_dispensed_so_far if item.quantity_dispensed_so_far > 0 else item.quantity
+                    total_dispensed_price += Decimal(str(item.medication.price)) * qty
+
+                total_prescribed_price = float(total_dispensed_price)
+
+                # Calculate patient portion (10% for NHIA, 100% for non-NHIA)
                 patient_portion = (
-                    Decimal(str(total_prescribed_price)) * Decimal("0.10")
+                    total_dispensed_price * Decimal("0.10")
                     if obj.patient.patient_type == "nhia"
-                    else total_prescribed_price
+                    else total_dispensed_price
                 )
 
                 # Build per-item breakdown for display
                 prescription_items = []
                 for item in obj.items.select_related("medication").all():
                     unit_price = float(item.medication.price)
-                    subtotal = unit_price * item.quantity
+                    qty = item.quantity_dispensed_so_far if item.quantity_dispensed_so_far > 0 else item.quantity
+                    subtotal = unit_price * qty
                     prescription_items.append({
                         "name": item.medication.name,
-                        "quantity": item.quantity,
+                        "quantity": qty,
                         "unit_price": unit_price,
                         "subtotal": subtotal,
                     })
