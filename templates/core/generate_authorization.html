@@ -227,27 +227,40 @@
                             
                             {% if estimated_cost %}
                             <small class="form-text text-primary">
-                                <i class="fas fa-info-circle"></i> 
+                                <i class="fas fa-info-circle"></i>
                                 Estimated cost for this referral: <strong>₦{{ estimated_cost|floatformat:2 }}</strong>
+                                <button type="button" class="btn btn-sm btn-outline-primary ms-2 py-0 px-2"
+                                        onclick="document.getElementById('amount').value='{{ estimated_cost|floatformat:2 }}'">
+                                    Use This Amount
+                                </button>
                             </small>
                             {% endif %}
-                            
+
                             {% if model_type == 'prescription' and nhia_covered_amount %}
                             <div class="mt-2 p-3 bg-light rounded border">
-                                <small class="form-text text-primary">
-                                    <strong><i class="fas fa-calculator"></i> NHIA Prescription Cost Breakdown:</strong>
-                                </small>
-                                <div class="mt-2">
-                                    <small>
-                                        <strong>Total Value:</strong> ₦{{ total_prescribed_price|floatformat:2 }}<br>
-                                        <span class="text-success"><strong>Patient Portion (10%):</strong> ₦{{ patient_portion|floatformat:2 }}</span><br>
-                                        <span class="text-info"><strong>NHIA Covers (90%):</strong> ₦{{ nhia_covered_amount|floatformat:2 }}</span>
-                                    </small>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <strong class="text-primary"><i class="fas fa-calculator"></i> NHIA Cost Breakdown</strong>
+                                    <button type="button" class="btn btn-sm btn-success py-0 px-2"
+                                            id="useNhiaAmountBtn"
+                                            onclick="document.getElementById('amount').value='{{ nhia_covered_amount|floatformat:2 }}'; this.innerHTML='<i class=\'fas fa-check\'></i> Applied';">
+                                        <i class="fas fa-arrow-down"></i> Use NHIA Amount
+                                    </button>
                                 </div>
-                                <small class="form-text text-muted mt-2">
-                                    <i class="fas fa-info-circle"></i> 
-                                    <strong>Recommended Amount:</strong> Set this to <strong>₦{{ nhia_covered_amount|floatformat:2 }}</strong> (NHIA's 90% portion).
-                                </small>
+                                <table class="table table-sm table-borderless mb-1">
+                                    <tr>
+                                        <td class="text-muted py-1">Total Medication Cost</td>
+                                        <td class="text-end fw-bold py-1">₦{{ total_prescribed_price|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr class="text-success">
+                                        <td class="py-1">Patient Pays (10%)</td>
+                                        <td class="text-end fw-bold py-1">₦{{ patient_portion|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr class="text-info">
+                                        <td class="py-1">NHIA Covers (90%)</td>
+                                        <td class="text-end fw-bold py-1">₦{{ nhia_covered_amount|floatformat:2 }}</td>
+                                    </tr>
+                                </table>
+                                <small class="text-muted"><i class="fas fa-info-circle"></i> Amount field pre-filled with NHIA's 90% portion.</small>
                             </div>
                             {% endif %}
                         </div>
@@ -340,6 +353,60 @@
                     </ul>
                 </div>
             </div>
+
+            <!-- Prescription Cost Breakdown Card -->
+            {% if model_type == 'prescription' and prescription_items %}
+            <div class="card shadow mb-4 border-left-success">
+                <div class="card-header py-3 bg-success text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-pills"></i> Prescription Items
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Medication</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-end pe-3">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in prescription_items %}
+                            <tr>
+                                <td class="ps-3">
+                                    <span class="fw-semibold">{{ item.name }}</span><br>
+                                    <small class="text-muted">₦{{ item.unit_price|floatformat:2 }} / unit</small>
+                                </td>
+                                <td class="text-center">{{ item.quantity }}</td>
+                                <td class="text-end pe-3 fw-bold">₦{{ item.subtotal|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <th class="ps-3" colspan="2">Total</th>
+                                <th class="text-end pe-3">₦{{ total_prescribed_price|floatformat:2 }}</th>
+                            </tr>
+                            <tr class="table-success">
+                                <td class="ps-3" colspan="2"><small>Patient Pays (10%)</small></td>
+                                <td class="text-end pe-3 fw-bold text-success"><small>₦{{ patient_portion|floatformat:2 }}</small></td>
+                            </tr>
+                            <tr class="table-info">
+                                <td class="ps-3" colspan="2"><small>NHIA Covers (90%)</small></td>
+                                <td class="text-end pe-3 fw-bold text-info"><small>₦{{ nhia_covered_amount|floatformat:2 }}</small></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="card-footer text-center">
+                    <button type="button" class="btn btn-success btn-sm w-100"
+                            onclick="document.getElementById('amount').value='{{ nhia_covered_amount|floatformat:2 }}'; document.getElementById('useNhiaAmountBtn').innerHTML='<i class=\'fas fa-check\'></i> Applied';">
+                        <i class="fas fa-arrow-left"></i> Pre-fill Amount: ₦{{ nhia_covered_amount|floatformat:2 }}
+                    </button>
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Patient History Card -->
             {% if object.patient %}

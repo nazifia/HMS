@@ -359,9 +359,22 @@ def generate_authorization(request, model_type, object_id):
                     else total_prescribed_price
                 )
 
+                # Build per-item breakdown for display
+                prescription_items = []
+                for item in obj.items.select_related("medication").all():
+                    unit_price = float(item.medication.price)
+                    subtotal = unit_price * item.quantity
+                    prescription_items.append({
+                        "name": item.medication.name,
+                        "quantity": item.quantity,
+                        "unit_price": unit_price,
+                        "subtotal": subtotal,
+                    })
+
                 context["nhia_covered_amount"] = nhia_covered_amount
                 context["patient_portion"] = float(patient_portion)
                 context["total_prescribed_price"] = total_prescribed_price
+                context["prescription_items"] = prescription_items
 
                 # Set default amount to NHIA covered amount (90% for NHIA) if not provided in form data
                 if "form_data" not in context or not context["form_data"].get("amount"):
