@@ -807,6 +807,11 @@ def authorization_code_list(request):
     import csv
     from django.http import HttpResponse
 
+    # Bulk-expire codes whose expiry_date has passed but status is still active
+    AuthorizationCode.objects.filter(
+        status="active", expiry_date__lt=timezone.now().date()
+    ).update(status="expired")
+
     codes = AuthorizationCode.objects.select_related(
         "patient", "generated_by"
     ).order_by("-generated_at")
