@@ -375,10 +375,14 @@ def generate_authorization(request, model_type, object_id):
                 context["patient_portion"] = float(patient_portion)
                 context["total_prescribed_price"] = total_prescribed_price
                 context["prescription_items"] = prescription_items
+                context["prescription_has_items"] = len(prescription_items) > 0
 
                 # Set default amount to NHIA covered amount (90% for NHIA) if not provided in form data
                 if "form_data" not in context or not context["form_data"].get("amount"):
-                    context["default_amount"] = nhia_covered_amount
+                    # Only pre-fill if prescription has items with known prices
+                    if len(prescription_items) > 0:
+                        context["default_amount"] = nhia_covered_amount
+                    # If no items, leave default_amount unset so field renders empty
         except Exception as e:
             # Log error but don't break the view
             import logging
