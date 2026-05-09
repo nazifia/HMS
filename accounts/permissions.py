@@ -1721,8 +1721,15 @@ def get_user_roles(user):
     if not user.is_authenticated:
         return []
 
+    # Cache on user object — valid for lifetime of request
+    cached = getattr(user, '_cached_roles', None)
+    if cached is not None:
+        return cached
+
     if user.is_superuser:
-        return list(ROLE_PERMISSIONS.keys())
+        result = list(ROLE_PERMISSIONS.keys())
+        user._cached_roles = result
+        return result
 
     roles = []
     # Many-to-many roles
@@ -1738,7 +1745,9 @@ def get_user_roles(user):
     profile_role = getattr(getattr(user, "profile", None), "role", None)
     if profile_role and profile_role not in roles:
         roles.append(profile_role)
-    return list(set(roles))
+    result = list(set(roles))
+    user._cached_roles = result
+    return result
 
 
 def user_has_permission(user, permission):

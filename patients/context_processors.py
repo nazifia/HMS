@@ -1,12 +1,16 @@
+from django.core.cache import cache
 from patients.models import Patient
 
 def all_patients(request):
-    """
-    Adds all registered patients to the context as 'all_patients'.
-    """
-    return {
-        'all_patients': Patient.objects.all()
-    }
+    patients = cache.get('ctx_all_patients')
+    if patients is None:
+        patients = list(
+            Patient.objects.filter(is_active=True)
+            .only('id', 'first_name', 'last_name', 'patient_id', 'phone_number', 'gender', 'date_of_birth')
+            .order_by('first_name', 'last_name')
+        )
+        cache.set('ctx_all_patients', patients, 300)
+    return {'all_patients': patients}
 
 
 def current_patient_context(request):

@@ -204,7 +204,6 @@ MIDDLEWARE = [
     # Disable SSL in development middleware (must be first to intercept HTTPS headers)
     "core.disable_ssl_in_dev.DisableSSLInDevMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "core.disable_ssl_in_dev.DisableSSLInDevMiddleware",  # Disable SSL in development
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -228,12 +227,22 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "hms.urls"
 
+_BASE_TEMPLATE_LOADERS = [
+    "django.template.loaders.filesystem.Loader",
+    "django.template.loaders.app_directories.Loader",
+]
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [BASE_DIR / "templates"],
-        "APP_DIRS": True,
+        "APP_DIRS": False,
         "OPTIONS": {
+            "loaders": (
+                _BASE_TEMPLATE_LOADERS
+                if DEBUG
+                else [("django.template.loaders.cached.Loader", _BASE_TEMPLATE_LOADERS)]
+            ),
             "context_processors": [
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",

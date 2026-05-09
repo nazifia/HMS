@@ -4,11 +4,22 @@ Handles cache invalidation when UI permissions are modified.
 """
 
 from django.db.models.signals import m2m_changed
+from django.db.backends.signals import connection_created
 from django.dispatch import receiver
 from django.core.cache import cache
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+@receiver(connection_created)
+def configure_sqlite(sender, connection, **kwargs):
+    if connection.vendor == 'sqlite':
+        cursor = connection.cursor()
+        cursor.execute('PRAGMA journal_mode=WAL;')
+        cursor.execute('PRAGMA synchronous=NORMAL;')
+        cursor.execute('PRAGMA cache_size=10000;')
+        cursor.execute('PRAGMA temp_store=MEMORY;')
 
 
 @receiver(m2m_changed, sender='core.UIPermission_required_roles')

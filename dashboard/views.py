@@ -186,6 +186,12 @@ def dashboard(request):
 def system_overview(request):
     """View to display a system configuration and data overview - Optimized"""
     from django.db.models import Q, Count as CountFunc
+    from django.core.cache import cache
+
+    cache_key = 'system_overview_data'
+    cached = cache.get(cache_key)
+    if cached:
+        return render(request, 'dashboard/system_overview.html', cached)
 
     context = {'title': 'System Configuration Overview'}
 
@@ -321,4 +327,5 @@ def system_overview(request):
     context['used_authorization_codes'] = AuthorizationCode.objects.filter(status='used').count()
     context['expired_authorization_codes'] = AuthorizationCode.objects.filter(status='expired').count()
 
+    cache.set(cache_key, context, 300)
     return render(request, 'dashboard/system_overview.html', context)
