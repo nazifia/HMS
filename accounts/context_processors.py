@@ -43,27 +43,31 @@ def user_permissions(request):
             'accessible_modules': [],
         }
 
+    from django.core.cache import cache
     user = request.user
+    cache_key = f'user_perms_ctx_{user.pk}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     user_roles = get_user_roles(user)
     user_permissions = {}
 
-    # Build permission dictionary from all roles (including inheritance)
+    from accounts.permissions import ROLE_PERMISSIONS
     for role_name in user_roles:
-        from accounts.permissions import ROLE_PERMISSIONS
         if role_name in ROLE_PERMISSIONS:
             for perm_key in ROLE_PERMISSIONS[role_name]['permissions']:
                 user_permissions[perm_key] = True
 
-    # Determine admin status
     is_admin = 'admin' in user_roles or user.is_superuser
-
-    # Get accessible modules
     accessible_modules = get_user_accessible_modules(user)
 
-    return {
+    result = {
         'user_roles': user_roles,
-        'user_role_list': user_roles,  # Backward compatibility
+        'user_role_list': user_roles,
         'user_permissions': user_permissions,
         'is_admin_user': is_admin,
         'accessible_modules': accessible_modules,
     }
+    cache.set(cache_key, result, 300)
+    return result

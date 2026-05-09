@@ -15,5 +15,7 @@ def save_patient_wallet(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Patient)
 @receiver(post_delete, sender=Patient)
-def invalidate_patients_context_cache(sender, **kwargs):
+def invalidate_patients_context_cache(sender, instance=None, **kwargs):
     cache.delete('ctx_all_patients')
+    if instance is not None:
+        cache.delete(f'patient_ctx_{instance.pk}')

@@ -568,7 +568,7 @@ SESSION_COOKIE_AGE = int(
     os.environ.get("SESSION_COOKIE_AGE", "1200")
 )  # 20 minutes default
 SESSION_COOKIE_NAME = "hms_sessionid"
-SESSION_SAVE_EVERY_REQUEST = True
+SESSION_SAVE_EVERY_REQUEST = False
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Session expires when browser closes
 SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access to session cookie
 

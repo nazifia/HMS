@@ -26,6 +26,7 @@ def clear_user_permission_cache(users):
     """
     Clear permission cache for specified users.
     """
+    from django.core.cache import cache
     cleared_count = 0
     for user in users:
         if hasattr(user, '_role_perm_cache'):
@@ -33,6 +34,14 @@ def clear_user_permission_cache(users):
             cleared_count += 1
         if hasattr(user, '_perm_cache'):
             delattr(user, '_perm_cache')
+        # Bust context-processor caches
+        pk = getattr(user, 'pk', None)
+        if pk:
+            cache.delete_many([
+                f'user_perms_ctx_{pk}',
+                f'hms_perms_ctx_{pk}',
+                f'hms_roles_ctx_{pk}',
+            ])
     return cleared_count
 
 
