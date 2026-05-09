@@ -321,7 +321,12 @@ def generate_authorization_for_object(obj, generated_by, amount=0.00, expiry_day
     expiry_date = timezone.now().date() + timezone.timedelta(days=expiry_days)
 
     # Create authorization code
-    notes_with_source = f"{code_source}-generated for {model_info['display_name']} #{obj.id}. {notes}"
+    destination_info = ""
+    if model_type == 'referral' and hasattr(obj, 'get_referral_destination'):
+        destination = obj.get_referral_destination()
+        if destination:
+            destination_info = f" to {destination}"
+    notes_with_source = f"{code_source}-generated for {model_info['display_name']} #{obj.id}{destination_info}. {notes}"
 
     auth_code = AuthorizationCode.objects.create(
         code=code_str,
