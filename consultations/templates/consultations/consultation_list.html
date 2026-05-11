@@ -1,0 +1,393 @@
+{% extends 'base.html' %}
+
+{% block title %}Consultations{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-stethoscope me-2 text-primary"></i>Consultations
+        </h1>
+        <div>
+            <a href="{% url 'consultations:doctor_waiting_list' %}" class="btn btn-outline-primary me-2">
+                <i class="fas fa-list-ul"></i> Waiting List
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Summary Stats -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col me-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ consultations|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-stethoscope fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col me-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">In Progress</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="inProgressCount">-</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-spinner fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col me-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Waiting</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ waiting_entries|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col me-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Completed Today</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="completedTodayCount">-</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Search -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-filter me-2"></i>Filter Consultations</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3" id="filterForm">
+                <div class="col-md-4">
+                    <label class="form-label">Search Patient</label>
+                    <input type="text" name="search" class="form-control" placeholder="Name or Patient ID..." value="{{ request.GET.search }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Statuses</option>
+                        <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="in_progress" {% if request.GET.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                        <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="date" class="form-control" value="{{ request.GET.date }}">
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+                    <a href="{% url 'consultations:consultation_list' %}" class="btn btn-outline-secondary"><i class="fas fa-times"></i></a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Waiting List (if show_waiting_list) -->
+    {% if show_waiting_list and waiting_entries %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-warning">
+                <i class="fas fa-clock me-2"></i>Active Waiting List
+                <span class="badge bg-warning text-dark ms-2">{{ waiting_entries|length }}</span>
+            </h6>
+            <a href="{% url 'consultations:doctor_waiting_list' %}" class="btn btn-sm btn-outline-warning">View All</a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Patient</th>
+                            <th>Room</th>
+                            <th>Doctor</th>
+                            <th>Priority</th>
+                            <th>Check-in</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in waiting_entries %}
+                        <tr>
+                            <td>
+                                <strong>{{ entry.patient.get_full_name }}</strong>
+                                <br><small class="text-muted">{{ entry.patient.patient_id }}</small>
+                            </td>
+                            <td>Room {{ entry.consulting_room.room_number }}</td>
+                            <td>
+                                {% if entry.doctor %}
+                                    Dr. {{ entry.doctor.get_full_name }}
+                                {% else %}
+                                    <span class="text-muted">Unassigned</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if entry.priority == 'emergency' %}
+                                    <span class="badge bg-danger">Emergency</span>
+                                {% elif entry.priority == 'urgent' %}
+                                    <span class="badge bg-warning text-dark">Urgent</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Normal</span>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ entry.check_in_time|date:"H:i" }}</small></td>
+                            <td>
+                                {% if entry.status == 'waiting' %}
+                                    <span class="badge bg-info">Waiting</span>
+                                {% elif entry.status == 'in_progress' %}
+                                    <span class="badge bg-warning text-dark">In Progress</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if entry.status == 'waiting' and entry.doctor == request.user %}
+                                <a href="{% url 'consultations:start_consultation' entry.id %}" class="btn btn-sm btn-success">
+                                    <i class="fas fa-play"></i> Start
+                                </a>
+                                {% elif entry.status == 'in_progress' %}
+                                    {% with entry.consultation as consult %}
+                                    {% if consult %}
+                                    <a href="{% url 'consultations:doctor_consultation' consult.id %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-stethoscope"></i> Continue
+                                    </a>
+                                    {% endif %}
+                                    {% endwith %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Consultations Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-list me-2"></i>Consultations
+            </h6>
+        </div>
+        <div class="card-body p-0">
+            {% if consultations %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="consultationsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Patient</th>
+                            <th>Doctor</th>
+                            <th>Room</th>
+                            <th>Chief Complaint</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for consultation in consultations %}
+                        <tr>
+                            <td>
+                                <small>{{ consultation.consultation_date|date:"M d, Y" }}</small>
+                                <br><small class="text-muted">{{ consultation.consultation_date|date:"H:i" }}</small>
+                            </td>
+                            <td>
+                                <strong>{{ consultation.patient.get_full_name }}</strong>
+                                <br><small class="text-muted">{{ consultation.patient.patient_id }}</small>
+                                {% if consultation.patient.patient_type == 'nhia' %}
+                                <br><span class="badge bg-success" style="font-size:0.65rem;">NHIA</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if consultation.doctor %}
+                                    Dr. {{ consultation.doctor.get_full_name }}
+                                {% else %}
+                                    <span class="text-muted">Unassigned</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if consultation.consulting_room %}
+                                    Room {{ consultation.consulting_room.room_number }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="text-truncate d-inline-block" style="max-width:180px;" title="{{ consultation.chief_complaint }}">
+                                    {{ consultation.chief_complaint|default:"-"|truncatechars:60 }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if consultation.status == 'pending' %}
+                                    <span class="badge bg-secondary">Pending</span>
+                                {% elif consultation.status == 'in_progress' %}
+                                    <span class="badge bg-warning text-dark">In Progress</span>
+                                {% elif consultation.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% elif consultation.status == 'cancelled' %}
+                                    <span class="badge bg-danger">Cancelled</span>
+                                {% endif %}
+                                {% if consultation.requires_authorization and consultation.authorization_status != 'authorized' %}
+                                <br><span class="badge bg-danger mt-1" style="font-size:0.65rem;">Auth Required</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'consultations:consultation_detail' consultation.id %}"
+                                       class="btn btn-outline-primary" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if consultation.doctor == request.user or request.user.is_superuser or request.user.is_staff %}
+                                    <a href="{% url 'consultations:edit_consultation' consultation.id %}"
+                                       class="btn btn-outline-secondary" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% if consultation.status != 'completed' and consultation.status != 'cancelled' %}
+                                    <button type="button" class="btn btn-outline-success"
+                                            onclick="updateStatus({{ consultation.id }}, 'completed')" title="Mark Complete">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if consultation.status == 'in_progress' %}
+                                    <a href="{% url 'consultations:doctor_consultation' consultation.id %}"
+                                       class="btn btn-outline-warning" title="Open Consultation">
+                                        <i class="fas fa-stethoscope"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-stethoscope fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No consultations found</h5>
+                <p class="text-muted">No consultations match the current filters.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Status Update Modal -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Consultation Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to mark this consultation as <strong id="newStatusLabel"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmStatusBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+// Populate stat counters from table
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('#consultationsTable tbody tr');
+    let inProgress = 0, completedToday = 0;
+    const today = new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+    rows.forEach(row => {
+        const statusBadge = row.querySelector('td:nth-child(6) .badge');
+        if (!statusBadge) return;
+        if (statusBadge.textContent.trim() === 'In Progress') inProgress++;
+        if (statusBadge.textContent.trim() === 'Completed') {
+            const dateCell = row.querySelector('td:first-child small');
+            if (dateCell && dateCell.textContent.includes(new Date().getFullYear())) completedToday++;
+        }
+    });
+    const ipEl = document.getElementById('inProgressCount');
+    const ctEl = document.getElementById('completedTodayCount');
+    if (ipEl) ipEl.textContent = inProgress;
+    if (ctEl) ctEl.textContent = completedToday;
+});
+
+let pendingConsultationId = null;
+let pendingStatus = null;
+
+function updateStatus(consultationId, status) {
+    pendingConsultationId = consultationId;
+    pendingStatus = status;
+    document.getElementById('newStatusLabel').textContent = status.replace('_', ' ');
+    const modal = new bootstrap.Modal(document.getElementById('statusModal'));
+    modal.show();
+}
+
+document.getElementById('confirmStatusBtn').addEventListener('click', function() {
+    if (!pendingConsultationId || !pendingStatus) return;
+
+    fetch(`/consultations/doctor/consultations/${pendingConsultationId}/update-status/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.cookie.split('; ').find(r => r.startsWith('csrftoken=')).split('=')[1]
+        },
+        body: JSON.stringify({ status: pendingStatus })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(err => alert('Request failed: ' + err));
+
+    bootstrap.Modal.getInstance(document.getElementById('statusModal')).hide();
+});
+</script>
+{% endblock %}
+{% endblock %}

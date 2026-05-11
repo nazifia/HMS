@@ -82,33 +82,51 @@ def unified_dashboard(request):
 @login_required
 @permission_required('consultations.view')
 def consultation_list(request):
-    """View to list consultations for the logged-in doctor with waiting list integration - Optimized"""
-    # Superusers and admins see all consultations with select_related
-    if request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role in ['admin', 'health_record_officer', 'receptionist']):
-        consultations = Consultation.objects.select_related(
-            'patient', 'doctor', 'consulting_room'
-        ).all().order_by('-consultation_date')
+    """List consultations with search/filter support."""
+    is_privileged = request.user.is_superuser or (
+        hasattr(request.user, 'profile') and request.user.profile and
+        request.user.profile.role in ['admin', 'health_record_officer', 'receptionist']
+    )
+    is_doctor = (
+        hasattr(request.user, 'profile') and request.user.profile and
+        request.user.profile.role == 'doctor'
+    )
+
+    if is_privileged:
+        consultations = Consultation.objects.select_related('patient', 'doctor', 'consulting_room').all()
         waiting_entries = WaitingList.objects.filter(
             status__in=['waiting', 'in_progress']
         ).select_related('patient', 'doctor', 'consulting_room', 'appointment').order_by('priority', 'check_in_time')
-    elif hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor':
-        # Doctors see only their consultations with select_related
-        consultations = Consultation.objects.filter(
-            doctor=request.user
-        ).select_related('patient', 'doctor', 'consulting_room').order_by('-consultation_date')
+    elif is_doctor:
+        consultations = Consultation.objects.filter(doctor=request.user).select_related('patient', 'doctor', 'consulting_room')
         waiting_entries = WaitingList.objects.filter(
-            doctor=request.user,
-            status__in=['waiting', 'in_progress']
+            doctor=request.user, status__in=['waiting', 'in_progress']
         ).select_related('patient', 'doctor', 'consulting_room', 'appointment').order_by('priority', 'check_in_time')
     else:
-        # Default: show all with select_related
-        consultations = Consultation.objects.select_related(
-            'patient', 'doctor', 'consulting_room'
-        ).all().order_by('-consultation_date')
+        consultations = Consultation.objects.select_related('patient', 'doctor', 'consulting_room').all()
         waiting_entries = WaitingList.objects.filter(
             status__in=['waiting', 'in_progress']
         ).select_related('patient', 'doctor', 'consulting_room', 'appointment').order_by('priority', 'check_in_time')
-    
+
+    # Apply GET filters
+    search = request.GET.get('search', '').strip()
+    if search:
+        consultations = consultations.filter(
+            Q(patient__first_name__icontains=search) |
+            Q(patient__last_name__icontains=search) |
+            Q(patient__patient_id__icontains=search)
+        )
+
+    status_filter = request.GET.get('status', '').strip()
+    if status_filter:
+        consultations = consultations.filter(status=status_filter)
+
+    date_filter = request.GET.get('date', '').strip()
+    if date_filter:
+        consultations = consultations.filter(consultation_date__date=date_filter)
+
+    consultations = consultations.order_by('-consultation_date')
+
     context = {
         'consultations': consultations,
         'waiting_entries': waiting_entries,
@@ -787,39 +805,40 @@ def create_consultation(request, patient_id):
 @login_required
 @permission_required('consultations.edit')
 def add_soap_note(request, consultation_id):
-    """View for adding a SOAP note to a consultation"""
+    """Create a SOAP note for a consultation via POST."""
     consultation = get_object_or_404(Consultation, id=consultation_id)
+
     if request.method == 'POST':
-        # form = SOAPNoteForm(request.POST)
-        form = None  # SOAPNoteForm does not exist
-        if form.is_valid():
-            soap_note = form.save(commit=False)
-            soap_note.consultation = consultation
-            soap_note.created_by = request.user
-            soap_note.save()
-            # Audit log
-            log_audit_action(request.user, 'create', soap_note, f"Created SOAP note for consultation {consultation.id}")
-            # Internal notification to doctor
+        subjective = request.POST.get('subjective', '').strip()
+        objective = request.POST.get('objective', '').strip()
+        assessment = request.POST.get('assessment', '').strip()
+        plan = request.POST.get('plan', '').strip()
+
+        if not all([subjective, objective, assessment, plan]):
+            messages.error(request, "All four SOAP fields (Subjective, Objective, Assessment, Plan) are required.")
+            return redirect('consultations:consultation_detail', consultation_id=consultation.id)
+
+        soap_note = SOAPNote.objects.create(
+            consultation=consultation,
+            subjective=subjective,
+            objective=objective,
+            assessment=assessment,
+            plan=plan,
+            created_by=request.user,
+        )
+
+        log_audit_action(request.user, 'create', soap_note, f"Created SOAP note for consultation {consultation.id}")
+
+        if consultation.doctor and consultation.doctor != request.user:
             InternalNotification.objects.create(
                 user=consultation.doctor,
                 message=f"A new SOAP note was added for consultation with {consultation.patient.get_full_name()}"
             )
-            # Email notification to doctor
-            send_notification_email(
-                subject="New SOAP Note Added",
-                message=f"A new SOAP note was added for your consultation with {consultation.patient.get_full_name()}.",
-                recipient_list=[consultation.doctor.email]
-            )
-            messages.success(request, "SOAP note added successfully.")
-            return redirect('consultations:consultation_detail', consultation_id=consultation.id)
-    else:
-        # form = SOAPNoteForm()
-        form = None  # SOAPNoteForm does not exist
-    context = {
-        'form': form,
-        'consultation': consultation,
-    }
-    return render(request, 'consultations/soap_note_form.html', context)
+
+        messages.success(request, "SOAP note added successfully.")
+        return redirect('consultations:consultation_detail', consultation_id=consultation.id)
+
+    return redirect('consultations:consultation_detail', consultation_id=consultation.id)
 
 @login_required
 @permission_required('referrals.view')
@@ -1180,62 +1199,6 @@ def bulk_update_referral_status(request):
             messages.warning(request, 'No referrals could be updated. Check authorization status.')
     
     return redirect('consultations:referral_tracking')
-
-    if request.method == 'POST':
-        status = request.POST.get('status')
-        notes = request.POST.get('status_notes', '')
-        
-        if status in dict(Referral.STATUS_CHOICES):
-            # **AUTHORIZATION CHECK**: Prevent accepting referrals that require authorization
-            if status == 'accepted' and referral.requires_authorization:
-                if referral.authorization_status not in ['authorized', 'not_required']:
-                    messages.error(
-                        request,
-                        f"Cannot accept this referral. Authorization status is '{referral.get_authorization_status_display()}'. "
-                        f"This NHIA patient referral requires desk office authorization before it can be accepted. "
-                        f"Please contact the desk office to obtain authorization."
-                    )
-                    return redirect('consultations:referral_detail', referral_id=referral.id)
-
-            old_status = referral.status
-            referral.status = status
-
-            # Add status update notes
-            if notes:
-                if referral.notes:
-                    referral.notes += f"\n\n[{timezone.now().strftime('%Y-%m-%d %H:%M')} - {request.user.get_full_name()}] Status changed from {old_status} to {status}: {notes}"
-                else:
-                    referral.notes = f"[{timezone.now().strftime('%Y-%m-%d %H:%M')} - {request.user.get_full_name()}] Status changed from {old_status} to {status}: {notes}"
-
-            # If accepting a department/specialty/unit referral, assign the doctor
-            if status == 'accepted' and referral.referral_type in ['department', 'specialty', 'unit']:
-                referral.assigned_doctor = request.user
-
-            referral.save()
-
-            # Create notification for the other party
-            if referral.referral_type in ['department', 'specialty', 'unit'] and referral.can_be_accepted_by(request.user):
-                # Notify referring doctor
-                from core.models import InternalNotification
-                InternalNotification.objects.create(
-                    user=referral.referring_doctor,
-                    message=f"Referral for {referral.patient.get_full_name()} to {referral.get_referral_destination()} has been {status} by Dr. {request.user.get_full_name()}"
-                )
-            else:
-                # Notify assigned doctor if different from current user
-                target_doctor = referral.assigned_doctor
-                if target_doctor and target_doctor != request.user:
-                    from core.models import InternalNotification
-                    InternalNotification.objects.create(
-                        user=target_doctor,
-                        message=f"Referral for {referral.patient.get_full_name()} status updated to {status} by Dr. {request.user.get_full_name()}"
-                    )
-
-            messages.success(request, f"Referral status updated to {status}.")
-        else:
-            messages.error(request, "Invalid status.")
-
-    return redirect('consultations:referral_detail', referral_id=referral.id)
 
 @login_required
 @permission_required('referrals.edit')

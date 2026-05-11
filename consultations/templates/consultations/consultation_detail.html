@@ -1,0 +1,604 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Consultation - {{ consultation.patient.get_full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.status-badge { font-size: 0.85rem; }
+.soap-card { border-left: 4px solid #4e73df; }
+.order-item { border-left: 3px solid #1cc88a; }
+.referral-item { border-left: 3px solid #f6c23e; }
+.section-header { background: #f8f9fc; border-bottom: 1px solid #e3e6f0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">
+                <i class="fas fa-stethoscope me-2 text-primary"></i>Consultation Detail
+            </h1>
+            <small class="text-muted">{{ consultation.consultation_date|date:"F d, Y H:i" }}</small>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'consultations:consultation_list' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+            {% if consultation.doctor == request.user or request.user.is_superuser or request.user.is_staff %}
+            <a href="{% url 'consultations:edit_consultation' consultation.id %}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+            {% if consultation.status != 'completed' and consultation.status != 'cancelled' %}
+            <button class="btn btn-success btn-sm" onclick="updateStatus('completed')">
+                <i class="fas fa-check-circle"></i> Complete
+            </button>
+            {% endif %}
+            {% if consultation.status == 'in_progress' or consultation.status == 'pending' %}
+            <button class="btn btn-danger btn-sm" onclick="updateStatus('cancelled')">
+                <i class="fas fa-times-circle"></i> Cancel
+            </button>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Authorization Warning -->
+    {% if consultation.requires_authorization and consultation.authorization_status != 'authorized' %}
+    <div class="alert alert-warning d-flex align-items-center mb-4">
+        <i class="fas fa-exclamation-triangle me-3 fa-lg"></i>
+        <div>
+            <strong>Authorization Required:</strong> This NHIA patient consultation requires desk office authorization.
+            Current status: <strong>{{ consultation.get_authorization_status_display }}</strong>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Left Column: Main Content -->
+        <div class="col-lg-8">
+
+            <!-- Consultation Info Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header section-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-file-medical me-2"></i>Consultation Information
+                    </h6>
+                    <span class="badge status-badge
+                        {% if consultation.status == 'pending' %}bg-secondary
+                        {% elif consultation.status == 'in_progress' %}bg-warning text-dark
+                        {% elif consultation.status == 'completed' %}bg-success
+                        {% elif consultation.status == 'cancelled' %}bg-danger
+                        {% endif %}">
+                        {{ consultation.get_status_display }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted small text-uppercase">Chief Complaint</label>
+                            <p class="mb-0">{{ consultation.chief_complaint|default:"Not specified" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted small text-uppercase">Symptoms</label>
+                            <p class="mb-0">{{ consultation.symptoms|default:"Not specified" }}</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted small text-uppercase">Diagnosis</label>
+                            <p class="mb-0">{{ consultation.diagnosis|default:"<em class='text-muted'>Pending</em>" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted small text-uppercase">Consulting Room</label>
+                            <p class="mb-0">
+                                {% if consultation.consulting_room %}
+                                    Room {{ consultation.consulting_room.room_number }}
+                                    {% if consultation.consulting_room.department %}
+                                        <small class="text-muted">({{ consultation.consulting_room.department.name }})</small>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">Not assigned</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    {% if consultation.consultation_notes %}
+                    <hr>
+                    <div>
+                        <label class="form-label fw-bold text-muted small text-uppercase">Consultation Notes</label>
+                        <p class="mb-0" style="white-space:pre-line;">{{ consultation.consultation_notes }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if consultation.vitals %}
+                    <hr>
+                    <div>
+                        <label class="form-label fw-bold text-muted small text-uppercase">
+                            <i class="fas fa-heartbeat me-1"></i>Vitals at Consultation
+                        </label>
+                        <div class="row g-2 mt-1">
+                            {% if consultation.vitals.temperature %}
+                            <div class="col-auto">
+                                <span class="badge bg-light text-dark border">
+                                    <i class="fas fa-thermometer-half text-danger me-1"></i>{{ consultation.vitals.temperature }}°C
+                                </span>
+                            </div>
+                            {% endif %}
+                            {% if consultation.vitals.blood_pressure_systolic and consultation.vitals.blood_pressure_diastolic %}
+                            <div class="col-auto">
+                                <span class="badge bg-light text-dark border">
+                                    <i class="fas fa-heartbeat text-danger me-1"></i>{{ consultation.vitals.blood_pressure_systolic }}/{{ consultation.vitals.blood_pressure_diastolic }} mmHg
+                                </span>
+                            </div>
+                            {% endif %}
+                            {% if consultation.vitals.pulse_rate %}
+                            <div class="col-auto">
+                                <span class="badge bg-light text-dark border">
+                                    <i class="fas fa-pulse text-primary me-1"></i>{{ consultation.vitals.pulse_rate }} bpm
+                                </span>
+                            </div>
+                            {% endif %}
+                            {% if consultation.vitals.weight %}
+                            <div class="col-auto">
+                                <span class="badge bg-light text-dark border">
+                                    <i class="fas fa-weight text-info me-1"></i>{{ consultation.vitals.weight }} kg
+                                </span>
+                            </div>
+                            {% endif %}
+                            {% if consultation.vitals.respiratory_rate %}
+                            <div class="col-auto">
+                                <span class="badge bg-light text-dark border">
+                                    <i class="fas fa-lungs text-primary me-1"></i>{{ consultation.vitals.respiratory_rate }} /min
+                                </span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted mt-1 d-block">Recorded: {{ consultation.vitals.date_time|date:"M d, Y H:i" }}</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- SOAP Notes -->
+            <div class="card shadow mb-4">
+                <div class="card-header section-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-notes-medical me-2"></i>SOAP Notes
+                        <span class="badge bg-secondary ms-2">{{ analytics.soap_count }}</span>
+                    </h6>
+                    {% if consultation.doctor == request.user or request.user.is_superuser or request.user.is_staff %}
+                    {% if consultation.status != 'completed' and consultation.status != 'cancelled' %}
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#soapNoteForm">
+                        <i class="fas fa-plus"></i> Add SOAP Note
+                    </button>
+                    {% endif %}
+                    {% endif %}
+                </div>
+                <!-- Inline SOAP Note Form -->
+                {% if consultation.doctor == request.user or request.user.is_superuser or request.user.is_staff %}
+                {% if consultation.status != 'completed' and consultation.status != 'cancelled' %}
+                <div class="collapse" id="soapNoteForm">
+                    <div class="card-body border-bottom bg-light">
+                        <form method="post" action="{% url 'consultations:add_soap_note' consultation.id %}">
+                            {% csrf_token %}
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-primary">S — Subjective</label>
+                                    <textarea name="subjective" class="form-control" rows="3"
+                                              placeholder="Patient's reported symptoms, history..."></textarea>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-success">O — Objective</label>
+                                    <textarea name="objective" class="form-control" rows="3"
+                                              placeholder="Examination findings, vitals, labs..."></textarea>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-warning">A — Assessment</label>
+                                    <textarea name="assessment" class="form-control" rows="3"
+                                              placeholder="Diagnosis, clinical impression..."></textarea>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-info">P — Plan</label>
+                                    <textarea name="plan" class="form-control" rows="3"
+                                              placeholder="Treatment plan, follow-up..."></textarea>
+                                </div>
+                            </div>
+                            <div class="mt-3 d-flex gap-2">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-save me-1"></i>Save SOAP Note
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        data-bs-toggle="collapse" data-bs-target="#soapNoteForm">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                <div class="card-body">
+                    {% if soap_notes %}
+                    {% for note in soap_notes %}
+                    <div class="card soap-card mb-3">
+                        <div class="card-body py-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-user-md me-1"></i>
+                                    {{ note.created_by.get_full_name|default:"Unknown" }} &mdash; {{ note.created_at|date:"M d, Y H:i" }}
+                                </small>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <strong class="small text-primary">S — Subjective</strong>
+                                    <p class="mb-0 small mt-1" style="white-space:pre-line;">{{ note.subjective }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong class="small text-success">O — Objective</strong>
+                                    <p class="mb-0 small mt-1" style="white-space:pre-line;">{{ note.objective }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong class="small text-warning">A — Assessment</strong>
+                                    <p class="mb-0 small mt-1" style="white-space:pre-line;">{{ note.assessment }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong class="small text-info">P — Plan</strong>
+                                    <p class="mb-0 small mt-1" style="white-space:pre-line;">{{ note.plan }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted mb-0"><i class="fas fa-info-circle me-1"></i>No SOAP notes yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Orders: Lab, Radiology, Prescriptions -->
+            <div class="card shadow mb-4">
+                <div class="card-header section-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-clipboard-list me-2"></i>Orders
+                        <span class="badge bg-secondary ms-2">{{ analytics.note_count }}</span>
+                    </h6>
+                    {% if consultation.doctor == request.user or request.user.is_superuser or request.user.is_staff %}
+                    {% if consultation.status != 'completed' and consultation.status != 'cancelled' %}
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#labOrderModal">
+                            <i class="fas fa-flask"></i> Lab
+                        </button>
+                        <button class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#radiologyOrderModal">
+                            <i class="fas fa-x-ray"></i> Radiology
+                        </button>
+                        <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#prescriptionModal">
+                            <i class="fas fa-prescription-bottle-alt"></i> Prescription
+                        </button>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if orders %}
+                    {% for order in orders %}
+                    <div class="order-item rounded p-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <span class="badge
+                                    {% if order.order_type == 'lab_test' %}bg-primary
+                                    {% elif order.order_type == 'radiology' %}bg-info
+                                    {% else %}bg-success{% endif %} me-2">
+                                    {{ order.get_order_type_display }}
+                                </span>
+                                <span class="badge
+                                    {% if order.status == 'ordered' %}bg-warning text-dark
+                                    {% elif order.status == 'processing' %}bg-info
+                                    {% elif order.status == 'completed' %}bg-success
+                                    {% else %}bg-danger{% endif %}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </div>
+                            <small class="text-muted">{{ order.created_at|date:"M d, H:i" }}</small>
+                        </div>
+                        <p class="mb-0 mt-2 small">{{ order.get_order_details }}</p>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted mb-0"><i class="fas fa-info-circle me-1"></i>No orders placed yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Referrals -->
+            <div class="card shadow mb-4">
+                <div class="card-header section-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-exchange-alt me-2"></i>Referrals
+                        <span class="badge bg-secondary ms-2">{{ analytics.referral_count }}</span>
+                    </h6>
+                    {% if consultation.doctor == request.user or request.user.is_superuser or request.user.is_staff %}
+                    {% if consultation.status != 'completed' and consultation.status != 'cancelled' %}
+                    <a href="{% url 'consultations:create_referral_from_consultation' consultation.id %}"
+                       class="btn btn-sm btn-outline-warning">
+                        <i class="fas fa-plus"></i> Add Referral
+                    </a>
+                    {% endif %}
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if referrals %}
+                    {% for referral in referrals %}
+                    <div class="referral-item rounded p-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>{{ referral.get_referral_destination }}</strong>
+                                <span class="badge
+                                    {% if referral.status == 'pending' %}bg-warning text-dark
+                                    {% elif referral.status == 'accepted' %}bg-info
+                                    {% elif referral.status == 'completed' %}bg-success
+                                    {% else %}bg-danger{% endif %} ms-2">
+                                    {{ referral.get_status_display }}
+                                </span>
+                            </div>
+                            <a href="{% url 'consultations:referral_detail' referral.id %}"
+                               class="btn btn-sm btn-outline-secondary">View</a>
+                        </div>
+                        <p class="mb-0 mt-1 small text-muted">{{ referral.reason|truncatechars:120 }}</p>
+                        {% if referral.requires_authorization and referral.authorization_status != 'authorized' %}
+                        <span class="badge bg-danger mt-1" style="font-size:0.65rem;">Auth Required</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted mb-0"><i class="fas fa-info-circle me-1"></i>No referrals for this consultation.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Sidebar -->
+        <div class="col-lg-4">
+
+            <!-- Patient Info -->
+            <div class="card shadow mb-4">
+                <div class="card-header section-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-user me-2"></i>Patient
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center mb-2"
+                             style="width:56px;height:56px;">
+                            <i class="fas fa-user fa-lg text-white"></i>
+                        </div>
+                        <h6 class="mb-0">{{ consultation.patient.get_full_name }}</h6>
+                        <small class="text-muted">{{ consultation.patient.patient_id }}</small>
+                    </div>
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr>
+                            <td class="text-muted small">Age</td>
+                            <td>{{ consultation.patient.get_age }} yrs</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted small">Gender</td>
+                            <td>{{ consultation.patient.get_gender_display }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted small">Phone</td>
+                            <td>{{ consultation.patient.phone_number|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted small">Type</td>
+                            <td>
+                                <span class="badge {% if consultation.patient.patient_type == 'nhia' %}bg-success{% else %}bg-info{% endif %}">
+                                    {{ consultation.patient.get_patient_type_display }}
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
+                    <a href="{% url 'patients:detail' consultation.patient.id %}" class="btn btn-outline-primary btn-sm w-100 mt-2">
+                        <i class="fas fa-user-circle me-1"></i>Full Patient Profile
+                    </a>
+                </div>
+            </div>
+
+            <!-- Doctor Info -->
+            <div class="card shadow mb-4">
+                <div class="card-header section-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-user-md me-2"></i>Doctor
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if consultation.doctor %}
+                    <p class="mb-1"><strong>Dr. {{ consultation.doctor.get_full_name }}</strong></p>
+                    {% if consultation.doctor.profile and consultation.doctor.profile.specialization %}
+                    <small class="text-muted">{{ consultation.doctor.profile.specialization }}</small>
+                    {% endif %}
+                    {% if consultation.doctor.profile and consultation.doctor.profile.department %}
+                    <br><small class="text-muted">{{ consultation.doctor.profile.department.name }}</small>
+                    {% endif %}
+                    {% else %}
+                    <span class="text-muted">No doctor assigned</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            {% if consultation.doctor == request.user or request.user.is_superuser or request.user.is_staff %}
+            {% if consultation.status != 'completed' and consultation.status != 'cancelled' %}
+            <div class="card shadow mb-4">
+                <div class="card-header section-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body d-grid gap-2">
+                    <a href="{% url 'consultations:create_prescription' consultation.id %}"
+                       class="btn btn-outline-success btn-sm">
+                        <i class="fas fa-prescription-bottle-alt me-1"></i>Create Prescription
+                    </a>
+                    <a href="{% url 'consultations:create_lab_request' consultation.id %}"
+                       class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-flask me-1"></i>Request Lab Test
+                    </a>
+                    <a href="{% url 'consultations:create_radiology_order' consultation.id %}"
+                       class="btn btn-outline-info btn-sm">
+                        <i class="fas fa-x-ray me-1"></i>Radiology Order
+                    </a>
+                    <a href="{% url 'consultations:create_referral_from_consultation' consultation.id %}"
+                       class="btn btn-outline-warning btn-sm">
+                        <i class="fas fa-exchange-alt me-1"></i>Create Referral
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+
+            <!-- Status Management -->
+            {% if consultation.doctor == request.user or request.user.is_superuser or request.user.is_staff %}
+            <div class="card shadow mb-4">
+                <div class="card-header section-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-toggle-on me-2"></i>Update Status
+                    </h6>
+                </div>
+                <div class="card-body d-grid gap-2">
+                    {% if consultation.status != 'in_progress' and consultation.status != 'completed' and consultation.status != 'cancelled' %}
+                    <button onclick="updateStatus('in_progress')" class="btn btn-warning btn-sm">
+                        <i class="fas fa-play me-1"></i>Mark In Progress
+                    </button>
+                    {% endif %}
+                    {% if consultation.status != 'completed' and consultation.status != 'cancelled' %}
+                    <button onclick="updateStatus('completed')" class="btn btn-success btn-sm">
+                        <i class="fas fa-check-circle me-1"></i>Mark Complete
+                    </button>
+                    {% endif %}
+                    {% if consultation.status != 'cancelled' %}
+                    <button onclick="updateStatus('cancelled')" class="btn btn-danger btn-sm">
+                        <i class="fas fa-times-circle me-1"></i>Cancel Consultation
+                    </button>
+                    {% endif %}
+                    {% if consultation.status == 'completed' or consultation.status == 'cancelled' %}
+                    <button onclick="updateStatus('pending')" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-undo me-1"></i>Reset to Pending
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Summary Stats -->
+            <div class="card shadow mb-4">
+                <div class="card-header section-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-bar me-2"></i>Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="small text-muted">SOAP Notes</span>
+                        <span class="badge bg-primary">{{ analytics.soap_count }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="small text-muted">Referrals</span>
+                        <span class="badge bg-warning text-dark">{{ analytics.referral_count }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="small text-muted">Clinical Notes</span>
+                        <span class="badge bg-info">{{ analytics.clinical_note_count }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2">
+                        <span class="small text-muted">Total Notes</span>
+                        <span class="badge bg-secondary">{{ analytics.note_count }}</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Status Update Confirmation Modal -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Status Update</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Update consultation status to <strong id="statusLabel"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmStatusBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+let pendingStatus = null;
+
+function updateStatus(status) {
+    pendingStatus = status;
+    const labels = {
+        'pending': 'Pending',
+        'in_progress': 'In Progress',
+        'completed': 'Completed',
+        'cancelled': 'Cancelled'
+    };
+    document.getElementById('statusLabel').textContent = labels[status] || status;
+    new bootstrap.Modal(document.getElementById('statusModal')).show();
+}
+
+document.getElementById('confirmStatusBtn').addEventListener('click', function() {
+    if (!pendingStatus) return;
+
+    const csrfToken = document.cookie.split('; ')
+        .find(r => r.startsWith('csrftoken='))?.split('=')[1];
+
+    fetch("{% url 'consultations:update_consultation_status' consultation.id %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ status: pendingStatus })
+    })
+    .then(r => r.json())
+    .then(data => {
+        bootstrap.Modal.getInstance(document.getElementById('statusModal')).hide();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(err => {
+        alert('Request failed: ' + err);
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}
