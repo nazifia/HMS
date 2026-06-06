@@ -27,6 +27,13 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
 
+    <!-- NProgress (page load progress bar) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.css">
+    <style>
+        #nprogress .bar { background: #4e73df; height: 3px; }
+        #nprogress .peg { box-shadow: 0 0 10px #4e73df, 0 0 5px #4e73df; }
+    </style>
+
     <!-- Custom CSS -->
     {% load static %}
 {% load custom_filters %}
@@ -1553,19 +1560,18 @@
             // Remove conflicting click handlers - let sidebar.js handle everything
             // Note: The sidebar.js will handle all dropdown functionality properly
             
-            // Clear any existing intervals that might cause auto-refresh
-            for (let i = 1; i < 99999; i++) {
-                clearInterval(i);
-            }
-            
             // Disable any future auto-refresh attempts
             const originalSetInterval = window.setInterval;
             window.setInterval = function(callback, delay, ...args) {
-                // Block any intervals that might refresh sidebar
-                if (callback.toString().includes('sidebar') || 
-                    callback.toString().includes('refresh') || 
-                    callback.toString().includes('reload')) {
-                    console.warn('Blocked auto-refresh interval for manual operation');
+                // Block intervals that might auto-refresh sidebar
+                try {
+                    const src = (typeof callback === 'function' ? callback : () => {}).toString();
+                    if (src.includes('accordionSidebar') || src.includes('sidebar-container')) {
+                        console.warn('Blocked sidebar auto-refresh interval');
+                        return null;
+                    }
+                } catch (_) {}
+                if (false) {
                     return null;
                 }
                 return originalSetInterval.call(this, callback, delay, ...args);
@@ -1573,6 +1579,40 @@
         });
     </script>
     
+    <!-- NProgress page-navigation loading bar -->
+    <script src="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.js"></script>
+    <script>
+        NProgress.configure({ showSpinner: false, trickleSpeed: 150, minimum: 0.1 });
+
+        // Start bar on any navigation link click
+        document.addEventListener('click', function(e) {
+            var link = e.target.closest('a[href]');
+            if (!link) return;
+            var href = link.getAttribute('href') || '';
+            if (href.startsWith('#') || href.startsWith('javascript:') || href === '') return;
+            if (link.getAttribute('target') === '_blank') return;
+            if (link.hasAttribute('data-bs-toggle') || link.hasAttribute('data-bs-dismiss')) return;
+            if (link.hasAttribute('hx-get') || link.hasAttribute('hx-post')) return;
+            NProgress.start();
+        }, true);
+
+        // Start bar on regular form submissions
+        document.addEventListener('submit', function(e) {
+            var form = e.target;
+            if (form.hasAttribute('hx-post') || form.hasAttribute('hx-get')) return;
+            NProgress.start();
+        }, true);
+
+        // Finish bar when page is ready (handles back/forward cache too)
+        window.addEventListener('pageshow', function() { NProgress.done(); });
+        window.addEventListener('DOMContentLoaded', function() { NProgress.done(); });
+
+        // HTMX integration
+        document.addEventListener('htmx:beforeRequest', function() { NProgress.start(); });
+        document.addEventListener('htmx:afterSettle', function() { NProgress.done(); });
+        document.addEventListener('htmx:responseError', function() { NProgress.done(); });
+    </script>
+
     <!-- Global Error Handler -->
     <script>
         // Global error handler to preventing breaking the page, but allow sidebar errors to be seen

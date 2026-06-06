@@ -4,6 +4,7 @@ User Activity Monitoring Middleware
 
 import time
 import logging
+import threading
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.http import JsonResponse
@@ -69,13 +70,22 @@ class UserActivityMiddleware:
         if self.should_skip_tracking(request):
             return response
 
-        # Log the activity
-        self.log_user_activity(request, response, response_time)
-
-        # Check for suspicious activity
-        self.check_suspicious_activity(request, response)
+        # Log activity and check suspicious patterns in background to avoid blocking the response
+        threading.Thread(
+            target=self._log_and_check,
+            args=(request, response, response_time),
+            daemon=True,
+        ).start()
 
         return response
+
+    def _log_and_check(self, request, response, response_time):
+        """Run activity logging and suspicious-activity checks off the request thread."""
+        try:
+            self.log_user_activity(request, response, response_time)
+            self.check_suspicious_activity(request, response)
+        except Exception as e:
+            logger.error(f"Background activity logging error: {e}")
 
     def should_skip_tracking(self, request):
         """Check if URL should be skipped from tracking"""

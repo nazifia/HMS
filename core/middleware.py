@@ -147,13 +147,17 @@ class RoleBasedAccessMiddleware:
             return self.get_response(request)
 
         # Check if the current URL requires a specific role
+        # Resolve user roles once per request (cached on the request object)
+        if not hasattr(request, '_cached_user_roles'):
+            user_roles = list(request.user.roles.values_list('name', flat=True))
+            profile_role = getattr(getattr(request.user, 'profile', None), 'role', None)
+            if profile_role and profile_role not in user_roles:
+                user_roles.append(profile_role)
+            request._cached_user_roles = user_roles
+
         for url_pattern, allowed_roles in self.role_required_urls:
             if url_pattern in request.path:
-                # Get user's roles (many-to-many relationship)
-                user_roles = list(request.user.roles.values_list('name', flat=True))
-                profile_role = getattr(getattr(request.user, 'profile', None), 'role', None)
-                if profile_role and profile_role not in user_roles:
-                    user_roles.append(profile_role)
+                user_roles = request._cached_user_roles
 
                 # Allow superusers to access everything (application level)
                 if request.user.is_superuser:
