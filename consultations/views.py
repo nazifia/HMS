@@ -14,7 +14,7 @@ from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
 from pharmacy.models import Prescription
 from accounts.models import CustomUser, Department
-from accounts.permissions import permission_required
+from accounts.permissions import permission_required, user_in_role
 from patients.models import Patient, Vitals, ClinicalNote
 from patients.utils import get_safe_vitals_for_patient, get_latest_safe_vitals_for_patient
 from appointments.models import Appointment
@@ -27,14 +27,14 @@ from core.models import send_notification_email, send_notification_sms, Internal
 def unified_dashboard(request):
     """Unified dashboard combining waiting list and consultations - Optimized"""
     # Superusers and admins see all consultations with select_related
-    if request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role in ['admin', 'health_record_officer', 'receptionist']):
+    if request.user.is_superuser or user_in_role(request.user, ['admin', 'health_record_officer', 'receptionist']):
         consultations = Consultation.objects.select_related(
             'patient', 'doctor', 'consulting_room'
         ).all().order_by('-consultation_date')
         waiting_entries = WaitingList.objects.filter(
             status__in=['waiting', 'in_progress']
         ).select_related('patient', 'doctor', 'consulting_room', 'appointment').order_by('priority', 'check_in_time')
-    elif hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor':
+    elif user_in_role(request.user, 'doctor'):
         # Doctors see only their consultations with select_related
         consultations = Consultation.objects.filter(
             doctor=request.user
@@ -83,14 +83,10 @@ def unified_dashboard(request):
 @permission_required('consultations.view')
 def consultation_list(request):
     """List consultations with search/filter support."""
-    is_privileged = request.user.is_superuser or (
-        hasattr(request.user, 'profile') and request.user.profile and
-        request.user.profile.role in ['admin', 'health_record_officer', 'receptionist']
+    is_privileged = request.user.is_superuser or user_in_role(
+        request.user, ['admin', 'health_record_officer', 'receptionist']
     )
-    is_doctor = (
-        hasattr(request.user, 'profile') and request.user.profile and
-        request.user.profile.role == 'doctor'
-    )
+    is_doctor = user_in_role(request.user, 'doctor')
 
     if is_privileged:
         consultations = Consultation.objects.select_related('patient', 'doctor', 'consulting_room').all()
@@ -145,7 +141,7 @@ def bulk_start_consultations(request):
             'message': 'Bulk start endpoint is accessible'
         })
     
-    if not (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor')):
+    if not (request.user.is_superuser or user_in_role(request.user, 'doctor')):
         return JsonResponse({
             'success': False,
             'message': 'Only doctors and superusers can start consultations.'
@@ -1715,7 +1711,7 @@ def update_waiting_status(request, entry_id):
             messages.error(request, "Invalid status.")
 
     # Redirect based on user role
-    if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile and request.user.profile.role == 'doctor':
+    if not request.user.is_superuser and user_in_role(request.user, 'doctor'):
         return redirect('consultations:doctor_waiting_list')
     else:
         return redirect('consultations:waiting_list')

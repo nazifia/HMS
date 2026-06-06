@@ -1148,6 +1148,287 @@ PERMISSION_DEFINITIONS = {
         "model": "OrthopedicsRecord",
         "is_custom": False,
     },
+    # --------------------------------------------------------------------------
+    # Extended Financial Operations (cashier/accountant workflows)
+    # --------------------------------------------------------------------------
+    "billing.refund": {
+        "django_codename": "billing.refund_payment",
+        "category": "billing",
+        "description": "Can process payment refunds",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "billing.cancel": {
+        "django_codename": "billing.cancel_invoice",
+        "category": "billing",
+        "description": "Can cancel invoices",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "wallet.refund": {
+        "django_codename": "patients.refund_walletpayment",
+        "category": "billing",
+        "description": "Can process wallet refunds",
+        "model": "PatientWallet",
+        "is_custom": True,
+    },
+    "wallet.deposit": {
+        "django_codename": "patients.deposit_to_wallet",
+        "category": "billing",
+        "description": "Can deposit funds to patient wallet",
+        "model": "PatientWallet",
+        "is_custom": True,
+    },
+    "wallet.withdraw": {
+        "django_codename": "patients.withdraw_from_wallet",
+        "category": "billing",
+        "description": "Can withdraw funds from patient wallet",
+        "model": "PatientWallet",
+        "is_custom": True,
+    },
+    "invoices.view": {
+        "django_codename": "billing.view_all_invoices",
+        "category": "billing",
+        "description": "Can view all invoice records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "invoices.create": {
+        "django_codename": "billing.create_all_invoices",
+        "category": "billing",
+        "description": "Can create invoice records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "invoices.edit": {
+        "django_codename": "billing.edit_all_invoices",
+        "category": "billing",
+        "description": "Can edit all invoice records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "invoices.delete": {
+        "django_codename": "billing.delete_all_invoices",
+        "category": "billing",
+        "description": "Can delete invoice records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "invoices.print": {
+        "django_codename": "billing.print_invoice",
+        "category": "billing",
+        "description": "Can print invoices",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "invoices.email": {
+        "django_codename": "billing.email_invoice",
+        "category": "billing",
+        "description": "Can email invoices to patients",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    # --------------------------------------------------------------------------
+    # Module-specific Billing Permissions (for cashier fine-grained control)
+    # --------------------------------------------------------------------------
+    "pharmacy_billing.view": {
+        "django_codename": "billing.view_pharmacyinvoice",
+        "category": "billing",
+        "description": "Can view pharmacy billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "pharmacy_billing.create": {
+        "django_codename": "billing.add_pharmacyinvoice",
+        "category": "billing",
+        "description": "Can create pharmacy billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "pharmacy_billing.edit": {
+        "django_codename": "billing.change_pharmacyinvoice",
+        "category": "billing",
+        "description": "Can edit pharmacy billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "lab_billing.view": {
+        "django_codename": "billing.view_labinvoice",
+        "category": "billing",
+        "description": "Can view laboratory billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "lab_billing.create": {
+        "django_codename": "billing.add_labinvoice",
+        "category": "billing",
+        "description": "Can create laboratory billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "radiology_billing.view": {
+        "django_codename": "billing.view_radiologyinvoice",
+        "category": "billing",
+        "description": "Can view radiology billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "radiology_billing.create": {
+        "django_codename": "billing.add_radiologyinvoice",
+        "category": "billing",
+        "description": "Can create radiology billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "theatre_billing.view": {
+        "django_codename": "billing.view_theatreinvoice",
+        "category": "billing",
+        "description": "Can view theatre billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "theatre_billing.create": {
+        "django_codename": "billing.add_theatreinvoice",
+        "category": "billing",
+        "description": "Can create theatre billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "inpatient_billing.view": {
+        "django_codename": "billing.view_inpatientinvoice",
+        "category": "billing",
+        "description": "Can view inpatient billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "inpatient_billing.create": {
+        "django_codename": "billing.add_inpatientinvoice",
+        "category": "billing",
+        "description": "Can create inpatient billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "consultation_billing.view": {
+        "django_codename": "billing.view_consultationinvoice",
+        "category": "billing",
+        "description": "Can view consultation billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "consultation_billing.create": {
+        "django_codename": "billing.add_consultationinvoice",
+        "category": "billing",
+        "description": "Can create consultation billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "bed_charges.view": {
+        "django_codename": "billing.view_bedchargeinvoice",
+        "category": "billing",
+        "description": "Can view bed charge billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "bed_charges.create": {
+        "django_codename": "billing.add_bedchargeinvoice",
+        "category": "billing",
+        "description": "Can create bed charge records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "feeding_charges.view": {
+        "django_codename": "billing.view_feedingchargeinvoice",
+        "category": "billing",
+        "description": "Can view feeding charge billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "feeding_charges.create": {
+        "django_codename": "billing.add_feedingchargeinvoice",
+        "category": "billing",
+        "description": "Can create feeding charge records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "nursing_care_charges.view": {
+        "django_codename": "billing.view_nursingcareinvoice",
+        "category": "billing",
+        "description": "Can view nursing care charge billing records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    "nursing_care_charges.create": {
+        "django_codename": "billing.add_nursingcareinvoice",
+        "category": "billing",
+        "description": "Can create nursing care charge records",
+        "model": "Invoice",
+        "is_custom": True,
+    },
+    # --------------------------------------------------------------------------
+    # Financial Reports (extended report permissions)
+    # --------------------------------------------------------------------------
+    "reports.financial": {
+        "django_codename": "reporting.view_financialreport",
+        "category": "reports",
+        "description": "Can view financial reports",
+        "model": "Report",
+        "is_custom": True,
+    },
+    "reports.revenue": {
+        "django_codename": "reporting.view_revenuereport",
+        "category": "reports",
+        "description": "Can view revenue reports",
+        "model": "Report",
+        "is_custom": True,
+    },
+    "reports.daily_cash": {
+        "django_codename": "reporting.view_dailycashreport",
+        "category": "reports",
+        "description": "Can view daily cash reports",
+        "model": "Report",
+        "is_custom": True,
+    },
+    "reports.billing": {
+        "django_codename": "reporting.view_billingreport",
+        "category": "reports",
+        "description": "Can view billing reports",
+        "model": "Report",
+        "is_custom": True,
+    },
+    # --------------------------------------------------------------------------
+    # Insurance / Retainership Management
+    # --------------------------------------------------------------------------
+    "insurance.view": {
+        "django_codename": "retainership.view_insurancepolicy",
+        "category": "patient_management",
+        "description": "Can view insurance/retainership policy records",
+        "model": "RetainershipPatient",
+        "is_custom": True,
+    },
+    "insurance.create": {
+        "django_codename": "retainership.add_insurancepolicy",
+        "category": "patient_management",
+        "description": "Can create insurance/retainership policy records",
+        "model": "RetainershipPatient",
+        "is_custom": True,
+    },
+    "insurance.edit": {
+        "django_codename": "retainership.change_insurancepolicy",
+        "category": "patient_management",
+        "description": "Can edit insurance/retainership policy records",
+        "model": "RetainershipPatient",
+        "is_custom": True,
+    },
+    # --------------------------------------------------------------------------
+    # NHIA Extended Operations
+    # --------------------------------------------------------------------------
+    "nhia.billing": {
+        "django_codename": "nhia.process_nhibilling",
+        "category": "patient_management",
+        "description": "Can process NHIA billing operations",
+        "model": "NHIAPatient",
+        "is_custom": True,
+    },
 }
 
 # ============================================================================

@@ -223,6 +223,7 @@ def create_invoice(request):
 
 
 @login_required
+@permission_required("billing.view")
 def search_billing_patients(request):
     """AJAX view for searching patients in billing module"""
     search_term = request.GET.get("term", "")
