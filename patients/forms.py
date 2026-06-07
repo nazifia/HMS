@@ -1093,16 +1093,38 @@ class NHIAIndependentPatientForm(PatientForm):
     )
 
     class Meta(PatientForm.Meta):
-        fields = PatientForm.Meta.fields + ['is_nhia_active']
-        exclude = ['allergies', 'chronic_diseases', 'current_medications', 'primary_doctor', 'notes', 'postal_code']
+        fields = [
+            'first_name', 'last_name', 'date_of_birth', 'gender',
+            'phone_number', 'email', 'address',
+            'emergency_contact_name', 'emergency_contact_phone',
+        ]
+
+    _EXCLUDED_FIELDS = [
+        'marital_status', 'patient_type', 'emergency_contact_relation',
+        'city', 'state', 'postal_code', 'country',
+        'allergies', 'chronic_diseases', 'current_medications',
+        'insurance_provider', 'insurance_policy_number', 'insurance_expiry_date',
+        'occupation', 'notes', 'photo', 'id_document',
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self._EXCLUDED_FIELDS:
+            self.fields.pop(field, None)
 
     def save(self, commit=True):
         patient = super().save(commit=False)
-        patient.patient_type = 'nhia'  # Ensure type
+        patient.patient_type = 'nhia'
+        if not patient.city:
+            patient.city = 'N/A'
+        if not patient.state:
+            patient.state = 'N/A'
+        if not patient.country:
+            patient.country = 'Nigeria'
         if commit:
             patient.save()
             if not hasattr(patient, 'nhia_info'):
-                nhia_patient = NHIAPatient.objects.create(
+                NHIAPatient.objects.create(
                     patient=patient,
                     nhia_reg_number=generate_nhia_reg_number(),
                     is_active=self.cleaned_data.get('is_nhia_active', True)
@@ -1142,16 +1164,38 @@ class RetainershipIndependentPatientForm(PatientForm):
     )
 
     class Meta(PatientForm.Meta):
-        fields = PatientForm.Meta.fields + ['is_retainership_active']
-        exclude = ['allergies', 'chronic_diseases', 'current_medications', 'primary_doctor', 'notes', 'postal_code']
+        fields = [
+            'first_name', 'last_name', 'date_of_birth', 'gender',
+            'phone_number', 'email', 'address',
+            'emergency_contact_name', 'emergency_contact_phone',
+        ]
+
+    _EXCLUDED_FIELDS = [
+        'marital_status', 'patient_type', 'emergency_contact_relation',
+        'city', 'state', 'postal_code', 'country',
+        'allergies', 'chronic_diseases', 'current_medications',
+        'insurance_provider', 'insurance_policy_number', 'insurance_expiry_date',
+        'occupation', 'notes', 'photo', 'id_document',
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self._EXCLUDED_FIELDS:
+            self.fields.pop(field, None)
 
     def save(self, commit=True):
         patient = super().save(commit=False)
-        patient.patient_type = 'retainership'  # Ensure type
+        patient.patient_type = 'retainership'
+        if not patient.city:
+            patient.city = 'N/A'
+        if not patient.state:
+            patient.state = 'N/A'
+        if not patient.country:
+            patient.country = 'Nigeria'
         if commit:
             patient.save()
             if not hasattr(patient, 'retainership_info'):
-                retainership_patient = RetainershipPatient.objects.create(
+                RetainershipPatient.objects.create(
                     patient=patient,
                     retainership_reg_number=generate_retainership_reg_number(),
                     is_active=self.cleaned_data.get('is_retainership_active', True)

@@ -124,6 +124,14 @@
             <form method="post" enctype="multipart/form-data" id="retainership-form">
                 {% csrf_token %}
 
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
                 <!-- Info Card -->
                 <div class="card info-card mb-4">
                     <div class="card-body">
@@ -240,14 +248,15 @@
                         <h5 class="mb-0">Retainership Information</h5>
                     </div>
                     <div class="mb-3">
-                        <label for="{{ form.retainership_reg_number.id_for_label }}" class="form-label required-label">
-                            <i class="form-label-icon fas fa-hashtag"></i>Retainership Registration Number
-                        </label>
-                        {{ form.retainership_reg_number }}
-                        {% if form.retainership_reg_number.errors %}
-                            <div class="text-danger small mt-1">{{ form.retainership_reg_number.errors.0 }}</div>
-                        {% endif %}
-                        <div class="form-text">10-digit number starting with 3 (e.g., 3000000001)</div>
+                        <div class="form-check">
+                            {{ form.is_retainership_active }}
+                            <label class="form-check-label" for="{{ form.is_retainership_active.id_for_label }}">
+                                Active Retainership Registration
+                            </label>
+                        </div>
+                        <div class="form-text text-muted mt-1">
+                            <i class="fas fa-info-circle me-1"></i>A unique Retainership Registration Number will be automatically generated upon registration.
+                        </div>
                     </div>
                 </div>
 

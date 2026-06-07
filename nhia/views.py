@@ -100,23 +100,7 @@ def register_independent_nhia_patient(request):
     if request.method == 'POST':
         form = NHIAIndependentPatientForm(request.POST, request.FILES)
         if form.is_valid():
-            # Save the patient
             patient = form.save()
-            patient.patient_type = 'nhia'  # Ensure type
-            
-            # Create or update NHIAPatient record
-            if not hasattr(patient, 'nhia_info'):
-                nhia_patient = NHIAPatient.objects.create(
-                    patient=patient,
-                    nhia_reg_number=generate_nhia_reg_number(),
-                    is_active=form.cleaned_data.get('is_nhia_active', True)
-                )
-            else:
-                # This shouldn't happen for a new independent patient, but just in case
-                patient.nhia_info.nhia_reg_number = generate_nhia_reg_number()
-                patient.nhia_info.is_active = form.cleaned_data.get('is_nhia_active', True)
-                patient.nhia_info.save()
-            
             messages.success(request, f'Independent NHIA Patient {patient.get_full_name()} registered successfully.')
             return redirect('nhia:nhia_patient_list')
     else:

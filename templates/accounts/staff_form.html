@@ -131,6 +131,18 @@
                                             {% endif %}
                                             <div class="form-text">Display name for the system</div>
                                         </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold">
+                                                <i class="fas fa-envelope me-1 text-primary"></i>Email Address
+                                            </label>
+                                            {{ form.email|add_class:"form-control" }}
+                                            {% if form.email.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.email.errors }}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Optional — used for notifications</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -293,7 +305,7 @@
                                         <button type="button" class="btn btn-outline-primary btn-lg me-2" id="previewBtn">
                                             <i class="fas fa-eye me-2"></i>Preview
                                         </button>
-                                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                        <button type="submit" class="btn btn-primary btn-lg no-loading" id="submitBtn">
                                             <i class="fas fa-user-plus me-2"></i>Create Staff Account
                                         </button>
                                     </div>
@@ -426,7 +438,6 @@
             </div>
         </div>
     </div>
-</div>
 </div>
 {% endblock %}
 

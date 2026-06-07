@@ -416,11 +416,11 @@ def register_independent_retainership_patient(request):
             patient = form.save()
 
             # Check if user wants to add to existing wallet
-            add_to_existing_wallet = request.POST.get("add_to_existing_wallet") == "on"
+            wallet_option = request.POST.get("wallet_option", "new")
             selected_wallet_id = request.POST.get("existing_wallet")
             make_primary = request.POST.get("make_primary_member") == "on"
 
-            if add_to_existing_wallet and selected_wallet_id:
+            if wallet_option == "existing" and selected_wallet_id:
                 try:
                     wallet = SharedWallet.objects.get(
                         id=selected_wallet_id,
@@ -468,7 +468,7 @@ def register_independent_retainership_patient(request):
                 request,
                 f"Independent Retainership Patient {patient.get_full_name()} registered successfully.",
             )
-            return redirect("patients:detail", patient_id=patient.id)
+            return redirect("retainership:retainership_patient_list")
     else:
         form = RetainershipIndependentPatientForm()
 

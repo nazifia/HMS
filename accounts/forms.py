@@ -702,6 +702,15 @@ class StaffCreationForm(
             )
         return roles
 
+    def clean_employee_id_profile(self):
+        employee_id = self.cleaned_data.get("employee_id_profile")
+        if not employee_id:
+            return employee_id
+        from accounts.models import CustomUserProfile
+        if CustomUserProfile.objects.filter(employee_id=employee_id).exists():
+            raise ValidationError("A staff member with this Employee ID already exists.")
+        return employee_id
+
     def clean_phone_number(self):
         phone = self.cleaned_data.get("phone_number")
         if phone and not phone.isdigit():
