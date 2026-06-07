@@ -251,6 +251,7 @@ class Patient(models.Model):
         ("staff", "Staff"),
         ("dependant", "Dependant"),
         ("emergency", "Emergency"),
+        ("retainership", "Retainership"),
     )
 
     # Basic Information
@@ -342,6 +343,9 @@ class Patient(models.Model):
             if self.patient_type == "nhia":
                 # NHIA patient ID: 10 digits, starting with 4
                 new_id = "4" + "".join([str(random.randint(0, 9)) for _ in range(9)])
+            elif self.patient_type == "retainership":
+                # Retainership patient ID: 10 digits, starting with 3
+                new_id = "3" + "".join([str(random.randint(0, 9)) for _ in range(9)])
             else:
                 # Regular patient ID: 10 digits, starting with 0
                 new_id = "0" + "".join([str(random.randint(0, 9)) for _ in range(9)])
