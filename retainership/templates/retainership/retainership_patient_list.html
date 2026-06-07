@@ -16,12 +16,24 @@
     <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
         <h6 class="m-0 font-weight-bold text-primary">{{ title }}</h6>
         <div class="d-flex align-items-center">
-            <form class="d-none d-sm-inline-block form-inline mr-auto my-2 my-md-0 mw-100 navbar-search" method="GET">
+            <form class="d-none d-sm-inline-block form-inline mr-auto my-2 my-md-0 mw-100 navbar-search">
                 <div class="input-group">
-                    <input type="text" class="form-control bg-light border-0 small" placeholder="Search for Retainership patient..." aria-label="Search"
-                           aria-describedby="basic-addon2" name="search" value="{{ search_query }}">
+                    <input type="text"
+                           class="form-control bg-light border-0 small"
+                           placeholder="Search for Retainership patient..."
+                           aria-label="Search"
+                           aria-describedby="basic-addon2"
+                           name="search"
+                           value="{{ search_query }}"
+                           hx-get="{% url 'retainership:retainership_patient_list' %}"
+                           hx-target="#patient-table-body"
+                           hx-trigger="keyup changed delay:300ms, search"
+                           hx-indicator="#search-indicator">
                     <div class="input-group-append">
-                        <button class="btn btn-primary" type="submit">
+                        <span class="input-group-text bg-white border-0" id="search-indicator" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                        <button class="btn btn-primary" type="button" onclick="this.closest('form').querySelector('input').dispatchEvent(new Event('search'))">
                             <i class="fas fa-search fa-sm"></i>
                         </button>
                     </div>
@@ -52,77 +64,11 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for retainership_patient in page_obj %}
-                    <tr>
-                        <td><a href="{% url 'patients:detail' retainership_patient.patient.id %}">{{ retainership_patient.patient.get_full_name }}</a></td>
-                        <td>{{ retainership_patient.patient.patient_id }}</td>
-                        <td>{{ retainership_patient.retainership_reg_number }}</td>
-                        <td><span class="badge bg-success">Retainership</span></td>
-                        <td>
-                            {% if retainership_patient.is_active %}
-                                <span class="badge bg-success">Active</span>
-                            {% else %}
-                                <span class="badge bg-danger">Inactive</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if retainership_patient.wallet_info %}
-                                <span class="badge {% if retainership_patient.wallet_info.balance >= 0 %}bg-success{% else %}bg-danger{% endif %}">
-                                    ₦{{ retainership_patient.wallet_info.balance }}
-                                </span>
-                            {% else %}
-                                <span class="badge bg-warning">No Wallet</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ retainership_patient.date_registered|date:"Y-m-d H:i" }}</td>
-                        <td>
-                            <a href="{% url 'patients:edit' retainership_patient.patient.id %}" class="btn btn-sm btn-primary">Edit</a>
-                            {% if retainership_patient.wallet_info %}
-                                <a href="{% url 'retainership:manage_wallet' retainership_patient.patient.id %}" class="btn btn-sm btn-info">
-                                    <i class="fas fa-wallet"></i> Manage Wallet
-                                </a>
-                            {% else %}
-                                <div class="btn-group">
-                                    <a href="{% url 'retainership:create_wallet' retainership_patient.patient.id %}" class="btn btn-sm btn-success">
-                                        <i class="fas fa-plus"></i> Create Wallet
-                                    </a>
-                                    <a href="{% url 'retainership:link_to_wallet' retainership_patient.patient.id %}" class="btn btn-sm btn-warning">
-                                        <i class="fas fa-link"></i> Link to Wallet
-                                    </a>
-                                </div>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7">No Retainership patients found.</td>
-                    </tr>
-                    {% endfor %}
+                <tbody id="patient-table-body" hx-target="this">
+                    {% include 'retainership/partials/retainership_patient_rows.html' %}
                 </tbody>
             </table>
         </div>
-
-        <!-- Pagination -->
-        <nav aria-label="Page navigation example">
-            <ul class="pagination justify-content-center">
-                {% if page_obj.has_previous %}
-                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a></li>
-                {% endif %}
-
-                {% for i in page_obj.paginator.page_range %}
-                    {% if page_obj.number == i %}
-                        <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
-                    {% else %}
-                        <li class="page-item"><a class="page-link" href="?page={{ i }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ i }}</a></li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if page_obj.has_next %}
-                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a></li>
-                {% endif %}
-            </ul>
-        </nav>
 
     </div>
 </div>

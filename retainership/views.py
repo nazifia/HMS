@@ -51,14 +51,6 @@ def retainership_patient_list(request):
         .order_by("-date_registered")
     )
 
-    # Add wallet information to each patient
-    for retainership_patient in retainership_patients:
-        patient = retainership_patient.patient
-        membership = patient.wallet_memberships.filter(
-            wallet__wallet_type="retainership"
-        ).first()
-        retainership_patient.wallet_info = membership.wallet if membership else None
-
     search_query = request.GET.get("search", "")
     if search_query:
         retainership_patients = retainership_patients.filter(
@@ -68,17 +60,27 @@ def retainership_patient_list(request):
             | Q(patient__patient_id__icontains=search_query)
         )
 
-    paginator = Paginator(
-        retainership_patients, 10
-    )  # Show 10 Retainership patients per page
+    paginator = Paginator(retainership_patients, 10)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
+
+    # Annotate wallet info after pagination to avoid re-querying the full set
+    for retainership_patient in page_obj:
+        patient = retainership_patient.patient
+        membership = patient.wallet_memberships.filter(
+            wallet__wallet_type="retainership"
+        ).first()
+        retainership_patient.wallet_info = membership.wallet if membership else None
 
     context = {
         "page_obj": page_obj,
         "search_query": search_query,
         "title": "Retainership Patients",
     }
+
+    if request.headers.get("HX-Request"):
+        return render(request, "retainership/partials/retainership_patient_rows.html", context)
+
     return render(request, "retainership/retainership_patient_list.html", context)
 
 
