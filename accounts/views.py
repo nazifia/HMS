@@ -3872,3 +3872,78 @@ def rbac_audit_trail(request):
         "active_nav": "rbac_audit_trail",
     }
     return render(request, "accounts/rbac_audit_trail.html", context)
+
+
+@login_required
+@superuser_required
+def toggle_admin_privilege(request, user_id):
+    """Grant or revoke HMS admin privileges for a non-superuser.
+
+    Assigns the 'admin' Role (full HMS permissions) and sets is_staff=True
+    (Django admin access). Only callable by superusers. Cannot be used to
+    modify another superuser's account.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+
+    target_user = get_object_or_404(User, id=user_id)
+
+    if target_user.is_superuser:
+        return JsonResponse(
+            {"error": "Cannot modify superuser accounts via this endpoint."}, status=400
+        )
+
+    if target_user == request.user:
+        return JsonResponse(
+            {"error": "Cannot modify your own admin privilege here."}, status=400
+        )
+
+    action = request.POST.get("action")  # "grant" or "revoke"
+    if action not in ("grant", "revoke"):
+        return JsonResponse({"error": "action must be 'grant' or 'revoke'"}, status=400)
+
+    admin_role = Role.objects.filter(name="admin").first()
+
+    if action == "grant":
+        target_user.is_staff = True
+        target_user.save(update_fields=["is_staff"])
+        if admin_role:
+            target_user.roles.add(admin_role)
+        # Sync legacy profile.role
+        profile = getattr(target_user, "profile", None)
+        if profile:
+            profile.role = "admin"
+            profile.save(update_fields=["role"])
+        new_status = True
+        msg = f"Admin privilege granted to {target_user.get_full_name() or target_user.username}."
+    else:
+        target_user.is_staff = False
+        target_user.save(update_fields=["is_staff"])
+        if admin_role:
+            target_user.roles.remove(admin_role)
+        # Revert legacy profile.role only if it was 'admin'
+        profile = getattr(target_user, "profile", None)
+        if profile and profile.role == "admin":
+            profile.role = ""
+            profile.save(update_fields=["role"])
+        new_status = False
+        msg = f"Admin privilege revoked from {target_user.get_full_name() or target_user.username}."
+
+    AuditLog.objects.create(
+        user=request.user,
+        target_user=target_user,
+        action="admin_privilege_change",
+        details={
+            "action": action,
+            "is_staff_new": target_user.is_staff,
+            "admin_role_assigned": admin_role is not None,
+        },
+        ip_address=request.META.get("REMOTE_ADDR"),
+        timestamp=timezone.now(),
+    )
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse({"success": True, "is_admin": new_status, "message": msg})
+
+    messages.success(request, msg)
+    return redirect("accounts:user_privileges", user_id=user_id)

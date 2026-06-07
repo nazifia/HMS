@@ -145,6 +145,63 @@
                 </div>
             </div>
 
+            {% if request.user.is_superuser and not target_user.is_superuser and target_user != request.user %}
+            <!-- Admin Privilege Card -->
+            <div class="card mb-4 border-{% if target_user.is_staff %}warning{% else %}secondary{% endif %}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shield-alt me-2 text-{% if target_user.is_staff %}warning{% else %}secondary{% endif %}"></i>
+                        Admin Privilege
+                    </h5>
+                    {% if target_user.is_staff %}
+                        <span class="badge bg-warning text-dark fs-6"><i class="fas fa-check-circle me-1"></i>Admin Granted</span>
+                    {% else %}
+                        <span class="badge bg-secondary fs-6"><i class="fas fa-times-circle me-1"></i>Not an Admin</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <p class="mb-1 text-muted small">
+                                Granting <strong>Admin Privilege</strong> assigns the <em>admin</em> role (full HMS permissions)
+                                and enables Django staff access. This is separate from superuser status.
+                            </p>
+                            <ul class="list-unstyled mb-0 small text-muted">
+                                <li><i class="fas fa-circle-check text-success me-1"></i><strong>is_staff:</strong>
+                                    {% if target_user.is_staff %}<span class="text-success">Yes</span>{% else %}<span class="text-danger">No</span>{% endif %}
+                                </li>
+                                <li><i class="fas fa-circle-check text-success me-1"></i><strong>Admin role assigned:</strong>
+                                    {% with admin_role_assigned=target_user.roles.all %}
+                                        {% for r in admin_role_assigned %}{% if r.name == "admin" %}<span class="text-success">Yes</span>{% endif %}{% empty %}<span class="text-danger">No</span>{% endfor %}
+                                    {% endwith %}
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            {% if target_user.is_staff %}
+                                <button type="button" class="btn btn-outline-danger"
+                                        onclick="toggleAdminPrivilege('revoke')">
+                                    <i class="fas fa-user-minus me-1"></i>Revoke Admin
+                                </button>
+                            {% else %}
+                                <button type="button" class="btn btn-warning"
+                                        onclick="toggleAdminPrivilege('grant')">
+                                    <i class="fas fa-user-shield me-1"></i>Grant Admin
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hidden form for admin privilege toggle -->
+            <form id="adminPrivilegeForm" method="post"
+                  action="{% url 'accounts:toggle_admin_privilege' target_user.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" id="adminPrivilegeAction" value="">
+            </form>
+            {% endif %}
+
             <!-- Tab Navigation -->
             <ul class="nav nav-pills mb-4" id="privilegeTabs" role="tablist">
                 <li class="nav-item" role="presentation">
@@ -409,6 +466,13 @@ function updateRoleInfo() {
             card.style.backgroundColor = '';
         }
     });
+}
+
+function toggleAdminPrivilege(action) {
+    const label = action === 'grant' ? 'grant admin privilege' : 'revoke admin privilege';
+    if (!confirm('Are you sure you want to ' + label + ' for this user?')) return;
+    document.getElementById('adminPrivilegeAction').value = action;
+    document.getElementById('adminPrivilegeForm').submit();
 }
 </script>
 {% endblock %}

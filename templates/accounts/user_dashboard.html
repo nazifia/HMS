@@ -227,10 +227,15 @@
                         <td>{{ user_item.phone_number|default:'-' }}</td>
                         <td> {# Display user roles #}
                             {% for r in user_item.roles.all %}
-                                <span class="badge bg-info text-dark me-1">{{ r.name }}</span> {# Ensure contrast for bg-info #}
+                                <span class="badge bg-info text-dark me-1">{{ r.name }}</span>
                             {% empty %}
                                 <span class="badge bg-light text-dark">-</span>
                             {% endfor %}
+                            {% if user_item.is_superuser %}
+                                <span class="badge bg-danger ms-1" title="Superuser">SU</span>
+                            {% elif user_item.is_staff %}
+                                <span class="badge bg-warning text-dark ms-1" title="Admin (staff)">Admin</span>
+                            {% endif %}
                         </td>
                         <td>
                             {% if user_item.is_active %}

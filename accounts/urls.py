@@ -110,6 +110,11 @@ urlpatterns = [
     path(
         "users/<int:user_id>/privileges/", views.user_privileges, name="user_privileges"
     ),
+    path(
+        "users/<int:user_id>/toggle-admin/",
+        views.toggle_admin_privilege,
+        name="toggle_admin_privilege",
+    ),
     path("users/bulk-actions/", views.bulk_user_actions, name="bulk_user_actions"),
     path("permissions/", views.permission_management, name="permission_management"),
     path("audit-logs/", views.audit_logs, name="audit_logs"),
