@@ -1084,7 +1084,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to check if patient is NHIA
     function checkPatientNHIAStatus(patientId) {
         if (patientId) {
-            fetch('/patients/check-patient-nhia/', {
+            fetch('{% url "patients:check_patient_nhia" %}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',

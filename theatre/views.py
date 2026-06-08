@@ -429,20 +429,6 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
         team_formset = SurgicalTeamInlineFormSet(self.request.POST)
         equipment_formset = EquipmentUsageInlineFormSet(self.request.POST)
 
-        # Debug: Print form validation status
-        print(f"Form valid: {form.is_valid()}")
-        if not form.is_valid():
-            print(f"Form errors: {form.errors}")
-            print(f"Form data: {form.data}")
-
-        print(f"Team formset valid: {team_formset.is_valid()}")
-        if not team_formset.is_valid():
-            print(f"Team formset errors: {team_formset.errors}")
-
-        print(f"Equipment formset valid: {equipment_formset.is_valid()}")
-        if not equipment_formset.is_valid():
-            print(f"Equipment formset errors: {equipment_formset.errors}")
-
         if form.is_valid() and team_formset.is_valid() and equipment_formset.is_valid():
             return self.form_valid(form, team_formset, equipment_formset)
         else:

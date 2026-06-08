@@ -163,11 +163,31 @@ class SurgeryForm(forms.ModelForm):
                 )
             self.fields["theatre"].queryset = theatre_qs.distinct().order_by("name")
 
-        # Set surgery type queryset
+        # Set surgery type queryset with fee info in label for JS fee display
         if "surgery_type" in self.fields:
             self.fields["surgery_type"].queryset = SurgeryType.objects.all().order_by(
                 "name"
             )
+
+            def _surgery_type_label(obj):
+                risk_emojis = {"low": "🟢", "medium": "🟡", "high": "🟠", "critical": "🔴"}
+                emoji = risk_emojis.get(obj.risk_level, "")
+
+                def fmt_dur(d):
+                    total = int(d.total_seconds())
+                    h, rem = divmod(total, 3600)
+                    m, s = divmod(rem, 60)
+                    return f"{h:02d}:{m:02d}:{s:02d}"
+
+                return (
+                    f"{obj.name} | {emoji} {obj.get_risk_level_display()} | "
+                    f"Surgery: {fmt_dur(obj.average_duration)} | "
+                    f"Prep: {fmt_dur(obj.preparation_time)} | "
+                    f"Recovery: {fmt_dur(obj.recovery_time)} | "
+                    f"Fee (₦{obj.fee:,.2f})"
+                )
+
+            self.fields["surgery_type"].label_from_instance = _surgery_type_label
 
         # Set surgeon and anesthetist querysets
         # Include currently selected users to avoid validation errors
