@@ -331,10 +331,6 @@
                             </div>
                         </div>
                         
-                        <!-- NHIA Authorization Status -->
-                        {% if prescription.patient.patient_type == 'nhia' %}
-                            {% include 'includes/authorization_status.html' with object=prescription %}
-                        {% endif %}
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Prescription Type:</div>
                             <div class="col-md-8">
@@ -745,24 +741,6 @@
     </div>
 </div>
 
-<div class="card mb-3">
-    <div class="card-header">
-        <h5>Prescription Details</h5>
-    </div>
-    <div class="card-body">
-        <p><strong>Patient:</strong> {{ prescription.patient.get_full_name }}</p>
-        <p><strong>Doctor:</strong> {{ prescription.doctor.get_full_name }}</p>
-        <p><strong>Date:</strong> {{ prescription.prescription_date }}</p>
-        <p><strong>Status:</strong> {{ prescription.get_status_display }}</p>
-        <p><strong>Payment Status:</strong> {{ prescription.get_payment_status_display }}</p>
-        {% if prescription.invoice %}
-            <p><strong>Invoice:</strong> <a href="{% url 'billing:detail' prescription.invoice.id %}">#{{ prescription.invoice.invoice_number }}</a> ({{ prescription.invoice.get_status_display }})</p>
-        {% else %}
-            <p><strong>Invoice:</strong> <span class="text-muted">No invoice generated</span></p>
-        {% endif %}
-    </div>
-</div>
-
 
 {% if messages %}
     <div class="mt-3">
@@ -779,17 +757,18 @@
 {% block extra_js %}
 <script>
 function initializeSelect2() {
-    $('.select2').each(function() {
+    $('#addMedicationModal .select2').each(function() {
         var $this = $(this);
-        if (!$this.hasClass('select2-hidden-accessible')) {
-            $this.select2({
-                theme: 'bootstrap-5',
-                width: '100%',
-                dropdownParent: $('#addMedicationModal'),
-                allowClear: true,
-                placeholder: 'Select Medication'
-            });
+        if ($this.hasClass('select2-hidden-accessible')) {
+            $this.select2('destroy');
         }
+        $this.select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            dropdownParent: $('#addMedicationModal'),
+            allowClear: true,
+            placeholder: 'Select Medication'
+        });
     });
 }
 

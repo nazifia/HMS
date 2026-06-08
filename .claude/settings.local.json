@@ -121,7 +121,28 @@
       "Bash(venv/Scripts/python.exe -m pip install:*)",
       "Bash(venv/Scripts/python.exe -m ensurepip:*)",
       "Bash(where:*)",
-      "Bash(\"C:\\\\Users\\\\Dell\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\" -m pip install:*)"
+      "Bash(\"C:\\\\Users\\\\Dell\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\" -m pip install:*)",
+      "Read(//tmp/**)",
+      "PowerShell(cd \"C:\\\\Users\\\\Dell\\\\Desktop\\\\MY_PRODUCTS\\\\HMS\"; python -X dev manage.py check 2>\"$null\" | Out-String)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings python -c \"import django; django.setup\\(\\); from django.core.management import call_command; call_command\\('check'\\)\")",
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings python -c ' *)",
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings python -c \"import django; django.setup\\(\\); from django.conf import settings; print\\('DEBUG:', settings.DEBUG\\); print\\('loaders:', settings.TEMPLATES[0]['OPTIONS']['loaders']\\)\")",
+      "Bash(git push *)",
+      "Bash(grep -E \"^    \\\\\"[a-z_]+\\\\\": \\\\{$\" \"C:\\\\Users\\\\Dell\\\\Desktop\\\\MY_PRODUCTS\\\\HMS\\\\accounts\\\\permissions.py\")",
+      "Bash(grep -E \"^\\(admin|doctor|nurse|receptionist|pharmacist|lab_technician|accountant|health_record_officer|radiology_staff|desk_officer|cashier_accountant\\)$\")",
+      "PowerShell(\\(Get-Content \"C:\\\\Users\\\\Dell\\\\Desktop\\\\MY_PRODUCTS\\\\HMS\\\\accounts\\\\permissions.py\" | Measure-Object -Line\\).Lines)",
+      "PowerShell(cd \"C:\\\\Users\\\\Dell\\\\Desktop\\\\MY_PRODUCTS\\\\HMS\"; python manage.py check 2>$null; echo \"Exit: $LASTEXITCODE\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Dell\\\\Desktop\\\\MY_PRODUCTS\\\\HMS\" -Recurse -Directory -Filter accounts)",
+      "Bash(Select-Object -First 10)",
+      "Bash(Select-String -Path \"C:\\\\Users\\\\Dell\\\\Desktop\\\\MY_PRODUCTS\\\\HMS\\\\accounts\\\\urls.py\" -Pattern \"assign_role|grant_admin|manage_user|user_management|staff\")",
+      "Bash(Format-Table LineNumber, Line -AutoSize)",
+      "PowerShell(Set-Location \"C:\\\\Users\\\\Dell\\\\Desktop\\\\MY_PRODUCTS\\\\HMS\"; $env:PYTHONIOENCODING=\"utf-8\"; python manage.py check 2>$null; Write-Host \"Exit: $LASTEXITCODE\")",
+      "Skill(run)",
+      "Bash(Start-Process python *)",
+      "Bash(grep -v \"^--$\")",
+      "Bash(grep -v \"Warning\\\\|warn\\\\|^$\")",
+      "Bash(grep -v \"Warning\\\\|^$\")"
     ]
   }
 }
