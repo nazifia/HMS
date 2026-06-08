@@ -565,8 +565,8 @@ CACHES = {
 SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SESSION_CACHE_ALIAS = "default"
 SESSION_COOKIE_AGE = int(
-    os.environ.get("SESSION_COOKIE_AGE", "1200")
-)  # 20 minutes default
+    os.environ.get("SESSION_COOKIE_AGE", "3600")
+)  # 1 hour default
 SESSION_COOKIE_NAME = "hms_sessionid"
 SESSION_SAVE_EVERY_REQUEST = False
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Session expires when browser closes
@@ -574,11 +574,11 @@ SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access to session cookie
 
 # Patient-specific session settings
 PATIENT_SESSION_TIMEOUT = int(
-    os.environ.get("PATIENT_SESSION_TIMEOUT", "1200")
-)  # 20 minutes for patient portal
+    os.environ.get("PATIENT_SESSION_TIMEOUT", "3600")
+)  # 1 hour for patient portal
 STAFF_SESSION_TIMEOUT = int(
-    os.environ.get("STAFF_SESSION_TIMEOUT", "1200")
-)  # 20 minutes for staff
+    os.environ.get("STAFF_SESSION_TIMEOUT", "3600")
+)  # 1 hour for staff
 
 # Session security
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -586,8 +586,8 @@ SESSION_COOKIE_PATH = "/"
 
 # Custom session variables
 SESSION_TIMEOUT_WARNING = int(
-    os.environ.get("SESSION_TIMEOUT_WARNING", "300")
-)  # 5 minutes warning before timeout
+    os.environ.get("SESSION_TIMEOUT_WARNING", "600")
+)  # 10 minutes warning before timeout
 
 # Crispy Forms Configuration
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
