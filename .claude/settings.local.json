@@ -142,7 +142,8 @@
       "Bash(Start-Process python *)",
       "Bash(grep -v \"^--$\")",
       "Bash(grep -v \"Warning\\\\|warn\\\\|^$\")",
-      "Bash(grep -v \"Warning\\\\|^$\")"
+      "Bash(grep -v \"Warning\\\\|^$\")",
+      "Bash(npx playwright *)"
     ]
   }
 }

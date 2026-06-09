@@ -7,562 +7,598 @@
 
 {% block extra_css %}
 <style>
-    .stat-card {
-        border: none;
-        border-radius: 1rem;
-        transition: transform 0.2s, box-shadow 0.2s;
-        overflow: hidden;
+    :root {
+        --primary: #2563eb;
+        --primary-light: #eff6ff;
+        --success: #16a34a;
+        --success-light: #f0fdf4;
+        --warning: #d97706;
+        --warning-light: #fffbeb;
+        --danger: #dc2626;
+        --danger-light: #fef2f2;
+        --info: #0891b2;
+        --info-light: #ecfeff;
+        --purple: #7c3aed;
+        --purple-light: #f5f3ff;
+        --gray-50: #f8fafc;
+        --gray-100: #f1f5f9;
+        --gray-200: #e2e8f0;
+        --gray-500: #64748b;
+        --gray-700: #334155;
+        --gray-900: #0f172a;
+        --radius: 12px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+        --shadow: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
+        --shadow-md: 0 10px 15px -3px rgba(0,0,0,0.07), 0 4px 6px -2px rgba(0,0,0,0.04);
     }
-    .stat-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+
+    /* ── Page Layout ── */
+    .dash-page { background: var(--gray-50); min-height: 100vh; }
+
+    /* ── Welcome Bar ── */
+    .welcome-bar {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+        border-radius: var(--radius);
+        padding: 1.5rem 2rem;
+        color: #fff;
+        margin-bottom: 1.5rem;
     }
-    .stat-card .card-body {
-        padding: 1.25rem;
+    .welcome-bar .greeting { font-size: 0.85rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; }
+    .welcome-bar .name { font-size: 1.5rem; font-weight: 700; }
+    .welcome-bar .date-badge {
+        background: rgba(255,255,255,0.15);
+        border: 1px solid rgba(255,255,255,0.25);
+        border-radius: 8px;
+        padding: 0.4rem 0.9rem;
+        font-size: 0.85rem;
     }
-    .stat-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: 0.75rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
+    .welcome-bar .btn-sys {
+        background: rgba(255,255,255,0.15);
+        border: 1px solid rgba(255,255,255,0.35);
+        color: #fff;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        padding: 0.45rem 1rem;
+        transition: background 0.2s;
     }
-    .stat-value {
-        font-size: 1.75rem;
-        font-weight: 700;
-        line-height: 1.2;
+    .welcome-bar .btn-sys:hover { background: rgba(255,255,255,0.28); color: #fff; }
+
+    /* ── KPI Cards ── */
+    .kpi-card {
+        background: #fff;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+        padding: 1.25rem 1.5rem;
+        border: 1px solid var(--gray-200);
+        transition: transform 0.18s, box-shadow 0.18s;
+        height: 100%;
     }
-    .stat-label {
-        font-size: 0.8rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        opacity: 0.85;
+    .kpi-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+    .kpi-icon {
+        width: 48px; height: 48px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.2rem; flex-shrink: 0;
     }
-    .section-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #344767;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
+    .kpi-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); }
+    .kpi-value { font-size: 1.9rem; font-weight: 800; color: var(--gray-900); line-height: 1.1; }
+    .kpi-sub { font-size: 0.78rem; color: var(--gray-500); margin-top: 0.25rem; }
+
+    /* Revenue card variant */
+    .rev-card {
+        border-radius: var(--radius);
+        padding: 1.25rem 1.5rem;
+        color: #fff;
+        height: 100%;
+        transition: transform 0.18s, box-shadow 0.18s;
+    }
+    .rev-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+    .rev-card .rev-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.85; }
+    .rev-card .rev-value { font-size: 1.5rem; font-weight: 800; }
+    .rev-card .rev-icon { font-size: 2rem; opacity: 0.25; }
+
+    /* ── Section Header ── */
+    .section-hdr {
+        font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.8px; color: var(--gray-500);
+        margin-bottom: 0.75rem; padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--gray-200);
+        display: flex; align-items: center; gap: 0.5rem;
+    }
+    .section-hdr i { color: var(--primary); }
+
+    /* ── Panel Cards ── */
+    .panel {
+        background: #fff;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--gray-200);
+        display: flex; flex-direction: column;
+    }
+    .panel-header {
+        padding: 0.875rem 1.25rem;
+        border-bottom: 1px solid var(--gray-100);
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-header .panel-title { font-size: 0.9rem; font-weight: 700; color: var(--gray-700); }
+    .panel-body { padding: 0; flex: 1; }
+    .panel-empty { padding: 2rem; text-align: center; color: var(--gray-500); font-size: 0.85rem; }
+    .panel-empty i { font-size: 1.75rem; display: block; margin-bottom: 0.5rem; opacity: 0.4; }
+
+    /* ── List Items ── */
+    .list-row {
+        padding: 0.75rem 1.25rem;
+        border-bottom: 1px solid var(--gray-100);
+        display: flex; align-items: flex-start; justify-content: space-between;
         gap: 0.5rem;
+        transition: background 0.15s;
     }
-    .section-title i {
-        color: #0d6efd;
+    .list-row:last-child { border-bottom: none; }
+    .list-row:hover { background: var(--gray-50); }
+    .list-name { font-size: 0.875rem; font-weight: 600; color: var(--gray-900); }
+    .list-meta { font-size: 0.775rem; color: var(--gray-500); }
+
+    /* ── Status Badges ── */
+    .badge-status {
+        display: inline-flex; align-items: center;
+        padding: 0.25rem 0.6rem;
+        border-radius: 20px;
+        font-size: 0.7rem; font-weight: 600;
+        text-transform: capitalize;
     }
-    .list-card {
-        border: none;
-        border-radius: 1rem;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    .s-scheduled { background: #dbeafe; color: #1d4ed8; }
+    .s-completed { background: #dcfce7; color: #15803d; }
+    .s-cancelled { background: #fee2e2; color: #b91c1c; }
+    .s-pending   { background: #fef3c7; color: #b45309; }
+    .s-processing { background: #e0e7ff; color: #4338ca; }
+    .s-paid      { background: #dcfce7; color: #15803d; }
+    .s-unpaid, .s-overdue { background: #fee2e2; color: #b91c1c; }
+    .s-default   { background: var(--gray-100); color: var(--gray-700); }
+
+    /* ── Quick Actions ── */
+    .qa-btn {
+        background: #fff;
+        border: 1.5px solid var(--gray-200);
+        border-radius: var(--radius);
+        padding: 1rem 1.25rem;
+        display: flex; align-items: center; gap: 0.75rem;
+        font-weight: 600; font-size: 0.875rem;
+        color: var(--gray-700);
+        transition: all 0.2s; text-decoration: none;
+        width: 100%;
     }
-    .list-item {
-        padding: 0.875rem 1rem;
-        border-bottom: 1px solid #f0f0f0;
-        transition: background-color 0.2s;
-    }
-    .list-item:last-child {
-        border-bottom: none;
-    }
-    .list-item:hover {
-        background-color: #fa;
-    }
-    .list-item .badge {
-        padding: 0.4rem 0f8f9.75rem;
-        font-weight: 500;
-    }
-    .quick-action-btn {
-        border-radius: 0.75rem;
-        padding: 1rem;
-        font-weight: 600;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-    }
-    .quick-action-btn:hover {
+    .qa-btn:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: var(--primary-light);
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: var(--shadow);
     }
-    .quick-action-btn i {
-        font-size: 1.1rem;
+    .qa-btn .qa-icon {
+        width: 36px; height: 36px; border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; flex-shrink: 0;
     }
-    .module-stat-card {
-        border-radius: 0.75rem;
-        padding: 1rem;
+
+    /* ── Appt Stats Mini ── */
+    .appt-mini { display: flex; gap: 0.5rem; flex-wrap: wrap; padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--gray-100); }
+    .appt-mini-item { flex: 1; min-width: 60px; text-align: center; background: var(--gray-50); border-radius: 8px; padding: 0.5rem; }
+    .appt-mini-val { font-size: 1.1rem; font-weight: 800; color: var(--gray-900); }
+    .appt-mini-lbl { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; color: var(--gray-500); letter-spacing: 0.3px; }
+
+    /* ── Dept Records Grid ── */
+    .dept-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.75rem; }
+    .dept-card {
+        background: #fff;
+        border: 1px solid var(--gray-200);
+        border-radius: 10px;
+        padding: 1rem 0.75rem;
         text-align: center;
         transition: all 0.2s;
     }
-    .module-stat-card:hover {
-        transform: scale(1.02);
+    .dept-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: transparent; }
+    .dept-icon {
+        width: 40px; height: 40px; border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 1rem; margin-bottom: 0.5rem;
     }
-    .module-stat-card .module-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-        margin-bottom: 0.5rem;
-    }
-    .module-stat-card .module-count {
-        font-size: 1.5rem;
-        font-weight: 700;
-        line-height: 1;
-    }
-    .module-stat-card .module-label {
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-    }
-    .bg-gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-    .bg-gradient-success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
-    .bg-gradient-info { background: linear-gradient(135deg, #36d1dc 0%, #5b86e5 100%); }
-    .bg-gradient-warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-    .bg-gradient-purple { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
-    .bg-gradient-teal { background: linear-gradient(135deg, #1cb5e0 0%, #000851 100%); }
-    .bg-gradient-orange { background: linear-gradient(135deg, #ff9966 0%, #ff5e62 100%); }
-    .bg-gradient-pink { background: linear-gradient(135deg, #ec008c 0%, #fc6767 100%); }
-    .bg-gradient-blue { background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%); }
-    .text-gradient { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .dept-count { font-size: 1.4rem; font-weight: 800; color: var(--gray-900); line-height: 1; }
+    .dept-name { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: var(--gray-500); margin-top: 0.2rem; letter-spacing: 0.3px; }
+
+    /* ── Wallet row ── */
+    .wallet-row { display: flex; gap: 0.5rem; flex-wrap: wrap; padding: 0.75rem 1.25rem; }
+    .wallet-item { flex: 1; min-width: 80px; }
+    .wallet-label { font-size: 0.7rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase; }
+    .wallet-val { font-size: 1rem; font-weight: 800; }
+
+    /* Stock alert */
+    .stock-badge { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; border-radius: 6px; padding: 0.2rem 0.5rem; font-size: 0.7rem; font-weight: 700; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="dash-page container-fluid py-3 px-3 px-md-4">
+
+    <!-- Welcome Bar -->
+    <div class="welcome-bar d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
         <div>
-            <h4 class="mb-1">
-                <i class="fas fa-th-large text-primary me-2"></i>Dashboard
-            </h4>
-            <p class="text-muted mb-0">Welcome back, {{ user.get_full_name|default:user.username }}!</p>
+            <div class="greeting">Good day</div>
+            <div class="name">{{ user.get_full_name|default:user.username }}</div>
         </div>
-        <a href="{% url 'dashboard:system_overview' %}" class="btn btn-outline-primary">
-            <i class="fas fa-cogs me-2"></i>System Overview
-        </a>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="date-badge">
+                <i class="fas fa-calendar-alt me-1"></i>
+                <span id="live-date">Loading...</span>
+            </span>
+            <a href="{% url 'dashboard:system_overview' %}" class="btn-sys">
+                <i class="fas fa-cogs me-1"></i>System Overview
+            </a>
+        </div>
     </div>
 
-    <!-- Core Statistics Row -->
-    <div class="row mb-4">
-        <div class="col-12 mb-3">
-            <h6 class="section-title">
-                <i class="fas fa-chart-line"></i>Overview Statistics
-            </h6>
+    <!-- Revenue Strip -->
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="section-hdr"><i class="fas fa-chart-line"></i>Revenue</div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card stat-card shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="stat-label text-primary">Total Patients</div>
-                            <div class="stat-value text-gray-800">{{ total_patients }}</div>
-                        </div>
-                        <div class="stat-icon bg-primary text-white">
-                            <i class="fas fa-users"></i>
-                        </div>
+        <div class="col-md-4">
+            <div class="rev-card" style="background: linear-gradient(135deg, #1e3a5f, #2563eb);">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="rev-label">Today</div>
+                        <div class="rev-value">{{ today_revenue|currency }}</div>
                     </div>
+                    <i class="fas fa-coins rev-icon"></i>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card stat-card shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="stat-label text-success">Appointments</div>
-                            <div class="stat-value text-gray-800">{{ total_appointments }}</div>
-                        </div>
-                        <div class="stat-icon bg-success text-white">
-                            <i class="fas fa-calendar-check"></i>
-                        </div>
+        <div class="col-md-4">
+            <div class="rev-card" style="background: linear-gradient(135deg, #065f46, #10b981);">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="rev-label">This Week</div>
+                        <div class="rev-value">{{ this_week_revenue|currency }}</div>
                     </div>
+                    <i class="fas fa-chart-bar rev-icon"></i>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card stat-card shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="stat-label text-info">Prescriptions</div>
-                            <div class="stat-value text-gray-800">{{ total_prescriptions }}</div>
-                        </div>
-                        <div class="stat-icon bg-info text-white">
-                            <i class="fas fa-pills"></i>
-                        </div>
+        <div class="col-md-4">
+            <div class="rev-card" style="background: linear-gradient(135deg, #7c2d12, #f97316);">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="rev-label">This Month</div>
+                        <div class="rev-value">{{ this_month_revenue|currency }}</div>
                     </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card stat-card shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="stat-label text-warning">Lab Tests</div>
-                            <div class="stat-value text-gray-800">{{ total_tests }}</div>
-                        </div>
-                        <div class="stat-icon bg-warning text-white">
-                            <i class="fas fa-flask"></i>
-                        </div>
-                    </div>
+                    <i class="fas fa-dollar-sign rev-icon"></i>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Wallet Statistics -->
-    <div class="row mb-4">
-        <div class="col-12 mb-3">
-            <h6 class="section-title">
-                <i class="fas fa-wallet"></i>Wallet Statistics
-            </h6>
+    <!-- KPI Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="section-hdr"><i class="fas fa-tachometer-alt"></i>Key Metrics</div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card stat-card shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="stat-label text-success">Total Balance</div>
-                            <div class="stat-value text-gray-800">{{ total_wallet_balance|currency }}</div>
-                        </div>
-                        <div class="stat-icon bg-gradient-success text-white">
-                            <i class="fas fa-wallet"></i>
-                        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon" style="background:var(--primary-light);color:var(--primary);">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Active Patients</div>
+                        <div class="kpi-value">{{ total_patients }}</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card stat-card shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="stat-label text-primary">Positive Wallets</div>
-                            <div class="stat-value text-gray-800">{{ positive_wallets }}</div>
-                        </div>
-                        <div class="stat-icon bg-gradient-primary text-white">
-                            <i class="fas fa-arrow-up"></i>
-                        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon" style="background:var(--success-light);color:var(--success);">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Today's Appointments</div>
+                        <div class="kpi-value">{{ appointment_stats.today }}</div>
+                        <div class="kpi-sub">{{ appointment_stats.scheduled }} scheduled · {{ appointment_stats.completed }} done</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card stat-card shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="stat-label" style="color: #6c757d;">Zero Balance</div>
-                            <div class="stat-value text-gray-800">{{ zero_wallets }}</div>
-                        </div>
-                        <div class="stat-icon bg-light text-dark">
-                            <i class="fas fa-minus"></i>
-                        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon" style="background:var(--warning-light);color:var(--warning);">
+                        <i class="fas fa-flask"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Total Lab Tests</div>
+                        <div class="kpi-value">{{ total_tests }}</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card stat-card shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="stat-label text-danger">Negative Wallets</div>
-                            <div class="stat-value text-gray-800">{{ negative_wallets }}</div>
-                        </div>
-                        <div class="stat-icon bg-gradient-warning text-white">
-                            <i class="fas fa-arrow-down"></i>
-                        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon" style="background:var(--purple-light);color:var(--purple);">
+                        <i class="fas fa-pills"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Prescriptions</div>
+                        <div class="kpi-value">{{ total_prescriptions }}</div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Module Statistics -->
-    <div class="row mb-4">
-        <div class="col-12 mb-3">
-            <h6 class="section-title">
-                <i class="fas fa-stethoscope"></i>Department Records
-            </h6>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6 mb-3">
-            <div class="card module-stat-card shadow-sm h-100">
-                <div class="module-icon bg-gradient-blue text-white">
-                    <i class="fas fa-eye"></i>
-                </div>
-                <div class="module-count text-gray-800">{{ total_ophthalmic_records }}</div>
-                <div class="module-label text-muted">Ophthalmic</div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6 mb-3">
-            <div class="card module-stat-card shadow-sm h-100">
-                <div class="module-icon bg-gradient-purple text-white">
-                    <i class="fas fa-head-side-cough"></i>
-                </div>
-                <div class="module-count text-gray-800">{{ total_ent_records }}</div>
-                <div class="module-label text-muted">ENT</div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6 mb-3">
-            <div class="card module-stat-card shadow-sm h-100">
-                <div class="module-icon bg-gradient-pink text-white">
-                    <i class="fas fa-dna"></i>
-                </div>
-                <div class="module-count text-gray-800">{{ total_oncology_records }}</div>
-                <div class="module-label text-muted">Oncology</div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6 mb-3">
-            <div class="card module-stat-card shadow-sm h-100">
-                <div class="module-icon bg-gradient-info text-white">
-                    <i class="fas fa-baby"></i>
-                </div>
-                <div class="module-count text-gray-800">{{ total_scbu_records }}</div>
-                <div class="module-label text-muted">SCBU</div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6 mb-3">
-            <div class="card module-stat-card shadow-sm h-100">
-                <div class="module-icon bg-gradient-teal text-white">
-                    <i class="fas fa-female"></i>
-                </div>
-                <div class="module-count text-gray-800">{{ total_anc_records }}</div>
-                <div class="module-label text-muted">ANC</div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6 mb-3">
-            <div class="card module-stat-card shadow-sm h-100">
-                <div class="module-icon bg-gradient-orange text-white">
-                    <i class="fas fa-baby-carriage"></i>
-                </div>
-                <div class="module-count text-gray-800">{{ total_labor_records }}</div>
-                <div class="module-label text-muted">Labor</div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6 mb-3">
-            <div class="card module-stat-card shadow-sm h-100">
-                <div class="module-icon bg-gradient-success text-white">
-                    <i class="fas fa-heartbeat"></i>
-                </div>
-                <div class="module-count text-gray-800">{{ total_icu_records }}</div>
-                <div class="module-label text-muted">ICU</div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6 mb-3">
-            <div class="card module-stat-card shadow-sm h-100">
-                <div class="module-icon bg-gradient-primary text-white">
-                    <i class="fas fa-users"></i>
-                </div>
-                <div class="module-count text-gray-800">{{ total_family_planning_records }}</div>
-                <div class="module-label text-muted">Family Planning</div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6 mb-3">
-            <div class="card module-stat-card shadow-sm h-100">
-                <div class="module-icon bg-gradient-warning text-white">
-                    <i class="fas fa-ambulance"></i>
-                </div>
-                <div class="module-count text-gray-800">{{ total_gynae_emergency_records }}</div>
-                <div class="module-label text-muted">Gynae Emergency</div>
             </div>
         </div>
     </div>
 
     <!-- Quick Actions -->
-    <div class="row mb-4">
-        <div class="col-12 mb-3">
-            <h6 class="section-title">
-                <i class="fas fa-bolt"></i>Quick Actions
-            </h6>
+    {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer,doctor,nurse,accountant" %}
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="section-hdr"><i class="fas fa-bolt"></i>Quick Actions</div>
         </div>
         {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer" %}
-        <div class="col-md-3 mb-3">
-            <a href="{% url 'patients:register' %}" class="btn btn-primary quick-action-btn shadow-sm">
-                <i class="fas fa-user-plus"></i>Register Patient
+        <div class="col-md-3 col-sm-6">
+            <a href="{% url 'patients:register' %}" class="qa-btn">
+                <div class="qa-icon" style="background:var(--primary-light);color:var(--primary);"><i class="fas fa-user-plus"></i></div>
+                Register Patient
             </a>
         </div>
         {% endif %}
-        
         {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer,doctor" %}
-        <div class="col-md-3 mb-3">
-            <a href="{% url 'appointments:create' %}" class="btn btn-info quick-action-btn shadow-sm">
-                <i class="fas fa-calendar-plus"></i>Book Appointment
+        <div class="col-md-3 col-sm-6">
+            <a href="{% url 'appointments:create' %}" class="qa-btn">
+                <div class="qa-icon" style="background:var(--info-light);color:var(--info);"><i class="fas fa-calendar-plus"></i></div>
+                Book Appointment
             </a>
         </div>
         {% endif %}
-        
         {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse" %}
-        <div class="col-md-3 mb-3">
-            <a href="{% url 'inpatient:create_admission' %}" class="btn btn-warning quick-action-btn shadow-sm text-dark">
-                <i class="fas fa-bed"></i>Admit Patient
+        <div class="col-md-3 col-sm-6">
+            <a href="{% url 'inpatient:create_admission' %}" class="qa-btn">
+                <div class="qa-icon" style="background:var(--warning-light);color:var(--warning);"><i class="fas fa-bed"></i></div>
+                Admit Patient
             </a>
         </div>
         {% endif %}
-        
         {% if user.is_superuser or user|has_any_role:"admin,accountant" %}
-        <div class="col-md-3 mb-3">
-            <a href="{% url 'billing:create' %}" class="btn btn-success quick-action-btn shadow-sm">
-                <i class="fas fa-file-invoice"></i>Create Invoice
+        <div class="col-md-3 col-sm-6">
+            <a href="{% url 'billing:create' %}" class="qa-btn">
+                <div class="qa-icon" style="background:var(--success-light);color:var(--success);"><i class="fas fa-file-invoice-dollar"></i></div>
+                Create Invoice
             </a>
         </div>
         {% endif %}
     </div>
+    {% endif %}
 
     <!-- Activity Section -->
-    <div class="row">
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="section-hdr"><i class="fas fa-stream"></i>Activity</div>
+        </div>
+
         <!-- Today's Appointments -->
-        <div class="col-lg-4 mb-4">
-            <div class="card list-card shadow-sm">
-                <div class="card-header bg-white py-3">
-                    <h6 class="mb-0 fw-bold">
-                        <i class="fas fa-calendar-day text-primary me-2"></i>Today's Appointments
-                    </h6>
+        <div class="col-lg-4">
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title"><i class="fas fa-calendar-day text-primary me-2"></i>Today's Appointments</span>
+                    <span class="badge-status s-scheduled">{{ appointment_stats.today }} today</span>
                 </div>
-                <div class="card-body p-0">
+                <!-- Mini stats -->
+                <div class="appt-mini">
+                    <div class="appt-mini-item">
+                        <div class="appt-mini-val" style="color:var(--primary);">{{ appointment_stats.scheduled }}</div>
+                        <div class="appt-mini-lbl">Scheduled</div>
+                    </div>
+                    <div class="appt-mini-item">
+                        <div class="appt-mini-val" style="color:var(--success);">{{ appointment_stats.completed }}</div>
+                        <div class="appt-mini-lbl">Completed</div>
+                    </div>
+                    <div class="appt-mini-item">
+                        <div class="appt-mini-val" style="color:var(--danger);">{{ appointment_stats.cancelled }}</div>
+                        <div class="appt-mini-lbl">Cancelled</div>
+                    </div>
+                </div>
+                <div class="panel-body">
                     {% if today_appointments %}
-                        {% for appointment in today_appointments %}
-                            <div class="list-item">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <div class="fw-semibold">{{ appointment.patient.get_full_name }}</div>
-                                        <small class="text-muted">
-                                            <i class="fas fa-user-md me-1"></i>Dr. {{ appointment.doctor.get_full_name }}
-                                        </small>
-                                        <br>
-                                        <small class="text-muted">
-                                            <i class="far fa-clock me-1"></i>{{ appointment.appointment_time }}
-                                        </small>
-                                    </div>
-                                    <span class="badge bg-{{ appointment.status|default:'secondary' }}">{{ appointment.status }}</span>
+                        {% for appt in today_appointments %}
+                        <div class="list-row">
+                            <div>
+                                <div class="list-name">{{ appt.patient.get_full_name }}</div>
+                                <div class="list-meta">
+                                    <i class="fas fa-user-md me-1"></i>Dr. {{ appt.doctor.get_full_name }}
+                                    &nbsp;·&nbsp;<i class="far fa-clock me-1"></i>{{ appt.appointment_time }}
                                 </div>
                             </div>
+                            <span class="badge-status s-{{ appt.status|default:'default' }}">{{ appt.status }}</span>
+                        </div>
                         {% endfor %}
                     {% else %}
-                        <div class="p-4 text-center text-muted">
-                            <i class="fas fa-calendar-times fa-2x mb-2"></i>
-                            <p class="mb-0">No appointments today</p>
+                        <div class="panel-empty">
+                            <i class="fas fa-calendar-times"></i>No appointments today
                         </div>
                     {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- Recent Wallet Transactions -->
-        <div class="col-lg-4 mb-4">
-            <div class="card list-card shadow-sm">
-                <div class="card-header bg-white py-3">
-                    <h6 class="mb-0 fw-bold">
-                        <i class="fas fa-wallet text-success me-2"></i>Recent Transactions
-                    </h6>
+        <!-- Pending Prescriptions + Low Stock -->
+        <div class="col-lg-4">
+            <!-- Pending Prescriptions -->
+            <div class="panel mb-3">
+                <div class="panel-header">
+                    <span class="panel-title"><i class="fas fa-prescription-bottle-alt text-purple me-2" style="color:var(--purple);"></i>Pending Prescriptions</span>
                 </div>
-                <div class="card-body p-0">
-                    {% if recent_wallet_transactions %}
-                        {% for transaction in recent_wallet_transactions %}
-                            <div class="list-item">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <div class="fw-semibold">{{ transaction.get_transaction_type_display }}</div>
-                                        {% if transaction.patient %}
-                                            <small class="text-muted">{{ transaction.patient.get_full_name }}</small>
-                                        {% endif %}
-                                        <br>
-                                        <small class="text-muted">{{ transaction.created_at|date:'M d, H:i' }}</small>
-                                    </div>
-                                    <div class="text-end">
-                                        {% if transaction.transaction_type in "credit deposit" %}
-                                            <span class="text-success fw-bold">+{{ transaction.amount|currency }}</span>
-                                        {% else %}
-                                            <span class="text-danger fw-bold">-{{ transaction.amount|currency }}</span>
-                                        {% endif %}
-                                        <br>
-                                        <small class="text-muted">Bal: {{ transaction.balance_after|currency }}</small>
-                                    </div>
-                                </div>
+                <div class="panel-body">
+                    {% if pending_prescriptions %}
+                        {% for rx in pending_prescriptions %}
+                        <div class="list-row">
+                            <div>
+                                <div class="list-name">{{ rx.patient.get_full_name }}</div>
+                                <div class="list-meta">{{ rx.prescription_date|date:"M d, Y" }}</div>
                             </div>
+                            <span class="badge-status s-{{ rx.status }}">{{ rx.status }}</span>
+                        </div>
                         {% endfor %}
                     {% else %}
-                        <div class="p-4 text-center text-muted">
-                            <i class="fas fa-receipt fa-2x mb-2"></i>
-                            <p class="mb-0">No recent transactions</p>
+                        <div class="panel-empty">
+                            <i class="fas fa-check-circle"></i>No pending prescriptions
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            <!-- Low Stock -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title"><i class="fas fa-exclamation-triangle text-warning me-2"></i>Low Stock Alert</span>
+                </div>
+                <div class="panel-body">
+                    {% if low_stock_medications %}
+                        {% for item in low_stock_medications %}
+                        <div class="list-row">
+                            <div>
+                                <div class="list-name">{{ item.medication.name }}</div>
+                                <div class="list-meta">{{ item.active_store.name }}</div>
+                            </div>
+                            <span class="stock-badge">{{ item.stock_quantity }} left</span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="panel-empty">
+                            <i class="fas fa-boxes"></i>All stock levels OK
                         </div>
                     {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- Revenue Overview -->
-        <div class="col-lg-4 mb-4">
-            <div class="card list-card shadow-sm">
-                <div class="card-header bg-white py-3">
-                    <h6 class="mb-0 fw-bold">
-                        <i class="fas fa-chart-bar text-warning me-2"></i>Revenue Overview
-                    </h6>
+        <!-- Recent Invoices + Wallet Summary -->
+        <div class="col-lg-4">
+            <!-- Recent Invoices -->
+            <div class="panel mb-3">
+                <div class="panel-header">
+                    <span class="panel-title"><i class="fas fa-file-invoice-dollar text-success me-2"></i>Recent Invoices</span>
                 </div>
-                <div class="card-body">
-                    <canvas id="revenueChart"></canvas>
+                <div class="panel-body">
+                    {% if recent_invoices %}
+                        {% for inv in recent_invoices %}
+                        <div class="list-row">
+                            <div>
+                                <div class="list-name">{{ inv.patient.get_full_name }}</div>
+                                <div class="list-meta">{{ inv.created_at|date:"M d, H:i" }}</div>
+                            </div>
+                            <div class="text-end">
+                                <div style="font-size:0.875rem;font-weight:700;color:var(--gray-900);">{{ inv.total_amount|currency }}</div>
+                                <span class="badge-status s-{{ inv.status }}">{{ inv.status }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="panel-empty">
+                            <i class="fas fa-file-alt"></i>No recent invoices
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            <!-- Wallet Summary -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title"><i class="fas fa-wallet text-success me-2"></i>Wallet Summary</span>
+                </div>
+                <div class="wallet-row">
+                    <div class="wallet-item">
+                        <div class="wallet-label">Total Balance</div>
+                        <div class="wallet-val" style="color:var(--success);">{{ total_wallet_balance|currency }}</div>
+                    </div>
+                </div>
+                <div class="wallet-row" style="border-top:1px solid var(--gray-100);">
+                    <div class="wallet-item text-center" style="background:var(--success-light);border-radius:8px;padding:0.5rem;">
+                        <div style="font-size:1.1rem;font-weight:800;color:var(--success);">{{ positive_wallets }}</div>
+                        <div style="font-size:0.65rem;color:var(--success);font-weight:600;text-transform:uppercase;">Positive</div>
+                    </div>
+                    <div class="wallet-item text-center" style="background:var(--gray-100);border-radius:8px;padding:0.5rem;">
+                        <div style="font-size:1.1rem;font-weight:800;color:var(--gray-700);">{{ zero_wallets }}</div>
+                        <div style="font-size:0.65rem;color:var(--gray-500);font-weight:600;text-transform:uppercase;">Zero</div>
+                    </div>
+                    <div class="wallet-item text-center" style="background:var(--danger-light);border-radius:8px;padding:0.5rem;">
+                        <div style="font-size:1.1rem;font-weight:800;color:var(--danger);">{{ negative_wallets }}</div>
+                        <div style="font-size:0.65rem;color:var(--danger);font-weight:600;text-transform:uppercase;">Negative</div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
+    <!-- Department Records -->
+    <div class="mb-4">
+        <div class="section-hdr"><i class="fas fa-stethoscope"></i>Department Records</div>
+        <div class="dept-grid">
+            <div class="dept-card">
+                <div class="dept-icon" style="background:#dbeafe;color:#1d4ed8;"><i class="fas fa-eye"></i></div>
+                <div class="dept-count">{{ total_ophthalmic_records }}</div>
+                <div class="dept-name">Ophthalmic</div>
+            </div>
+            <div class="dept-card">
+                <div class="dept-icon" style="background:#f5f3ff;color:#7c3aed;"><i class="fas fa-head-side-cough"></i></div>
+                <div class="dept-count">{{ total_ent_records }}</div>
+                <div class="dept-name">ENT</div>
+            </div>
+            <div class="dept-card">
+                <div class="dept-icon" style="background:#fce7f3;color:#be185d;"><i class="fas fa-dna"></i></div>
+                <div class="dept-count">{{ total_oncology_records }}</div>
+                <div class="dept-name">Oncology</div>
+            </div>
+            <div class="dept-card">
+                <div class="dept-icon" style="background:#ecfeff;color:#0e7490;"><i class="fas fa-baby"></i></div>
+                <div class="dept-count">{{ total_scbu_records }}</div>
+                <div class="dept-name">SCBU</div>
+            </div>
+            <div class="dept-card">
+                <div class="dept-icon" style="background:#f0fdf4;color:#15803d;"><i class="fas fa-female"></i></div>
+                <div class="dept-count">{{ total_anc_records }}</div>
+                <div class="dept-name">ANC</div>
+            </div>
+            <div class="dept-card">
+                <div class="dept-icon" style="background:#fff7ed;color:#c2410c;"><i class="fas fa-baby-carriage"></i></div>
+                <div class="dept-count">{{ total_labor_records }}</div>
+                <div class="dept-name">Labor</div>
+            </div>
+            <div class="dept-card">
+                <div class="dept-icon" style="background:#fef2f2;color:#dc2626;"><i class="fas fa-heartbeat"></i></div>
+                <div class="dept-count">{{ total_icu_records }}</div>
+                <div class="dept-name">ICU</div>
+            </div>
+            <div class="dept-card">
+                <div class="dept-icon" style="background:#eff6ff;color:#2563eb;"><i class="fas fa-users"></i></div>
+                <div class="dept-count">{{ total_family_planning_records }}</div>
+                <div class="dept-name">Family Planning</div>
+            </div>
+            <div class="dept-card">
+                <div class="dept-icon" style="background:#fffbeb;color:#d97706;"><i class="fas fa-ambulance"></i></div>
+                <div class="dept-count">{{ total_gynae_emergency_records }}</div>
+                <div class="dept-name">Gynae Emerg.</div>
+            </div>
+        </div>
+    </div>
+
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const ctx = document.getElementById('revenueChart').getContext('2d');
-    const revenueChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Today', 'This Week', 'This Month'],
-            datasets: [{
-                label: 'Revenue',
-                data: [{{ today_revenue }}, {{ this_week_revenue }}, {{ this_month_revenue }}],
-                backgroundColor: [
-                    'rgba(102, 126, 234, 0.8)',
-                    'rgba(56, 239, 125, 0.8)',
-                    'rgba(255, 159, 67, 0.8)'
-                ],
-                borderColor: [
-                    'rgba(102, 126, 234, 1)',
-                    'rgba(56, 239, 125, 1)',
-                    'rgba(255, 159, 67, 1)'
-                ],
-                borderWidth: 1,
-                borderRadius: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false
-                    }
-                }
-            }
-        }
-    });
+    // Live date/time
+    function updateDate() {
+        const el = document.getElementById('live-date');
+        if (!el) return;
+        const now = new Date();
+        el.textContent = now.toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
+    }
+    updateDate();
 </script>
 {% endblock %}
