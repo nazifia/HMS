@@ -5094,8 +5094,10 @@ def prescription_detail(request, prescription_id):
     try:
         from pharmacy_billing.models import Invoice as PharmacyInvoice
 
-        pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
-    except PharmacyInvoice.DoesNotExist:
+        pharmacy_invoice = PharmacyInvoice.objects.filter(
+            prescription=prescription
+        ).order_by("-created_at").first()
+    except Exception:
         pharmacy_invoice = None
 
     # Get active or paid cart for quick access
@@ -6017,10 +6019,12 @@ def prescription_payment(request, prescription_id):
     prescription = get_object_or_404(Prescription, id=prescription_id)
 
     # Get or create pharmacy invoice
-    pharmacy_invoice = None
-    try:
-        pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
-    except PharmacyInvoice.DoesNotExist:
+    pharmacy_invoice = (
+        PharmacyInvoice.objects.filter(prescription=prescription)
+        .order_by("-created_at")
+        .first()
+    )
+    if pharmacy_invoice is None:
         # Create invoice using the utility function
         # Use patient payable amount (10% for NHIA patients, 100% for others)
         patient_payable_amount = prescription.get_patient_payable_amount()
@@ -6417,10 +6421,12 @@ def billing_office_medication_payment(request, prescription_id):
     prescription = get_object_or_404(Prescription, id=prescription_id)
 
     # Get or create pharmacy invoice
-    pharmacy_invoice = None
-    try:
-        pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
-    except PharmacyInvoice.DoesNotExist:
+    pharmacy_invoice = (
+        PharmacyInvoice.objects.filter(prescription=prescription)
+        .order_by("-created_at")
+        .first()
+    )
+    if pharmacy_invoice is None:
         # Create invoice using the utility function
         # Use patient payable amount (10% for NHIA patients, 100% for others)
         patient_payable_amount = prescription.get_patient_payable_amount()
