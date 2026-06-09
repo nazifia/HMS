@@ -32,27 +32,17 @@
                 <p><strong>Gender:</strong> {{ patient.get_gender_display }}</p>
                 <p><strong>Phone:</strong> {{ patient.phone_number }}</p>
                 <p><strong>Email:</strong> {{ patient.email|default:"N/A" }}</p>
-                <p><strong>Address:</strong> {{ patient.address }}, {{ patient.city }}, {{ patient.state }} {{ patient.postal_code }}, {{ patient.country }}</p>
+                <p><strong>Address:</strong> {{ patient.address }}{% if patient.city %}, {{ patient.city }}{% endif %}{% if patient.state %}, {{ patient.state }}{% endif %}{% if patient.postal_code %} {{ patient.postal_code }}{% endif %}{% if patient.country %}, {{ patient.country }}{% endif %}</p>
                 <p><strong>Registration Date:</strong> {{ patient.registration_date|date:"Y-m-d H:i" }}</p>
                 <p><strong>Status:</strong> {% if patient.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span> <span class="text-danger ms-2">This patient is currently inactive. To reactivate, use the button below.</span>{% endif %}</p>
 
-                <!-- TEMPORARY TEST MESSAGE FOR DEBUGGING -->
-                <div style="background: #ff0066; color: #fff; padding: 1rem; font-size: 1.5rem; text-align: center; margin-bottom: 1.5rem;">
-                  TEST: This message confirms the patient_detail.html template is rendering. If you see this, the template block is active.
-                </div>
-                <!-- END TEMPORARY TEST MESSAGE -->
-
-                <!-- TEST: ACTIVATION BUTTON BLOCK RENDERING -->
-                <div style="background: #ffeb3b; color: #d32f2f; padding: 8px; margin-bottom: 8px; font-weight: bold; border: 2px solid #d32f2f;">
-                  TEST: You are seeing this message because the activation/deactivation button block is being rendered.
-                </div>
                 {% if user.is_superuser or user|has_any_role:"admin,health_record_officer" %}
                     {% if not patient.is_active %}
                         <form method="post" action="{% url 'patients:toggle_patient_status' patient.id %}" style="margin-bottom: 1rem;">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-success">Activate Patient</button>
                         </form>
-                    {% elif patient.is_active %}
+                    {% else %}
                         <form method="post" action="{% url 'patients:toggle_patient_status' patient.id %}" style="margin-bottom: 1rem;">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-warning">Deactivate Patient</button>
@@ -68,13 +58,7 @@
                         <i class="fas fa-check-circle"></i> This patient has an active wallet linked.
                     </div>
                     <p><strong>Wallet Balance:</strong> {{ patient.wallet.balance|currency }}</p>
-                    <p><strong>Wallet Status:</strong>
-                        {% if patient.wallet.is_active %}
-                            <span class="badge bg-success">Active</span>
-                        {% else %}
-                            <span class="badge bg-danger">Inactive</span>
-                        {% endif %}
-                    </p>
+                    <p><strong>Wallet Status:</strong> <span class="badge bg-success">Active</span></p>
                     <div class="btn-group" role="group">
                         <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-primary btn-sm">
                             <i class="fas fa-dashboard"></i> Wallet Dashboard
@@ -134,9 +118,7 @@
                             <i class="fas fa-check-circle"></i> This patient is linked to a retainership wallet.
                         </div>
                         <p><strong>Retainership Wallet:</strong> {{ retainership_wallet.wallet.wallet_name }}</p>
-                        <p><strong>Wallet Balance:</strong> <span class="{% if retainership_wallet.wallet.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
-                            ₦{{ retainership_wallet.wallet.balance }}
-                        </span></p>
+                        <p><strong>Wallet Balance:</strong> <span class="{% if retainership_wallet.wallet.balance >= 0 %}text-success{% else %}text-danger{% endif %}">{{ retainership_wallet.wallet.balance|currency }}</span></p>
                         <p><strong>Wallet Status:</strong> {% if retainership_wallet.wallet.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}</p>
                         <div class="btn-group" role="group">
                             <a href="{% url 'retainership:manage_wallet' patient.id %}" class="btn btn-info btn-sm">
@@ -201,7 +183,7 @@
                                     <td>{{ admission.amount_paid|currency }}</td>
                                     <td>{{ admission.billed_amount|sub:admission.amount_paid|currency }}</td>
                                     <td>
-                                        {% if admission.get_total_cost <= admission.amount_paid %}
+                                        {% if admission.billed_amount <= admission.amount_paid %}
                                             <span class="badge bg-success">Paid</span>
                                         {% elif admission.amount_paid > 0 %}
                                             <span class="badge bg-warning">Partially Paid</span>
@@ -212,7 +194,7 @@
                                     <td>
                                         <a href="{% url 'inpatient:admission_detail' admission.id %}" class="btn btn-info btn-sm">View</a>
 {% if user.is_superuser or user|has_any_role:"admin,accountant,receptionist,health_record_officer" %}
-                                            {% if admission.get_total_cost > admission.amount_paid %}
+                                            {% if admission.billed_amount > admission.amount_paid %}
                                                 <a href="{% url 'billing:create_invoice_for_admission' admission.id %}" class="btn btn-success btn-sm">Pay</a>
                                             {% endif %}
                                         {% endif %}
@@ -233,28 +215,63 @@
             </div>
         </div>
 
-        <!-- Medical History Section (Placeholder) -->
+        <!-- Medical History -->
         <div class="card mt-4">
             <div class="card-header">
                 <h5 class="card-title">Medical History</h5>
             </div>
             <div class="card-body">
-                <p><em>Medical history details will be displayed here.</em></p>
-                {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse,health_record_officer" %}
-                <!-- Add Medical History Form/Button -->
+                {% if medical_histories %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Diagnosis</th>
+                                    <th>Treatment</th>
+                                    <th>Doctor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for history in medical_histories %}
+                                <tr>
+                                    <td>{{ history.date|date:"Y-m-d" }}</td>
+                                    <td>{{ history.diagnosis }}</td>
+                                    <td>{{ history.treatment }}</td>
+                                    <td>{{ history.doctor_name }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No medical history recorded.</p>
                 {% endif %}
             </div>
         </div>
 
-        <!-- Vitals Section (Placeholder) -->
+        <!-- Vitals -->
         <div class="card mt-4">
             <div class="card-header">
-                <h5 class="card-title">Vitals</h5>
+                <h5 class="card-title">Latest Vitals</h5>
             </div>
             <div class="card-body">
-                <p><em>Patient vitals will be displayed here.</em></p>
-                {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse" %}
-                <!-- Add Vitals Form/Button -->
+                {% if vitals %}
+                    {% with v=vitals|first %}
+                    <p class="text-muted small mb-2">Recorded: {{ v.date_time|date:"Y-m-d H:i" }} by {{ v.recorded_by }}</p>
+                    <div class="row row-cols-2 row-cols-md-3 g-2">
+                        {% if v.temperature %}<div class="col"><strong>Temp:</strong> {{ v.temperature }}°C</div>{% endif %}
+                        {% if v.blood_pressure_systolic %}<div class="col"><strong>BP:</strong> {{ v.blood_pressure_systolic }}/{{ v.blood_pressure_diastolic }} mmHg</div>{% endif %}
+                        {% if v.pulse_rate %}<div class="col"><strong>Pulse:</strong> {{ v.pulse_rate }} bpm</div>{% endif %}
+                        {% if v.respiratory_rate %}<div class="col"><strong>RR:</strong> {{ v.respiratory_rate }} breaths/min</div>{% endif %}
+                        {% if v.oxygen_saturation %}<div class="col"><strong>SpO₂:</strong> {{ v.oxygen_saturation }}%</div>{% endif %}
+                        {% if v.weight %}<div class="col"><strong>Weight:</strong> {{ v.weight }} kg</div>{% endif %}
+                        {% if v.height %}<div class="col"><strong>Height:</strong> {{ v.height }} cm</div>{% endif %}
+                        {% if v.bmi %}<div class="col"><strong>BMI:</strong> {{ v.bmi }}</div>{% endif %}
+                    </div>
+                    {% endwith %}
+                {% else %}
+                    <p class="text-muted">No vitals recorded.</p>
                 {% endif %}
             </div>
         </div>
@@ -280,7 +297,7 @@
                 {% else %}
                     <span class="badge bg-danger">Inactive Patient</span>
                 {% endif %}
-                {% if patient.retainership_info %}
+                {% if retainership_info %}
                     <span class="badge bg-info text-dark ms-1">Retainership Patient</span>
                 {% endif %}
                 {% if has_wallet and wallet_is_active %}
@@ -298,27 +315,27 @@
                 <h5 class="card-title">Quick Actions</h5>
             </div>
             <div class="card-body">
-                <a href="#" class="btn btn-info btn-block mb-2">New Appointment</a>
                 {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse,receptionist,health_record_officer" %}
-                <a href="{% url 'consultations:create_consultation' patient.id %}" class="btn btn-warning btn-block mb-2">New Consultation</a>
+                <a href="{% url 'appointments:create' %}?patient={{ patient.id }}" class="btn btn-info d-block w-100 mb-2">New Appointment</a>
+                {% endif %}
+                {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse,receptionist,health_record_officer" %}
+                <a href="{% url 'consultations:create_consultation' patient.id %}" class="btn btn-warning d-block w-100 mb-2">New Consultation</a>
                 {% endif %}
                 {% if user.is_superuser or user|has_any_role:"admin,doctor,nurse" %}
-                <button type="button" class="btn btn-danger btn-block mb-2" id="referPatientBtn" data-bs-toggle="modal" data-bs-target="#referralModal">
+                <button type="button" class="btn btn-danger d-block w-100 mb-2" id="referPatientBtn" data-bs-toggle="modal" data-bs-target="#referralModal">
                     <i class="fas fa-user-md"></i> Refer Patient
                 </button>
                 {% endif %}
                 {% if user.is_superuser or user|has_any_role:"admin,doctor" %}
-                <a href="{% url 'pharmacy:create_prescription' patient.id %}" class="btn btn-success btn-block mb-2" style="display: block !important; visibility: visible !important;">Send Medication Prescription</a>
-                <a href="{% url 'pharmacy:pharmacy_create_prescription' patient.id %}" class="btn btn-primary btn-block mb-2">Pharmacy Prescription</a>
-                {% endif %}
-                {% if user.is_superuser or user|has_any_role:"admin,doctor" %}
-                <a href="{% url 'laboratory:create_test_request' %}?patient={{ patient.id }}" class="btn btn-secondary btn-block mb-2">Request Lab Tests</a>
+                <a href="{% url 'pharmacy:create_prescription' patient.id %}" class="btn btn-success d-block w-100 mb-2">Send Medication Prescription</a>
+                <a href="{% url 'pharmacy:pharmacy_create_prescription' patient.id %}" class="btn btn-primary d-block w-100 mb-2">Pharmacy Prescription</a>
+                <a href="{% url 'laboratory:create_test_request' %}?patient={{ patient.id }}" class="btn btn-secondary d-block w-100 mb-2">Request Lab Tests</a>
                 {% endif %}
                 {% if user.is_superuser or user|has_any_role:"admin,receptionist,health_record_officer" %}
-                <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary btn-block mb-2">Edit Patient</a>
+                <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary d-block w-100 mb-2">Edit Patient</a>
                 {% endif %}
                 {% if user.is_superuser or user|has_any_role:"admin,accountant,receptionist,health_record_officer" %}
-                <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-success btn-block mb-2">Wallet Dashboard</a>
+                <a href="{% url 'patients:wallet_dashboard' patient.id %}" class="btn btn-success d-block w-100 mb-2">Wallet Dashboard</a>
                 {% endif %}
             </div>
         </div>
@@ -349,7 +366,7 @@
                         {% if patient.patient_type == 'nhia' %}
                             <span class="badge bg-primary ms-2">NHIA Patient</span>
                         {% endif %}
-                        {% if patient.retainership_info %}
+                        {% if retainership_info %}
                             <span class="badge bg-info text-dark ms-2">Retainership Patient</span>
                         {% endif %}
                     </div>
@@ -401,7 +418,7 @@
                         <strong>NHIA Patient:</strong> This referral may require authorization. The system will automatically check authorization requirements.
                     </div>
                     {% endif %}
-                    {% if patient.retainership_info %}
+                    {% if retainership_info %}
                     <div class="alert alert-info mb-0">
                         <i class="fas fa-info-circle me-2"></i>
                         <strong>Retainership Patient:</strong> This patient is covered under a retainership agreement. Special billing rules may apply.
@@ -426,36 +443,19 @@
 <!-- Referral Modal JavaScript -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Referral modal script loaded');
-
-    /**
-     * Load doctors from API and populate the dropdown
-     */
     function loadDoctorsForReferral() {
-        console.log('Loading doctors for referral modal...');
-        
         const doctorsSelect = document.getElementById('referred_to');
-        if (!doctorsSelect) {
-            console.error('Doctors select element not found');
-            return;
-        }
+        if (!doctorsSelect) return;
 
-        // Show loading state
         doctorsSelect.innerHTML = '<option value="">Loading doctors...</option>';
         doctorsSelect.disabled = true;
 
         fetch('/accounts/api/users/?role=doctor')
             .then(response => {
-                console.log('Doctors API response status:', response.status);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 return response.json();
             })
             .then(data => {
-                console.log('Doctors loaded:', data.length);
-                
-                // Clear and enable select
                 doctorsSelect.innerHTML = '<option value="">Select Doctor</option>';
                 doctorsSelect.disabled = false;
 
@@ -463,101 +463,63 @@ document.addEventListener('DOMContentLoaded', function() {
                     data.forEach(doctor => {
                         const option = document.createElement('option');
                         option.value = doctor.id;
-                        
-                        // Format doctor name
                         let doctorName = `Dr. ${doctor.first_name} ${doctor.last_name}`;
-                        
-                        // Add department if available
-                        if (doctor.department) {
-                            doctorName += ` (${doctor.department})`;
-                        }
-                        
+                        if (doctor.department) doctorName += ` (${doctor.department})`;
                         option.textContent = doctorName;
                         doctorsSelect.appendChild(option);
                     });
-                    console.log('Doctors dropdown populated successfully');
                 } else {
                     const option = document.createElement('option');
                     option.textContent = 'No doctors available';
                     option.disabled = true;
                     doctorsSelect.appendChild(option);
-                    console.warn('No doctors found in response');
                 }
             })
-            .catch(error => {
-                console.error('Error loading doctors:', error);
-                
-                // Show error state
+            .catch(() => {
                 doctorsSelect.innerHTML = '<option value="">Select Doctor</option>';
                 doctorsSelect.disabled = false;
-                
                 const option = document.createElement('option');
                 option.textContent = 'Error loading doctors. Please refresh the page.';
                 option.disabled = true;
                 doctorsSelect.appendChild(option);
-                
-                // Show user-friendly error message
                 alert('Failed to load doctors. Please refresh the page and try again.');
             });
     }
 
-    // Load doctors when page loads
     const referralModal = document.getElementById('referralModal');
-    if (referralModal && (window.userIsSuperuser || window.userHasMedicalRole)) {
-        console.log('Referral modal found, loading doctors...');
-        loadDoctorsForReferral();
-        
-        // Reload doctors when modal is shown (ensures fresh data)
-        referralModal.addEventListener('show.bs.modal', function (event) {
-            console.log('Referral modal opening, reloading doctors...');
-            loadDoctorsForReferral();
-        });
-        
-        // Clear form when modal is hidden
-        referralModal.addEventListener('hidden.bs.modal', function (event) {
-            console.log('Referral modal closed, clearing form...');
+    if (referralModal) {
+        referralModal.addEventListener('show.bs.modal', loadDoctorsForReferral);
+        referralModal.addEventListener('hidden.bs.modal', function() {
             const form = document.getElementById('referralForm');
-            if (form) {
-                form.reset();
-                // Reload doctors for next time
-                loadDoctorsForReferral();
-            }
+            if (form) form.reset();
         });
-    } else {
-        console.warn('Referral modal not found on page or user lacks permissions');
     }
 
-    // Form validation
     const referralForm = document.getElementById('referralForm');
     if (referralForm) {
         referralForm.addEventListener('submit', function(event) {
             const doctorSelect = document.getElementById('referred_to');
             const reasonField = document.getElementById('reason');
-            
-            // Validate doctor selection
+
             if (!doctorSelect.value) {
                 event.preventDefault();
                 alert('Please select a doctor to refer the patient to.');
                 doctorSelect.focus();
                 return false;
             }
-            
-            // Validate reason
+
             if (!reasonField.value.trim()) {
                 event.preventDefault();
                 alert('Please provide a reason for the referral.');
                 reasonField.focus();
                 return false;
             }
-            
-            // Show loading state on submit button
+
             const submitBtn = document.getElementById('submitReferralBtn');
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Submitting...';
             }
-            
-            console.log('Referral form submitted');
             return true;
         });
     }
@@ -566,11 +528,3 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {% endblock content %}
 
-{% block js %}
-{{ block.super }}
-<script>
-// Pass user role info to JavaScript
-window.userIsSuperuser = {{ user.is_superuser|yesno:"true,false" }};
-window.userHasMedicalRole = {% if user.profile and user|has_any_role:"admin,doctor,nurse" %}true{% else %}false{% endif %};
-</script>
-{% endblock js %}
