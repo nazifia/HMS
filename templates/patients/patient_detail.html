@@ -5,538 +5,703 @@
 
 {% block title %}{{ patient.get_full_name }} - Patient Details{% endblock %}
 
+{% block extra_css %}
+<style>
+    :root {
+        --p-primary: #2563eb;
+        --p-primary-light: #eff6ff;
+        --p-success: #16a34a;
+        --p-success-light: #f0fdf4;
+        --p-warning: #d97706;
+        --p-warning-light: #fffbeb;
+        --p-danger: #dc2626;
+        --p-danger-light: #fef2f2;
+        --p-info: #0891b2;
+        --p-info-light: #ecfeff;
+        --p-purple: #7c3aed;
+        --p-gray-50: #f8fafc;
+        --p-gray-100: #f1f5f9;
+        --p-gray-200: #e2e8f0;
+        --p-gray-400: #94a3b8;
+        --p-gray-500: #64748b;
+        --p-gray-700: #334155;
+        --p-gray-900: #0f172a;
+        --p-radius: 12px;
+        --p-shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+        --p-shadow: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
+        --p-shadow-md: 0 10px 15px -3px rgba(0,0,0,0.07), 0 4px 6px -2px rgba(0,0,0,0.04);
+    }
+
+    .pd-page { background: var(--p-gray-50); }
+
+    /* ── Breadcrumb bar ── */
+    .pd-topbar {
+        background: #fff;
+        border-bottom: 1px solid var(--p-gray-200);
+        padding: 0.75rem 1.5rem;
+        display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .pd-topbar .breadcrumb { margin: 0; font-size: 0.82rem; }
+    .pd-topbar .breadcrumb-item a { color: var(--p-primary); text-decoration: none; }
+
+    /* ── Sidebar ── */
+    .pd-sidebar {
+        position: sticky;
+        top: 1rem;
+    }
+    .pd-card {
+        background: #fff;
+        border-radius: var(--p-radius);
+        box-shadow: var(--p-shadow-sm);
+        border: 1px solid var(--p-gray-200);
+        margin-bottom: 1rem;
+    }
+    .pd-card-header {
+        padding: 0.875rem 1.25rem;
+        border-bottom: 1px solid var(--p-gray-100);
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--p-gray-500);
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .pd-card-body { padding: 1.25rem; }
+
+    /* ── Profile section ── */
+    .patient-avatar {
+        width: 80px; height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid var(--p-gray-200);
+    }
+    .patient-avatar-placeholder {
+        width: 80px; height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.75rem; font-weight: 700; color: #fff;
+        flex-shrink: 0;
+    }
+    .patient-name { font-size: 1.15rem; font-weight: 700; color: var(--p-gray-900); }
+    .patient-id { font-size: 0.8rem; color: var(--p-gray-500); }
+
+    .info-row {
+        display: flex; justify-content: space-between; align-items: flex-start;
+        padding: 0.45rem 0;
+        border-bottom: 1px solid var(--p-gray-100);
+        gap: 0.5rem;
+        font-size: 0.85rem;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: var(--p-gray-500); font-weight: 500; flex-shrink: 0; }
+    .info-value { color: var(--p-gray-900); font-weight: 600; text-align: right; }
+
+    /* ── Status badge ── */
+    .pt-badge {
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        padding: 0.25rem 0.7rem;
+        border-radius: 20px;
+        font-size: 0.72rem; font-weight: 700;
+    }
+    .pt-active   { background: #dcfce7; color: #15803d; }
+    .pt-inactive { background: #fee2e2; color: #b91c1c; }
+    .pt-nhia     { background: #dbeafe; color: #1d4ed8; }
+    .pt-regular  { background: var(--p-gray-100); color: var(--p-gray-700); }
+    .pt-retainer { background: #f5f3ff; color: #7c3aed; }
+
+    /* ── Quick actions ── */
+    .qa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .qa-item {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 0.3rem;
+        padding: 0.6rem 0.4rem;
+        border-radius: 8px;
+        border: 1px solid var(--p-gray-200);
+        background: #fff;
+        font-size: 0.7rem; font-weight: 600;
+        color: var(--p-gray-700);
+        text-decoration: none;
+        transition: all 0.18s;
+        text-align: center;
+        cursor: pointer;
+    }
+    .qa-item:hover { border-color: var(--p-primary); color: var(--p-primary); background: var(--p-primary-light); transform: translateY(-1px); }
+    .qa-item.disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+    .qa-item i { font-size: 1rem; }
+
+    /* ── Tabs ── */
+    .pd-tabs {
+        background: #fff;
+        border-radius: var(--p-radius);
+        box-shadow: var(--p-shadow-sm);
+        border: 1px solid var(--p-gray-200);
+        overflow: hidden;
+    }
+    .pd-tab-nav {
+        display: flex;
+        border-bottom: 2px solid var(--p-gray-200);
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .pd-tab-nav::-webkit-scrollbar { display: none; }
+    .pd-tab-btn {
+        flex-shrink: 0;
+        padding: 0.875rem 1.25rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--p-gray-500);
+        border: none;
+        background: none;
+        cursor: pointer;
+        position: relative;
+        white-space: nowrap;
+        transition: color 0.15s;
+    }
+    .pd-tab-btn::after {
+        content: '';
+        position: absolute;
+        bottom: -2px; left: 0; right: 0;
+        height: 2px;
+        background: var(--p-primary);
+        transform: scaleX(0);
+        transition: transform 0.2s;
+    }
+    .pd-tab-btn.active { color: var(--p-primary); }
+    .pd-tab-btn.active::after { transform: scaleX(1); }
+    .pd-tab-btn:hover { color: var(--p-primary); }
+    .pd-tab-btn .tab-badge {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 18px; height: 18px; border-radius: 50%;
+        background: var(--p-gray-100); color: var(--p-gray-500);
+        font-size: 0.65rem; font-weight: 700; margin-left: 0.35rem;
+    }
+    .pd-tab-btn.active .tab-badge { background: var(--p-primary-light); color: var(--p-primary); }
+
+    .pd-tab-pane { display: none; padding: 1.25rem; }
+    .pd-tab-pane.active { display: block; }
+
+    /* ── Vitals ── */
+    .vital-card {
+        background: var(--p-gray-50);
+        border-radius: 10px;
+        border: 1px solid var(--p-gray-200);
+        padding: 0.875rem 1rem;
+        text-align: center;
+    }
+    .vital-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: var(--p-gray-500); letter-spacing: 0.3px; margin-bottom: 0.25rem; }
+    .vital-value { font-size: 1.25rem; font-weight: 800; color: var(--p-gray-900); line-height: 1; }
+    .vital-unit  { font-size: 0.7rem; color: var(--p-gray-400); margin-top: 0.2rem; }
+    .vital-normal { font-size: 0.65rem; color: var(--p-gray-400); }
+
+    /* ── Tables ── */
+    .pd-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.85rem; }
+    .pd-table thead th {
+        background: var(--p-gray-50);
+        color: var(--p-gray-500);
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        padding: 0.6rem 0.875rem;
+        border-bottom: 1px solid var(--p-gray-200);
+        white-space: nowrap;
+    }
+    .pd-table tbody td {
+        padding: 0.7rem 0.875rem;
+        border-bottom: 1px solid var(--p-gray-100);
+        color: var(--p-gray-700);
+        vertical-align: middle;
+    }
+    .pd-table tbody tr:last-child td { border-bottom: none; }
+    .pd-table tbody tr:hover td { background: var(--p-gray-50); }
+
+    /* ── Status pills (table) ── */
+    .spill {
+        display: inline-flex; align-items: center;
+        padding: 0.2rem 0.55rem; border-radius: 20px;
+        font-size: 0.7rem; font-weight: 600; text-transform: capitalize; white-space: nowrap;
+    }
+    .sp-pending          { background: #fef3c7; color: #b45309; }
+    .sp-approved, .sp-dispensed, .sp-completed, .sp-paid, .sp-confirmed { background: #dcfce7; color: #15803d; }
+    .sp-cancelled        { background: #fee2e2; color: #b91c1c; }
+    .sp-in_progress, .sp-processing, .sp-partially_dispensed { background: #e0e7ff; color: #4338ca; }
+    .sp-scheduled        { background: #dbeafe; color: #1d4ed8; }
+    .sp-on_hold          { background: #f1f5f9; color: #64748b; }
+    .sp-urgent           { background: #fee2e2; color: #b91c1c; }
+    .sp-high             { background: #fef3c7; color: #b45309; }
+    .sp-medium, .sp-normal { background: #dbeafe; color: #1d4ed8; }
+    .sp-low              { background: #f0fdf4; color: #15803d; }
+
+    /* ── Empty state ── */
+    .pd-empty { padding: 2.5rem; text-align: center; color: var(--p-gray-400); }
+    .pd-empty i { font-size: 2rem; display: block; margin-bottom: 0.5rem; opacity: 0.35; }
+    .pd-empty p { font-size: 0.875rem; margin: 0; }
+
+    /* ── Section sub-header ── */
+    .sub-hdr {
+        font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+        color: var(--p-gray-500); letter-spacing: 0.5px;
+        margin-bottom: 0.75rem; padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--p-gray-200);
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .sub-hdr a { font-size: 0.75rem; font-weight: 600; color: var(--p-primary); text-decoration: none; }
+
+    /* ── Action btn ── */
+    .act-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 28px; height: 28px; border-radius: 6px;
+        border: 1px solid var(--p-gray-200); background: #fff;
+        color: var(--p-gray-500); font-size: 0.75rem;
+        text-decoration: none; transition: all 0.15s; cursor: pointer;
+    }
+    .act-btn:hover { background: var(--p-primary-light); border-color: var(--p-primary); color: var(--p-primary); }
+    .act-btn.danger:hover { background: var(--p-danger-light); border-color: var(--p-danger); color: var(--p-danger); }
+
+    /* ── Insurance banner ── */
+    .ins-banner {
+        border-radius: 8px;
+        padding: 0.6rem 0.875rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        display: flex; align-items: center; gap: 0.5rem;
+    }
+    .ins-nhia { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .ins-ret  { background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-    <!-- Page Heading -->
-    <div class="page-header">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 class="page-title">
-                    <i class="fas fa-user-injured me-2"></i>{{ patient.get_full_name }}
-                    {% if user|has_permission:'access_sensitive_data' %}
-                        <sup class="text-muted" title="You have access to sensitive data">
-                            <i class="fas fa-shield-alt"></i>
-                        </sup>
-                    {% endif %}
-                </h1>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
-                        <li class="breadcrumb-item"><a href="{% url 'patients:list' %}">Patients</a></li>
-                        <li class="breadcrumb-item active">{{ patient.get_full_name }}</li>
-                    </ol>
-                </nav>
-            </div>
-            <div class="d-flex gap-2">
-                {% if user|has_permission:'edit_patient' or user.is_superuser %}
-                    <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary">
-                        <i class="fas fa-edit me-2"></i>Edit Patient
-                    </a>
-                {% endif %}
-                {% if user|has_permission:'delete_patient' or user.is_superuser %}
-                    <button class="btn btn-danger" onclick="confirmDeletePatient()">
-                        <i class="fas fa-trash me-2"></i>Delete
-                    </button>
-                    {% get_permission_indicator 'delete_patient' %}
-                {% endif %}
-                {% if not user|has_permission:'edit_patient' and not user.is_superuser %}
-                    <div class="text-muted">
-                        <i class="fas fa-lock me-2"></i>Limited access - Contact admin for editing
-                    </div>
-                {% endif %}
-                <a href="{% url 'patients:list' %}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to List
-                </a>
-            </div>
+<div class="pd-page">
+
+    <!-- Top bar -->
+    <div class="pd-topbar">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'patients:list' %}">Patients</a></li>
+                <li class="breadcrumb-item active">{{ patient.get_full_name }}</li>
+            </ol>
+        </nav>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            {% if user|has_permission:'edit_patient' or user.is_superuser %}
+            <a href="{% url 'patients:edit' patient.id %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-edit me-1"></i>Edit
+            </a>
+            {% endif %}
+            {% if user|has_permission:'delete_patient' or user.is_superuser %}
+            <button class="btn btn-sm btn-outline-danger" onclick="confirmDeletePatient()">
+                <i class="fas fa-trash me-1"></i>Delete
+            </button>
+            {% endif %}
+            <a href="{% url 'patients:list' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back
+            </a>
         </div>
     </div>
 
-    <!-- Content Row -->
-    <div class="row">
-        <!-- Role-based action panel -->
-        <div class="col-12 mb-3">
-            {% if user.is_authenticated %}
-                <div class="card border-0 shadow-sm">
-                    <div class="card-body py-2">
-                        <div class="row align-items-center">
-                            <div class="col-md-8">
-                                <div class="d-flex align-items-center">
-                                    <div class="user-avatar-small bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                                        {{ user.username.0|upper }}
-                                    </div>
-                                    <div>
-                                        <div class="fw-semibold">{{ user.get_full_name|default:user.username }}</div>
-                                        <div class="text-muted small">
-                                            {% if user.profile and user.profile.role %}
-                                                <span class="badge {{ user.profile.role|get_role_badge_class }}">{{ user.profile.role }}</span>
-                                            {% else %}
-                                                <span class="badge bg-secondary">Guest</span>
-                                            {% endif %}
-                                            {% if user.profile and user.profile.department %}
-                                                <span class="ms-1">{{ user.profile.department }}</span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4 text-end">
-                                {% get_permission_indicator 'access_sensitive_data' %}
-                                <div class="btn-group btn-group-sm ms-2">
-                                    {% if user|has_any_permission:'create_patient,view_patients' %}
-                                        <button class="btn btn-outline-primary" onclick="showActivityLog()" title="View Activity">
-                                            <i class="fas fa-history"></i>
-                                        </button>
-                                    {% endif %}
-                                    {% if user|has_permission:'create_prescription' %}
-                                        <a href="#" onclick="createPrescription()" class="btn btn-success" title="Create Prescription">
-                                            <i class="fas fa-prescription"></i>
-                                        </a>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            {% endif %}
-        </div>
-        
-        <!-- Patient Information Card -->
-        <div class="col-xl-4 col-lg-5">
-            <div class="card border-0 shadow-sm mb-4">
-                <!-- Card Header -->
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white">
-                    <div>
-                        <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
-                        <span class="badge bg-primary mt-2">{{ patient.get_patient_type_display }}</span>
-                    </div>
-                    {% if user|has_permission:'access_sensitive_data' %}
-                        <span class="badge bg-info">Full Access</span>
-                    {% endif %}
-                </div>
-                <!-- Card Body -->
-                <div class="card-body">
-                    <div class="text-center mb-4">
-                        {% if patient.has_profile_image %}
-                            <img src="{{ patient.get_profile_image_url }}" alt="{{ patient.get_full_name }}" class="img-profile rounded-circle" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;">
-                        {% else %}
-                            <img src="{% static 'img/undraw_profile.svg' %}" alt="Default Profile" class="img-profile rounded-circle" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #dee2e6;">
-                        {% endif %}
-                        <h4 class="mt-3">{{ patient.get_full_name }}</h4>
-                        <p class="text-muted">Patient ID: {{ patient.patient_id }}</p>
-                    </div>
+    <div class="container-fluid py-3 px-3 px-md-4">
+        <div class="row g-3">
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <p class="mb-1 text-muted small">Gender</p>
-                            <p class="mb-0">{{ patient.get_gender_display }}</p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <p class="mb-1 text-muted small">Age</p>
-                            <p class="mb-0">{{ age }} years</p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <p class="mb-1 text-muted small">Date of Birth</p>
-                            <p class="mb-0">{{ patient.date_of_birth|date:"F d, Y" }}</p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <p class="mb-1 text-muted small">Blood Group</p>
-                            <p class="mb-0">{{ patient.blood_group|default:"Not specified" }}</p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <p class="mb-1 text-muted small">Phone Number</p>
-                            <p class="mb-0">{{ patient.phone_number }}</p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <p class="mb-1 text-muted small">Email</p>
-                            <p class="mb-0">{{ patient.email|default:"Not specified" }}</p>
-                        </div>
-                        <div class="col-md-12 mb-3">
-                            <p class="mb-1 text-muted small">Address</p>
-                            <p class="mb-0">{{ patient.address|default:"Not specified" }}</p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <p class="mb-1 text-muted small">Emergency Contact</p>
-                            <p class="mb-0">{{ patient.emergency_contact_name|default:"Not specified" }}</p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <p class="mb-1 text-muted small">Emergency Phone</p>
-                            <p class="mb-0">{{ patient.emergency_contact_phone|default:"Not specified" }}</p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <p class="mb-1 text-muted small">Emergency Relation</p>
-                            <p class="mb-0">{{ patient.emergency_contact_relation|default:"Not specified" }}</p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <p class="mb-1 text-muted small">Photo</p>
-                            {% if patient.photo %}
-                                <img src="{{ patient.photo.url }}" alt="Patient Photo" class="img-thumbnail" style="max-height: 100px;">
-                            {% else %}
-                                <span class="text-muted">Not uploaded</span>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <p class="mb-1 text-muted small">ID Document</p>
-                            {% if patient.id_document %}
-                                <a href="{{ patient.id_document.url }}" target="_blank">View ID Document</a>
-                            {% else %}
-                                <span class="text-muted">Not uploaded</span>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <p class="mb-1 text-muted small">Registration Date</p>
-                            <p class="mb-0">{{ patient.registration_date|date:"F d, Y" }}</p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <p class="mb-1 text-muted small">Status</p>
-                            <p class="mb-0">
-                                {% if patient.is_active %}
-                                    <span class="badge bg-success text-white">Active</span>
+            <!-- ── LEFT SIDEBAR ── -->
+            <div class="col-xl-3 col-lg-4">
+                <div class="pd-sidebar">
+
+                    <!-- Profile card -->
+                    <div class="pd-card">
+                        <div class="pd-card-body">
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                {% if patient.photo %}
+                                    <img src="{{ patient.photo.url }}" alt="{{ patient.get_full_name }}" class="patient-avatar">
                                 {% else %}
-                                    <span class="badge bg-danger text-white">Inactive</span>
+                                    <div class="patient-avatar-placeholder">
+                                        {{ patient.first_name.0|upper }}{{ patient.last_name.0|upper }}
+                                    </div>
                                 {% endif %}
-                            </p>
+                                <div>
+                                    <div class="patient-name">{{ patient.get_full_name }}</div>
+                                    <div class="patient-id">{{ patient.patient_id }}</div>
+                                    <div class="d-flex gap-1 mt-1 flex-wrap">
+                                        {% if patient.is_active %}
+                                            <span class="pt-badge pt-active"><i class="fas fa-circle" style="font-size:0.5rem;"></i>Active</span>
+                                        {% else %}
+                                            <span class="pt-badge pt-inactive"><i class="fas fa-circle" style="font-size:0.5rem;"></i>Inactive</span>
+                                        {% endif %}
+                                        {% if patient.patient_type == 'nhia' %}
+                                            <span class="pt-badge pt-nhia">NHIA</span>
+                                        {% elif patient.patient_type == 'retainership' %}
+                                            <span class="pt-badge pt-retainer">Retainer</span>
+                                        {% else %}
+                                            <span class="pt-badge pt-regular">{{ patient.get_patient_type_display }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Insurance banner -->
+                            {% if nhia_info %}
+                            <div class="ins-banner ins-nhia mb-3">
+                                <i class="fas fa-shield-alt"></i>
+                                NHIA&nbsp;·&nbsp;{{ nhia_info.nhia_reg_number|default:"No ID" }}
+                            </div>
+                            {% endif %}
+                            {% if retainership_info %}
+                            <div class="ins-banner ins-ret mb-3">
+                                <i class="fas fa-id-card"></i>
+                                Retainer&nbsp;·&nbsp;{{ retainership_info.retainership_reg_number }}
+                            </div>
+                            {% endif %}
+
+                            <!-- Key info -->
+                            <div>
+                                <div class="info-row">
+                                    <span class="info-label">Gender</span>
+                                    <span class="info-value">{{ patient.get_gender_display }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Age</span>
+                                    <span class="info-value">{{ age }} yrs · {{ patient.date_of_birth|date:"d M Y" }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Blood Group</span>
+                                    <span class="info-value">{{ patient.blood_group|default:"—" }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Phone</span>
+                                    <span class="info-value">{{ patient.phone_number }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Email</span>
+                                    <span class="info-value">{{ patient.email|default:"—" }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Address</span>
+                                    <span class="info-value">{{ patient.address|default:"—" }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Registered</span>
+                                    <span class="info-value">{{ patient.registration_date|date:"d M Y" }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Wallet Balance</span>
+                                    <span class="info-value fw-bold" style="color:{% if patient_wallet and patient_wallet.balance < 0 %}var(--p-danger){% else %}var(--p-success){% endif %};">
+                                        {% if patient_wallet %}{{ patient_wallet.balance|currency }}{% else %}{{ 0|currency }}{% endif %}
+                                    </span>
+                                </div>
+                                {% if patient.emergency_contact_name %}
+                                <div class="info-row">
+                                    <span class="info-label">Emergency</span>
+                                    <span class="info-value">
+                                        {{ patient.emergency_contact_name }}
+                                        {% if patient.emergency_contact_phone %}<br><small>{{ patient.emergency_contact_phone }}</small>{% endif %}
+                                        {% if patient.emergency_contact_relation %}<br><small class="text-muted">{{ patient.emergency_contact_relation }}</small>{% endif %}
+                                    </span>
+                                </div>
+                                {% endif %}
+                                {% if patient.id_document %}
+                                <div class="info-row">
+                                    <span class="info-label">ID Doc</span>
+                                    <span class="info-value"><a href="{{ patient.id_document.url }}" target="_blank">View</a></span>
+                                </div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Quick Actions Card -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <!-- Permission-based quick actions -->
-                        <div class="col-md-6 mb-3">
-                            {% if user|has_permission:'create_test_request' or user.is_superuser %}
-                                <a href="{% url 'laboratory:create_test_request' %}?patient={{ patient.id }}" class="btn btn-warning btn-block">
-                                    <i class="fas fa-flask"></i> Order Lab Tests
-                                </a>
+                    <!-- Wallet summary (if has wallet) -->
+                    {% if has_wallet and patient_wallet %}
+                    <div class="pd-card">
+                        <div class="pd-card-header">
+                            <span><i class="fas fa-wallet me-1"></i>Wallet</span>
+                            {% if wallet_is_active %}
+                                <span class="pt-badge pt-active">Active</span>
                             {% else %}
-                                <button class="btn btn-warning btn-block disabled" {% if not user|has_permission:'create_test_request' %}title="Permission required"{% endif %}>
-                                    <i class="fas fa-flask me-2"></i>Order Lab Tests
-                                    <span class="permission-indicator">
-                                        {% get_permission_indicator 'create_test_request' %}
-                                    </span>
-                                </button>
+                                <span class="pt-badge pt-inactive">Inactive</span>
                             {% endif %}
                         </div>
-                        <div class="col-md-6 mb-3">
-                            {% if user|has_permission:'create_radiology_request' or user.is_superuser %}
-                                <a href="{% url 'radiology:order' patient.id %}" class="btn btn-info btn-block">
-                                    <i class="fas fa-x-ray"></i> Order Radiology
-                                </a>
-                            {% else %}
-                                <button class="btn btn-info btn-block disabled" {% if not user|has_permission:'create_radiology_request' %}title="Permission required"{% endif %}>
-                                    <i class="fas fa-x-ray me-2"></i>Order Radiology
-                                    <span class="permission-indicator">
-                                        {% get_permission_indicator 'create_radiology_request' %}
-                                    </span>
-                                </button>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            {% if user|has_permission:'create_appointment' or user.is_superuser %}
-                                <button type="button" class="btn btn-success btn-block" data-bs-toggle="modal" data-bs-target="#consultationModal">
-                                    <i class="fas fa-stethoscope"></i> New Consultation
-                                </button>
-                            {% else %}
-                                <button class="btn btn-success btn-block disabled" title="Permission required">
-                                    <i class="fas fa-stethoscope me-2"></i>New Consultation
-                                    <span class="permission-indicator">
-                                        {% get_permission_indicator 'create_appointment' %}
-                                    </span>
-                                </button>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            {% if user|has_permission:'refer_patient' or user.is_superuser %}
-                                <a href="{% url 'consultations:create_referral_for_patient' patient.id %}" class="btn btn-danger btn-block">
-                                    <i class="fas fa-user-md"></i> Refer Patient
-                                </a>
-                            {% else %}
-                                <button class="btn btn-danger btn-block disabled" title="Permission required">
-                                    <i class="fas fa-user-md me-2"></i>Refer Patient
-                                    <span class="permission-indicator">
-                                        {% get_permission_indicator 'refer_patient' %}
-                                    </span>
-                                </button>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            {% if user|has_permission:'manage_patient_admission' or user.is_superuser %}
-                                <a href="{% url 'inpatient:create_admission' %}?patient_id={{ patient.id }}" class="btn btn-secondary btn-block">
-                                    <i class="fas fa-procedures"></i> Admit Patient
-                                </a>
-                            {% else %}
-                                <button class="btn btn-secondary btn-block disabled" title="Permission required">
-                                    <i class="fas fa-procedures me-2"></i>Admit Patient
-                                    <span class="permission-indicator">
-                                        {% get_permission_indicator 'manage_patient_admission' %}
-                                    </span>
-                                </button>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            {% if user|has_permission:'create_appointment' or user.is_superuser %}
-                                <a href="{% url 'appointments:create' %}?patient={{ patient.id }}" class="btn btn-primary btn-block">
-                                    <i class="fas fa-calendar-plus"></i> New Appointment
-                                </a>
-                            {% else %}
-                                <button class="btn btn-primary btn-block disabled" title="Permission required">
-                                    <i class="fas fa-calendar-plus me-2"></i>New Appointment
-                                    <span class="permission-indicator">
-                                        {% get_permission_indicator 'create_appointment' %}
-                                    </span>
-                                </button>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            {% if user|has_permission:'create_invoice' or user.is_superuser %}
-                                <a href="{% url 'billing:create' %}?patient={{ patient.id }}" class="btn btn-success btn-block">
-                                    <i class="fas fa-file-invoice-dollar"></i> New Invoice
-                                </a>
-                            {% else %}
-                                <button class="btn btn-success btn-block disabled" title="Permission required">
-                                    <i class="fas fa-file-invoice-dollar me-2"></i>New Invoice
-                                    <span class="permission-indicator">
-                                        {% get_permission_indicator 'create_invoice' %}
-                                    </span>
-                                </button>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            {% if user|has_permission:'manage_vitals' or user.is_superuser %}
-                                <button type="button" class="btn btn-secondary btn-block" data-bs-toggle="modal" data-bs-target="#vitalsModal">
-                                    <i class="fas fa-heartbeat"></i> Record Vitals
-                                </button>
-                            {% else %}
-                                <button class="btn btn-secondary btn-block disabled" title="Permission required">
-                                    <i class="fas fa-heartbeat me-2"></i>Record Vitals
-                                    <span class="permission-indicator">
-                                        {% get_permission_indicator 'manage_vitals' %}
-                                    </span>
-                                </button>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            {% if user|has_permission:'view_tests' or user.is_superuser %}
-                                <a href="{% url 'laboratory:patient_tests' patient.id %}" class="btn btn-info btn-block">
-                                    <i class="fas fa-vials"></i> View Lab Test Results
-                                </a>
-                            {% else %}
-                                <button class="btn btn-info btn-block disabled" title="Permission required">
-                                    <i class="fas fa-vials me-2"></i>View Lab Results
-                                    <span class="permission-indicator">
-                                        {% get_permission_indicator 'view_tests' %}
-                                    </span>
-                                </button>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            {% if user|has_permission:'create_prescription' or user.is_superuser %}
-                                <a href="{% url 'pharmacy:pharmacy_create_prescription' patient.id %}" class="btn btn-warning btn-block">
-                                    <i class="fas fa-pills"></i> Prescribe Medication
-                                </a>
-                            {% else %}
-                                <button class="btn btn-warning btn-block disabled" title="Permission required">
-                                    <i class="fas fa-pills me-2"></i>Prescribe Medication
-                                    <span class="permission-indicator">
-                                        {% get_permission_indicator 'create_prescription' %}
-                                    </span>
-                                </button>
-                            {% endif %}
-                            </button>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <a href="{% url 'pharmacy:pharmacy_create_prescription' patient.id %}" class="btn btn-primary btn-block">
-                                <i class="fas fa-prescription-bottle"></i> Pharmacy Prescription
-                            </a>
-                        </div>
-                        <!-- Additional Medical Services -->
-                        <div class="col-md-6 mb-3">
-                            {% if user|has_permission:'medical.create' %}
-                            <a href="{% url 'dental:create_dental_record' %}?patient={{ patient.id }}" class="btn btn-info btn-block">
-                                <i class="fas a-teeth"></i> Dental Record
-                            </a>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            {% if user|has_permission:'medical.create' %}
-                            <a href="{% url 'ent:create_ent_record' %}?patient={{ patient.id }}" class="btn btn-secondary btn-block">
-                                <i class="fas fa-ear-listen"></i> ENT Record
-                            </a>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            {% if user|has_permission:'medical.create' %}
-                            <a href="{% url 'patients:create_physiotherapy_request' patient.id %}" class="btn btn-warning btn-block">
-                                <i class="fas fa-walking"></i> Physiotherapy
-                            </a>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            {% if user|has_permission:'medical.create' %}
-                            <a href="#" class="btn btn-success btn-block" data-bs-toggle="modal" data-bs-target="#vaccinationModal">
-                                <i class="fas fa-syringe"></i> Vaccination
-                            </a>
+                        <div class="pd-card-body">
+                            <div class="text-center">
+                                <div style="font-size:1.5rem;font-weight:800;color:{% if patient_wallet.balance >= 0 %}var(--p-success){% else %}var(--p-danger){% endif %};">
+                                    {{ patient_wallet.balance|currency }}
+                                </div>
+                                <div style="font-size:0.75rem;color:var(--p-gray-500);">Current Balance</div>
+                            </div>
+                            {% if retainership_wallet %}
+                            <hr style="border-color:var(--p-gray-100);margin:.75rem 0;">
+                            <div class="info-row">
+                                <span class="info-label">Retainer Wallet</span>
+                                <span class="info-value">{{ retainership_wallet.wallet.balance|currency }}</span>
+                            </div>
                             {% endif %}
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Patient Records Column -->
-        <div class="col-xl-8 col-lg-7">
-            <!-- Vitals Card -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">Recent Vitals</h6>
-                    <a href="{% url 'patients:vitals' patient.id %}" class="btn btn-sm btn-outline-primary">View All</a>
-                </div>
-                <div class="card-body">
-                    {% if vitals %}
-                        {% with latest_vital=vitals.0 %}
-                        <!-- Latest Vitals Summary -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h6 class="text-muted mb-3">Latest Vitals ({{ latest_vital.date_time|date:"M d, Y H:i" }})</h6>
-                            </div>
-                            <div class="col-md-3 col-sm-6 mb-3">
-                                <div class="card bg-light">
-                                    <div class="card-body py-2 text-center">
-                                        <h6 class="text-primary mb-0">Temperature</h6>
-                                        <h4 class="mb-0">{{ latest_vital.temperature }} °C</h4>
-                                        <small class="text-muted">Normal: 36.5-37.5°C</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-6 mb-3">
-                                <div class="card bg-light">
-                                    <div class="card-body py-2 text-center">
-                                        <h6 class="text-primary mb-0">Blood Pressure</h6>
-                                        <h4 class="mb-0">{{ latest_vital.blood_pressure_systolic }}/{{ latest_vital.blood_pressure_diastolic }}</h4>
-                                        <small class="text-muted">Normal: 120/80 mmHg</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-6 mb-3">
-                                <div class="card bg-light">
-                                    <div class="card-body py-2 text-center">
-                                        <h6 class="text-primary mb-0">Pulse Rate</h6>
-                                        <h4 class="mb-0">{{ latest_vital.pulse }} bpm</h4>
-                                        <small class="text-muted">Normal: 60-100 bpm</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-6 mb-3">
-                                <div class="card bg-light">
-                                    <div class="card-body py-2 text-center">
-                                        <h6 class="text-primary mb-0">Respiration</h6>
-                                        <h4 class="mb-0">{{ latest_vital.respiration }} bpm</h4>
-                                        <small class="text-muted">Normal: 12-20 bpm</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-6 mb-3">
-                                <div class="card bg-light">
-                                    <div class="card-body py-2 text-center">
-                                        <h6 class="text-primary mb-0">Oxygen Saturation</h6>
-                                        <h4 class="mb-0">{{ latest_vital.oxygen_saturation|default:"--" }}%</h4>
-                                        <small class="text-muted">Normal: 95-100%</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-6 mb-3">
-                                <div class="card bg-light">
-                                    <div class="card-body py-2 text-center">
-                                        <h6 class="text-primary mb-0">Weight</h6>
-                                        <h4 class="mb-0">{{ latest_vital.weight }} kg</h4>
-                                        <small class="text-muted">BMI: {{ latest_vital.bmi|floatformat:1 }}</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-6 mb-3">
-                                <div class="card bg-light">
-                                    <div class="card-body py-2 text-center">
-                                        <h6 class="text-primary mb-0">Height</h6>
-                                        <h4 class="mb-0">{{ latest_vital.height }} cm</h4>
-                                        <small class="text-muted">&nbsp;</small>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {% if latest_vital.notes %}
-                            <div class="col-12">
-                                <div class="alert alert-info">
-                                    <strong>Notes:</strong> {{ latest_vital.notes }}
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% endwith %}
-
-                        <!-- Vitals History Table -->
-                        <h6 class="text-muted mb-3">Vitals History</h6>
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-sm" width="100%" cellspacing="0">
-                                <thead>
-                                    <tr>
-                                        <th>Date & Time</th>
-                                        <th>Temp (°C)</th>
-                                        <th>BP (mmHg)</th>
-                                        <th>Pulse (bpm)</th>
-                                        <th>Resp (bpm)</th>
-                                        <th>O₂ Sat (%)</th>
-                                        <th>Weight (kg)</th>
-                                        <th>Height (cm)</th>
-                                        <th>BMI</th>
-                                        <th>Recorded By</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for vital in vitals %}
-                                    <tr>
-                                        <td>{{ vital.date_time|date:"M d, Y H:i" }}</td>
-                                        <td>{{ vital.temperature }}</td>
-                                        <td>{{ vital.blood_pressure_systolic }}/{{ vital.blood_pressure_diastolic }}</td>
-                                        <td>{{ vital.pulse_rate }}</td>
-                                        <td>{{ vital.respiratory_rate }}</td>
-                                        <td>{{ vital.oxygen_saturation|default:"--" }}</td>
-                                        <td>{{ vital.weight }}</td>
-                                        <td>{{ vital.height }}</td>
-                                        <td>{{ vital.bmi|floatformat:1 }}</td>
-                                        <td>{{ vital.recorded_by }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle mr-2"></i> No vitals recorded yet. Vitals should be recorded before consultation.
-                        </div>
                     {% endif %}
-                </div>
+
+                    <!-- Quick Actions -->
+                    <div class="pd-card">
+                        <div class="pd-card-header"><i class="fas fa-bolt me-1"></i>Quick Actions</div>
+                        <div class="pd-card-body">
+                            <div class="qa-grid">
+                                {% if user|has_permission:'create_appointment' or user.is_superuser %}
+                                <a href="{% url 'appointments:create' %}?patient={{ patient.id }}" class="qa-item">
+                                    <i class="fas fa-calendar-plus" style="color:var(--p-primary);"></i>
+                                    New Appt
+                                </a>
+                                {% endif %}
+
+                                {% if user|has_permission:'create_appointment' or user.is_superuser %}
+                                <button type="button" class="qa-item" data-bs-toggle="modal" data-bs-target="#consultationModal">
+                                    <i class="fas fa-stethoscope" style="color:var(--p-success);"></i>
+                                    Consult
+                                </button>
+                                {% endif %}
+
+                                {% if user|has_permission:'create_prescription' or user.is_superuser %}
+                                <a href="{% url 'pharmacy:pharmacy_create_prescription' patient.id %}" class="qa-item">
+                                    <i class="fas fa-pills" style="color:var(--p-warning);"></i>
+                                    Prescribe
+                                </a>
+                                {% endif %}
+
+                                {% if user|has_permission:'create_test_request' or user.is_superuser %}
+                                <a href="{% url 'laboratory:create_test_request' %}?patient={{ patient.id }}" class="qa-item">
+                                    <i class="fas fa-flask" style="color:var(--p-info);"></i>
+                                    Lab Test
+                                </a>
+                                {% endif %}
+
+                                {% if user|has_permission:'create_radiology_request' or user.is_superuser %}
+                                <a href="{% url 'radiology:order' patient.id %}" class="qa-item">
+                                    <i class="fas fa-x-ray" style="color:var(--p-info);"></i>
+                                    Radiology
+                                </a>
+                                {% endif %}
+
+                                {% if user|has_permission:'manage_patient_admission' or user.is_superuser %}
+                                <a href="{% url 'inpatient:create_admission' %}?patient_id={{ patient.id }}" class="qa-item">
+                                    <i class="fas fa-bed" style="color:#f59e0b;"></i>
+                                    Admit
+                                </a>
+                                {% endif %}
+
+                                {% if user|has_permission:'refer_patient' or user.is_superuser %}
+                                <a href="{% url 'consultations:create_referral_for_patient' patient.id %}" class="qa-item">
+                                    <i class="fas fa-user-md" style="color:var(--p-danger);"></i>
+                                    Refer
+                                </a>
+                                {% endif %}
+
+                                {% if user|has_permission:'create_invoice' or user.is_superuser %}
+                                <a href="{% url 'billing:create' %}?patient={{ patient.id }}" class="qa-item">
+                                    <i class="fas fa-file-invoice-dollar" style="color:var(--p-success);"></i>
+                                    Invoice
+                                </a>
+                                {% endif %}
+
+                                {% if user|has_permission:'manage_vitals' or user.is_superuser %}
+                                <button type="button" class="qa-item" data-bs-toggle="modal" data-bs-target="#vitalsModal">
+                                    <i class="fas fa-heartbeat" style="color:var(--p-danger);"></i>
+                                    Vitals
+                                </button>
+                                {% endif %}
+
+                                {% if user|has_permission:'view_tests' or user.is_superuser %}
+                                <a href="{% url 'laboratory:patient_tests' patient.id %}" class="qa-item">
+                                    <i class="fas fa-vials" style="color:var(--p-info);"></i>
+                                    Lab Results
+                                </a>
+                                {% endif %}
+
+                                {% if user|has_permission:'medical.create' %}
+                                <a href="{% url 'dental:create_dental_record' %}?patient={{ patient.id }}" class="qa-item">
+                                    <i class="fas fa-tooth" style="color:var(--p-gray-500);"></i>
+                                    Dental
+                                </a>
+                                <a href="{% url 'ent:create_ent_record' %}?patient={{ patient.id }}" class="qa-item">
+                                    <i class="fas fa-ear-listen" style="color:var(--p-gray-500);"></i>
+                                    ENT
+                                </a>
+                                <a href="{% url 'patients:create_physiotherapy_request' patient.id %}" class="qa-item">
+                                    <i class="fas fa-walking" style="color:var(--p-warning);"></i>
+                                    Physio
+                                </a>
+                                <button type="button" class="qa-item" data-bs-toggle="modal" data-bs-target="#vaccinationModal">
+                                    <i class="fas fa-syringe" style="color:var(--p-success);"></i>
+                                    Vaccinate
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                </div><!-- /pd-sidebar -->
             </div>
 
-            <!-- Medical History Card -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">Medical History</h6>
-                    <div>
-                        <a href="{% url 'patients:medical_history' patient.id %}" class="btn btn-sm btn-primary">
-                            <i class="fas fa-plus fa-sm"></i> Add Entry
-                        </a>
-                        <a href="{% url 'patients:medical_history' patient.id %}" class="btn btn-sm btn-outline-secondary">View All</a>
+            <!-- ── RIGHT MAIN ── -->
+            <div class="col-xl-9 col-lg-8">
+                <div class="pd-tabs">
+
+                    <!-- Tab nav -->
+                    <div class="pd-tab-nav">
+                        <button class="pd-tab-btn active" data-tab="vitals">
+                            <i class="fas fa-heartbeat me-1"></i>Vitals
+                        </button>
+                        <button class="pd-tab-btn" data-tab="history">
+                            <i class="fas fa-notes-medical me-1"></i>Med History
+                            {% if medical_histories %}<span class="tab-badge">{{ medical_histories|length }}</span>{% endif %}
+                        </button>
+                        <button class="pd-tab-btn" data-tab="notes">
+                            <i class="fas fa-file-medical me-1"></i>Clinical Notes
+                            {% if clinical_notes %}<span class="tab-badge">{{ clinical_notes|length }}</span>{% endif %}
+                        </button>
+                        <button class="pd-tab-btn" data-tab="appointments">
+                            <i class="fas fa-calendar-check me-1"></i>Appointments
+                        </button>
+                        <button class="pd-tab-btn" data-tab="prescriptions">
+                            <i class="fas fa-pills me-1"></i>Prescriptions
+                        </button>
+                        <button class="pd-tab-btn" data-tab="physio">
+                            <i class="fas fa-walking me-1"></i>Physiotherapy
+                            {% if physiotherapy_requests %}<span class="tab-badge">{{ physiotherapy_requests|length }}</span>{% endif %}
+                        </button>
+                        <button class="pd-tab-btn" data-tab="transactions">
+                            <i class="fas fa-receipt me-1"></i>Transactions
+                            {% if patient_invoices %}<span class="tab-badge">{{ patient_invoices|length }}</span>{% endif %}
+                        </button>
                     </div>
-                </div>
-                <div class="card-body">
-                    {% if medical_histories %}
+
+                    <!-- ── TAB: Vitals ── -->
+                    <div class="pd-tab-pane active" id="tab-vitals">
+                        {% if vitals %}
+                            {% with v=vitals.0 %}
+                            <div class="sub-hdr">
+                                Latest · {{ v.date_time|date:"d M Y, H:i" }}
+                                <a href="{% url 'patients:vitals' patient.id %}">View All</a>
+                            </div>
+                            <div class="row g-2 mb-4">
+                                <div class="col-6 col-md-3">
+                                    <div class="vital-card">
+                                        <div class="vital-label">Temperature</div>
+                                        <div class="vital-value">{{ v.temperature }}</div>
+                                        <div class="vital-unit">°C</div>
+                                        <div class="vital-normal">36.5–37.5</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="vital-card">
+                                        <div class="vital-label">Blood Pressure</div>
+                                        <div class="vital-value">{{ v.blood_pressure_systolic }}/{{ v.blood_pressure_diastolic }}</div>
+                                        <div class="vital-unit">mmHg</div>
+                                        <div class="vital-normal">120/80</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="vital-card">
+                                        <div class="vital-label">Pulse Rate</div>
+                                        <div class="vital-value">{{ v.pulse_rate }}</div>
+                                        <div class="vital-unit">bpm</div>
+                                        <div class="vital-normal">60–100</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="vital-card">
+                                        <div class="vital-label">Respiration</div>
+                                        <div class="vital-value">{{ v.respiratory_rate }}</div>
+                                        <div class="vital-unit">bpm</div>
+                                        <div class="vital-normal">12–20</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="vital-card">
+                                        <div class="vital-label">O₂ Saturation</div>
+                                        <div class="vital-value">{{ v.oxygen_saturation|default:"—" }}</div>
+                                        <div class="vital-unit">%</div>
+                                        <div class="vital-normal">95–100</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="vital-card">
+                                        <div class="vital-label">Weight</div>
+                                        <div class="vital-value">{{ v.weight }}</div>
+                                        <div class="vital-unit">kg</div>
+                                        <div class="vital-normal">BMI {{ v.bmi|floatformat:1 }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="vital-card">
+                                        <div class="vital-label">Height</div>
+                                        <div class="vital-value">{{ v.height }}</div>
+                                        <div class="vital-unit">cm</div>
+                                        <div class="vital-normal">&nbsp;</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% if v.notes %}
+                            <div class="alert alert-info py-2 px-3 mb-3" style="font-size:0.85rem;">
+                                <strong>Notes:</strong> {{ v.notes }}
+                            </div>
+                            {% endif %}
+                            {% endwith %}
+
+                            <!-- Vitals history table -->
+                            <div class="sub-hdr">History</div>
+                            <div class="table-responsive">
+                                <table class="pd-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Temp</th>
+                                            <th>BP</th>
+                                            <th>Pulse</th>
+                                            <th>Resp</th>
+                                            <th>O₂%</th>
+                                            <th>Wt (kg)</th>
+                                            <th>Ht (cm)</th>
+                                            <th>BMI</th>
+                                            <th>By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for vit in vitals %}
+                                        <tr>
+                                            <td>{{ vit.date_time|date:"d M Y H:i" }}</td>
+                                            <td>{{ vit.temperature }}</td>
+                                            <td>{{ vit.blood_pressure_systolic }}/{{ vit.blood_pressure_diastolic }}</td>
+                                            <td>{{ vit.pulse_rate }}</td>
+                                            <td>{{ vit.respiratory_rate }}</td>
+                                            <td>{{ vit.oxygen_saturation|default:"—" }}</td>
+                                            <td>{{ vit.weight }}</td>
+                                            <td>{{ vit.height }}</td>
+                                            <td>{{ vit.bmi|floatformat:1 }}</td>
+                                            <td>{{ vit.recorded_by }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="pd-empty">
+                                <i class="fas fa-heartbeat"></i>
+                                <p>No vitals recorded yet.</p>
+                                {% if user|has_permission:'manage_vitals' or user.is_superuser %}
+                                <button type="button" class="btn btn-sm btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#vitalsModal">
+                                    <i class="fas fa-plus me-1"></i>Record Vitals
+                                </button>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- ── TAB: Medical History ── -->
+                    <div class="pd-tab-pane" id="tab-history">
+                        <div class="sub-hdr">
+                            Medical History
+                            <a href="{% url 'patients:medical_history' patient.id %}"><i class="fas fa-plus me-1"></i>Add Entry</a>
+                        </div>
+                        {% if medical_histories %}
                         <div class="table-responsive">
-                            <table class="table table-bordered" width="100%" cellspacing="0">
+                            <table class="pd-table">
                                 <thead>
                                     <tr>
                                         <th>Date</th>
@@ -548,219 +713,87 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for history in medical_histories %}
+                                    {% for h in medical_histories %}
                                     <tr>
-                                        <td>{{ history.date|date:"M d, Y" }}</td>
-                                        <td>{{ history.condition }}</td>
-                                        <td>{{ history.treatment }}</td>
-                                        <td>{{ history.notes|truncatechars:50 }}</td>
+                                        <td style="white-space:nowrap;">{{ h.date|date:"d M Y" }}</td>
+                                        <td>{{ h.condition }}</td>
+                                        <td>{{ h.treatment }}</td>
+                                        <td>{{ h.notes|truncatechars:60 }}</td>
                                         <td>
-                                            {% if history.created_by %}
-                                                {{ history.created_by.get_full_name|default:history.created_by.username }}
-                                                <small class="text-muted d-block">{{ history.created_at|date:"M d, Y H:i" }}</small>
+                                            {% if h.created_by %}
+                                                {{ h.created_by.get_full_name|default:h.created_by.username }}
+                                                <small class="d-block text-muted">{{ h.created_at|date:"d M Y" }}</small>
                                             {% else %}
-                                                {{ history.doctor_name }}
+                                                {{ h.doctor_name }}
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <div class="btn-group" role="group">
-                                                <a href="{% url 'patients:edit_medical_history' history.id %}" class="btn btn-sm btn-outline-primary btn-action" title="Edit">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <a href="{% url 'patients:delete_medical_history' history.id %}" class="btn btn-sm btn-outline-danger btn-action" title="Delete" onclick="return confirm('Are you sure you want to delete this entry?');">
-                                                    <i class="fas fa-trash"></i>
-                                                </a>
-                                            </div>
+                                            <a href="{% url 'patients:edit_medical_history' h.id %}" class="act-btn" title="Edit"><i class="fas fa-edit"></i></a>
+                                            <a href="{% url 'patients:delete_medical_history' h.id %}" class="act-btn danger" title="Delete" onclick="return confirm('Delete this entry?');"><i class="fas fa-trash"></i></a>
                                         </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
-                    {% else %}
-                        <p class="text-center">No medical history recorded yet.</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
+                        {% else %}
+                            <div class="pd-empty">
+                                <i class="fas fa-notes-medical"></i>
+                                <p>No medical history recorded yet.</p>
+                            </div>
+                        {% endif %}
+                    </div>
 
-    <!-- Clinical Notes Section -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3 d-flex justify-content-between align-items-center">
-            <h6 class="m-0 font-weight-bold text-primary">
-                <i class="fas fa-notes-medical"></i> Clinical Notes
-            </h6>
-            <a href="{% url 'patients:add_clinical_note' patient.id %}" class="btn btn-sm btn-primary">
-                <i class="fas fa-plus"></i> Add Clinical Note
-            </a>
-        </div>
-        <div class="card-body">
-            {% if clinical_notes %}
-                <div class="table-responsive">
-                    <table class="table table-bordered table-sm" width="100%" cellspacing="0">
-                        <thead>
-                            <th>Date</th>
-                            <th>Note</th>
-                            <th>Doctor</th>
-                            <th>Actions</th>
-                        </thead>
-                        <tbody>
-                            {% for note in clinical_notes %}
-                                <tr>
-                                    <td>{{ note.date|date:"M d, Y H:i" }}</td>
-                                    <td>{{ note.note|linebreaks }}</td>
-                                    <td>{{ note.doctor.get_full_name }}</td>
-                                    <td>
-                                        <div class="btn-group" role="group">
-                                            <a href="{% url 'patients:edit_clinical_note' note.id %}" class="btn btn-sm btn-outline-primary btn-action" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <a href="{% url 'patients:delete_clinical_note' note.id %}" class="btn btn-sm btn-outline-danger btn-action" title="Delete">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <p class="text-muted text-center mb-0">No clinical notes recorded yet.</p>
-                <div class="text-end mt-3">
-                    <a href="{% url 'patients:add_clinical_note' patient.id %}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Add Clinical Note
-                    </a>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Physiotherapy Requests Section -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3 d-flex justify-content-between align-items-center">
-            <h6 class="m-0 font-weight-bold text-primary">
-                <i class="fas fa-walking"></i> Physiotherapy Requests
-            </h6>
-            {% if user|has_permission:'medical.create' %}
-            <a href="{% url 'patients:create_physiotherapy_request' patient.id %}" class="btn btn-sm btn-warning">
-                <i class="fas fa-plus"></i> Add Request
-            </a>
-            {% endif %}
-        </div>
-        <div class="card-body">
-            {% if physiotherapy_requests %}
-                <div class="table-responsive">
-                    <table class="table table-bordered table-sm" width="100%" cellspacing="0">
-                        <thead>
-                            <th>Date</th>
-                            <th>Diagnosis</th>
-                            <th>Referring Doctor</th>
-                            <th>Physiotherapist</th>
-                            <th>Priority</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </thead>
-                        <tbody>
-                            {% for request in physiotherapy_requests %}
-                                <tr>
-                                    <td>{{ request.request_date|date:"M d, Y H:i" }}</td>
-                                    <td>{{ request.diagnosis|truncatechars:50 }}</td>
-                                    <td>
-                                        {% if request.referring_doctor %}
-                                            {{ request.referring_doctor.get_full_name }}
-                                        {% else %}
-                                            Not specified
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if request.physiotherapist %}
-                                            {{ request.physiotherapist.get_full_name }}
-                                        {% else %}
-                                            Not assigned
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <span class="badge {% if request.priority == 'urgent' %}bg-danger{% elif request.priority == 'high' %}bg-warning{% elif request.priority == 'medium' %}bg-info{% else %}bg-secondary{% endif %}">
-                                            {{ request.get_priority_display }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge {% if request.status == 'pending' %}bg-warning{% elif request.status == 'approved' %}bg-success{% elif request.status == 'in_progress' %}bg-info{% elif request.status == 'completed' %}bg-primary{% else %}bg-secondary{% endif %}">
-                                            {{ request.get_status_display }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group" role="group">
-                                            <a href="{% url 'patients:edit_physiotherapy_request' request.id %}" class="btn btn-sm btn-outline-primary btn-action" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            
-                                            {% if request.status == 'pending' %}
-                                                <form method="post" action="{% url 'patients:update_physiotherapy_status' request.id 'approved' %}" style="display: inline;">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm btn-outline-success btn-action" title="Approve" onclick="return confirm('Approve this physiotherapy request?');">
-                                                        <i class="fas fa-check"></i>
-                                                    </button>
-                                                </form>
-                                            {% endif %}
-                                            
-                                            {% if request.status == 'approved' %}
-                                                <form method="post" action="{% url 'patients:update_physiotherapy_status' request.id 'in_progress' %}" style="display: inline;">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm btn-outline-info btn-action" title="Start Treatment" onclick="return confirm('Mark this request as in progress?');">
-                                                        <i class="fas fa-play"></i>
-                                                    </button>
-                                                </form>
-                                            {% endif %}
-                                            
-                                            {% if request.status == 'in_progress' %}
-                                                <form method="post" action="{% url 'patients:update_physiotherapy_status' request.id 'completed' %}" style="display: inline;">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm btn-outline-primary btn-action" title="Complete" onclick="return confirm('Mark this request as completed?');">
-                                                        <i class="fas fa-check-circle"></i>
-                                                    </button>
-                                                </form>
-                                            {% endif %}
-                                            
-                                            <form method="post" action="{% url 'patients:delete_physiotherapy_request' request.id %}" style="display: inline;">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-sm btn-outline-danger btn-action" title="Delete" onclick="return confirm('Are you sure you want to delete this physiotherapy request?');">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <p class="text-muted text-center mb-0">No physiotherapy requests recorded yet.</p>
-                <div class="text-end mt-3">
-                    {% if user|has_permission:'medical.create' %}
-                    <a href="{% url 'patients:create_physiotherapy_request' patient.id %}" class="btn btn-warning">
-                        <i class="fas fa-plus"></i> Add Physiotherapy Request
-                    </a>
-                    {% endif %}
-                </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Appointments Card -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">Recent Appointments</h6>
-                    <a href="{% url 'appointments:list' %}?patient={{ patient.id }}" class="btn btn-sm btn-outline-primary">View All</a>
-                </div>
-                <div class="card-body">
-                    {% with appointments=patient.appointments.all|slice:":5" %}
-                    {% if appointments %}
+                    <!-- ── TAB: Clinical Notes ── -->
+                    <div class="pd-tab-pane" id="tab-notes">
+                        <div class="sub-hdr">
+                            Clinical Notes
+                            <a href="{% url 'patients:add_clinical_note' patient.id %}"><i class="fas fa-plus me-1"></i>Add Note</a>
+                        </div>
+                        {% if clinical_notes %}
                         <div class="table-responsive">
-                            <table class="table table-bordered" width="100%" cellspacing="0">
+                            <table class="pd-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Note</th>
+                                        <th>Doctor</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for note in clinical_notes %}
+                                    <tr>
+                                        <td style="white-space:nowrap;">{{ note.date|date:"d M Y H:i" }}</td>
+                                        <td>{{ note.note|linebreaks }}</td>
+                                        <td>{{ note.doctor.get_full_name }}</td>
+                                        <td>
+                                            <a href="{% url 'patients:edit_clinical_note' note.id %}" class="act-btn" title="Edit"><i class="fas fa-edit"></i></a>
+                                            <a href="{% url 'patients:delete_clinical_note' note.id %}" class="act-btn danger" title="Delete"><i class="fas fa-trash"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                            <div class="pd-empty">
+                                <i class="fas fa-file-medical"></i>
+                                <p>No clinical notes recorded yet.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- ── TAB: Appointments ── -->
+                    <div class="pd-tab-pane" id="tab-appointments">
+                        <div class="sub-hdr">
+                            Appointments
+                            <a href="{% url 'appointments:list' %}?patient={{ patient.id %}">View All</a>
+                        </div>
+                        {% with appointments=patient.appointments.all|slice:":10" %}
+                        {% if appointments %}
+                        <div class="table-responsive">
+                            <table class="pd-table">
                                 <thead>
                                     <tr>
                                         <th>Date</th>
@@ -768,49 +801,42 @@
                                         <th>Doctor</th>
                                         <th>Purpose</th>
                                         <th>Status</th>
-                                        <th>Actions</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for appointment in appointments %}
+                                    {% for appt in appointments %}
                                     <tr>
-                                        <td>{{ appointment.appointment_date|date:"M d, Y H:i" }}</td>
-                                        <td>{{ appointment.appointment_time }}</td>
-                                        <td>Dr. {{ appointment.doctor.get_full_name }}</td>
-                                        <td>{{ appointment.purpose|truncatechars:30 }}</td>
-                                        <td>
-                                            <span class="badge {% if appointment.status == 'scheduled' %}bg-primary{% elif appointment.status == 'confirmed' %}bg-success{% elif appointment.status == 'cancelled' %}bg-danger{% elif appointment.status == 'completed' %}bg-info{% else %}bg-secondary{% endif %}">
-                                                {{ appointment.get_status_display }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <a href="{% url 'appointments:detail' appointment.id %}" class="btn btn-sm btn-outline-info btn-action" title="View Details">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                        </td>
+                                        <td style="white-space:nowrap;">{{ appt.appointment_date|date:"d M Y" }}</td>
+                                        <td>{{ appt.appointment_time }}</td>
+                                        <td>Dr. {{ appt.doctor.get_full_name }}</td>
+                                        <td>{{ appt.purpose|truncatechars:35 }}</td>
+                                        <td><span class="spill sp-{{ appt.status }}">{{ appt.get_status_display }}</span></td>
+                                        <td><a href="{% url 'appointments:detail' appt.id %}" class="act-btn" title="View"><i class="fas fa-eye"></i></a></td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
-                    {% else %}
-                        <p class="text-center">No appointments recorded yet.</p>
-                    {% endif %}
-                    {% endwith %}
-                </div>
-            </div>
+                        {% else %}
+                            <div class="pd-empty">
+                                <i class="fas fa-calendar-times"></i>
+                                <p>No appointments recorded yet.</p>
+                            </div>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
 
-            <!-- Prescriptions Card -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">Recent Prescriptions</h6>
-                    <a href="{% url 'pharmacy:prescriptions' %}?patient={{ patient.id }}" class="btn btn-sm btn-outline-primary">View All</a>
-                </div>
-                <div class="card-body">
-                    {% with prescriptions=patient.prescriptions.all|dictsort:"prescription_date"|slice:":5" %}
-                    {% if prescriptions %}
+                    <!-- ── TAB: Prescriptions ── -->
+                    <div class="pd-tab-pane" id="tab-prescriptions">
+                        <div class="sub-hdr">
+                            Prescriptions
+                            <a href="{% url 'pharmacy:prescriptions' %}?patient={{ patient.id }}">View All</a>
+                        </div>
+                        {% with prescriptions=patient.prescriptions.all|dictsort:"prescription_date"|slice:":10" %}
+                        {% if prescriptions %}
                         <div class="table-responsive">
-                            <table class="table table-bordered" width="100%" cellspacing="0">
+                            <table class="pd-table">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
@@ -818,349 +844,304 @@
                                         <th>Doctor</th>
                                         <th>Diagnosis</th>
                                         <th>Status</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rx in prescriptions %}
+                                    <tr>
+                                        <td>{{ rx.id }}</td>
+                                        <td style="white-space:nowrap;">{{ rx.prescription_date|date:"d M Y" }}</td>
+                                        <td>Dr. {{ rx.doctor.get_full_name }}</td>
+                                        <td>{{ rx.diagnosis|truncatechars:35 }}</td>
+                                        <td><span class="spill sp-{{ rx.status }}">{{ rx.get_status_display }}</span></td>
+                                        <td><a href="{% url 'pharmacy:prescription_detail' rx.id %}" class="act-btn" title="View"><i class="fas fa-eye"></i></a></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                            <div class="pd-empty">
+                                <i class="fas fa-prescription-bottle"></i>
+                                <p>No prescriptions recorded yet.</p>
+                            </div>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+
+                    <!-- ── TAB: Physiotherapy ── -->
+                    <div class="pd-tab-pane" id="tab-physio">
+                        <div class="sub-hdr">
+                            Physiotherapy Requests
+                            {% if user|has_permission:'medical.create' %}
+                            <a href="{% url 'patients:create_physiotherapy_request' patient.id %}"><i class="fas fa-plus me-1"></i>Add Request</a>
+                            {% endif %}
+                        </div>
+                        {% if physiotherapy_requests %}
+                        <div class="table-responsive">
+                            <table class="pd-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Diagnosis</th>
+                                        <th>Referring Dr</th>
+                                        <th>Physiotherapist</th>
+                                        <th>Priority</th>
+                                        <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for prescription in prescriptions %}
+                                    {% for req in physiotherapy_requests %}
                                     <tr>
-                                        <td>{{ prescription.id }}</td>
-                                        <td>{{ prescription.prescription_date|date:"M d, Y H:i" }}</td>
-                                        <td>Dr. {{ prescription.doctor.get_full_name }}</td>
-                                        <td>{{ prescription.diagnosis|truncatechars:30 }}</td>
+                                        <td style="white-space:nowrap;">{{ req.request_date|date:"d M Y" }}</td>
+                                        <td>{{ req.diagnosis|truncatechars:40 }}</td>
+                                        <td>{% if req.referring_doctor %}{{ req.referring_doctor.get_full_name }}{% else %}—{% endif %}</td>
+                                        <td>{% if req.physiotherapist %}{{ req.physiotherapist.get_full_name }}{% else %}<span class="text-muted">Unassigned</span>{% endif %}</td>
+                                        <td><span class="spill sp-{{ req.priority }}">{{ req.get_priority_display }}</span></td>
+                                        <td><span class="spill sp-{{ req.status }}">{{ req.get_status_display }}</span></td>
                                         <td>
-                                            <span class="badge {% if prescription.status == 'pending' %}bg-warning{% elif prescription.status == 'dispensed' %}bg-success{% elif prescription.status == 'partially_dispensed' %}bg-info{% elif prescription.status == 'cancelled' %}bg-danger{% else %}bg-secondary{% endif %}">
-                                                {{ prescription.get_status_display }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <a href="{% url 'pharmacy:prescription_detail' prescription.id %}" class="btn btn-sm btn-outline-info btn-action" title="View Prescription">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
+                                            <div class="d-flex gap-1">
+                                                <a href="{% url 'patients:edit_physiotherapy_request' req.id %}" class="act-btn" title="Edit"><i class="fas fa-edit"></i></a>
+                                                {% if req.status == 'pending' %}
+                                                <form method="post" action="{% url 'patients:update_physiotherapy_status' req.id 'approved' %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="act-btn" title="Approve" onclick="return confirm('Approve?');"><i class="fas fa-check"></i></button>
+                                                </form>
+                                                {% elif req.status == 'approved' %}
+                                                <form method="post" action="{% url 'patients:update_physiotherapy_status' req.id 'in_progress' %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="act-btn" title="Start"><i class="fas fa-play"></i></button>
+                                                </form>
+                                                {% elif req.status == 'in_progress' %}
+                                                <form method="post" action="{% url 'patients:update_physiotherapy_status' req.id 'completed' %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="act-btn" title="Complete"><i class="fas fa-check-circle"></i></button>
+                                                </form>
+                                                {% endif %}
+                                                <form method="post" action="{% url 'patients:delete_physiotherapy_request' req.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="act-btn danger" title="Delete" onclick="return confirm('Delete this request?');"><i class="fas fa-trash"></i></button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
-                    {% else %}
-                        <p class="text-center">No prescriptions recorded yet.</p>
-                    {% endif %}
-                    {% endwith %}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Record Information -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Record Information</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p class="mb-1"><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
-                            <p class="mb-1"><strong>Registration Date:</strong> {{ patient.registration_date|date:"F d, Y H:i" }}</p>
-                        </div>
-                        <div class="col-md-6 text-md-end">
-                            <a href="{% url 'patients:edit' patient.id %}" class="btn btn-primary">
-                                <i class="fas fa-edit me-1"></i> Edit Patient
-                            </a>
-                            <!-- Deactivate/Activate handled by toggle button below; removed obsolete delete link -->
-                        </div>
+                        {% else %}
+                            <div class="pd-empty">
+                                <i class="fas fa-walking"></i>
+                                <p>No physiotherapy requests yet.</p>
+                            </div>
+                        {% endif %}
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Prescription Modal -->
-    <div class="modal fade" id="prescriptionModal" tabindex="-1" aria-labelledby="prescriptionModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="prescriptionModalLabel">Prescribe Medication</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form method="post" action="{% url 'pharmacy:pharmacy_create_prescription' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="patient" value="{{ patient.id }}">
-                    <input type="hidden" name="prescribing_doctor" value="{{ request.user.id }}">
-                    <div class="modal-body">
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <label for="medication" class="form-label">Medication</label>
-                                <select class="form-select medication-select" id="medication" name="medication" required>
-                                    <option value="">Select Medication</option>
-                                </select>
-                            </div>
-                        </div>
+                    <!-- ── TAB: Transactions ── -->
+                    <div class="pd-tab-pane" id="tab-transactions">
 
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="dosage" class="form-label">Dosage</label>
-                                <input type="text" class="form-control" id="dosage" name="dosage" required>
+                        <!-- Summary Cards -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-6 col-md-3">
+                                <div class="vital-card">
+                                    <div class="vital-label">Total Invoiced</div>
+                                    <div class="vital-value" style="font-size:1.1rem;">₦{{ total_invoiced|floatformat:2 }}</div>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <label for="frequency" class="form-label">Frequency</label>
-                                <input type="text" class="form-control" id="frequency" name="frequency" required>
+                            <div class="col-6 col-md-3">
+                                <div class="vital-card">
+                                    <div class="vital-label">Total Paid</div>
+                                    <div class="vital-value" style="font-size:1.1rem;color:var(--hms-success,#28a745);">₦{{ total_paid|floatformat:2 }}</div>
+                                </div>
                             </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="duration" class="form-label">Duration (days)</label>
-                                <input type="number" class="form-control" id="duration" name="duration" required>
+                            <div class="col-6 col-md-3">
+                                <div class="vital-card">
+                                    <div class="vital-label">Outstanding</div>
+                                    <div class="vital-value" style="font-size:1.1rem;{% if total_outstanding > 0 %}color:#dc3545;{% endif %}">₦{{ total_outstanding|floatformat:2 }}</div>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <label for="quantity" class="form-label">Quantity</label>
-                                <input type="number" class="form-control" id="quantity" name="quantity" required>
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <label for="instructions" class="form-label">Instructions</label>
-                                <textarea class="form-control" id="instructions" name="instructions" rows="3" required></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Save Prescription</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Lab Test Modal -->
-    <div class="modal fade" id="labTestModal" tabindex="-1" aria-labelledby="labTestModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="labTestModalLabel">Order Lab Tests</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form method="post" action="{% url 'laboratory:create_test_request' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="patient" value="{{ patient.id }}">
-                    <input type="hidden" name="doctor" value="{{ request.user.id }}">
-                    <div class="modal-body">
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <label for="tests" class="form-label">Select Tests</label>
-                                <select class="form-select select2" id="tests" name="tests" multiple required>
-                                    <!-- Options will be populated via AJAX -->
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <label for="lab_notes" class="form-label">Clinical Notes</label>
-                                <textarea class="form-control" id="lab_notes" name="notes" rows="3"></textarea>
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="lab_priority" class="form-label">Priority</label>
-                                <select class="form-select" id="lab_priority" name="priority">
-                                    <option value="normal" selected>Normal</option>
-                                    <option value="urgent">Urgent</option>
-                                    <option value="emergency">Emergency</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="lab_request_date" class="form-label">Request Date</label>
-                                <input type="date" class="form-control" id="lab_request_date" name="request_date" value="{{ today|date:'Y-m-d' }}">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Submit Order</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Radiology Modal -->
-    <div class="modal fade" id="radiologyModal" tabindex="-1" aria-labelledby="radiologyModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="radiologyModalLabel">Order Radiology</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form method="post" action="{% url 'radiology:order' patient.id %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="ordering_doctor" value="{{ request.user.id }}">
-                    <div class="modal-body">
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <label for="radiology_type" class="form-label">Radiology Type</label>
-                                <select class="form-select" id="radiology_type" name="radiology_type" required>
-                                    <option value="">Select Type</option>
-                                    <option value="x-ray">X-Ray</option>
-                                    <option value="ultrasound">Ultrasound</option>
-                                    <option value="ct-scan">CT Scan</option>
-                                    <option value="mri">MRI</option>
-                                    <option value="ecg">ECG</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <label for="body_part" class="form-label">Body Part</label>
-                                <input type="text" class="form-control" id="body_part" name="body_part" required>
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <label for="clinical_indication" class="form-label">Clinical Indication</label>
-                                <textarea class="form-control" id="clinical_indication" name="clinical_indication" rows="3" required></textarea>
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="priority" class="form-label">Priority</label>
-                                <select class="form-select" id="radiology_priority" name="priority">
-                                    <option value="routine">Routine</option>
-                                    <option value="urgent">Urgent</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="scheduled_date" class="form-label">Scheduled Date</label>
-                                <input type="datetime-local" class="form-control" id="scheduled_date" name="scheduled_date" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Submit Order</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Record Vitals Modal -->
-    <div class="modal fade" id="vitalsModal" tabindex="-1" aria-labelledby="vitalsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="vitalsModalLabel">Record Vitals</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form method="post" action="{% url 'patients:detail' patient.id %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="add_vitals" value="1">
-                    <div class="modal-body">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="temperature" class="form-label">Temperature (°C)</label>
-                                <input type="number" step="0.1" class="form-control" id="temperature" name="temperature" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="blood_pressure_systolic" class="form-label">Blood Pressure (mmHg)</label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" id="blood_pressure_systolic" name="blood_pressure_systolic" placeholder="Systolic" required>
-                                    <span class="input-group-text">/</span>
-                                    <input type="number" class="form-control" id="blood_pressure_diastolic" name="blood_pressure_diastolic" placeholder="Diastolic" required>
+                            <div class="col-6 col-md-3">
+                                <div class="vital-card">
+                                    <div class="vital-label">Wallet Balance</div>
+                                    <div class="vital-value" style="font-size:1.1rem;">
+                                        {% if has_wallet %}
+                                            ₦{{ patient.wallet.balance|floatformat:2 }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="pulse_rate" class="form-label">Pulse Rate (bpm)</label>
-                                <input type="number" class="form-control" id="pulse_rate" name="pulse_rate" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="respiratory_rate" class="form-label">Respiratory Rate (bpm)</label>
-                                <input type="number" class="form-control" id="respiratory_rate" name="respiratory_rate" required>
-                            </div>
+                        <!-- Invoices -->
+                        <div class="sub-hdr">
+                            Invoices
+                            <a href="{% url 'billing:patient_invoices' patient.id %}">View All</a>
                         </div>
+                        {% if patient_invoices %}
+                        <div class="table-responsive mb-4">
+                            <table class="pd-table">
+                                <thead>
+                                    <tr>
+                                        <th>Invoice #</th>
+                                        <th>Date</th>
+                                        <th>Source</th>
+                                        <th>Total (₦)</th>
+                                        <th>Paid (₦)</th>
+                                        <th>Balance (₦)</th>
+                                        <th>Status</th>
+                                        <th>Method</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for inv in patient_invoices %}
+                                    <tr>
+                                        <td><strong>{{ inv.invoice_number }}</strong></td>
+                                        <td style="white-space:nowrap;">{{ inv.invoice_date|date:"d M Y" }}</td>
+                                        <td>{{ inv.get_source_app_display }}</td>
+                                        <td>{{ inv.total_amount|floatformat:2 }}</td>
+                                        <td>{{ inv.amount_paid|floatformat:2 }}</td>
+                                        <td>
+                                            {% with bal=inv.total_amount|add:"-"|add:inv.amount_paid %}
+                                            {{ inv.get_balance|floatformat:2 }}
+                                            {% endwith %}
+                                        </td>
+                                        <td>
+                                            <span class="spill sp-{{ inv.status }}">{{ inv.get_status_display }}</span>
+                                        </td>
+                                        <td>{{ inv.get_payment_method_display|default:"—" }}</td>
+                                        <td>
+                                            <a href="{% url 'billing:detail' inv.id %}" class="act-btn" title="View"><i class="fas fa-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                            <div class="pd-empty mb-4">
+                                <i class="fas fa-file-invoice"></i>
+                                <p>No invoices yet.</p>
+                            </div>
+                        {% endif %}
 
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="oxygen_saturation" class="form-label">Oxygen Saturation (%)</label>
-                                <input type="number" class="form-control" id="oxygen_saturation" name="oxygen_saturation" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="weight" class="form-label">Weight (kg)</label>
-                                <input type="number" step="0.1" class="form-control" id="weight" name="weight" required>
-                            </div>
+                        <!-- Wallet Transactions -->
+                        <div class="sub-hdr">Wallet Transactions (last 50)</div>
+                        {% if patient_wallet_transactions %}
+                        <div class="table-responsive">
+                            <table class="pd-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Ref #</th>
+                                        <th>Type</th>
+                                        <th>Description</th>
+                                        <th>Amount (₦)</th>
+                                        <th>Balance After (₦)</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for txn in patient_wallet_transactions %}
+                                    <tr>
+                                        <td style="white-space:nowrap;">{{ txn.created_at|date:"d M Y, H:i" }}</td>
+                                        <td><small class="text-muted">{{ txn.reference_number }}</small></td>
+                                        <td>
+                                            <i class="{{ txn.get_icon_class }} me-1"></i>
+                                            {{ txn.get_transaction_category }}
+                                        </td>
+                                        <td>{{ txn.description|truncatechars:50 }}</td>
+                                        <td>
+                                            {% if txn.is_credit_transaction %}
+                                                <span style="color:#28a745;">+{{ txn.amount|floatformat:2 }}</span>
+                                            {% else %}
+                                                <span style="color:#dc3545;">-{{ txn.amount|floatformat:2 }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ txn.balance_after|floatformat:2 }}</td>
+                                        <td><span class="spill sp-{{ txn.status }}">{{ txn.get_status_display }}</span></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
+                        {% else %}
+                            <div class="pd-empty">
+                                <i class="fas fa-wallet"></i>
+                                <p>No wallet transactions yet.</p>
+                            </div>
+                        {% endif %}
 
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="height" class="form-label">Height (cm)</label>
-                                <input type="number" class="form-control" id="height" name="height" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="bmi" class="form-label">BMI</label>
-                                <input type="text" class="form-control" id="bmi" name="bmi" readonly>
-                            </div>
-                        </div>
+                    </div><!-- /tab-transactions -->
 
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <label for="notes" class="form-label">Notes</label>
-                                <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Save Vitals</button>
-                    </div>
-                </form>
+                </div><!-- /pd-tabs -->
             </div>
-        </div>
-    </div>
+
+        </div><!-- /row -->
+    </div><!-- /container -->
+</div><!-- /pd-page -->
 
 
+<!-- ═══════════════ MODALS ═══════════════ -->
 
-{% endblock %}
-                            <label for="radiology_type" class="form-label">Radiology Type</label>
-                            <select class="form-select" id="radiology_type" name="radiology_type">
-                                <option value="">Select Type</option>
-                                <option value="x-ray">X-Ray</option>
-                                <option value="ultrasound">Ultrasound</option>
-                                <option value="ct-scan">CT Scan</option>
-                                <option value="mri">MRI</option>
-                                <option value="ecg">ECG</option>
-                            </select>
+<!-- Record Vitals Modal -->
+<div class="modal fade" id="vitalsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-heartbeat me-2"></i>Record Vitals</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'patients:detail' patient.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="add_vitals" value="1">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Temperature (°C)</label>
+                            <input type="number" step="0.1" class="form-control" name="temperature" required>
                         </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="body_part" class="form-label">Body Part</label>
-                            <input type="text" class="form-control" id="body_part" name="body_part">
+                        <div class="col-md-6">
+                            <label class="form-label">Blood Pressure (mmHg)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" name="blood_pressure_systolic" placeholder="Systolic" required>
+                                <span class="input-group-text">/</span>
+                                <input type="number" class="form-control" name="blood_pressure_diastolic" placeholder="Diastolic" required>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Pulse Rate (bpm)</label>
+                            <input type="number" class="form-control" name="pulse_rate" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Respiratory Rate (bpm)</label>
+                            <input type="number" class="form-control" name="respiratory_rate" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">O₂ Saturation (%)</label>
+                            <input type="number" class="form-control" name="oxygen_saturation" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Weight (kg)</label>
+                            <input type="number" step="0.1" class="form-control" id="vit-weight" name="weight" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Height (cm)</label>
+                            <input type="number" class="form-control" id="vit-height" name="height" required>
+                        </div>
                         <div class="col-md-12">
-                            <label for="clinical_information" class="form-label">Clinical Information</label>
-                            <textarea class="form-control" id="clinical_information" name="clinical_information" rows="3"></textarea>
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="notes" rows="2"></textarea>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary">Submit Request</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Vitals</button>
                 </div>
             </form>
         </div>
@@ -1168,47 +1149,38 @@
 </div>
 
 <!-- Consultation Modal -->
-<div class="modal fade" id="consultationModal" tabindex="-1" aria-labelledby="consultationModalLabel" aria-hidden="true">
+<div class="modal fade" id="consultationModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="consultationModalLabel">New Consultation for {{ patient.get_full_name }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title"><i class="fas fa-stethoscope me-2"></i>New Consultation — {{ patient.get_full_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="post" action="{% url 'consultations:create_consultation' patient.id %}">
                 {% csrf_token %}
                 <div class="modal-body">
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="chief_complaint" class="form-label">Chief Complaint</label>
-                            <input type="text" class="form-control" id="chief_complaint" name="chief_complaint" required>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Chief Complaint <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="chief_complaint" required>
                         </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="symptoms" class="form-label">Symptoms</label>
-                            <textarea class="form-control" id="symptoms" name="symptoms" rows="3" required></textarea>
+                        <div class="col-12">
+                            <label class="form-label">Symptoms <span class="text-danger">*</span></label>
+                            <textarea class="form-control" name="symptoms" rows="3" required></textarea>
                         </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="diagnosis" class="form-label">Diagnosis</label>
-                            <input type="text" class="form-control" id="diagnosis" name="diagnosis" required>
+                        <div class="col-12">
+                            <label class="form-label">Diagnosis <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="diagnosis" required>
                         </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="consultation_notes" class="form-label">Notes</label>
-                            <textarea class="form-control" id="consultation_notes" name="consultation_notes" rows="3"></textarea>
+                        <div class="col-12">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="consultation_notes" rows="3"></textarea>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary">Save Consultation</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Consultation</button>
                 </div>
             </form>
         </div>
@@ -1216,467 +1188,50 @@
 </div>
 
 <!-- Referral Modal -->
-<div class="modal fade" id="referralModal" tabindex="-1" aria-labelledby="referralModalLabel" aria-hidden="true">
+<div class="modal fade" id="referralModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="referralModalLabel">
-                    <i class="fas fa-user-md me-2"></i>
-                    Refer {{ patient.get_full_name }} to Another Doctor
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title"><i class="fas fa-user-md me-2"></i>Refer {{ patient.get_full_name }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="post" action="{% url 'consultations:create_referral' patient.id %}" id="referralForm">
+            <form method="post" action="{% url 'consultations:create_referral_for_patient' patient.id %}" id="referralForm">
                 {% csrf_token %}
                 <input type="hidden" name="patient" value="{{ patient.id }}">
-                
                 <div class="modal-body">
-                    <!-- Patient Info Summary -->
-                    <div class="alert alert-info mb-3">
-                        <strong>Patient:</strong> {{ patient.get_full_name }} ({{ patient.patient_id }})<br>
-                        <strong>Type:</strong> {{ patient.get_patient_type_display }}
-                        {% if patient.patient_type == 'nhia' %}
-                            <span class="badge bg-primary ms-2">NHIA Patient</span>
-                        {% endif %}
+                    <div class="alert alert-info py-2 mb-3" style="font-size:0.85rem;">
+                        <strong>{{ patient.get_full_name }}</strong> · {{ patient.patient_id }} · {{ patient.get_patient_type_display }}
+                        {% if patient.patient_type == 'nhia' %}<span class="badge bg-primary ms-2">NHIA</span>{% endif %}
                     </div>
-
-                    <!-- Refer To Doctor -->
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="referred_to" class="form-label">
-                                <i class="fas fa-user-doctor me-1"></i>
-                                Refer To Doctor <span class="text-danger">*</span>
-                            </label>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Refer To Doctor <span class="text-danger">*</span></label>
                             <select class="form-select" id="referred_to" name="referred_to" required>
                                 <option value="">Loading doctors...</option>
                             </select>
-                            <div class="form-text">Select the doctor you want to refer this patient to</div>
                         </div>
-                    </div>
-
-                    <!-- Reason for Referral -->
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="reason" class="form-label">
-                                <i class="fas fa-clipboard-list me-1"></i>
-                                Reason for Referral <span class="text-danger">*</span>
-                            </label>
-                            <textarea class="form-control" id="reason" name="reason" rows="4" required 
-                                      placeholder="Enter the reason for referring this patient (e.g., specialist consultation needed, second opinion, etc.)"></textarea>
-                            <div class="form-text">Provide a clear reason for the referral</div>
+                        <div class="col-12">
+                            <label class="form-label">Reason <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="reason" name="reason" rows="4" required placeholder="Reason for referral…"></textarea>
                         </div>
-                    </div>
-
-                    <!-- Additional Notes -->
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="referral_notes" class="form-label">
-                                <i class="fas fa-notes-medical me-1"></i>
-                                Additional Notes <span class="text-muted">(Optional)</span>
-                            </label>
-                            <textarea class="form-control" id="referral_notes" name="notes" rows="3" 
-                                      placeholder="Any additional information that might be helpful for the receiving doctor"></textarea>
-                            <div class="form-text">Include any relevant medical history, test results, or observations</div>
+                        <div class="col-12">
+                            <label class="form-label">Additional Notes <span class="text-muted">(optional)</span></label>
+                            <textarea class="form-control" name="notes" rows="3" placeholder="Relevant history, test results…"></textarea>
                         </div>
+                        {% if patient.patient_type == 'nhia' %}
+                        <div class="col-12">
+                            <div class="alert alert-warning py-2 mb-0" style="font-size:0.82rem;">
+                                <i class="fas fa-exclamation-triangle me-1"></i>NHIA patient — referral may require authorization.
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
-
-                    <!-- NHIA Authorization Notice -->
-                    {% if patient.patient_type == 'nhia' %}
-                    <div class="alert alert-warning mb-0">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>NHIA Patient:</strong> This referral may require authorization. The system will automatically check authorization requirements.
-                    </div>
-                    {% endif %}
                 </div>
-
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-1"></i> Cancel
-                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger" id="submitReferralBtn">
-                        <i class="fas fa-paper-plane me-1"></i> Submit Referral
+                        <i class="fas fa-paper-plane me-1"></i>Submit Referral
                     </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-{% block extra_js %}
-<script>
-    // Calculate BMI when weight or height changes
-    document.addEventListener('DOMContentLoaded', function() {
-        const weightInput = document.getElementById('id_weight');
-        const heightInput = document.getElementById('id_height');
-
-        if (weightInput && heightInput) {
-            const calculateBMI = function() {
-                const weight = parseFloat(weightInput.value);
-                const height = parseFloat(heightInput.value) / 100; // Convert cm to m
-
-                if (weight > 0 && height > 0) {
-                    const bmi = weight / (height * height);
-                    // You can display this somewhere if needed
-                    console.log('BMI:', bmi.toFixed(2));
-                }
-            };
-
-            weightInput.addEventListener('change', calculateBMI);
-            heightInput.addEventListener('change', calculateBMI);
-        }
-
-        // Load medications for prescription modal
-        if (document.getElementById('prescriptionModal')) {
-            fetch('/pharmacy/api/medications/')
-                .then(response => response.json())
-                .then(data => {
-                    const medicationSelects = document.querySelectorAll('.medication-select');
-                    medicationSelects.forEach(select => {
-                        data.forEach(med => {
-                            const option = document.createElement('option');
-                            option.value = med.id;
-                            option.textContent = `${med.name} (${med.dosage_form}, ${med.strength})`;
-                            select.appendChild(option);
-                        });
-                    });
-                })
-                .catch(error => console.error('Error loading medications:', error));
-
-            // Add medication button functionality
-            document.getElementById('add-medication').addEventListener('click', function() {
-                const container = document.getElementById('medications-container');
-                const newItem = container.querySelector('.medication-item').cloneNode(true);
-
-                // Clear input values
-                newItem.querySelectorAll('input, textarea').forEach(input => {
-                    input.value = '';
-                });
-
-                // Show remove button for all items
-                const items = container.querySelectorAll('.medication-item');
-                items.forEach(item => {
-                    item.querySelector('.remove-medication').style.display = 'block';
-                });
-
-                // Show remove button for new item
-                newItem.querySelector('.remove-medication').style.display = 'block';
-
-                // Add event listener to remove button
-                newItem.querySelector('.remove-medication').addEventListener('click', function() {
-                    newItem.remove();
-
-                    // If only one item left, hide its remove button
-                    const remainingItems = container.querySelectorAll('.medication-item');
-                    if (remainingItems.length === 1) {
-                        remainingItems[0].querySelector('.remove-medication').style.display = 'none';
-                    }
-                });
-
-                container.appendChild(newItem);
-
-                // Initialize select2 for the new medication select
-                $(newItem).find('.medication-select').select2({
-                    theme: 'bootstrap-5',
-                    width: '100%',
-                    dropdownParent: $('#prescriptionModal')
-                });
-            });
-
-            // Add event listeners to initial remove buttons
-            document.querySelectorAll('.remove-medication').forEach(button => {
-                button.addEventListener('click', function() {
-                    const item = this.closest('.medication-item');
-                    item.remove();
-
-                    // If only one item left, hide its remove button
-                    const remainingItems = document.querySelectorAll('.medication-item');
-                    if (remainingItems.length === 1) {
-                        remainingItems[0].querySelector('.remove-medication').style.display = 'none';
-                    }
-                });
-            });
-        }
-
-        // Load lab tests for lab test modal
-        if (document.getElementById('labTestModal')) {
-            fetch('/laboratory/api/tests/') // Ensure this URL is correct as per your laboratory/urls.py
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    const testsSelect = document.getElementById('tests');
-                    testsSelect.innerHTML = ''; // Clear existing options
-
-                    if (data && data.length > 0) {
-                        data.forEach(test => {
-                            const option = document.createElement('option');
-                            option.value = test.id;
-                            option.textContent = `${test.name} (${test.category ? test.category : 'Uncategorized'})`;
-                            testsSelect.appendChild(option);
-                        });
-                    } else {
-                        const option = document.createElement('option');
-                        option.textContent = 'No active tests available';
-                        option.disabled = true;
-                        testsSelect.appendChild(option);
-                    }
-                    // Initialize Select2 if it's used for this dropdown
-                    if ($(testsSelect).hasClass('select2')) {
-                        $(testsSelect).select2({
-                            theme: 'bootstrap-5',
-                            width: '100%',
-                            dropdownParent: $('#labTestModal') // Important for modals
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading tests:', error);
-                    const testsSelect = document.getElementById('tests');
-                    if(testsSelect) {
-                        testsSelect.innerHTML = ''; // Clear existing options
-                        const option = document.createElement('option');
-                        option.textContent = 'Error loading tests. See console.';
-                        option.disabled = true;
-                        testsSelect.appendChild(option);
-                         if ($(testsSelect).hasClass('select2')) { // Attempt to init select2 even on error to prevent breakage if it was expected
-                            $(testsSelect).select2({
-                                theme: 'bootstrap-5',
-                                width: '100%',
-                                dropdownParent: $('#labTestModal')
-                            });
-                        }
-                    }
-                });
-        }
-
-        // Fallback function for referral button
-        function fallbackReferralRedirect(event, patientId) {
-            // Check if modal exists and is functional
-            const modal = document.getElementById('referralModal');
-            const doctorsSelect = document.getElementById('referred_to');
-            
-            // If modal doesn't exist or doctors dropdown is not working, redirect to form page
-            if (!modal || !doctorsSelect) {
-                console.log('Modal not functional, redirecting to referral form page...');
-                event.preventDefault();
-                event.stopPropagation();
-                window.location.href = `/consultations/referrals/create/${patientId}/`;
-                return false;
-            }
-            
-            // Otherwise, let the modal open normally
-            console.log('Modal functional, opening modal...');
-            return true;
-        }
-
-        // Referral modal JavaScript
-        console.log('Referral modal script loaded');
-
-        /**
-         * Load doctors from API and populate the dropdown
-         */
-        function loadDoctorsForReferral() {
-            console.log('Loading doctors for referral modal...');
-            
-            const doctorsSelect = document.getElementById('referred_to');
-            if (!doctorsSelect) {
-                console.error('Doctors select element not found');
-                return;
-            }
-
-            // Show loading state
-            doctorsSelect.innerHTML = '<option value="">Loading doctors...</option>';
-            doctorsSelect.disabled = true;
-
-            fetch('/accounts/api/users/?role=doctor')
-                .then(response => {
-                    console.log('Doctors API response status:', response.status);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Doctors loaded:', data.length);
-                    
-                    // Clear and enable select
-                    doctorsSelect.innerHTML = '<option value="">Select Doctor</option>';
-                    doctorsSelect.disabled = false;
-
-                    if (data && data.length > 0) {
-                        data.forEach(doctor => {
-                            const option = document.createElement('option');
-                            option.value = doctor.id;
-                            
-                            // Format doctor name
-                            let doctorName = `Dr. ${doctor.first_name} ${doctor.last_name}`;
-                            
-                            // Add department if available
-                            if (doctor.department) {
-                                doctorName += ` (${doctor.department})`;
-                            }
-                            
-                            option.textContent = doctorName;
-                            doctorsSelect.appendChild(option);
-                        });
-                        console.log('Doctors dropdown populated successfully');
-                    } else {
-                        const option = document.createElement('option');
-                        option.textContent = 'No doctors available';
-                        option.disabled = true;
-                        doctorsSelect.appendChild(option);
-                        console.warn('No doctors found in response');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading doctors:', error);
-                    
-                    // Show error state
-                    doctorsSelect.innerHTML = '<option value="">Select Doctor</option>';
-                    doctorsSelect.disabled = false;
-                    
-                    const option = document.createElement('option');
-                    option.textContent = 'Error loading doctors. Please refresh the page.';
-                    option.disabled = true;
-                    doctorsSelect.appendChild(option);
-                    
-                    // Show user-friendly error message
-                    alert('Failed to load doctors. Please refresh the page and try again.');
-                });
-        }
-
-        // Load doctors when page loads
-        const referralModal = document.getElementById('referralModal');
-        if (referralModal) {
-            console.log('Referral modal found, loading doctors...');
-            loadDoctorsForReferral();
-            
-            // Reload doctors when modal is shown (ensures fresh data)
-            referralModal.addEventListener('show.bs.modal', function (event) {
-                console.log('Referral modal opening, reloading doctors...');
-                loadDoctorsForReferral();
-            });
-            
-            // Clear form when modal is hidden
-            referralModal.addEventListener('hidden.bs.modal', function (event) {
-                console.log('Referral modal closed, clearing form...');
-                const form = document.getElementById('referralForm');
-                if (form) {
-                    form.reset();
-                    // Reload doctors for next time
-                    loadDoctorsForReferral();
-                }
-            });
-        } else {
-            console.warn('Referral modal not found on page');
-        }
-
-        // Form validation
-        const referralForm = document.getElementById('referralForm');
-        if (referralForm) {
-            referralForm.addEventListener('submit', function(event) {
-                const doctorSelect = document.getElementById('referred_to');
-                const reasonField = document.getElementById('reason');
-                
-                // Validate doctor selection
-                if (!doctorSelect.value) {
-                    event.preventDefault();
-                    alert('Please select a doctor to refer the patient to.');
-                    doctorSelect.focus();
-                    return false;
-                }
-                
-                // Validate reason
-                if (!reasonField.value.trim()) {
-                    event.preventDefault();
-                    alert('Please provide a reason for the referral.');
-                    reasonField.focus();
-                    return false;
-                }
-                
-                // Show loading state on submit button
-                const submitBtn = document.getElementById('submitReferralBtn');
-                if (submitBtn) {
-                    submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Submitting...';
-                }
-                
-                console.log('Referral form submitted');
-                return true;
-            });
-        }
-    });
-</script>
-
-<!-- Physiotherapy Modal -->
-<div class="modal fade" id="physiotherapyModal" tabindex="-1" aria-labelledby="physiotherapyModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="physiotherapyModalLabel">Physiotherapy Request for {{ patient.get_full_name }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="post" action="{% url 'patients:create_physiotherapy_request' patient.id %}">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="physio_type" class="form-label">Type of Physiotherapy</label>
-                            <select class="form-select" id="physio_type" name="physio_type" required>
-                                <option value="">Select Type</option>
-                                <option value="musculoskeletal">Musculoskeletal</option>
-                                <option value="neurological">Neurological</option>
-                                <option value="cardiopulmonary">Cardiopulmonary</option>
-                                <option value="pediatric">Pediatric</option>
-                                <option value="sports">Sports Injury</option>
-                                <option value="geriatric">Geriatric</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="condition" class="form-label">Condition/Injury</label>
-                            <input type="text" class="form-control" id="condition" name="condition" required>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="clinical_information" class="form-label">Clinical Information</label>
-                            <textarea class="form-control" id="clinical_information" name="clinical_information" rows="3" required></textarea>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="sessions" class="form-label">Number of Sessions</label>
-                            <input type="number" class="form-control" id="sessions" name="sessions" min="1" max="50" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="frequency" class="form-label">Frequency</label>
-                            <select class="form-select" id="frequency" name="frequency">
-                                <option value="daily">Daily</option>
-                                <option value="weekly">Weekly</option>
-                                <option value="biweekly">Bi-weekly</option>
-                                <option value="monthly">Monthly</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="notes" class="form-label">Additional Notes</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Submit Request</button>
                 </div>
             </form>
         </div>
@@ -1684,78 +1239,63 @@
 </div>
 
 <!-- Vaccination Modal -->
-<div class="modal fade" id="vaccinationModal" tabindex="-1" aria-labelledby="vaccinationModalLabel" aria-hidden="true">
+<div class="modal fade" id="vaccinationModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="vaccinationModalLabel">Vaccination Record for {{ patient.get_full_name }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title"><i class="fas fa-syringe me-2"></i>Vaccination — {{ patient.get_full_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="post" action="{% url 'patients:add_vaccination' patient.id %}">
                 {% csrf_token %}
                 <div class="modal-body">
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="vaccine_type" class="form-label">Vaccine Type</label>
-                            <select class="form-select" id="vaccine_type" name="vaccine_type" required>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Vaccine Type</label>
+                            <select class="form-select" name="vaccine_type" required>
                                 <option value="">Select Vaccine</option>
                                 <option value="covid19">COVID-19</option>
                                 <option value="flu">Influenza</option>
                                 <option value="hepatitis_b">Hepatitis B</option>
-                                <option value="mmr">MMR (Measles, Mumps, Rubella)</option>
-                                <option value="dtap">DTaP (Diphtheria, Tetanus, Pertussis)</option>
-                                <option value="hpv">HPV (Human Papillomavirus)</option>
+                                <option value="mmr">MMR</option>
+                                <option value="dtap">DTaP</option>
+                                <option value="hpv">HPV</option>
                                 <option value="pneumococcal">Pneumococcal</option>
                                 <option value="shingles">Shingles</option>
                                 <option value="other">Other</option>
                             </select>
                         </div>
-                    </div>
-
-                    <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="vaccine_name" class="form-label">Vaccine Name</label>
-                            <input type="text" class="form-control" id="vaccine_name" name="vaccine_name">
+                            <label class="form-label">Vaccine Name</label>
+                            <input type="text" class="form-control" name="vaccine_name">
                         </div>
                         <div class="col-md-6">
-                            <label for="manufacturer" class="form-label">Manufacturer</label>
-                            <input type="text" class="form-control" id="manufacturer" name="manufacturer">
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="lot_number" class="form-label">Lot Number</label>
-                            <input type="text" class="form-control" id="lot_number" name="lot_number">
+                            <label class="form-label">Manufacturer</label>
+                            <input type="text" class="form-control" name="manufacturer">
                         </div>
                         <div class="col-md-6">
-                            <label for="expiration_date" class="form-label">Expiration Date</label>
-                            <input type="date" class="form-control" id="expiration_date" name="expiration_date">
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="dose_number" class="form-label">Dose Number</label>
-                            <input type="number" class="form-control" id="dose_number" name="dose_number" min="1" required>
+                            <label class="form-label">Lot Number</label>
+                            <input type="text" class="form-control" name="lot_number">
                         </div>
                         <div class="col-md-6">
-                            <label for="vaccination_date" class="form-label">Vaccination Date</label>
-                            <input type="date" class="form-control" id="vaccination_date" name="vaccination_date" value="{{ today|date:'Y-m-d' }}" required>
+                            <label class="form-label">Expiration Date</label>
+                            <input type="date" class="form-control" name="expiration_date">
                         </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="administered_by" class="form-label">Administered By</label>
-                            <input type="text" class="form-control" id="administered_by" name="administered_by" required>
+                        <div class="col-md-6">
+                            <label class="form-label">Dose Number</label>
+                            <input type="number" class="form-control" name="dose_number" min="1" required>
                         </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="site" class="form-label">Administration Site</label>
-                            <select class="form-select" id="site" name="site">
+                        <div class="col-md-6">
+                            <label class="form-label">Vaccination Date</label>
+                            <input type="date" class="form-control" name="vaccination_date" value="{{ today|date:'Y-m-d' }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Administered By</label>
+                            <input type="text" class="form-control" name="administered_by" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Administration Site</label>
+                            <select class="form-select" name="site">
                                 <option value="left_arm">Left Arm</option>
                                 <option value="right_arm">Right Arm</option>
                                 <option value="left_thigh">Left Thigh</option>
@@ -1763,21 +1303,87 @@
                                 <option value="other">Other</option>
                             </select>
                         </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="notes" class="form-label">Notes</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                        <div class="col-12">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="notes" rows="2"></textarea>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">Record Vaccination</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Tab switching ──
+    document.querySelectorAll('.pd-tab-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var tab = this.dataset.tab;
+            document.querySelectorAll('.pd-tab-btn').forEach(function (b) { b.classList.remove('active'); });
+            document.querySelectorAll('.pd-tab-pane').forEach(function (p) { p.classList.remove('active'); });
+            this.classList.add('active');
+            var pane = document.getElementById('tab-' + tab);
+            if (pane) pane.classList.add('active');
+        });
+    });
+
+    // ── Load doctors for referral ──
+    function loadDoctors() {
+        var sel = document.getElementById('referred_to');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Loading…</option>';
+        sel.disabled = true;
+        fetch('/accounts/api/users/?role=doctor')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                sel.innerHTML = '<option value="">Select Doctor</option>';
+                sel.disabled = false;
+                data.forEach(function (d) {
+                    var opt = document.createElement('option');
+                    opt.value = d.id;
+                    opt.textContent = 'Dr. ' + d.first_name + ' ' + d.last_name + (d.department ? ' (' + d.department + ')' : '');
+                    sel.appendChild(opt);
+                });
+            })
+            .catch(function () {
+                sel.innerHTML = '<option value="">Error loading doctors</option>';
+                sel.disabled = false;
+            });
+    }
+
+    var refModal = document.getElementById('referralModal');
+    if (refModal) {
+        loadDoctors();
+        refModal.addEventListener('show.bs.modal', loadDoctors);
+        refModal.addEventListener('hidden.bs.modal', function () {
+            var form = document.getElementById('referralForm');
+            if (form) form.reset();
+            loadDoctors();
+        });
+    }
+
+    // ── Referral form validation ──
+    var refForm = document.getElementById('referralForm');
+    if (refForm) {
+        refForm.addEventListener('submit', function (e) {
+            var doc = document.getElementById('referred_to');
+            var reason = document.getElementById('reason');
+            if (!doc.value) { e.preventDefault(); alert('Please select a doctor.'); doc.focus(); return; }
+            if (!reason.value.trim()) { e.preventDefault(); alert('Please provide a reason.'); reason.focus(); return; }
+            var btn = document.getElementById('submitReferralBtn');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Submitting…'; }
+        });
+    }
+
+});
+</script>
 {% endblock %}

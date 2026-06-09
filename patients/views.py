@@ -38,6 +38,7 @@ from consultations.models import Consultation
 from pharmacy.models import Prescription
 from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
+from billing.models import Invoice, Payment
 from datetime import datetime, timedelta
 
 
@@ -205,7 +206,7 @@ def register_patient(request):
 def patient_detail(request, patient_id):
     """View for displaying patient details - Optimized with select_related and prefetch_related"""
     patient = get_object_or_404(
-        Patient.objects.select_related("nhia_info", "retainership_info"), id=patient_id
+        Patient.objects.select_related("nhia_info", "retainership_info", "wallet"), id=patient_id
     )
 
     # Set patient context in session for cross-page availability
@@ -263,15 +264,15 @@ def patient_detail(request, patient_id):
     nhia_info = getattr(patient, "nhia_info", None)
     retainership_info = getattr(patient, "retainership_info", None)
 
-    # Get wallet information with optimized query
+    # Get wallet information
     try:
-        patient_wallet = getattr(patient, "wallet", None)
-        has_wallet = patient_wallet is not None and patient_wallet.id is not None
-        wallet_is_active = has_wallet and patient_wallet.is_active
-    except Exception:
+        patient_wallet = PatientWallet.objects.get(patient=patient)
+        has_wallet = True
+        wallet_is_active = patient_wallet.is_active
+    except PatientWallet.DoesNotExist:
+        patient_wallet = None
         has_wallet = False
         wallet_is_active = False
-        patient_wallet = None
 
     # Get retainership wallet information with optimized query
     retainership_wallet = None
@@ -284,6 +285,29 @@ def patient_detail(request, patient_id):
 
     # Get recent vitals using the safe utility function
     vitals = get_safe_vitals_for_patient(patient)
+
+    # Get patient invoices for transactions tab
+    patient_invoices = (
+        Invoice.objects.filter(patient=patient)
+        .prefetch_related("payments", "items")
+        .order_by("-invoice_date")
+    )
+
+    # Get wallet transactions for transactions tab
+    patient_wallet_transactions = (
+        WalletTransaction.objects.filter(patient=patient)
+        .select_related("invoice", "admission")
+        .order_by("-created_at")[:50]
+    )
+
+    # Compute monetary summary
+    invoice_totals = patient_invoices.aggregate(
+        total_invoiced=Sum("total_amount"),
+        total_paid=Sum("amount_paid"),
+    )
+    total_invoiced = invoice_totals["total_invoiced"] or 0
+    total_paid = invoice_totals["total_paid"] or 0
+    total_outstanding = total_invoiced - total_paid
 
     context = {
         "patient": patient,
@@ -298,8 +322,14 @@ def patient_detail(request, patient_id):
         "retainership_info": retainership_info,
         "has_wallet": has_wallet,
         "wallet_is_active": wallet_is_active,
+        "patient_wallet": patient_wallet,
         "retainership_wallet": retainership_wallet,
         "vitals": vitals,
+        "patient_invoices": patient_invoices,
+        "patient_wallet_transactions": patient_wallet_transactions,
+        "total_invoiced": total_invoiced,
+        "total_paid": total_paid,
+        "total_outstanding": total_outstanding,
         "page_title": f"Patient Details - {patient.get_full_name()}",
         "active_nav": "patients",
     }
