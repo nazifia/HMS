@@ -23,26 +23,48 @@
 {% endif %}
 
 <script>
-// Add click event listeners to patient selection links
 document.querySelectorAll('.patient-select').forEach(link => {
     link.addEventListener('click', function(e) {
         e.preventDefault();
-        
-        // Get patient data from data attributes
+
         const patientId = this.getAttribute('data-patient-id');
         const patientName = this.getAttribute('data-patient-name');
         const patientPatientId = this.getAttribute('data-patient-patient-id');
         const patientPhone = this.getAttribute('data-patient-phone');
-        
-        // Update the dropdown with selected patient ID
-        document.getElementById('patientDropdown').value = patientId;
-        
-        // Clear search results
+
+        // Set hidden patient field
+        var hiddenField = document.getElementById('id_patient');
+        if (hiddenField) {
+            hiddenField.value = patientId;
+        }
+
+        // Update search input
+        var searchInput = document.getElementById('patientSearch');
+        if (searchInput) {
+            searchInput.value = patientName;
+        }
+
+        // Show selected patient info
+        var nameEl = document.getElementById('patient-name');
+        var pidEl = document.getElementById('patient-id');
+        var phoneEl = document.getElementById('patient-phone');
+        var infoEl = document.getElementById('selected-patient-info');
+        var warningEl = document.getElementById('patient-required-warning');
+
+        if (nameEl) nameEl.textContent = patientName;
+        if (pidEl) pidEl.textContent = patientPatientId;
+        if (phoneEl) phoneEl.textContent = patientPhone;
+        if (infoEl) infoEl.style.display = 'block';
+        if (warningEl) warningEl.style.display = 'none';
+
+        // Sync Select2 dropdown if present
+        var dropdown = document.getElementById('patientDropdown');
+        if (dropdown && typeof $ !== 'undefined' && $(dropdown).data('select2')) {
+            $(dropdown).val(patientId).trigger('change.select2');
+        }
+
+        // Clear results
         document.getElementById('patientResults').innerHTML = '';
-        document.getElementById('patientSearch').value = '';
-        
-        // Show success message
-        alert('Patient selected: ' + patientName);
     });
 });
 </script>

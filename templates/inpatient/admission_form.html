@@ -128,25 +128,14 @@
                     </div>
                 </div>
                 
-                <!-- Hidden patient field for form submission -->
-                {{ form.patient }}
                 {% endif %}
-                
-                <form method="post" novalidate>
+
+                <form method="post" novalidate id="admissionForm">
                     {% csrf_token %}
+                    {# Hidden patient field — inside form so it submits #}
+                    {{ form.patient }}
                     
                     <div class="row mb-3">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="{{ form.admission_date.id_for_label }}" class="form-label">Admission Date & Time</label>
-                                {{ form.admission_date|add_class:"form-control" }}
-                                {% if form.admission_date.errors %}
-                                    <div class="text-danger">
-                                        {{ form.admission_date.errors }}
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="{{ form.admission_date.id_for_label }}" class="form-label">Admission Date & Time</label>
@@ -515,13 +504,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // Make an AJAX request to check if patient is NHIA
             $.ajax({
                 url: '{% url "patients:check_patient_nhia" %}',
-                data: {
-                    'patient_id': patientId,
-                    'csrfmiddlewaretoken': '{{ csrf_token }}'
-                },
-                type: 'POST',
+                data: { 'patient_id': patientId },
+                type: 'GET',
                 success: function(data) {
-                    if (data.is_nhia) {
+                    if (data.has_nhia) {
                         $('#authorization-code-section').show();
                     } else {
                         $('#authorization-code-section').hide();
@@ -536,6 +522,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Prevent submit if no patient selected (new admissions only)
+    const admissionForm = document.getElementById('admissionForm');
+    if (admissionForm && patientIdField) {
+        admissionForm.addEventListener('submit', function(e) {
+            if (!patientIdField.value) {
+                e.preventDefault();
+                if (patientWarning) {
+                    patientWarning.style.display = 'block';
+                    patientWarning.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
     // Check patient type on page load
     checkPatientType();
         

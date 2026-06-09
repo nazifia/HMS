@@ -97,8 +97,12 @@ class AdmissionForm(forms.ModelForm):
         if not self.instance.pk:  # Only for new admissions
             self.fields['bed'].queryset = Bed.objects.filter(is_occupied=False, is_active=True)
         
-        # Filter doctors (users with doctor role)
-        self.fields['attending_doctor'].queryset = User.objects.filter(profile__specialization__isnull=False)
+        # Filter doctors by role or specialization
+        from django.db.models import Q
+        self.fields['attending_doctor'].queryset = User.objects.filter(
+            Q(profile__role='doctor') | Q(profile__specialization__isnull=False),
+            is_active=True
+        ).distinct()
         
         # Set initial admission date to now
         if not self.instance.pk and not self.initial.get('admission_date'):
@@ -200,8 +204,11 @@ class DailyRoundForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filter doctors (users with doctor role)
-        self.fields['doctor'].queryset = User.objects.filter(profile__specialization__isnull=False)
+        from django.db.models import Q
+        self.fields['doctor'].queryset = User.objects.filter(
+            Q(profile__role='doctor') | Q(profile__specialization__isnull=False),
+            is_active=True
+        ).distinct()
         
         # Set initial date_time to now
         if not self.instance.pk and not self.initial.get('date_time'):

@@ -485,6 +485,12 @@ LOGGING = {
             "level": LOG_LEVEL,
             "propagate": False,
         },
+        # Inpatient module debug
+        "inpatient": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
         # Requests logger - reduce noise
         "django.request": {
             "handlers": ["console"],

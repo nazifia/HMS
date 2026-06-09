@@ -41,6 +41,8 @@ logger = logging.getLogger(__name__)
 
 def block_receptionists_and_hro(user):
     """Check if user is a receptionist or health record officer."""
+    if not user.is_authenticated:
+        return False
     if user.is_superuser:
         return False
     user_roles = list(user.roles.values_list("name", flat=True))
@@ -548,25 +550,22 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
                 days=7
             )  # Example: due in 7 days
 
-            # If authorization code is provided, mark as paid
-            invoice_status = "paid" if authorization_code else "pending"
-            payment_method = "insurance" if authorization_code else None
-            payment_date = timezone.now() if authorization_code else None
-
-            invoice = Invoice.objects.create(
+            invoice = Invoice(
                 patient=self.object.patient,
                 invoice_date=self.object.scheduled_date.date(),
                 due_date=due_date,
-                status=invoice_status,  # Mark as paid if authorization code is used
+                status="pending",
                 subtotal=subtotal,
                 tax_amount=tax_amount,
                 total_amount=total_amount,
-                amount_paid=total_amount if authorization_code else Decimal("0.00"),
-                payment_method=payment_method,
-                payment_date=payment_date,
+                amount_paid=Decimal("0.00"),
                 created_by=self.request.user,
                 source_app="theatre",
             )
+            # NHIA patients pay nothing — auto-pay zero-amount invoice
+            if total_amount == Decimal("0.00"):
+                invoice._auto_pay_zero_amount = True
+            invoice.save()
 
             # Update surgery with invoice and authorization code
             self.object.invoice = invoice
@@ -604,7 +603,7 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
 
         messages.success(
             self.request,
-            f"Surgery created successfully. Invoice #{invoice.invoice_number} generated and is {'paid via authorization code' if authorization_code else 'pending payment'}.",
+            f"Surgery created successfully. Invoice #{invoice.invoice_number} generated and is {'ready (NHIA covered)' if total_amount == Decimal('0.00') else 'pending payment'}.",
         )
         return redirect(self.get_success_url())
 
@@ -628,6 +627,8 @@ class SurgeryUpdateView(LoginRequiredMixin, UpdateView):
 
     def dispatch(self, request, *args, **kwargs):
         # Block receptionists and health record officers from accessing surgery editing
+        if not request.user.is_authenticated:
+            return super().dispatch(request, *args, **kwargs)
         if not request.user.is_superuser:
             user_roles = list(request.user.roles.values_list("name", flat=True))
             profile_role = getattr(getattr(request.user, "profile", None), "role", None)
@@ -999,6 +1000,8 @@ class BulkTeamCreateView(LoginRequiredMixin, ReceptionistHROAccessMixin, Templat
     template_name = "theatre/bulk_team_form.html"
 
     def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return super().dispatch(request, *args, **kwargs)
         if not request.user.is_superuser:
             user_roles = list(request.user.roles.values_list("name", flat=True))
             profile_role = getattr(getattr(request.user, "profile", None), "role", None)

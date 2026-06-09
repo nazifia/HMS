@@ -543,8 +543,13 @@ def create_admission(request):
             pass
 
     if request.method == 'POST':
+        # DEBUG: log every POST key so we can see what the browser actually sends
+        logger.info("=== ADMISSION FORM POST DATA ===")
+        for key, values in request.POST.lists():
+            logger.info(f"  POST[{key!r}] = {values!r}")
+        logger.info("================================")
+
         form = AdmissionForm(request.POST)
-        # Handle patient search selection if patient ID is provided via JavaScript
         patient_id = request.POST.get('patient')
         if patient_id:
             try:
@@ -555,7 +560,13 @@ def create_admission(request):
             except Patient.DoesNotExist:
                 messages.error(request, 'Selected patient not found.')
                 return redirect('inpatient:create_admission')
-                
+
+        if not form.is_valid():
+            logger.warning("=== ADMISSION FORM INVALID ===")
+            for field, errors in form.errors.items():
+                logger.warning(f"  FIELD ERROR [{field}]: {errors.as_text()!r}")
+            logger.warning("==============================")
+            messages.error(request, 'Please correct the errors below.')
         if form.is_valid():
             bed = form.cleaned_data['bed']
             # Ensure bed is available and active at the time of admission
@@ -581,17 +592,8 @@ def create_admission(request):
                         messages.error(request, "The provided authorization code does not exist.")
                         return redirect('inpatient:create_admission')
                 
-                admission = form.save(commit=False)  # <-- Move this up
-                # Assign attending doctor based on primary determinant (e.g., ward's primary doctor or patient's primary doctor)
-                primary_doctor = None
-                if hasattr(admission.patient, 'primary_doctor') and admission.patient.primary_doctor:
-                    primary_doctor = admission.patient.primary_doctor
-                elif admission.bed and admission.bed.ward and hasattr(admission.bed.ward, 'primary_doctor') and admission.bed.ward.primary_doctor:
-                    primary_doctor = admission.bed.ward.primary_doctor
-                else:
-                    primary_doctor = admission.attending_doctor  # fallback
-                admission.attending_doctor = primary_doctor
-                admission.authorization_code = authorization_code  # Set authorization code if provided
+                admission = form.save(commit=False)
+                admission.authorization_code = authorization_code
                 try:
                     with transaction.atomic():
                         # admission = form.save(commit=False)  # already done above
@@ -607,7 +609,10 @@ def create_admission(request):
                         logger.info(f"Attempting to process admission charge for patient: {admission.patient.get_full_name()}")
 
                         try:
-                            admission_service = form.cleaned_data['admission_service']
+                            admission_service = form.cleaned_data.get('admission_service')
+                            if not admission_service:
+                                messages.success(request, 'Admission created successfully. No Admission Fee service configured — no charge applied.')
+                                return redirect('inpatient:admission_detail', pk=admission.pk)
                             logger.info(f'Found admission service: {admission_service.name} with price {admission_service.price}')
                             
                             # If authorization code is provided, mark as paid
@@ -715,8 +720,6 @@ def create_admission(request):
                 except Exception as e:
                     messages.error(request, f'An error occurred during admission creation: {e}')
                     logger.exception('Error during admission creation.')
-        else:
-            messages.error(request, 'Please correct the errors below.')
     else:
         # Pre-select the 'Admission Fee' service if it exists
         try:
@@ -726,10 +729,20 @@ def create_admission(request):
             pass
         form = AdmissionForm(initial=initial_data)
 
+    # Restore selected patient for UI (survives re-render after validation failure)
+    selected_patient = None
+    patient_id_val = request.POST.get('patient') if request.method == 'POST' else request.GET.get('patient_id')
+    if patient_id_val:
+        try:
+            selected_patient = Patient.objects.get(id=patient_id_val)
+        except Patient.DoesNotExist:
+            pass
+
     context = {
         'form': form,
         'title': 'Create New Admission',
         'all_patients': Patient.objects.filter(is_active=True).select_related().order_by('first_name', 'last_name'),
+        'selected_patient': selected_patient,
     }
     return render(request, 'inpatient/admission_form.html', context)
 

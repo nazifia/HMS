@@ -225,7 +225,7 @@ class SurgeryForm(forms.ModelForm):
             if selected_surgeon_id:
                 # Check if the user exists (may be inactive or deleted)
                 try:
-                    selected_user = CustomUser.objects.get(pk=selected_surgeon_id)
+                    CustomUser.objects.get(pk=selected_surgeon_id)
                     # Include this user in the queryset
                     surgeon_qs = (
                         (surgeon_qs | CustomUser.objects.filter(pk=selected_surgeon_id))
@@ -233,8 +233,11 @@ class SurgeryForm(forms.ModelForm):
                         .order_by("first_name", "last_name")
                     )
                 except CustomUser.DoesNotExist:
-                    # User was deleted - that's fine, form will handle this in clean()
-                    pass
+                    # User deleted — clear stale ID from POST data so field validates as None
+                    if self.data:
+                        mutable = self.data.copy()
+                        mutable["primary_surgeon"] = ""
+                        self.data = mutable
 
             self.fields["primary_surgeon"].queryset = surgeon_qs
             self.fields["primary_surgeon"].empty_label = "Select Surgeon (Optional)"
@@ -271,7 +274,7 @@ class SurgeryForm(forms.ModelForm):
             # This prevents "user does not exist" errors when editing
             if selected_anesthetist_id:
                 try:
-                    selected_user = CustomUser.objects.get(pk=selected_anesthetist_id)
+                    CustomUser.objects.get(pk=selected_anesthetist_id)
                     anesthetist_qs = (
                         (
                             anesthetist_qs
@@ -281,8 +284,11 @@ class SurgeryForm(forms.ModelForm):
                         .order_by("first_name", "last_name")
                     )
                 except CustomUser.DoesNotExist:
-                    # User was deleted - that's fine, form will handle this in clean()
-                    pass
+                    # User deleted — clear stale ID from POST data so field validates as None
+                    if self.data:
+                        mutable = self.data.copy()
+                        mutable["anesthetist"] = ""
+                        self.data = mutable
 
             self.fields["anesthetist"].queryset = anesthetist_qs
             self.fields["anesthetist"].empty_label = "Select Anesthetist (Optional)"
@@ -413,11 +419,36 @@ class SurgicalTeamForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Include all active users in staff queryset
         if "staff" in self.fields:
-            self.fields["staff"].queryset = CustomUser.objects.filter(
-                is_active=True
-            ).order_by("first_name", "last_name")
+            base_qs = CustomUser.objects.filter(is_active=True).order_by(
+                "first_name", "last_name"
+            )
+            # Resolve selected staff ID from POST data or existing instance
+            selected_staff_id = None
+            staff_key = self.add_prefix("staff")
+            raw = (self.data.get(staff_key) if self.data else None)
+            if raw:
+                try:
+                    selected_staff_id = int(raw)
+                except (ValueError, TypeError):
+                    pass
+            elif self.instance and self.instance.pk and self.instance.staff_id:
+                selected_staff_id = self.instance.staff_id
+
+            if selected_staff_id:
+                try:
+                    CustomUser.objects.get(pk=selected_staff_id)
+                    base_qs = (
+                        base_qs | CustomUser.objects.filter(pk=selected_staff_id)
+                    ).distinct().order_by("first_name", "last_name")
+                except CustomUser.DoesNotExist:
+                    # Staff deleted — clear stale ID so field validates as None
+                    if self.data:
+                        mutable = self.data.copy()
+                        mutable[staff_key] = ""
+                        self.data = mutable
+
+            self.fields["staff"].queryset = base_qs
 
 
 class SurgicalTeamMultipleForm(forms.Form):
