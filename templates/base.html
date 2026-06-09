@@ -906,8 +906,8 @@
     <script>
         $(document).ready(function() {
             // Auto logout configuration
-            const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
-            const WARNING_TIME = 1 * 60 * 1000; // Show warning 1 minute before logout
+            const INACTIVITY_TIMEOUT = 60 * 60 * 1000; // 60 minutes in milliseconds
+            const WARNING_TIME = 5 * 60 * 1000; // Show warning 5 minutes before logout
 
             let inactivityTimer;
             let warningTimer;
@@ -957,7 +957,7 @@
                                     <div class="mb-3">
                                         <i class="fas fa-clock fa-3x text-warning mb-3"></i>
                                         <h6>Your session will expire in:</h6>
-                                        <h3 class="text-danger" id="countdownTimer">01:00</h3>
+                                        <h3 class="text-danger" id="countdownTimer">05:00</h3>
                                     </div>
                                     <p class="text-muted">You will be automatically logged out due to inactivity. Click "Stay Logged In" to continue your session.</p>
                                 </div>
@@ -983,7 +983,7 @@
                 $('#logoutWarningModal').modal('show');
 
                 // Start countdown
-                let timeLeft = 60; // 60 seconds
+                let timeLeft = 300; // 300 seconds (5 minutes)
                 const countdownInterval = setInterval(function() {
                     timeLeft--;
                     const minutes = Math.floor(timeLeft / 60);

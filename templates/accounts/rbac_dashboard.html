@@ -11,401 +11,495 @@
         border-radius: 12px;
         transition: transform 0.2s, box-shadow 0.2s;
         cursor: pointer;
+        overflow: hidden;
     }
-    .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-    }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
     .stat-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
+        width: 46px; height: 46px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; flex-shrink: 0;
     }
-    .role-badge {
-        font-size: 0.75rem;
-        padding: 0.3rem 0.6rem;
-        margin: 0.15rem;
-        border-radius: 20px;
+    .stat-number { font-size: 1.6rem; font-weight: 700; line-height: 1; }
+    .stat-label { font-size: 0.72rem; opacity: 0.82; margin-top: 2px; }
+
+    .health-bar-track {
+        height: 8px; border-radius: 4px;
+        background: rgba(0,0,0,0.08); overflow: hidden;
     }
-    .hierarchy-tree {
-        font-family: 'Courier New', monospace;
-        font-size: 0.9rem;
+    .health-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+
+    .issue-row {
+        border-left: 3px solid; padding: 0.45rem 0.75rem;
+        border-radius: 0 6px 6px 0; background: rgba(0,0,0,0.02);
+        margin-bottom: 0.4rem; font-size: 0.84rem;
     }
-    .tree-node {
-        margin-left: 1.5rem;
-        position: relative;
-        padding: 0.25rem 0;
+    .issue-row.danger { border-left-color: #dc3545; }
+    .issue-row.warning { border-left-color: #ffc107; }
+    .issue-row.info { border-left-color: #0dcaf0; }
+
+    .dashboard-tabs .nav-link {
+        color: #6c757d; border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0; padding: 0.65rem 1rem;
+        font-size: 0.875rem; font-weight: 500;
     }
-    .tree-node::before {
-        content: '└─';
-        position: absolute;
-        left: -1.5rem;
-        color: #6c757d;
-    }
-    .tree-root {
-        margin-left: 0;
-        font-weight: 600;
-    }
-    .tree-root::before {
-        content: '';
-    }
-    .quick-action-btn {
-        transition: all 0.2s;
-    }
-    .quick-action-btn:hover {
-        transform: translateX(5px);
-    }
-    .issue-alert {
-        border-left: 4px solid;
-        border-radius: 0 8px 8px 0;
-    }
-    .issue-alert.danger { border-left-color: #dc3545; }
-    .issue-alert.warning { border-left-color: #ffc107; }
-    .issue-alert.info { border-left-color: #0dcaf0; }
-    .permission-category {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 0.5rem;
-    }
-    .recent-item {
-        border-left: 3px solid #0d6efd;
-        padding-left: 1rem;
-        margin-bottom: 0.75rem;
-    }
+    .dashboard-tabs .nav-link.active { color: #0d6efd; border-bottom-color: #0d6efd; background: transparent; }
+    .dashboard-tabs .nav-link:hover:not(.active) { color: #495057; border-bottom-color: #dee2e6; }
+
+    .tree-node-link { text-decoration: none; color: #212529; font-weight: 500; }
+    .tree-node-link:hover { color: #0d6efd; }
+    .tree-node-details { font-size: 0.72rem; color: #6c757d; margin-left: 0.35rem; }
+    .tree-children { border-left: 2px solid #dee2e6; margin-left: 0.75rem; padding-left: 1rem; }
+    .tree-node { padding: 0.2rem 0; }
+
     .user-role-tag {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.2rem 0.5rem;
-        margin: 0.1rem;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        background-color: #e9ecef;
-        color: #495057;
+        display: inline-flex; align-items: center;
+        padding: 0.18rem 0.45rem; margin: 0.1rem; border-radius: 12px;
+        font-size: 0.72rem; background-color: #e9ecef; color: #495057;
     }
     .user-role-tag .remove-role {
-        margin-left: 0.3rem;
-        cursor: pointer;
-        color: #dc3545;
-        font-weight: bold;
+        margin-left: 0.3rem; cursor: pointer; color: #dc3545; font-weight: bold; line-height: 1;
     }
-    .user-role-tag .remove-role:hover {
-        color: #a71d2a;
+    .user-role-tag .remove-role:hover { color: #a71d2a; }
+    .add-role-btn { padding: 0.2rem 0.5rem; font-size: 0.72rem; border-radius: 12px; }
+
+    .perm-bar-track { height: 6px; border-radius: 3px; background: #e9ecef; overflow: hidden; flex: 1; min-width: 60px; }
+    .perm-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #0d6efd, #6ea8fe); }
+
+    .activity-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+
+    .quick-action-btn { text-align: left; font-size: 0.84rem; transition: all 0.15s; border-radius: 8px !important; }
+    .quick-action-btn:hover { transform: translateX(4px); }
+    .action-group-label {
+        font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.08em; color: #adb5bd; margin: 0.5rem 0 0.3rem;
     }
-    .add-role-btn {
-        padding: 0.2rem 0.5rem;
-        font-size: 0.75rem;
-        border-radius: 12px;
-    }
+    .role-bar { height: 4px; border-radius: 2px; background: linear-gradient(90deg, #0d6efd 0%, #6ea8fe 100%); }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
+
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="mb-1"><i class="fas fa-shield-alt text-primary me-2"></i>RBAC Dashboard</h2>
-            <p class="text-muted mb-0">Role-Based Access Control - Admin Control Center</p>
+            <h2 class="mb-1 fw-bold"><i class="fas fa-shield-alt text-primary me-2"></i>RBAC Dashboard</h2>
+            <p class="text-muted mb-0 small">Role-Based Access Control · Admin Control Center</p>
         </div>
-        <div class="btn-group">
-            <a href="{% url 'accounts:role_management' %}" class="btn btn-primary">
-                <i class="fas fa-users-cog me-2"></i>Manage Roles
+        <div class="d-flex gap-2">
+            <a href="{% url 'accounts:role_management' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-users-cog me-1"></i>Manage Roles
             </a>
-            <a href="{% url 'accounts:rbac_user_matrix' %}" class="btn btn-outline-primary">
-                <i class="fas fa-th me-2"></i>User Matrix
+            <a href="{% url 'accounts:rbac_user_matrix' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-th me-1"></i>User Matrix
             </a>
-            <a href="{% url 'accounts:rbac_audit_trail' %}" class="btn btn-outline-info">
-                <i class="fas fa-history me-2"></i>Audit Trail
+            <a href="{% url 'accounts:rbac_audit_trail' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-history me-1"></i>Audit Trail
             </a>
         </div>
     </div>
 
-    <!-- Issues Alerts -->
-    {% if issues %}
-    <div class="mb-4">
-        {% for issue in issues %}
-        <div class="alert issue-alert {{ issue.type }} d-flex align-items-center mb-2">
-            <i class="fas fa-{% if issue.type == 'danger' %}exclamation-circle{% elif issue.type == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-3 fa-lg"></i>
-            <div class="flex-grow-1">
-                {{ issue.message }}
-            </div>
-            <a href="{{ issue.action_url }}" class="btn btn-sm btn-{{ issue.type }}">
-                {{ issue.action_text }}
-            </a>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-
-    <!-- Statistics Cards -->
-    <div class="row g-4 mb-4">
-        <div class="col-md-3">
+    <!-- Stats Row: 6 cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4 col-xl-2">
             <div class="card stat-card bg-primary text-white h-100" onclick="location.href='{% url 'accounts:role_management' %}'">
-                <div class="card-body d-flex align-items-center">
-                    <div class="stat-icon bg-white text-primary me-3">
+                <div class="card-body d-flex align-items-center gap-3 p-3">
+                    <div class="stat-icon bg-white bg-opacity-25">
                         <i class="fas fa-user-tag"></i>
                     </div>
                     <div>
-                        <h3 class="mb-0">{{ total_roles }}</h3>
-                        <small class="opacity-75">Total Roles</small>
+                        <div class="stat-number">{{ total_roles }}</div>
+                        <div class="stat-label">Total Roles</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+
+        <div class="col-6 col-md-4 col-xl-2">
             <div class="card stat-card bg-success text-white h-100" onclick="location.href='{% url 'accounts:user_dashboard' %}'">
-                <div class="card-body d-flex align-items-center">
-                    <div class="stat-icon bg-white text-success me-3">
+                <div class="card-body d-flex align-items-center gap-3 p-3">
+                    <div class="stat-icon bg-white bg-opacity-25">
                         <i class="fas fa-users"></i>
                     </div>
                     <div>
-                        <h3 class="mb-0">{{ total_users }}</h3>
-                        <small class="opacity-75">Total Users</small>
+                        <div class="stat-number">{{ total_users }}</div>
+                        <div class="stat-label">Total Users</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card stat-card bg-warning text-dark h-100" onclick="location.href='{% url 'accounts:permission_management' %}'">
-                <div class="card-body d-flex align-items-center">
-                    <div class="stat-icon bg-white text-warning me-3">
-                        <i class="fas fa-key"></i>
+
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card stat-card h-100 {% if users_without_roles > 0 %}bg-danger text-white{% else %}bg-light{% endif %}"
+                 onclick="location.href='{% url 'accounts:user_dashboard' %}'">
+                <div class="card-body d-flex align-items-center gap-3 p-3">
+                    <div class="stat-icon {% if users_without_roles > 0 %}bg-white bg-opacity-25 text-white{% else %}bg-danger bg-opacity-10 text-danger{% endif %}">
+                        <i class="fas fa-user-slash"></i>
                     </div>
                     <div>
-                        <h3 class="mb-0">{{ total_permissions }}</h3>
-                        <small class="opacity-75">Permissions</small>
+                        <div class="stat-number {% if users_without_roles == 0 %}text-danger{% endif %}">{{ users_without_roles }}</div>
+                        <div class="stat-label {% if users_without_roles == 0 %}text-muted{% endif %}">Unassigned</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card stat-card bg-info text-white h-100">
-                <div class="card-body d-flex align-items-center">
-                    <div class="stat-icon bg-white text-info me-3">
+
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card stat-card bg-info text-white h-100" onclick="location.href='{% url 'accounts:rbac_user_matrix' %}'">
+                <div class="card-body d-flex align-items-center gap-3 p-3">
+                    <div class="stat-icon bg-white bg-opacity-25">
                         <i class="fas fa-layer-group"></i>
                     </div>
                     <div>
-                        <h3 class="mb-0">{{ max_hierarchy_depth }}</h3>
-                        <small class="opacity-75">Max Depth</small>
+                        <div class="stat-number">{{ users_with_multiple_roles }}</div>
+                        <div class="stat-label">Multi-Role</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card stat-card bg-warning text-dark h-100" onclick="location.href='{% url 'accounts:permission_management' %}'">
+                <div class="card-body d-flex align-items-center gap-3 p-3">
+                    <div class="stat-icon bg-white bg-opacity-50 text-warning">
+                        <i class="fas fa-key"></i>
+                    </div>
+                    <div>
+                        <div class="stat-number">{{ total_permissions }}</div>
+                        <div class="stat-label">Permissions</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card stat-card h-100 {% if roles_without_permissions > 0 %}text-white{% else %}bg-light{% endif %}"
+                 style="{% if roles_without_permissions > 0 %}background:#fd7e14!important;{% endif %}"
+                 onclick="location.href='{% url 'accounts:role_management' %}'">
+                <div class="card-body d-flex align-items-center gap-3 p-3">
+                    <div class="stat-icon {% if roles_without_permissions > 0 %}bg-white bg-opacity-25 text-white{% else %}bg-warning bg-opacity-10 text-warning{% endif %}">
+                        <i class="fas fa-ban"></i>
+                    </div>
+                    <div>
+                        <div class="stat-number {% if roles_without_permissions == 0 %}text-warning{% endif %}">{{ roles_without_permissions }}</div>
+                        <div class="stat-label {% if roles_without_permissions == 0 %}text-muted{% endif %}">Empty Roles</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <!-- Left Column -->
+    <!-- Main Row -->
+    <div class="row g-4">
+
+        <!-- Left: Security Health + Tabbed Panel -->
         <div class="col-lg-8">
-            <!-- User-Role Quick Assignment -->
-            <div class="card mb-4">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                    <h5 class="mb-0"><i class="fas fa-user-cog me-2 text-primary"></i>Quick User-Role Assignment</h5>
-                    <a href="{% url 'accounts:rbac_user_matrix' %}" class="btn btn-sm btn-outline-primary">
-                        View Full Matrix
-                    </a>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>User</th>
-                                    <th>Current Roles</th>
-                                    <th>Quick Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for user_obj in users_with_roles %}
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" 
-                                                 style="width: 35px; height: 35px; font-size: 0.9rem;">
-                                                {{ user_obj.username|first|upper }}
-                                            </div>
-                                            <div>
-                                                <div class="fw-bold">{{ user_obj.get_full_name|default:user_obj.username }}</div>
-                                                <small class="text-muted">{{ user_obj.email|default:"No email" }}</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td id="user-roles-{{ user_obj.id }}">
-                                        {% for role in user_obj.roles.all %}
-                                        <span class="user-role-tag">
-                                            {{ role.name }}
-                                            <span class="remove-role" onclick="removeRole({{ user_obj.id }}, {{ role.id }}, '{{ role.name }}')">&times;</span>
-                                        </span>
-                                        {% empty %}
-                                        <span class="text-muted fst-italic">No roles assigned</span>
-                                        {% endfor %}
-                                    </td>
-                                    <td>
-                                        <div class="dropdown">
-                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle add-role-btn" 
-                                                    type="button" data-bs-toggle="dropdown">
-                                                <i class="fas fa-plus me-1"></i>Add Role
-                                            </button>
-                                            <ul class="dropdown-menu">
-                                                {% for role in top_roles %}
-                                                <li>
-                                                    <a class="dropdown-item" href="#" 
-                                                       onclick="assignRole({{ user_obj.id }}, {{ role.id }}, '{{ role.name }}'); return false;">
-                                                        {{ role.name }}
-                                                    </a>
-                                                </li>
-                                                {% endfor %}
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <a class="dropdown-item" href="{% url 'accounts:user_privileges' user_obj.id %}">
-                                                        <i class="fas fa-cog me-2"></i>Manage All Roles
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Top Roles -->
+            <!-- Security Health -->
             <div class="card mb-4">
-                <div class="card-header bg-white py-3">
-                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2 text-primary"></i>Top Roles by User Count</h5>
+                <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+                    <h6 class="mb-0 fw-semibold"><i class="fas fa-heartbeat me-2 text-danger"></i>Security Health</h6>
+                    {% if issues %}
+                    <span class="badge bg-warning text-dark">{{ issues|length }} issue{{ issues|length|pluralize }}</span>
+                    {% else %}
+                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>All clear</span>
+                    {% endif %}
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Role</th>
-                                    <th>Users</th>
-                                    <th>Direct Permissions</th>
-                                    <th>Inherited</th>
-                                    <th>Children</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for role in top_roles %}
-                                <tr>
-                                    <td>
-                                        <span class="fw-bold">{{ role.name }}</span>
-                                        {% if role.parent %}
-                                        <br><small class="text-muted">Parent: {{ role.parent.name }}</small>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-primary">{{ role.user_count }}</span>
-                                    </td>
-                                    <td>{{ role.permission_count }}</td>
-                                    <td>{{ role.get_inherited_permission_count }}</td>
-                                    <td>{{ role.child_count }}</td>
-                                    <td>
-                                        <a href="{% url 'accounts:edit_role' role.id %}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <div class="d-flex justify-content-between mb-1">
+                                <small class="text-muted fw-medium">Role Coverage</small>
+                                <small class="fw-bold text-{% if users_without_roles > 0 %}danger{% else %}success{% endif %}">{{ role_coverage_pct }}%</small>
+                            </div>
+                            <div class="health-bar-track">
+                                <div class="health-bar-fill bg-{% if users_without_roles > 0 %}danger{% else %}success{% endif %}" style="width:{{ role_coverage_pct }}%"></div>
+                            </div>
+                            <small class="text-muted" style="font-size:0.72rem;">{{ users_without_roles }} user{{ users_without_roles|pluralize }} unassigned</small>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex justify-content-between mb-1">
+                                <small class="text-muted fw-medium">Permission Coverage</small>
+                                <small class="fw-bold text-{% if roles_without_permissions > 0 %}warning{% else %}success{% endif %}">{{ permission_coverage_pct }}%</small>
+                            </div>
+                            <div class="health-bar-track">
+                                <div class="health-bar-fill bg-{% if roles_without_permissions > 0 %}warning{% else %}success{% endif %}" style="width:{{ permission_coverage_pct }}%"></div>
+                            </div>
+                            <small class="text-muted" style="font-size:0.72rem;">{{ roles_without_permissions }} role{{ roles_without_permissions|pluralize }} empty</small>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex justify-content-between mb-1">
+                                <small class="text-muted fw-medium">Hierarchy Depth</small>
+                                <small class="fw-bold">{{ max_hierarchy_depth }} level{{ max_hierarchy_depth|pluralize }}</small>
+                            </div>
+                            <div class="health-bar-track">
+                                <div class="health-bar-fill bg-info" style="width:{% widthratio max_hierarchy_depth 10 100 %}%"></div>
+                            </div>
+                            <small class="text-muted" style="font-size:0.72rem;">Max inheritance depth</small>
+                        </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- Role Hierarchy -->
-            <div class="card">
-                <div class="card-header bg-white py-3">
-                    <h5 class="mb-0"><i class="fas fa-sitemap me-2 text-primary"></i>Role Hierarchy</h5>
-                </div>
-                <div class="card-body">
-                    {% if root_roles %}
-                    <div class="hierarchy-tree">
-                        {% for root in root_roles %}
-                            {% include 'accounts/includes/rbac_hierarchy_node.html' with role=root level=0 %}
+                    {% if issues %}
+                    <div>
+                        {% for issue in issues %}
+                        <div class="issue-row {{ issue.type }} d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fas fa-{% if issue.type == 'danger' %}exclamation-circle text-danger{% elif issue.type == 'warning' %}exclamation-triangle text-warning{% else %}info-circle text-info{% endif %} fa-sm"></i>
+                                <span>{{ issue.message }}</span>
+                            </div>
+                            <a href="{{ issue.action_url }}" class="btn btn-sm btn-outline-{{ issue.type }} py-0 px-2 ms-3" style="font-size:0.72rem;white-space:nowrap;">{{ issue.action_text }}</a>
+                        </div>
                         {% endfor %}
                     </div>
-                    {% else %}
-                    <p class="text-muted text-center">No role hierarchy defined yet.</p>
                     {% endif %}
+                </div>
+            </div>
+
+            <!-- Tabbed Panel -->
+            <div class="card">
+                <div class="card-header bg-white p-0">
+                    <ul class="nav dashboard-tabs" id="mainTabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#tab-users" role="tab">
+                                <i class="fas fa-user-cog me-1 text-primary"></i>User Assignment
+                                <span class="badge bg-secondary ms-1 fw-normal" style="font-size:0.62rem;">{{ users_with_roles|length }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#tab-roles" role="tab">
+                                <i class="fas fa-chart-bar me-1 text-success"></i>Top Roles
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#tab-hierarchy" role="tab">
+                                <i class="fas fa-sitemap me-1 text-info"></i>Hierarchy
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="tab-content">
+
+                    <!-- Tab: User Assignment -->
+                    <div class="tab-pane fade show active" id="tab-users" role="tabpanel">
+                        <div class="p-2 border-bottom d-flex justify-content-between align-items-center gap-2">
+                            <input type="text" id="userSearch" class="form-control form-control-sm"
+                                   placeholder="Filter users..." style="max-width:220px;">
+                            <a href="{% url 'accounts:rbac_user_matrix' %}" class="btn btn-sm btn-outline-primary flex-shrink-0">
+                                Full Matrix <i class="fas fa-external-link-alt ms-1 fa-xs"></i>
+                            </a>
+                        </div>
+                        <div class="table-responsive" style="max-height:400px;overflow-y:auto;">
+                            <table class="table table-hover table-sm mb-0" id="userRoleTable">
+                                <thead class="table-light" style="position:sticky;top:0;z-index:1;">
+                                    <tr>
+                                        <th style="width:36%">User</th>
+                                        <th>Roles</th>
+                                        <th style="width:90px">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user_obj in users_with_roles %}
+                                    <tr class="user-row">
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                                     style="width:30px;height:30px;font-size:0.78rem;">
+                                                    {{ user_obj.username|first|upper }}
+                                                </div>
+                                                <div style="min-width:0;">
+                                                    <div class="fw-semibold small user-name text-truncate">{{ user_obj.get_full_name|default:user_obj.username }}</div>
+                                                    <div class="text-muted text-truncate" style="font-size:0.68rem;">{{ user_obj.email|default:"" }}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td id="user-roles-{{ user_obj.id }}">
+                                            {% for role in user_obj.roles.all %}
+                                            <span class="user-role-tag">
+                                                {{ role.name }}
+                                                <span class="remove-role" onclick="removeRole({{ user_obj.id }}, {{ role.id }}, '{{ role.name }}')">&times;</span>
+                                            </span>
+                                            {% empty %}
+                                            <span class="text-muted fst-italic small">No roles</span>
+                                            {% endfor %}
+                                        </td>
+                                        <td>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle add-role-btn"
+                                                        type="button" data-bs-toggle="dropdown">
+                                                    <i class="fas fa-plus fa-xs"></i> Add
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end">
+                                                    {% for role in top_roles %}
+                                                    <li>
+                                                        <a class="dropdown-item small" href="#"
+                                                           onclick="assignRole({{ user_obj.id }}, {{ role.id }}, '{{ role.name }}'); return false;">
+                                                            {{ role.name }}
+                                                        </a>
+                                                    </li>
+                                                    {% endfor %}
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item small" href="{% url 'accounts:user_privileges' user_obj.id %}">
+                                                            <i class="fas fa-cog me-2 text-muted"></i>All Roles
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Top Roles -->
+                    <div class="tab-pane fade" id="tab-roles" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Role</th>
+                                        <th style="width:130px">Users</th>
+                                        <th style="width:75px">Direct</th>
+                                        <th style="width:80px">Inherited</th>
+                                        <th style="width:55px"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for role in top_roles %}
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold small">{{ role.name }}</div>
+                                            {% if role.parent %}
+                                            <div class="text-muted" style="font-size:0.68rem;">
+                                                <i class="fas fa-level-up-alt fa-xs me-1"></i>{{ role.parent.name }}
+                                            </div>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="badge bg-primary" style="min-width:28px;">{{ role.user_count }}</span>
+                                                <div style="width:55px;height:4px;border-radius:2px;background:#e9ecef;overflow:hidden;">
+                                                    {% if top_roles.0.user_count > 0 %}
+                                                    <div class="role-bar" style="width:{% widthratio role.user_count top_roles.0.user_count 100 %}%"></div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><span class="text-muted small">{{ role.permission_count }}</span></td>
+                                        <td><span class="text-muted small">{{ role.get_inherited_permission_count }}</span></td>
+                                        <td>
+                                            <a href="{% url 'accounts:edit_role' role.id %}" class="btn btn-sm btn-outline-primary py-0 px-2">
+                                                <i class="fas fa-edit fa-xs"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Role Hierarchy -->
+                    <div class="tab-pane fade" id="tab-hierarchy" role="tabpanel">
+                        <div class="p-3">
+                            {% if root_roles %}
+                            <div style="font-size:0.875rem;">
+                                {% for root in root_roles %}
+                                    {% include 'accounts/includes/rbac_hierarchy_node.html' with role=root level=0 %}
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p class="text-muted text-center py-4 small">No role hierarchy defined yet.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
 
-        <!-- Right Column -->
+        <!-- Right Sidebar -->
         <div class="col-lg-4">
+
             <!-- Quick Actions -->
             <div class="card mb-4">
                 <div class="card-header bg-white py-3">
-                    <h5 class="mb-0"><i class="fas fa-bolt me-2 text-warning"></i>Quick Actions</h5>
+                    <h6 class="mb-0 fw-semibold"><i class="fas fa-bolt me-2 text-warning"></i>Quick Actions</h6>
                 </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{% url 'accounts:create_role' %}" class="btn btn-outline-primary quick-action-btn text-start">
-                            <i class="fas fa-plus-circle me-2"></i>Create New Role
+                <div class="card-body py-2">
+                    <div class="action-group-label">Roles</div>
+                    <div class="d-grid gap-1 mb-2">
+                        <a href="{% url 'accounts:create_role' %}" class="btn btn-sm btn-outline-primary quick-action-btn">
+                            <i class="fas fa-plus-circle me-2 fa-sm"></i>Create New Role
                         </a>
-                        <a href="{% url 'accounts:superuser_user_permissions' %}" class="btn btn-outline-success quick-action-btn text-start">
-                            <i class="fas fa-user-shield me-2"></i>Manage User Permissions
+                        <a href="{% url 'accounts:compare_roles' %}" class="btn btn-sm btn-outline-info quick-action-btn">
+                            <i class="fas fa-exchange-alt me-2 fa-sm"></i>Compare Roles
                         </a>
-                        <a href="{% url 'accounts:compare_roles' %}" class="btn btn-outline-info quick-action-btn text-start">
-                            <i class="fas fa-exchange-alt me-2"></i>Compare Roles
+                    </div>
+                    <div class="action-group-label">Users</div>
+                    <div class="d-grid gap-1">
+                        <a href="{% url 'accounts:superuser_user_permissions' %}" class="btn btn-sm btn-outline-success quick-action-btn">
+                            <i class="fas fa-user-shield me-2 fa-sm"></i>User Permissions
                         </a>
-                        <a href="{% url 'accounts:superuser_bulk_operations' %}" class="btn btn-outline-secondary quick-action-btn text-start">
-                            <i class="fas fa-tasks me-2"></i>Bulk User Operations
+                        <a href="{% url 'accounts:superuser_bulk_operations' %}" class="btn btn-sm btn-outline-secondary quick-action-btn">
+                            <i class="fas fa-tasks me-2 fa-sm"></i>Bulk Operations
                         </a>
                     </div>
                 </div>
             </div>
 
-            <!-- Recent RBAC Activity -->
+            <!-- Recent Activity -->
             <div class="card mb-4">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-history me-2 text-info"></i>Recent Activity</h5>
-                    <a href="{% url 'accounts:rbac_audit_trail' %}" class="btn btn-sm btn-link">View All</a>
+                    <h6 class="mb-0 fw-semibold"><i class="fas fa-history me-2 text-info"></i>Recent Activity</h6>
+                    <a href="{% url 'accounts:rbac_audit_trail' %}" class="btn btn-sm btn-link py-0 text-decoration-none small">View all</a>
                 </div>
-                <div class="card-body">
+                <div class="card-body py-2 px-3">
                     {% for log in recent_audit_logs %}
-                    <div class="recent-item">
-                        <div class="d-flex justify-content-between">
-                            <small class="text-muted">{{ log.timestamp|timesince }} ago</small>
-                            <span class="badge bg-light text-dark">{{ log.action }}</span>
-                        </div>
-                        <div class="mt-1">
-                            <strong>{{ log.user.username }}</strong>
-                            {% if log.target_user %}
-                            on <strong>{{ log.target_user.username }}</strong>
-                            {% endif %}
+                    <div class="d-flex gap-2 mb-2 pb-2 {% if not forloop.last %}border-bottom{% endif %}">
+                        <div class="activity-dot mt-1 bg-{% if 'assign' in log.action|lower or 'add' in log.action|lower %}success{% elif 'remove' in log.action|lower or 'delete' in log.action|lower %}danger{% elif 'create' in log.action|lower %}primary{% else %}secondary{% endif %}"></div>
+                        <div style="font-size:0.8rem;min-width:0;">
+                            <div class="d-flex align-items-baseline gap-1 flex-wrap">
+                                <span class="fw-semibold">{{ log.user.username }}</span>
+                                {% if log.target_user %}
+                                <span class="text-muted">→</span>
+                                <span class="fw-semibold">{{ log.target_user.username }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                <span class="badge bg-light text-dark border" style="font-size:0.62rem;">{{ log.action }}</span>
+                                <span class="text-muted" style="font-size:0.68rem;" title="{{ log.timestamp }}">{{ log.timestamp|timesince }} ago</span>
+                            </div>
                         </div>
                     </div>
                     {% empty %}
-                    <p class="text-muted text-center">No recent activity</p>
+                    <p class="text-muted text-center py-3 small">No recent activity</p>
                     {% endfor %}
                 </div>
             </div>
 
-            <!-- Permissions by App -->
+            <!-- Permissions by Module -->
             <div class="card">
                 <div class="card-header bg-white py-3">
-                    <h5 class="mb-0"><i class="fas fa-th-large me-2 text-success"></i>Permissions by Module</h5>
+                    <h6 class="mb-0 fw-semibold"><i class="fas fa-th-large me-2 text-success"></i>Permissions by Module</h6>
                 </div>
-                <div class="card-body">
+                <div class="card-body py-2">
                     {% for app in permissions_by_app %}
-                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
-                        <span class="fw-bold text-capitalize">{{ app.content_type__app_label }}</span>
-                        <span class="badge bg-secondary">{{ app.count }}</span>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="text-capitalize" style="font-size:0.78rem;min-width:85px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                            {{ app.content_type__app_label }}
+                        </span>
+                        <div class="perm-bar-track">
+                            <div class="perm-bar-fill" style="width:{% widthratio app.count max_permission_count 100 %}%"></div>
+                        </div>
+                        <span class="text-muted" style="font-size:0.72rem;min-width:26px;text-align:right;">{{ app.count }}</span>
                     </div>
                     {% endfor %}
                 </div>
             </div>
+
         </div>
     </div>
 </div>
@@ -413,126 +507,72 @@
 
 {% block extra_js %}
 <script>
-// CSRF Token for AJAX requests
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-const csrftoken = getCookie('csrftoken');
+const csrftoken = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrftoken='))?.split('=')[1] || '';
 
-// Assign role to user
 function assignRole(userId, roleId, roleName) {
     fetch('{% url "accounts:ajax_assign_role" %}', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrftoken
-        },
-        body: JSON.stringify({
-            user_id: userId,
-            role_id: roleId,
-            action: 'assign'
-        })
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+        body: JSON.stringify({ user_id: userId, role_id: roleId, action: 'assign' })
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
         if (data.success) {
-            // Update the UI
-            const rolesContainer = document.getElementById(`user-roles-${userId}`);
-            const newTag = document.createElement('span');
-            newTag.className = 'user-role-tag';
-            newTag.innerHTML = `${roleName} <span class="remove-role" onclick="removeRole(${userId}, ${roleId}, '${roleName}')">&times;</span>`;
-            
-            // Remove "No roles assigned" text if present
-            const noRolesText = rolesContainer.querySelector('.text-muted');
-            if (noRolesText) {
-                noRolesText.remove();
-            }
-            
-            rolesContainer.appendChild(newTag);
-            
-            // Show success message
+            const container = document.getElementById(`user-roles-${userId}`);
+            const noRoles = container.querySelector('.fst-italic');
+            if (noRoles) noRoles.remove();
+            const tag = document.createElement('span');
+            tag.className = 'user-role-tag';
+            tag.innerHTML = `${roleName} <span class="remove-role" onclick="removeRole(${userId}, ${roleId}, '${roleName}')">&times;</span>`;
+            container.appendChild(tag);
             showToast('success', data.message);
         } else {
             showToast('error', data.error || 'Failed to assign role');
         }
     })
-    .catch(error => {
-        showToast('error', 'Network error: ' + error.message);
-    });
+    .catch(e => showToast('error', 'Network error: ' + e.message));
 }
 
-// Remove role from user
 function removeRole(userId, roleId, roleName) {
-    if (!confirm(`Remove role "${roleName}" from this user?`)) {
-        return;
-    }
-    
+    if (!confirm(`Remove "${roleName}" from this user?`)) return;
     fetch('{% url "accounts:ajax_assign_role" %}', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrftoken
-        },
-        body: JSON.stringify({
-            user_id: userId,
-            role_id: roleId,
-            action: 'remove'
-        })
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+        body: JSON.stringify({ user_id: userId, role_id: roleId, action: 'remove' })
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
         if (data.success) {
-            // Update the UI
-            const rolesContainer = document.getElementById(`user-roles-${userId}`);
-            const roleTags = rolesContainer.querySelectorAll('.user-role-tag');
-            roleTags.forEach(tag => {
-                if (tag.textContent.includes(roleName)) {
-                    tag.remove();
-                }
+            const container = document.getElementById(`user-roles-${userId}`);
+            container.querySelectorAll('.user-role-tag').forEach(tag => {
+                if (tag.textContent.trim().startsWith(roleName)) tag.remove();
             });
-            
-            // Add "No roles assigned" text if no roles left
-            if (rolesContainer.querySelectorAll('.user-role-tag').length === 0) {
-                rolesContainer.innerHTML = '<span class="text-muted fst-italic">No roles assigned</span>';
+            if (!container.querySelectorAll('.user-role-tag').length) {
+                container.innerHTML = '<span class="text-muted fst-italic small">No roles</span>';
             }
-            
             showToast('success', data.message);
         } else {
             showToast('error', data.error || 'Failed to remove role');
         }
     })
-    .catch(error => {
-        showToast('error', 'Network error: ' + error.message);
-    });
+    .catch(e => showToast('error', 'Network error: ' + e.message));
 }
 
-// Show toast notification
 function showToast(type, message) {
-    // Create toast element
-    const toast = document.createElement('div');
-    toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
-    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    toast.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    document.body.appendChild(toast);
-    
-    // Auto remove after 3 seconds
-    setTimeout(() => {
-        toast.remove();
-    }, 3000);
+    const t = document.createElement('div');
+    t.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed shadow`;
+    t.style.cssText = 'top:1rem;right:1rem;z-index:9999;min-width:280px;font-size:0.875rem;';
+    t.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
 }
+
+document.getElementById('userSearch')?.addEventListener('input', function () {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('#userRoleTable tbody .user-row').forEach(row => {
+        const name = row.querySelector('.user-name')?.textContent.toLowerCase() || '';
+        row.style.display = name.includes(q) ? '' : 'none';
+    });
+});
 </script>
 {% endblock %}

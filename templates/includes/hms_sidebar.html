@@ -409,7 +409,7 @@
         </li> -->
 
         <!-- Nav Item - Laboratory (Available to lab technicians, doctors, and admins only) -->
-        {% if user.is_superuser or user|can_show_ui:'menu_laboratory' or user|has_permission:'laboratory.view' %}
+        {% if user.is_superuser or user|can_show_ui:'menu_laboratory' or user|has_permission:'lab.view' %}
         <li class="nav-item {% if '/laboratory/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/laboratory/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLaboratory" aria-expanded="{% if '/laboratory/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseLaboratory">
                 <i class="fas fa-fw fa-flask text-white"></i>

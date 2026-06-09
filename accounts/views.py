@@ -3616,6 +3616,10 @@ def rbac_dashboard(request):
             }
         )
 
+    role_coverage_pct = round((total_users - users_without_roles) / total_users * 100) if total_users > 0 else 0
+    permission_coverage_pct = round((total_roles - roles_without_permissions) / total_roles * 100) if total_roles > 0 else 0
+    max_permission_count = permissions_by_app[0]["count"] if permissions_by_app else 1
+
     context = {
         "total_roles": total_roles,
         "total_users": total_users,
@@ -3631,6 +3635,9 @@ def rbac_dashboard(request):
         "root_roles": root_roles,
         "permissions_by_app": permissions_by_app,
         "issues": issues,
+        "role_coverage_pct": role_coverage_pct,
+        "permission_coverage_pct": permission_coverage_pct,
+        "max_permission_count": max_permission_count,
         "page_title": "RBAC Dashboard - Admin Control Center",
         "active_nav": "rbac_dashboard",
     }

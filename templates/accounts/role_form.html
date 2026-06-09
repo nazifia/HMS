@@ -1,740 +1,889 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
-{% block title %}{% if is_edit %}Edit Role: {{ role.name }}{% else %}Create New Role{% endif %} - Hospital Management System{% endblock %}
+{% block title %}{% if is_edit %}Edit Role: {{ role.name }}{% else %}Create New Role{% endif %} - HMS{% endblock %}
 
 {% block extra_css %}
 <style>
-    .permission-group {
-        border: 1px solid #dee2e6;
-        border-radius: 0.375rem;
-        margin-bottom: 1rem;
-        background-color: #fff;
-    }
-    .permission-group-header {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid #dee2e6;
-        font-weight: 600;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .permission-list {
-        padding: 1rem;
-        max-height: 60vh;
-        overflow-y: auto;
-        scrollbar-width: thin;
-    }
-    .permission-list::-webkit-scrollbar {
-        width: 8px;
-    }
-    .permission-list::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 4px;
-    }
-    .permission-list::-webkit-scrollbar-thumb {
-        background: #adb5bd;
-        border-radius: 4px;
-    }
-    .permission-list::-webkit-scrollbar-thumb:hover {
-        background: #6c757d;
-    }
-    .form-check {
-        margin-bottom: 0.5rem;
-        padding: 0.5rem;
-        border-radius: 0.25rem;
-        transition: background-color 0.2s;
-    }
-    .form-check:hover {
-        background-color: #f8f9fa;
-    }
-    .permission-checkbox {
-        cursor: pointer;
-    }
-    .select-all-btn {
-        font-size: 0.875rem;
-        padding: 0.25rem 0.75rem;
-    }
-    .role-info-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 0.5rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    .role-info-card h5 {
-        font-size: 0.9rem;
-        font-weight: 500;
-        opacity: 0.9;
-        margin-bottom: 0.5rem;
-    }
-    .role-info-card h3 {
-        font-size: 1.75rem;
-        font-weight: 700;
-        margin: 0;
-    }
-    .permission-stats {
-        background-color: #e7f1ff;
-        border-left: 4px solid #0d6efd;
-        padding: 1rem;
-        margin-bottom: 1.5rem;
-        border-radius: 0 0.375rem 0.375rem 0;
-    }
-    .stat-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #dee2e6;
-    }
-    .stat-item:last-child {
-        border-bottom: none;
-    }
-    .stat-label {
-        font-weight: 500;
-        color: #495057;
-    }
-    .stat-value {
-        font-weight: 700;
-        color: #0d6efd;
-    }
-    .inheritance-chain {
-        background-color: #fff3cd;
-        border: 1px solid #ffc107;
-        border-radius: 0.375rem;
-        padding: 0.75rem;
-        margin-bottom: 1rem;
-    }
-    .inheritance-item {
-        display: inline-flex;
-        align-items: center;
-        margin-right: 0.5rem;
-    }
-    .inheritance-arrow {
-        margin: 0 0.5rem;
-        color: #6c757d;
-    }
-    .badge-permission {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
-    }
-    .permission-codename {
-        font-family: 'Courier New', monospace;
-        font-size: 0.85rem;
-        color: #6c757d;
-        background-color: #f8f9fa;
-        padding: 0.125rem 0.375rem;
-        border-radius: 0.25rem;
-    }
-    .model-group-header {
-        background-color: #e7f1ff;
-        padding: 0.5rem 0.75rem;
-        margin: 1rem 0 0.5rem 0;
-        border-left: 3px solid #0d6efd;
-        border-radius: 0 0.25rem 0.25rem 0;
-        font-weight: 600;
-        color: #0a58ca;
-    }
-    .app-group-header {
-        background: linear-gradient(135deg, #495057 0%, #343a40 100%);
-        color: white;
-    }
+:root {
+    --role-primary: #4f46e5;
+    --role-primary-light: #eef2ff;
+    --role-success: #059669;
+    --role-danger: #dc2626;
+    --role-warning: #d97706;
+    --role-info: #0284c7;
+    --role-border: #e5e7eb;
+    --role-text-muted: #6b7280;
+    --role-bg-subtle: #f9fafb;
+}
 
-    @media (max-width: 767.98px) {
-        .permission-list {
-            max-height: 400px;
-        }
-        .role-info-card .row > div {
-            margin-bottom: 1rem;
-        }
-    }
+/* ── Layout ── */
+.role-layout { display: grid; grid-template-columns: 360px 1fr; gap: 1.5rem; align-items: start; }
+@media (max-width: 991px) { .role-layout { grid-template-columns: 1fr; } }
+
+/* ── Page header ── */
+.page-header {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    border-radius: 0.75rem;
+    padding: 1.5rem 2rem;
+    color: #fff;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
+}
+.page-header-content { position: relative; }
+.page-header h1 { font-size: 1.5rem; font-weight: 700; margin: 0; }
+.page-header .breadcrumb { margin: 0; background: none; padding: 0; font-size: 0.85rem; }
+.page-header .breadcrumb-item, .page-header .breadcrumb-item a { color: rgba(255,255,255,0.75); }
+.page-header .breadcrumb-item.active { color: #fff; }
+.page-header .breadcrumb-item + .breadcrumb-item::before { color: rgba(255,255,255,0.5); }
+
+/* ── Stats banner (edit mode) ── */
+.stats-banner {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    background: #fff;
+    border: 1px solid var(--role-border);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.stat-box { text-align: center; }
+.stat-box .stat-val { font-size: 1.75rem; font-weight: 800; color: var(--role-primary); line-height: 1; }
+.stat-box .stat-lbl { font-size: 0.75rem; color: var(--role-text-muted); margin-top: 0.25rem; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ── Left panel (role info) ── */
+.config-panel {
+    background: #fff;
+    border: 1px solid var(--role-border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    position: sticky;
+    top: 1rem;
+}
+.config-panel-header {
+    background: var(--role-bg-subtle);
+    border-bottom: 1px solid var(--role-border);
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.config-panel-body { padding: 1.25rem; }
+.config-panel-body .form-label { font-size: 0.85rem; font-weight: 600; color: #374151; margin-bottom: 0.4rem; }
+.config-panel-body .form-control, .config-panel-body select { font-size: 0.9rem; border-color: var(--role-border); }
+.config-panel-body .form-control:focus, .config-panel-body select:focus {
+    border-color: var(--role-primary);
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+}
+.config-panel-body .form-text { font-size: 0.8rem; color: var(--role-text-muted); }
+
+/* ── Permission counter badge ── */
+.perm-counter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--role-primary-light);
+    color: var(--role-primary);
+    border-radius: 999px;
+    padding: 0.3rem 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.perm-counter .count-num { font-size: 1.1rem; font-weight: 800; }
+
+/* ── Permission progress ── */
+.perm-progress-bar {
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 0.5rem 0 1rem;
+}
+.perm-progress-bar .fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--role-primary), #7c3aed);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+}
+
+/* ── Permission panel ── */
+.perm-panel {
+    background: #fff;
+    border: 1px solid var(--role-border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.perm-panel-header {
+    background: var(--role-bg-subtle);
+    border-bottom: 1px solid var(--role-border);
+    padding: 1rem 1.25rem;
+}
+.perm-panel-header .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+.perm-panel-header .header-title { font-weight: 700; font-size: 0.95rem; color: #1f2937; }
+.perm-panel-header .header-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.perm-panel-header .header-actions .btn { font-size: 0.78rem; padding: 0.2rem 0.6rem; }
+
+/* ── Quick-select row ── */
+.quick-select-row {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--role-border);
+    background: #fafafa;
+}
+.quick-select-row .qs-btn {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid;
+    cursor: pointer;
+    font-weight: 500;
+}
+.qs-add    { color: #059669; border-color: #059669; background: #f0fdf4; }
+.qs-add:hover    { background: #059669; color: #fff; }
+.qs-change { color: #0284c7; border-color: #0284c7; background: #eff6ff; }
+.qs-change:hover { background: #0284c7; color: #fff; }
+.qs-delete { color: #dc2626; border-color: #dc2626; background: #fef2f2; }
+.qs-delete:hover { background: #dc2626; color: #fff; }
+.qs-view   { color: #7c3aed; border-color: #7c3aed; background: #f5f3ff; }
+.qs-view:hover   { background: #7c3aed; color: #fff; }
+
+/* ── Search box ── */
+.perm-search-wrap { padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--role-border); }
+.perm-search-wrap .input-group-text { background: #fff; border-color: var(--role-border); color: var(--role-text-muted); }
+.perm-search-wrap .form-control { border-left: 0; font-size: 0.9rem; }
+.perm-search-wrap .form-control:focus { box-shadow: none; border-color: var(--role-border); }
+.search-badge { font-size: 0.78rem; white-space: nowrap; background: var(--role-primary-light); color: var(--role-primary); padding: 0.2rem 0.6rem; border-radius: 999px; }
+
+/* ── App accordion ── */
+.perm-list-body { max-height: 65vh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #cbd5e1 #f1f5f9; }
+.perm-list-body::-webkit-scrollbar { width: 6px; }
+.perm-list-body::-webkit-scrollbar-track { background: #f1f5f9; }
+.perm-list-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+.app-group { border-bottom: 1px solid var(--role-border); }
+.app-group:last-child { border-bottom: none; }
+.app-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 1.25rem;
+    cursor: pointer;
+    background: #fff;
+    user-select: none;
+    transition: background 0.15s;
+}
+.app-group-header:hover { background: var(--role-bg-subtle); }
+.app-group-header.has-checked { background: var(--role-primary-light); }
+.app-group-title { font-size: 0.85rem; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 0.5rem; }
+.app-group-title .app-icon { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
+.app-group-meta { display: flex; align-items: center; gap: 0.5rem; }
+.app-count-badge { font-size: 0.72rem; padding: 0.15rem 0.5rem; }
+.app-chevron { font-size: 0.7rem; color: var(--role-text-muted); transition: transform 0.2s; }
+.app-chevron.open { transform: rotate(180deg); }
+
+.model-section { border-top: 1px solid var(--role-border); }
+.model-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 1.25rem 0.4rem 2rem;
+    background: #fafafa;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #4b5563;
+}
+.model-section-header:hover { background: #f3f4f6; }
+
+.perm-items { padding: 0.25rem 1.25rem 0.5rem 2.5rem; }
+.perm-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.375rem;
+    transition: background 0.1s;
+    margin-bottom: 0.1rem;
+}
+.perm-item:hover { background: var(--role-bg-subtle); }
+.perm-item input[type="checkbox"] { margin-top: 0.2rem; cursor: pointer; accent-color: var(--role-primary); width: 15px; height: 15px; flex-shrink: 0; }
+.perm-item label { font-size: 0.82rem; color: #374151; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.perm-codename {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.72rem;
+    color: var(--role-text-muted);
+    background: #f3f4f6;
+    padding: 0.1rem 0.35rem;
+    border-radius: 0.25rem;
+}
+
+/* ── Permission type badges ── */
+.badge-add    { font-size: 0.65rem; padding: 0.1rem 0.4rem; background: #dcfce7; color: #166534; border-radius: 999px; font-weight: 600; }
+.badge-change { font-size: 0.65rem; padding: 0.1rem 0.4rem; background: #dbeafe; color: #1e40af; border-radius: 999px; font-weight: 600; }
+.badge-delete { font-size: 0.65rem; padding: 0.1rem 0.4rem; background: #fee2e2; color: #991b1b; border-radius: 999px; font-weight: 600; }
+.badge-view   { font-size: 0.65rem; padding: 0.1rem 0.4rem; background: #ede9fe; color: #5b21b6; border-radius: 999px; font-weight: 600; }
+.badge-custom { font-size: 0.65rem; padding: 0.1rem 0.4rem; background: #fef3c7; color: #92400e; border-radius: 999px; font-weight: 600; }
+
+/* ── Form actions ── */
+.form-actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    background: var(--role-bg-subtle);
+    border-top: 1px solid var(--role-border);
+    border-radius: 0 0 0.75rem 0.75rem;
+    gap: 0.75rem;
+}
+.btn-create-role {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    padding: 0.55rem 1.5rem;
+    border-radius: 0.5rem;
+    transition: opacity 0.2s, transform 0.15s;
+}
+.btn-create-role:hover { opacity: 0.92; transform: translateY(-1px); color: #fff; }
+
+/* ── Inheritance banner ── */
+.inherit-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.82rem;
+    color: #92400e;
+    margin-bottom: 0.75rem;
+}
+
+/* ── Users list ── */
+.users-panel {
+    background: #fff;
+    border: 1px solid var(--role-border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    margin-top: 1.5rem;
+}
+.users-panel-header { background: var(--role-bg-subtle); border-bottom: 1px solid var(--role-border); padding: 0.85rem 1.25rem; font-weight: 600; font-size: 0.9rem; }
+.user-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    background: var(--role-bg-subtle);
+    font-size: 0.82rem;
+}
+.user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--role-primary-light); color: var(--role-primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem; flex-shrink: 0; }
+
+/* ── App icon colors (cycling) ── */
+.app-ic-0 { background: #dbeafe; color: #1d4ed8; }
+.app-ic-1 { background: #dcfce7; color: #15803d; }
+.app-ic-2 { background: #fce7f3; color: #be185d; }
+.app-ic-3 { background: #fef3c7; color: #b45309; }
+.app-ic-4 { background: #ede9fe; color: #6d28d9; }
+.app-ic-5 { background: #fee2e2; color: #b91c1c; }
+.app-ic-6 { background: #e0f2fe; color: #0369a1; }
+.app-ic-7 { background: #f0fdf4; color: #166534; }
+
+.hidden { display: none !important; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>
-                    <i class="fas fa-{% if is_edit %}edit{% else %}plus-circle{% endif %} me-2"></i>
+
+    <!-- ── Page header ── -->
+    <div class="page-header">
+        <div class="page-header-content d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'accounts:role_management' %}">Roles</a></li>
+                        <li class="breadcrumb-item active">{% if is_edit %}Edit: {{ role.name }}{% else %}Create New Role{% endif %}</li>
+                    </ol>
+                </nav>
+                <h1 class="mt-1">
+                    <i class="fas fa-{% if is_edit %}user-edit{% else %}plus-circle{% endif %} me-2"></i>
                     {% if is_edit %}Edit Role: {{ role.name }}{% else %}Create New Role{% endif %}
-                </h2>
-                <div>
-                    {% if is_edit %}
-                        <a href="{% url 'accounts:clone_role' role.id %}" class="btn btn-outline-success me-2">
-                            <i class="fas fa-copy me-2"></i>Clone Role
-                        </a>
-                        <a href="{% url 'accounts:delete_role' role.id %}" class="btn btn-outline-danger me-2"
-                           onclick="return confirm('Are you sure you want to delete this role? This action cannot be undone.');">
-                            <i class="fas fa-trash me-2"></i>Delete Role
-                        </a>
-                    {% endif %}
-                    <a href="{% url 'accounts:role_management' %}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Back to Roles
-                    </a>
-                </div>
+                </h1>
             </div>
-
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-
-            {% if is_edit %}
-                <!-- Role Information Card -->
-                <div class="card role-info-card mb-4">
-                    <div class="card-body">
-                        <div class="row text-center text-md-start">
-                            <div class="col-md-2 col-6 mb-3 mb-md-0">
-                                <h5><i class="fas fa-users me-2"></i>Users</h5>
-                                <h3>{{ role.customuser_roles.count }}</h3>
-                            </div>
-                            <div class="col-md-2 col-6 mb-3 mb-md-0">
-                                <h5><i class="fas fa-key me-2"></i>Direct Permissions</h5>
-                                <h3>{{ role.permissions.count }}</h3>
-                            </div>
-                            <div class="col-md-2 col-6 mb-3 mb-md-0">
-                                <h5><i class="fas fa-sitemap me-2"></i>From Parents</h5>
-                                <h3>{{ role.get_inherited_permission_count }}</h3>
-                            </div>
-                            <div class="col-md-2 col-6 mb-3 mb-md-0">
-                                <h5><i class="fas fa-shield-alt me-2"></i>Total Effective</h5>
-                                <h3>{{ role.get_all_permissions|length }}</h3>
-                            </div>
-                            <div class="col-md-2 col-6 mb-3 mb-md-0">
-                                <h5><i class="fas fa-level-down-alt me-2"></i>Child Roles</h5>
-                                <h3>{{ role.children.count }}</h3>
-                            </div>
-                            <div class="col-md-2 col-6">
-                                <h5><i class="fas fa-calendar me-2"></i>Created</h5>
-                                <h6>{{ role.date_created|date:"M d, Y" }}</h6>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Inheritance Chain -->
-                {% if role.parent or role.children.exists %}
-                    <div class="inheritance-chain mb-4">
-                        <strong><i class="fas fa-sitemap me-2"></i>Inheritance Structure:</strong>
-                        <div class="mt-2">
-                            {% if role.parent %}
-                                <span class="inheritance-item">
-                                    <i class="fas fa-arrow-up me-1"></i>
-                                    Parent: <strong>{{ role.parent.name }}</strong>
-                                </span>
-                            {% else %}
-                                <span class="inheritance-item">
-                                    <i class="fas fa-star me-1 text-warning"></i>
-                                    <strong>Top-level role (no parent)</strong>
-                                </span>
-                            {% endif %}
-
-                            {% if role.children.exists %}
-                                <span class="inheritance-item ms-3">
-                                    <i class="fas fa-arrow-down me-1"></i>
-                                    Children ({{ role.children.count }}):
-                                    {% for child in role.children.all|slice:":3" %}
-                                        <strong>{{ child.name }}{% if not forloop.last %},{% endif %}</strong>
-                                    {% endfor %}
-                                    {% if role.children.count > 3 %}
-                                        <strong> and {{ role.children.count|add:"-3" }} more</strong>
-                                    {% endif %}
-                                </span>
-                            {% endif %}
-                        </div>
-                    </div>
+            <div class="d-flex gap-2 flex-wrap">
+                {% if is_edit %}
+                    <a href="{% url 'accounts:clone_role' role.id %}" class="btn btn-light btn-sm">
+                        <i class="fas fa-copy me-1"></i>Clone
+                    </a>
+                    <a href="{% url 'accounts:delete_role' role.id %}" class="btn btn-sm"
+                       style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);"
+                       onclick="return confirm('Delete this role? This cannot be undone.');">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </a>
                 {% endif %}
-
-                <!-- Permission Usage Stats -->
-                <div class="permission-stats">
-                    <h6><i class="fas fa-chart-pie me-2"></i>Permission Distribution</h6>
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="stat-item">
-                                <span class="stat-label">Selected Permissions:</span>
-                                <span class="stat-value" id="selected-count">{{ role.permissions.count }}</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="stat-item">
-                                <span class="stat-label">Inherited Permissions:</span>
-                                <span class="stat-value">{{ role.get_inherited_permission_count }}</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="stat-item">
-                                <span class="stat-label">Total Effective Permissions:</span>
-                                <span class="stat-value">{{ role.get_all_permissions|length }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            {% endif %}
+                <a href="{% url 'accounts:role_management' %}" class="btn btn-sm"
+                   style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);">
+                    <i class="fas fa-arrow-left me-1"></i>Back
+                </a>
+            </div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-{% if is_edit %}user-shield{% else %}plus-circle{% endif %} me-2"></i>
-                        Role Configuration
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <form method="post" id="role-form">
-                        {% csrf_token %}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-3" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
 
-                        <!-- Role Basic Info -->
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.name.id_for_label }}" class="form-label">
-                                        <i class="fas fa-tag me-1 text-primary"></i>Role Name *
-                                    </label>
-                                    {{ form.name }}
-                                    {% if form.name.errors %}
-                                        <div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>
-                                    {% endif %}
-                                    <div class="form-text">Unique, descriptive name for this role</div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.parent.id_for_label }}" class="form-label">
-                                        <i class="fas fa-sitemap me-1 text-primary"></i>Parent Role
-                                    </label>
-                                    {{ form.parent }}
-                                    {% if form.parent.errors %}
-                                        <div class="text-danger small mt-1">{{ form.parent.errors.0 }}</div>
-                                    {% endif %}
-                                    <div class="form-text">
-                                        Select a parent to inherit their permissions.
-                                        {% if is_edit and role.parent %}
-                                            Currently inheriting from: <strong>{{ role.parent.name }}</strong>
-                                        {% endif %}
-                                    </div>
-                                </div>
+    <!-- ── Edit mode stats banner ── -->
+    {% if is_edit %}
+    <div class="stats-banner">
+        <div class="stat-box">
+            <div class="stat-val">{{ role.customuser_roles.count }}</div>
+            <div class="stat-lbl"><i class="fas fa-users me-1"></i>Users</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-val" id="selected-count">{{ role.permissions.count }}</div>
+            <div class="stat-lbl"><i class="fas fa-key me-1"></i>Direct Perms</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-val">{{ role.get_inherited_permission_count }}</div>
+            <div class="stat-lbl"><i class="fas fa-sitemap me-1"></i>Inherited</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-val">{{ role.get_all_permissions|length }}</div>
+            <div class="stat-lbl"><i class="fas fa-shield-alt me-1"></i>Effective</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-val">{{ role.children.count }}</div>
+            <div class="stat-lbl"><i class="fas fa-sitemap me-1"></i>Children</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-val" style="font-size:1rem;">{{ role.date_created|date:"M d" }}</div>
+            <div class="stat-lbl"><i class="fas fa-calendar me-1"></i>Created {{ role.date_created|date:"Y" }}</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Main form ── -->
+    <form method="post" id="role-form">
+        {% csrf_token %}
+        <div class="role-layout">
+
+            <!-- ── Left: Role config ── -->
+            <div>
+                <div class="config-panel">
+                    <div class="config-panel-header">
+                        <i class="fas fa-cog text-primary"></i> Role Configuration
+                    </div>
+                    <div class="config-panel-body">
+
+                        {% if is_edit and role.parent or role.children.exists %}
+                        <div class="inherit-banner">
+                            <i class="fas fa-sitemap"></i>
+                            <div>
+                                {% if role.parent %}Parent: <strong>{{ role.parent.name }}</strong>{% endif %}
+                                {% if role.parent and role.children.exists %} &bull; {% endif %}
+                                {% if role.children.exists %}Children: {{ role.children.count }}{% endif %}
                             </div>
                         </div>
+                        {% endif %}
 
-                        <div class="mb-4">
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">
+                                Role Name <span class="text-danger">*</span>
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text">Unique, descriptive name</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.parent.id_for_label }}" class="form-label">
+                                Parent Role
+                            </label>
+                            {{ form.parent }}
+                            {% if form.parent.errors %}
+                                <div class="text-danger small mt-1">{{ form.parent.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text">Inherits all parent permissions</div>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="{{ form.description.id_for_label }}" class="form-label">
-                                <i class="fas fa-align-left me-1 text-primary"></i>Description
+                                Description
                             </label>
                             {{ form.description }}
                             {% if form.description.errors %}
                                 <div class="text-danger small mt-1">{{ form.description.errors.0 }}</div>
                             {% endif %}
-                            <div class="form-text">Optional description explaining this role's purpose</div>
                         </div>
 
-                        <!-- Permissions Section -->
-                        <div class="mb-4">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <label class="form-label mb-0">
-                                    <i class="fas fa-key me-1 text-primary"></i>Permissions
-                                </label>
-                                <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-sm btn-outline-primary select-all-btn" onclick="selectAllPermissions()">
-                                        <i class="fas fa-check-square me-1"></i>Select All
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary select-all-btn" onclick="deselectAllPermissions()">
-                                        <i class="fas fa-square me-1"></i>Deselect All
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="expandAllApps()">
-                                        <i class="fas fa-expand-alt me-1"></i>Expand All
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="collapseAllApps()">
-                                        <i class="fas fa-compress-alt me-1"></i>Collapse All
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Permission Search -->
-                            <div class="input-group mb-3">
-                                <span class="input-group-text">
-                                    <i class="fas fa-search"></i>
-                                </span>
-                                <input type="text"
-                                       id="permission-search"
-                                       class="form-control"
-                                       placeholder="Search permissions by name, codename, or model..."
-                                       autocomplete="off"
-                                       aria-label="Search permissions">
-                                <button type="button"
-                                        class="btn btn-outline-secondary"
-                                        onclick="clearSearch()"
-                                        title="Clear search">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                                <span class="input-group-text" id="search-count">
-                                    Showing all
+                        <!-- Live permission counter -->
+                        <div class="border-top pt-3 mt-3">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="form-text mb-0">Permissions selected</span>
+                                <span class="perm-counter">
+                                    <span class="count-num" id="perm-count-side">0</span>
+                                    <span>/ <span id="perm-total-side">0</span></span>
                                 </span>
                             </div>
-
-                            <div id="permissions-container">
-                                {% regroup form.permissions.field.queryset by content_type.app_label as app_groups %}
-                                {% for app_group in app_groups %}
-                                    <div class="permission-group" data-app="{{ app_group.grouper }}">
-                                        <div class="permission-group-header app-group-header">
-                                            <div class="d-flex align-items-center">
-                                                <i class="fas fa-folder-open me-2"></i>
-                                                <span class="app-name">{{ app_group.grouper|title }}</span>
-                                                <span class="badge bg-light text-dark ms-2" id="app-{{ app_group.grouper|slugify }}-count">
-                                                    {{ app_group.list|length }}
-                                                </span>
-                                            </div>
-                                            <button type="button"
-                                                    class="btn btn-sm btn-outline-light toggle-app-btn"
-                                                    onclick="toggleAppPermissions('{{ app_group.grouper }}')"
-                                                    title="Toggle all permissions in this app">
-                                                <i class="fas fa-toggle-on me-1"></i>Toggle All
-                                            </button>
-                                        </div>
-                                        <div class="permission-list">
-                                            {% regroup app_group.list by content_type.model as model_groups %}
-                                            {% for model_group in model_groups %}
-                                                <div class="model-group" data-model="{{ model_group.grouper }}">
-                                                    <div class="model-group-header" data-bs-toggle="collapse"
-                                                         data-bs-target="#model-{{ app_group.grouper }}-{{ model_group.grouper }}"
-                                                         aria-expanded="{% if is_edit %}true{% else %}false{% endif %}"
-                                                         style="cursor: pointer;">
-                                                        <div class="d-flex align-items-center justify-content-between">
-                                                            <div>
-                                                                <i class="fas fa-cube me-2 text-primary"></i>
-                                                                <strong>{{ model_group.grouper|title }}</strong>
-                                                                <span class="badge bg-secondary ms-2">{{ model_group.list|length }}</span>
-                                                            </div>
-                                                            <i class="fas fa-chevron-{% if is_edit %}up{% else %}down{% endif %}"></i>
-                                                        </div>
-                                                    </div>
-                                                    <div class="collapse show"
-                                                         id="model-{{ app_group.grouper }}-{{ model_group.grouper }}">
-                                                        <div class="permission-checkboxes mt-2">
-                                                            {% for permission in model_group.list %}
-                                                                <div class="form-check permission-item"
-                                                                     data-permission-id="{{ permission.id }}"
-                                                                     data-codename="{{ permission.codename }}"
-                                                                     data-app="{{ app_group.grouper }}"
-                                                                     data-model="{{ model_group.grouper }}">
-                                                                    <input class="form-check-input permission-checkbox app-{{ app_group.grouper }}"
-                                                                           type="checkbox"
-                                                                           name="{{ form.permissions.name }}"
-                                                                           value="{{ permission.id }}"
-                                                                           id="permission_{{ permission.id }}"
-                                                                           {% if permission in role.permissions.all %}checked{% endif %}>
-                                                                    <label class="form-check-label" for="permission_{{ permission.id }}">
-                                                                        <span class="fw-medium">{{ permission.name }}</span>
-                                                                        <span class="permission-codename ms-2">{{ permission.codename }}</span>
-                                                                        {% if permission.codename|slice:":5" == "add_" %}
-                                                                            <span class="badge bg-success ms-1">Add</span>
-                                                                        {% elif permission.codename|slice:":6" == "change_" %}
-                                                                            <span class="badge bg-primary ms-1">Change</span>
-                                                                        {% elif permission.codename|slice:":7" == "delete_" %}
-                                                                            <span class="badge bg-danger ms-1">Delete</span>
-                                                                        {% elif permission.codename|slice:":5" == "view_" %}
-                                                                            <span class="badge bg-info ms-1">View</span>
-                                                                        {% endif %}
-                                                                    </label>
-                                                                </div>
-                                                            {% endfor %}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                {% endfor %}
+                            <div class="perm-progress-bar">
+                                <div class="fill" id="perm-progress-fill" style="width:0%"></div>
                             </div>
-                            {% if form.permissions.errors %}
-                                <div class="text-danger small mt-2">{{ form.permissions.errors.0 }}</div>
-                            {% endif %}
+                            <div id="change-indicator" class="small text-warning"></div>
                         </div>
+                    </div>
 
-                        <!-- Form Actions -->
-                        <div class="d-flex justify-content-between border-top pt-3">
-                            <div>
-                                <button type="button" class="btn btn-outline-secondary" onclick="resetToOriginal()" title="Reset all changes">
-                                    <i class="fas fa-undo me-2"></i>Reset
-                                </button>
-                                <span class="text-muted small ms-2" id="change-indicator"></span>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <a href="{% url 'accounts:role_management' %}" class="btn btn-outline-secondary">
-                                    <i class="fas fa-times me-2"></i>Cancel
-                                </a>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save me-2"></i>{% if is_edit %}Update Role{% else %}Create Role{% endif %}
-                                </button>
-                            </div>
+                    <!-- Action buttons -->
+                    <div class="form-actions-bar">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetToOriginal()">
+                            <i class="fas fa-undo me-1"></i>Reset
+                        </button>
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'accounts:role_management' %}" class="btn btn-outline-secondary btn-sm">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-create-role btn-sm">
+                                <i class="fas fa-save me-1"></i>
+                                {% if is_edit %}Update Role{% else %}Create Role{% endif %}
+                            </button>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    {% if is_edit %}
-        <!-- Users with this role -->
-        {% if role.customuser_roles.exists %}
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-users me-2"></i>Users with this Role
-                        <span class="badge bg-primary ms-2">{{ role.customuser_roles.count }}</span>
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        {% for user in role.customuser_roles.all|slice:":12" %}
-                        <div class="col-md-3 col-6 mb-2">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-user-circle me-2 text-primary fs-4"></i>
-                                <div>
-                                    <div class="fw-medium">{{ user.get_full_name|default:user.username }}</div>
-                                    <small class="text-muted">{{ user.phone_number }}</small>
+            <!-- ── Right: Permissions ── -->
+            <div>
+                <div class="perm-panel">
+                    <div class="perm-panel-header">
+                        <div class="header-top">
+                            <span class="header-title"><i class="fas fa-key me-2 text-primary"></i>Permissions</span>
+                            <div class="header-actions">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllPermissions()">
+                                    <i class="fas fa-check-double me-1"></i>All
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllPermissions()">
+                                    <i class="fas fa-times me-1"></i>None
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-info" onclick="expandAllApps()">
+                                    <i class="fas fa-expand-alt me-1"></i>Expand
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="collapseAllApps()">
+                                    <i class="fas fa-compress-alt me-1"></i>Collapse
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick CRUD selectors -->
+                    <div class="quick-select-row">
+                        <span class="text-muted" style="font-size:0.78rem;align-self:center;">Quick select:</span>
+                        <button type="button" class="qs-btn qs-view"   onclick="selectByType('view_')">View all</button>
+                        <button type="button" class="qs-btn qs-add"    onclick="selectByType('add_')">Add all</button>
+                        <button type="button" class="qs-btn qs-change" onclick="selectByType('change_')">Change all</button>
+                        <button type="button" class="qs-btn qs-delete" onclick="selectByType('delete_')">Delete all</button>
+                    </div>
+
+                    <!-- Search -->
+                    <div class="perm-search-wrap">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" id="permission-search" class="form-control"
+                                   placeholder="Search permissions, codenames, or modules…"
+                                   autocomplete="off">
+                            <button type="button" class="btn btn-outline-secondary" onclick="clearSearch()" title="Clear">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="mt-1 d-flex justify-content-end">
+                            <span class="search-badge" id="search-count">Loading…</span>
+                        </div>
+                    </div>
+
+                    <!-- App accordion list -->
+                    <div class="perm-list-body" id="permissions-container">
+                        {% regroup form.permissions.field.queryset by content_type.app_label as app_groups %}
+                        {% for app_group in app_groups %}
+                        <div class="app-group" data-app="{{ app_group.grouper }}">
+
+                            <!-- App header -->
+                            <div class="app-group-header" onclick="toggleAppExpand('{{ app_group.grouper }}')" id="app-hdr-{{ app_group.grouper|slugify }}">
+                                <div class="app-group-title">
+                                    <span class="app-icon" style="background:var(--role-primary-light);color:var(--role-primary);">
+                                        <i class="fas fa-folder"></i>
+                                    </span>
+                                    {{ app_group.grouper|title|cut:"_" }}
+                                </div>
+                                <div class="app-group-meta">
+                                    <span class="badge bg-secondary app-count-badge" id="app-{{ app_group.grouper|slugify }}-checked">0</span>
+                                    <span class="text-muted" style="font-size:0.75rem;">/ {{ app_group.list|length }}</span>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-1 py-0 px-1" style="font-size:0.7rem;"
+                                            onclick="event.stopPropagation(); toggleAppPermissions('{{ app_group.grouper }}')" title="Toggle all">
+                                        Toggle
+                                    </button>
+                                    <i class="fas fa-chevron-down app-chevron" id="chev-{{ app_group.grouper|slugify }}"></i>
                                 </div>
                             </div>
+
+                            <!-- App body -->
+                            <div id="app-body-{{ app_group.grouper|slugify }}" style="display:none;">
+                                {% regroup app_group.list by content_type.model as model_groups %}
+                                {% for model_group in model_groups %}
+                                <div class="model-section">
+                                    <div class="model-section-header"
+                                         onclick="toggleModelSection('{{ app_group.grouper }}-{{ model_group.grouper }}')">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="fas fa-cube" style="font-size:0.7rem;color:#9ca3af;"></i>
+                                            {{ model_group.grouper|title|cut:"_" }}
+                                            <span class="badge bg-light text-secondary border" style="font-size:0.65rem;">{{ model_group.list|length }}</span>
+                                        </div>
+                                        <i class="fas fa-chevron-down" style="font-size:0.65rem;color:#9ca3af;" id="mchev-{{ app_group.grouper|slugify }}-{{ model_group.grouper|slugify }}"></i>
+                                    </div>
+                                    <div class="perm-items" id="msec-{{ app_group.grouper|slugify }}-{{ model_group.grouper|slugify }}">
+                                        {% for permission in model_group.list %}
+                                        <div class="perm-item permission-item"
+                                             data-app="{{ app_group.grouper }}"
+                                             data-model="{{ model_group.grouper }}"
+                                             data-codename="{{ permission.codename }}"
+                                             data-name="{{ permission.name|lower }}">
+                                            <input class="form-check-input permission-checkbox"
+                                                   type="checkbox"
+                                                   name="{{ form.permissions.name }}"
+                                                   value="{{ permission.id }}"
+                                                   id="permission_{{ permission.id }}"
+                                                   data-app="{{ app_group.grouper }}"
+                                                   data-codename="{{ permission.codename }}"
+                                                   {% if is_edit and permission in role.permissions.all %}checked{% endif %}>
+                                            <label for="permission_{{ permission.id }}">
+                                                {{ permission.name }}
+                                                <span class="perm-codename">{{ permission.codename }}</span>
+                                                {% with cn=permission.codename %}
+                                                    {% if cn|slice:":4" == "add_" %}
+                                                        <span class="badge-add">Add</span>
+                                                    {% elif cn|slice:":7" == "change_" %}
+                                                        <span class="badge-change">Change</span>
+                                                    {% elif cn|slice:":7" == "delete_" %}
+                                                        <span class="badge-delete">Delete</span>
+                                                    {% elif cn|slice:":5" == "view_" %}
+                                                        <span class="badge-view">View</span>
+                                                    {% else %}
+                                                        <span class="badge-custom">Custom</span>
+                                                    {% endif %}
+                                                {% endwith %}
+                                            </label>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+
                         </div>
                         {% endfor %}
                     </div>
-                    {% if role.customuser_roles.count > 12 %}
-                        <div class="text-muted mt-2">
-                            <i class="fas fa-info-circle me-1"></i>
-                            And {{ role.customuser_roles.count|add:"-12" }} more users...
-                        </div>
+
+                    {% if form.permissions.errors %}
+                        <div class="text-danger small p-2 px-3">{{ form.permissions.errors.0 }}</div>
                     {% endif %}
                 </div>
             </div>
-        {% endif %}
+
+        </div>
+    </form>
+
+    <!-- ── Users with this role (edit only) ── -->
+    {% if is_edit and role.customuser_roles.exists %}
+    <div class="users-panel">
+        <div class="users-panel-header">
+            <i class="fas fa-users me-2 text-primary"></i>Users with this Role
+            <span class="badge bg-primary ms-1">{{ role.customuser_roles.count }}</span>
+        </div>
+        <div class="p-3">
+            <div class="row g-2">
+                {% for u in role.customuser_roles.all|slice:":16" %}
+                <div class="col-md-3 col-sm-4 col-6">
+                    <div class="user-chip">
+                        <div class="user-avatar">{{ u.get_full_name|default:u.username|slice:":2"|upper }}</div>
+                        <div>
+                            <div class="fw-medium" style="font-size:0.82rem;">{{ u.get_full_name|default:u.username }}</div>
+                            <div class="text-muted" style="font-size:0.72rem;">{{ u.phone_number }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% if role.customuser_roles.count > 16 %}
+            <div class="text-muted small mt-2">
+                <i class="fas fa-info-circle me-1"></i>
+                +{{ role.customuser_roles.count|add:"-16" }} more users not shown
+            </div>
+            {% endif %}
+        </div>
+    </div>
     {% endif %}
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Store original state for comparison
-let originalPermissionState = new Set();
-let currentPermissionState = new Set();
+/* ── State ── */
+let originalState = new Set();
+let currentState  = new Set();
+let totalPerms    = 0;
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize permission states
-    initializePermissionStates();
+/* ── Boot ── */
+document.addEventListener('DOMContentLoaded', function () {
+    totalPerms = document.querySelectorAll('.permission-checkbox').length;
 
-    // Add change detection
-    detectChanges();
+    document.querySelectorAll('.permission-checkbox:checked').forEach(cb => {
+        originalState.add(parseInt(cb.value));
+        currentState.add(parseInt(cb.value));
+    });
 
-    // Add real-time search
-    const searchInput = document.getElementById('permission-search');
-    if (searchInput) {
-        searchInput.addEventListener('input', debounce(filterPermissions, 150));
-    }
+    document.querySelectorAll('.permission-checkbox').forEach(cb => {
+        cb.addEventListener('change', onCheckboxChange);
+    });
 
-    // Bootstrap collapse events for model groups
-    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(toggle => {
-        toggle.addEventListener('click', function() {
-            const target = document.querySelector(this.getAttribute('data-bs-target'));
-            if (target) {
-                const icon = this.querySelector('i.fa-chevron-*');
-                if (icon) {
-                    icon.classList.toggle('fa-chevron-up');
-                    icon.classList.toggle('fa-chevron-down');
-                }
-            }
-        });
+    updateAllCounters();
+    updateSearchCount();
+
+    const search = document.getElementById('permission-search');
+    if (search) search.addEventListener('input', debounce(filterPermissions, 120));
+
+    // Open apps that have checked items
+    document.querySelectorAll('.app-group').forEach(group => {
+        const app = group.dataset.app;
+        const hasChecked = group.querySelector('.permission-checkbox:checked');
+        if (hasChecked) openApp(app);
     });
 });
 
-function initializePermissionStates() {
-    // Get original permissions from checked checkboxes (on page load)
-    document.querySelectorAll('.permission-checkbox:checked').forEach(checkbox => {
-        originalPermissionState.add(parseInt(checkbox.value));
-        currentPermissionState.add(parseInt(checkbox.value));
-    });
-
-    // Add change listeners to all checkboxes
-    document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const id = parseInt(this.value);
-            if (this.checked) {
-                if (!originalPermissionState.has(id)) {
-                    // Newly selected (was not originally checked)
-                }
-                currentPermissionState.add(id);
-            } else {
-                currentPermissionState.delete(id);
-            }
-            updateChangeIndicator();
-        });
-    });
+/* ── Checkbox change ── */
+function onCheckboxChange() {
+    const id = parseInt(this.value);
+    if (this.checked) currentState.add(id); else currentState.delete(id);
+    updateAllCounters();
 }
 
-function updateChangeIndicator() {
-    const added = [...currentPermissionState].filter(id => !originalPermissionState.has(id)).length;
-    const removed = [...originalPermissionState].filter(id => !currentPermissionState.has(id)).length;
+/* ── Counters ── */
+function updateAllCounters() {
+    const count = currentState.size;
 
-    const indicator = document.getElementById('change-indicator');
-    if (added > 0 || removed > 0) {
-        indicator.innerHTML = `<i class="fas fa-edit me-1"></i><span class="text-warning">${added} added, ${removed} removed</span>`;
-    } else {
-        indicator.innerHTML = '';
+    // Side panel counter
+    const sideCount = document.getElementById('perm-count-side');
+    const sideTotal = document.getElementById('perm-total-side');
+    if (sideCount) sideCount.textContent = count;
+    if (sideTotal) sideTotal.textContent = totalPerms;
+
+    // Edit mode stats banner
+    const selectedCount = document.getElementById('selected-count');
+    if (selectedCount) selectedCount.textContent = count;
+
+    // Progress bar
+    const fill = document.getElementById('perm-progress-fill');
+    if (fill && totalPerms > 0) fill.style.width = ((count / totalPerms) * 100).toFixed(1) + '%';
+
+    // Change indicator
+    const added   = [...currentState].filter(id => !originalState.has(id)).length;
+    const removed = [...originalState].filter(id => !currentState.has(id)).length;
+    const ind = document.getElementById('change-indicator');
+    if (ind) {
+        if (added > 0 || removed > 0) {
+            ind.innerHTML = `<i class="fas fa-edit me-1"></i>${added > 0 ? `+${added}` : ''}${added > 0 && removed > 0 ? ' / ' : ''}${removed > 0 ? `–${removed}` : ''}`;
+        } else {
+            ind.innerHTML = '';
+        }
     }
 
-    // Update selected count
-    document.getElementById('selected-count').textContent = currentPermissionState.size;
+    // Per-app checked counts
+    document.querySelectorAll('.app-group').forEach(group => {
+        const app  = group.dataset.app;
+        const slug = slugify(app);
+        const checked = group.querySelectorAll('.permission-checkbox:checked').length;
+        const badge   = document.getElementById('app-' + slug + '-checked');
+        const hdr     = document.getElementById('app-hdr-' + slug);
+        if (badge) {
+            badge.textContent = checked;
+            badge.className = 'badge app-count-badge ' + (checked > 0 ? 'bg-primary' : 'bg-secondary');
+        }
+        if (hdr) {
+            if (checked > 0) hdr.classList.add('has-checked');
+            else hdr.classList.remove('has-checked');
+        }
+    });
 }
 
-function detectChanges() {
-    // This will be called whenever checkboxes change
+/* ── App accordion ── */
+function openApp(app) {
+    const slug  = slugify(app);
+    const body  = document.getElementById('app-body-' + slug);
+    const chev  = document.getElementById('chev-' + slug);
+    if (!body) return;
+    body.style.display = '';
+    if (chev) chev.classList.add('open');
 }
 
-function resetToOriginal() {
-    if (Object.keys(originalPermissionState).length === 0) return;
-
-    if (!confirm('Reset all permission changes to original state?')) {
-        return;
-    }
-
-    // Uncheck all
-    document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
-        checkbox.checked = false;
-    });
-
-    // Check only originals
-    originalPermissionState.forEach(id => {
-        const checkbox = document.querySelector(`.permission-checkbox[value="${id}"]`);
-        if (checkbox) checkbox.checked = true;
-    });
-
-    // Update current state
-    currentPermissionState = new Set(originalPermissionState);
-    updateChangeIndicator();
-}
-
-function selectAllPermissions() {
-    document.querySelectorAll('.permission-checkbox').forEach(function(checkbox) {
-        checkbox.checked = true;
-    });
-    updateCurrentStateFromUI();
-    updateSearchCount();
-}
-
-function deselectAllPermissions() {
-    if (!confirm('Deselect all permissions? This will remove all permissions from the role.')) {
-        return;
-    }
-    document.querySelectorAll('.permission-checkbox').forEach(function(checkbox) {
-        checkbox.checked = false;
-    });
-    updateCurrentStateFromUI();
-    updateSearchCount();
-}
-
-function toggleAppPermissions(appName) {
-    const checkboxes = document.querySelectorAll('.app-' + appName);
-    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-
-    checkboxes.forEach(function(checkbox) {
-        checkbox.checked = !allChecked;
-    });
-    updateCurrentStateFromUI();
-    updateSearchCount();
+function toggleAppExpand(app) {
+    const slug  = slugify(app);
+    const body  = document.getElementById('app-body-' + slug);
+    const chev  = document.getElementById('chev-' + slug);
+    if (!body) return;
+    const isOpen = body.style.display !== 'none' && body.style.display !== '';
+    body.style.display = isOpen ? 'none' : '';
+    if (chev) chev.classList.toggle('open', !isOpen);
 }
 
 function expandAllApps() {
-    document.querySelectorAll('.model-group .collapse').forEach(collapse => {
-        const bsCollapse = new bootstrap.Collapse(collapse, { toggle: false });
-        bsCollapse.show();
-    });
-
-    // Update chevron icons
-    document.querySelectorAll('.model-group-header i.fa-chevron-*').forEach(icon => {
-        icon.classList.remove('fa-chevron-down');
-        icon.classList.add('fa-chevron-up');
-    });
+    document.querySelectorAll('.app-group').forEach(g => openApp(g.dataset.app));
 }
 
 function collapseAllApps() {
-    document.querySelectorAll('.model-group .collapse').forEach(collapse => {
-        const bsCollapse = new bootstrap.Collapse(collapse, { toggle: false });
-        bsCollapse.hide();
-    });
-
-    // Update chevron icons
-    document.querySelectorAll('.model-group-header i.fa-chevron-*').forEach(icon => {
-        icon.classList.remove('fa-chevron-up');
-        icon.classList.add('fa-chevron-down');
+    document.querySelectorAll('.app-group[data-app]').forEach(g => {
+        const slug = slugify(g.dataset.app);
+        const body = document.getElementById('app-body-' + slug);
+        const chev = document.getElementById('chev-' + slug);
+        if (body) body.style.display = 'none';
+        if (chev) chev.classList.remove('open');
     });
 }
 
-function updateCurrentStateFromUI() {
-    currentPermissionState.clear();
-    document.querySelectorAll('.permission-checkbox:checked').forEach(checkbox => {
-        currentPermissionState.add(parseInt(checkbox.value));
-    });
-    updateChangeIndicator();
-    updateSearchCount();
+/* ── Model section toggle ── */
+function toggleModelSection(key) {
+    const parts = key.split('-');
+    const app   = parts.slice(0, -1).join('-');
+    const model = parts[parts.length - 1];
+    const secId = 'msec-' + slugify(app) + '-' + slugify(model);
+    const chevId = 'mchev-' + slugify(app) + '-' + slugify(model);
+    const sec   = document.getElementById(secId);
+    const chev  = document.getElementById(chevId);
+    if (!sec) return;
+    const isOpen = sec.style.display !== 'none' && sec.style.display !== '';
+    sec.style.display = isOpen ? 'none' : '';
+    if (chev) {
+        chev.classList.toggle('fa-chevron-down', isOpen);
+        chev.classList.toggle('fa-chevron-up', !isOpen);
+    }
 }
 
+/* ── Select / deselect ── */
+function selectAllPermissions() {
+    document.querySelectorAll('.permission-checkbox:not([style*="display:none"])').forEach(cb => {
+        if (!cb.closest('.perm-item')?.classList.contains('hidden')) cb.checked = true;
+    });
+    syncStateFromUI();
+}
+
+function deselectAllPermissions() {
+    if (!confirm('Remove all permissions from this role?')) return;
+    document.querySelectorAll('.permission-checkbox').forEach(cb => cb.checked = false);
+    syncStateFromUI();
+}
+
+function toggleAppPermissions(app) {
+    const cbs = document.querySelectorAll(`.permission-checkbox[data-app="${app}"]`);
+    const allChecked = Array.from(cbs).every(cb => cb.checked);
+    cbs.forEach(cb => cb.checked = !allChecked);
+    syncStateFromUI();
+}
+
+function selectByType(prefix) {
+    document.querySelectorAll('.permission-checkbox').forEach(cb => {
+        if (cb.dataset.codename && cb.dataset.codename.startsWith(prefix)) cb.checked = true;
+    });
+    syncStateFromUI();
+}
+
+function resetToOriginal() {
+    if (originalState.size === 0 && !confirm('Reset to no permissions?')) return;
+    if (originalState.size > 0 && !confirm('Reset all permission changes?')) return;
+    document.querySelectorAll('.permission-checkbox').forEach(cb => cb.checked = false);
+    originalState.forEach(id => {
+        const cb = document.querySelector(`.permission-checkbox[value="${id}"]`);
+        if (cb) cb.checked = true;
+    });
+    currentState = new Set(originalState);
+    updateAllCounters();
+}
+
+function syncStateFromUI() {
+    currentState.clear();
+    document.querySelectorAll('.permission-checkbox:checked').forEach(cb => {
+        currentState.add(parseInt(cb.value));
+    });
+    updateAllCounters();
+}
+
+/* ── Search ── */
 function filterPermissions() {
-    const searchTerm = document.getElementById('permission-search').value.toLowerCase().trim();
-    const permissionGroups = document.querySelectorAll('.permission-group');
-    let totalVisible = 0;
+    const q = document.getElementById('permission-search').value.toLowerCase().trim();
+    let visible = 0;
 
-    permissionGroups.forEach(function(group) {
-        const groupName = group.querySelector('.permission-group-header').textContent.toLowerCase();
-        const permissionItems = group.querySelectorAll('.permission-item');
-        let groupHasVisible = false;
+    document.querySelectorAll('.app-group').forEach(group => {
+        const appName = group.dataset.app.toLowerCase();
+        const items   = group.querySelectorAll('.perm-item');
+        let groupVisible = 0;
 
-        if (searchTerm === '') {
-            permissionItems.forEach(function(item) {
-                item.style.display = '';
-            });
+        if (!q) {
+            items.forEach(item => { item.classList.remove('hidden'); });
             group.style.display = '';
-            groupHasVisible = true;
+            groupVisible = items.length;
+        } else if (appName.includes(q)) {
+            items.forEach(item => { item.classList.remove('hidden'); });
+            group.style.display = '';
+            groupVisible = items.length;
         } else {
-            if (groupName.includes(searchTerm)) {
-                permissionItems.forEach(function(item) {
-                    item.style.display = '';
-                });
-                group.style.display = '';
-                groupHasVisible = true;
-            } else {
-                permissionItems.forEach(function(item) {
-                    const permissionText = item.textContent.toLowerCase();
-                    if (permissionText.includes(searchTerm)) {
-                        item.style.display = '';
-                        groupHasVisible = true;
-                    } else {
-                        item.style.display = 'none';
-                    }
-                });
-                group.style.display = groupHasVisible ? '' : 'none';
-            }
+            items.forEach(item => {
+                const pname = (item.dataset.name || '').toLowerCase();
+                const cname = (item.dataset.codename || '').toLowerCase();
+                const model = (item.dataset.model || '').toLowerCase();
+                const match = pname.includes(q) || cname.includes(q) || model.includes(q);
+                item.classList.toggle('hidden', !match);
+                if (match) { groupVisible++; openApp(group.dataset.app); }
+            });
+            group.style.display = groupVisible > 0 ? '' : 'none';
         }
-
-        if (groupHasVisible) {
-            totalVisible++;
-        }
+        visible += groupVisible;
     });
 
-    updateSearchCount(searchTerm);
+    updateSearchCount(q, visible);
 }
 
-function updateSearchCount(searchTerm) {
-    const countEl = document.getElementById('search-count');
-    if (!searchTerm) {
-        countEl.textContent = 'Showing all';
+function updateSearchCount(q, visible) {
+    const el = document.getElementById('search-count');
+    if (!el) return;
+    if (!q) {
+        el.textContent = `${totalPerms} permissions`;
     } else {
-        const visibleItems = document.querySelectorAll('.permission-item:not([style*="display: none"])').length;
-        const totalItems = document.querySelectorAll('.permission-item').length;
-        countEl.textContent = `${visibleItems} of ${totalItems} visible`;
+        el.textContent = `${visible !== undefined ? visible : document.querySelectorAll('.perm-item:not(.hidden)').length} of ${totalPerms}`;
     }
 }
 
@@ -743,39 +892,29 @@ function clearSearch() {
     filterPermissions();
 }
 
-// Debounce function for search
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
+/* ── Helpers ── */
+function slugify(s) { return s.replace(/[^a-zA-Z0-9]/g, '-'); }
+
+function debounce(fn, wait) {
+    let t;
+    return function (...args) {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), wait);
     };
 }
 
-// Form validation
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
-    form.addEventListener('submit', function(e) {
+/* ── Form validation ── */
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('role-form').addEventListener('submit', function (e) {
         const roleName = document.querySelector('#{{ form.name.id_for_label }}').value.trim();
-        const selectedCount = document.querySelectorAll('.permission-checkbox:checked').length;
-
         if (!roleName) {
             e.preventDefault();
-            alert('Please enter a role name.');
+            alert('Role name is required.');
             return;
         }
-
-        // Optional: Warn if no permissions selected
-        if (selectedCount === 0) {
-            const confirmed = confirm('This role has no permissions. Do you want to continue?');
-            if (!confirmed) {
-                e.preventDefault();
-                return;
-            }
+        const selected = document.querySelectorAll('.permission-checkbox:checked').length;
+        if (selected === 0 && !confirm('No permissions selected. Continue?')) {
+            e.preventDefault();
         }
     });
 });
