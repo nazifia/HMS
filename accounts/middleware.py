@@ -383,8 +383,13 @@ class UserActivityMiddleware:
             )
 
     def create_alert(self, user, alert_type, severity, message, ip_address=None):
-        """Create activity alert"""
+        """Create activity alert, deduplicating within a 1-hour window."""
         try:
+            one_hour_ago = timezone.now() - timezone.timedelta(hours=1)
+            if ActivityAlert.objects.filter(
+                user=user, alert_type=alert_type, created_at__gte=one_hour_ago
+            ).exists():
+                return None
             alert = ActivityAlert.objects.create(
                 user=user,
                 alert_type=alert_type,

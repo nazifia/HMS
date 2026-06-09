@@ -49,10 +49,10 @@ def appointment_list(request):
             appointments = appointments.filter(priority=priority)
 
         if date_from:
-            appointments = appointments.filter(appointment_date__gte=date_from)
+            appointments = appointments.filter(appointment_date__date__gte=date_from)
 
         if date_to:
-            appointments = appointments.filter(appointment_date__lte=date_to)
+            appointments = appointments.filter(appointment_date__date__lte=date_to)
 
     # Build cache key for computed data only
     cache_key = f'appointment_list_data_{hash(request.GET.urlencode())}' if request.GET else 'appointment_list_data_all'
@@ -77,7 +77,7 @@ def appointment_list(request):
     # Get counts for different statuses using a single aggregate query
     today = timezone.now().date()
     status_counts = Appointment.objects.aggregate(
-        upcoming_count=Count('id', filter=Q(appointment_date__gte=today, status__in=['scheduled', 'confirmed'])),
+        upcoming_count=Count('id', filter=Q(appointment_date__date__gte=today, status__in=['scheduled', 'confirmed'])),
         completed_count=Count('id', filter=Q(status='completed')),
         cancelled_count=Count('id', filter=Q(status='cancelled')),
         no_show_count=Count('id', filter=Q(status='no_show'))
@@ -199,7 +199,7 @@ def edit_appointment(request, appointment_id):
     appointment = get_object_or_404(Appointment, id=appointment_id)
 
     # Check if appointment is in the past
-    if appointment.appointment_date < timezone.now().date():
+    if appointment.appointment_date.date() < timezone.now().date():
         messages.error(request, 'Cannot edit past appointments.')
         return redirect('appointments:detail', appointment_id=appointment.id)
 
@@ -227,7 +227,7 @@ def cancel_appointment(request, appointment_id):
     appointment = get_object_or_404(Appointment, id=appointment_id)
 
     # Check if appointment is in the past
-    if appointment.appointment_date < timezone.now().date():
+    if appointment.appointment_date.date() < timezone.now().date():
         messages.error(request, 'Cannot cancel past appointments.')
         return redirect('appointments:detail', appointment_id=appointment.id)
 

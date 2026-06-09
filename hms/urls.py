@@ -18,7 +18,12 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import HttpResponse
 from core.views import home_view
+
+
+def empty_sw(request):
+    return HttpResponse('', content_type='application/javascript')
 
 # Configure admin site to be independent of application logic
 admin.site.site_header = 'HMS Administration'
@@ -26,6 +31,7 @@ admin.site.site_title = 'HMS Admin'
 admin.site.index_title = 'Hospital Management System Administration'
 
 urlpatterns = [
+    path('sw.js', empty_sw, name='service_worker'),
     path('admin/', admin.site.urls),
     path('', home_view, name='home'),
     path('accounts/', include('accounts.urls')),
