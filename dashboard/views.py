@@ -37,6 +37,11 @@ def dashboard(request):
     this_week_start = today - timedelta(days=today.weekday())
     this_month_start = today.replace(day=1)
 
+    today_start = timezone.make_aware(timezone.datetime.combine(today, timezone.datetime.min.time()))
+    today_end = timezone.make_aware(timezone.datetime.combine(today, timezone.datetime.max.time()))
+    week_start_dt = timezone.make_aware(timezone.datetime.combine(this_week_start, timezone.datetime.min.time()))
+    month_start_dt = timezone.make_aware(timezone.datetime.combine(this_month_start, timezone.datetime.min.time()))
+
     # Create cache key based on user and date
     cache_key = f'dashboard_data_{request.user.id}_{today}'
     cached_data = cache.get(cache_key)
@@ -91,9 +96,9 @@ def dashboard(request):
 
     # Optimize: Get all revenue statistics in a single query using conditional aggregation
     revenue_stats = Payment.objects.aggregate(
-        today_revenue=Sum('amount', filter=Q(payment_date=today)),
-        week_revenue=Sum('amount', filter=Q(payment_date__gte=this_week_start, payment_date__lte=today)),
-        month_revenue=Sum('amount', filter=Q(payment_date__gte=this_month_start, payment_date__lte=today))
+        today_revenue=Sum('amount', filter=Q(payment_date__gte=today_start, payment_date__lte=today_end)),
+        week_revenue=Sum('amount', filter=Q(payment_date__gte=week_start_dt, payment_date__lte=today_end)),
+        month_revenue=Sum('amount', filter=Q(payment_date__gte=month_start_dt, payment_date__lte=today_end))
     )
 
     today_revenue = revenue_stats['today_revenue'] or 0
