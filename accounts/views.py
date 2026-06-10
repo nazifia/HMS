@@ -25,6 +25,7 @@ from .forms import (
 from core.models import InternalNotification
 from core.activity_log import ActivityLog
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.db import models
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import get_user_model
@@ -177,45 +178,41 @@ def custom_login_view(request):
     if request.method == "POST":
         form = CustomLoginForm(request=request, data=request.POST)
         if form.is_valid():
-            username = form.cleaned_data["username"]  # This will be phone number
-            password = form.cleaned_data["password"]
+            # Form already authenticated the user in clean() via safe_authenticate
+            # and verified the account is active (confirm_login_allowed). Reuse the
+            # cached user instead of authenticating a second time.
+            user = form.get_user()
 
-            # Use safe authentication to prevent Windows console errors
-            user = safe_authenticate(request, username=username, password=password)
+            # Clear any existing pharmacy dispensary session on new login
+            request.session.pop("selected_dispensary_id", None)
+            request.session.pop("selected_dispensary_name", None)
 
-            if user is not None:
-                if user.is_active:
-                    # Clear any existing pharmacy dispensary session on new login
-                    if "selected_dispensary_id" in request.session:
-                        del request.session["selected_dispensary_id"]
-                    if "selected_dispensary_name" in request.session:
-                        del request.session["selected_dispensary_name"]
+            login(request, user)
 
-                    login(request, user)
-
-                    # Success message based on context
-                    if auto_logout:
-                        messages.success(
-                            request,
-                            f"Welcome back, {user.get_full_name()}! You have been successfully logged in again.",
-                        )
-                    else:
-                        messages.success(
-                            request, f"Welcome back, {user.get_full_name()}!"
-                        )
-
-                    # Redirect to next page or dashboard
-                    next_page = request.GET.get("next", "dashboard:dashboard")
-                    return redirect(next_page)
-                else:
-                    messages.error(
-                        request,
-                        "Your account has been deactivated. Please contact support.",
-                    )
-            else:
-                messages.error(
-                    request, "Invalid phone number or password. Please try again."
+            # Success message based on context
+            if auto_logout:
+                messages.success(
+                    request,
+                    f"Welcome back, {user.get_full_name()}! You have been successfully logged in again.",
                 )
+            else:
+                messages.success(request, f"Welcome back, {user.get_full_name()}!")
+
+            # Resolve post-login redirect: ?next=, POST next, then session next
+            # (set by strict access control middleware), defaulting to dashboard.
+            next_page = (
+                request.GET.get("next")
+                or request.POST.get("next")
+                or request.session.pop("next", None)
+            )
+            # Guard against open redirects to external hosts.
+            if not next_page or not url_has_allowed_host_and_scheme(
+                next_page,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure(),
+            ):
+                next_page = "dashboard:dashboard"
+            return redirect(next_page)
     else:
         form = CustomLoginForm()
 

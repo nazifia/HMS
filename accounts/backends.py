@@ -16,28 +16,23 @@ class PhoneNumberBackend(BaseBackend):
     This backend is completely separate from admin authentication.
     """
     def authenticate(self, request, username=None, password=None, **kwargs):
-        # Explicitly skip admin requests
-        if request and ('/admin/' in request.path or '/admin' in request.path):
-            return None
-
-        # Skip if this looks like a username-based login (likely admin)
-        if username and '@' not in username and not username.isdigit() and len(username) < 10:
+        # Explicitly skip admin requests - admin uses AdminBackend (username-based)
+        if request and '/admin' in request.path:
             return None
 
         if not username or not password:
             return None
 
         try:
-            # Only authenticate using phone_number field
+            # Look up by phone_number only. If no user has this phone number,
+            # return None and let the next backend (AdminBackend) try username.
             user = CustomUser.objects.get(phone_number=username)
-            if user.check_password(password):
-                return user
-            else:
-                return None
         except CustomUser.DoesNotExist:
             return None
-        except Exception:
-            return None
+
+        if user.check_password(password) and user.is_active:
+            return user
+        return None
 
     def get_user(self, user_id):
         try:
@@ -52,30 +47,25 @@ class AdminBackend(ModelBackend):
     Uses username-based authentication and only allows staff users.
     """
     def authenticate(self, request, username=None, password=None, **kwargs):
-        # Only handle admin requests OR username-based logins
-        is_admin_request = request and ('/admin/' in request.path or '/admin' in request.path)
-        is_username_login = username and '@' not in username and not username.isdigit() and len(username) < 15
-
-        if not (is_admin_request or is_username_login):
-            return None
-
         if not username or not password:
             return None
 
+        is_admin_request = bool(request and '/admin' in request.path)
+
         try:
-            # Authenticate using username field only (not phone number)
+            # Authenticate using the username field only (not phone number).
             user = CustomUser.objects.get(username=username)
-            if user.check_password(password):
-                # For admin requests, ensure user is staff
-                if is_admin_request and not user.is_staff:
-                    return None
-                return user
-            else:
-                return None
         except CustomUser.DoesNotExist:
             return None
-        except Exception:
+
+        if not user.check_password(password) or not user.is_active:
             return None
+
+        # Admin login page is restricted to staff users.
+        if is_admin_request and not user.is_staff:
+            return None
+
+        return user
 
     def has_perm(self, user_obj, perm, obj=None):
         if not user_obj.is_active:
