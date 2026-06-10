@@ -182,7 +182,11 @@ class Referral(models.Model):
         ('department', 'Department'),
         ('specialty', 'Specialty'),
         ('unit', 'Unit'),
+        ('theatre', 'Theatre (Surgery)'),
     )
+
+    # Department names treated as the surgical theatre destination (case-insensitive)
+    THEATRE_DEPARTMENT_NAMES = ('Theatre', 'Theater', 'Operation Theatre', 'Operating Theatre', 'Surgery')
 
     consultation = models.ForeignKey(
         Consultation,
@@ -250,9 +254,11 @@ class Referral(models.Model):
             destination = f"{self.referred_to_unit} Unit"
             if self.referred_to_department:
                 destination += f" ({self.referred_to_department.name})"
+        elif self.referral_type == 'theatre':
+            destination = "Theatre (Surgery)"
         else:
             destination = "Unspecified Destination"
-            
+
         return f"Referral for {self.patient.get_full_name()} from Dr. {self.referring_doctor.get_full_name()} to {destination}"
 
     def get_referral_destination(self):
@@ -274,7 +280,37 @@ class Referral(models.Model):
             if self.referred_to_department:
                 dest += f" ({self.referred_to_department.name})"
             return dest
+        elif self.referral_type == 'theatre':
+            if self.referred_to_department:
+                return f"Theatre / Surgery ({self.referred_to_department.name})"
+            return "Theatre / Surgery"
         return "Unspecified Destination"
+
+    def is_theatre_referral(self):
+        """True if this referral targets the surgical theatre."""
+        if self.referral_type == 'theatre':
+            return True
+        if self.referred_to_department:
+            return self.referred_to_department.name.strip().lower() in [
+                n.lower() for n in self.THEATRE_DEPARTMENT_NAMES
+            ]
+        return False
+
+    @classmethod
+    def get_theatre_department(cls):
+        """Resolve (or create) the Department that represents the surgical theatre."""
+        from accounts.models import Department
+        from django.db.models import Q
+        query = Q()
+        for name in cls.THEATRE_DEPARTMENT_NAMES:
+            query |= Q(name__iexact=name)
+        dept = Department.objects.filter(query).first()
+        if not dept:
+            dept = Department.objects.create(
+                name='Theatre',
+                description='Surgical operating theatre'
+            )
+        return dept
 
     def can_be_accepted_by(self, user):
         """
@@ -290,7 +326,20 @@ class Referral(models.Model):
         # Superusers can accept any referral for administrative purposes
         if user.is_superuser:
             return True
-            
+
+        # Theatre referrals: accepted by theatre department staff or surgical staff
+        if self.is_theatre_referral():
+            if hasattr(user, 'profile') and user.profile:
+                profile = user.profile
+                if profile.department and profile.department.name.strip().lower() in [
+                    n.lower() for n in self.THEATRE_DEPARTMENT_NAMES
+                ]:
+                    return True
+                spec = (profile.specialization or '').lower()
+                if 'surgeon' in spec or 'anesthet' in spec or 'theatre' in spec or 'theater' in spec:
+                    return True
+            return False
+
         # For department/specialty/unit referrals, strictly check if user works in that area
         if hasattr(user, 'profile') and user.profile:
             profile = user.profile

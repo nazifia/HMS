@@ -668,7 +668,7 @@ def surgery_billing(request, surgery_id):
         # Create invoice if it doesn't exist
         invoice = Invoice.objects.create(
             patient=surgery.patient,
-            invoice_date=surgery.scheduled_date.date(),
+            invoice_date=surgery.scheduled_date,
             due_date=surgery.scheduled_date.date() + timezone.timedelta(days=7),
             status="pending",
             subtotal=Decimal("0.00"),

@@ -59,6 +59,12 @@ urlpatterns = [
         views_equipment_management.manage_surgery_type_equipment,
         name="manage_surgery_type_equipment",
     ),
+    # Theatre Referral inbox (referrals raised to theatre from other specialties)
+    path(
+        "referrals/",
+        views.TheatreReferralListView.as_view(),
+        name="theatre_referral_list",
+    ),
     # Surgery URLs
     path("surgeries/", views.SurgeryListView.as_view(), name="surgery_list"),
     path("surgeries/add/", views.SurgeryCreateView.as_view(), name="surgery_create"),

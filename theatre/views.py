@@ -296,6 +296,63 @@ class SurgeryListView(LoginRequiredMixin, ReceptionistHROAccessMixin, ListView):
         return context
 
 
+class TheatreReferralListView(LoginRequiredMixin, ReceptionistHROAccessMixin, ListView):
+    """List referrals raised to the surgical theatre from other specialties/departments."""
+
+    template_name = "theatre/referral_list.html"
+    context_object_name = "referrals"
+    paginate_by = 15
+
+    def get_queryset(self):
+        from consultations.models import Referral
+
+        theatre_dept = Referral.get_theatre_department()
+        qs = (
+            Referral.objects.filter(
+                Q(referral_type="theatre") | Q(referred_to_department=theatre_dept)
+            )
+            .select_related(
+                "patient",
+                "referring_doctor",
+                "referring_doctor__profile",
+                "assigned_doctor",
+                "authorization_code",
+            )
+            .prefetch_related("surgeries")
+            .distinct()
+        )
+
+        # Default to pending; allow ?status=all or a specific status
+        self.status = self.request.GET.get("status", "pending")
+        if self.status and self.status != "all":
+            qs = qs.filter(status=self.status)
+
+        search = self.request.GET.get("q", "").strip()
+        if search:
+            qs = qs.filter(
+                Q(patient__first_name__icontains=search)
+                | Q(patient__last_name__icontains=search)
+                | Q(patient__patient_id__icontains=search)
+            )
+        self.search = search
+        return qs.order_by("-referral_date")
+
+    def get_context_data(self, **kwargs):
+        from consultations.models import Referral
+
+        context = super().get_context_data(**kwargs)
+        theatre_dept = Referral.get_theatre_department()
+        base = Referral.objects.filter(
+            Q(referral_type="theatre") | Q(referred_to_department=theatre_dept)
+        ).distinct()
+        context["status"] = self.status
+        context["search"] = self.search
+        context["pending_count"] = base.filter(status="pending").count()
+        context["accepted_count"] = base.filter(status="accepted").count()
+        context["status_choices"] = Referral.STATUS_CHOICES
+        return context
+
+
 class SurgeryDetailView(LoginRequiredMixin, ReceptionistHROAccessMixin, DetailView):
     model = Surgery
     template_name = "theatre/surgery_detail.html"
@@ -386,6 +443,9 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
     success_url = reverse_lazy("theatre:surgery_list")
 
     def dispatch(self, request, *args, **kwargs):
+        # Let LoginRequiredMixin handle unauthenticated users (redirect to login)
+        if not request.user.is_authenticated:
+            return super().dispatch(request, *args, **kwargs)
         # Block receptionists and health record officers from accessing surgery creation
         if not request.user.is_superuser:
             user_roles = list(request.user.roles.values_list("name", flat=True))
@@ -401,6 +461,32 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
 
         return super().dispatch(request, *args, **kwargs)
 
+    def _get_source_referral(self):
+        """Return the theatre Referral this surgery is being scheduled from, if any."""
+        referral_id = self.request.GET.get("referral") or self.request.POST.get(
+            "source_referral"
+        )
+        if not referral_id:
+            return None
+        from consultations.models import Referral
+
+        return Referral.objects.filter(id=referral_id).first()
+
+    def get_initial(self):
+        initial = super().get_initial()
+        referral = self._get_source_referral()
+        if referral:
+            initial["patient"] = referral.patient_id
+            note_lines = [
+                f"Scheduled from referral #{referral.id} "
+                f"by Dr. {referral.referring_doctor.get_full_name()}.",
+                f"Reason: {referral.reason}",
+            ]
+            if referral.notes:
+                note_lines.append(f"Notes: {referral.notes}")
+            initial["pre_surgery_notes"] = "\n".join(note_lines)
+        return initial
+
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
 
@@ -410,6 +496,9 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
             .select_related()
             .order_by("first_name", "last_name")
         )
+
+        # Expose the source referral (if scheduling from a theatre referral)
+        data["source_referral"] = self._get_source_referral()
 
         if "team_formset" not in kwargs:
             if self.request.POST:
@@ -552,7 +641,7 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
 
             invoice = Invoice(
                 patient=self.object.patient,
-                invoice_date=self.object.scheduled_date.date(),
+                invoice_date=self.object.scheduled_date,
                 due_date=due_date,
                 status="pending",
                 subtotal=subtotal,
@@ -571,6 +660,29 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
             self.object.invoice = invoice
             self.object.authorization_code = authorization_code
             self.object.status = "scheduled" if authorization_code else "pending"
+
+            # Link to the originating theatre referral and mark it handled
+            source_referral = self._get_source_referral()
+            if source_referral:
+                self.object.source_referral = source_referral
+                if source_referral.status in ("pending", "accepted"):
+                    source_referral.status = "accepted"
+                    if not source_referral.assigned_doctor:
+                        source_referral.assigned_doctor = self.request.user
+                    source_referral.save(update_fields=["status", "assigned_doctor", "updated_at"])
+                    try:
+                        from core.models import InternalNotification
+
+                        InternalNotification.objects.create(
+                            user=source_referral.referring_doctor,
+                            message=(
+                                f"Surgery scheduled for {source_referral.patient.get_full_name()} "
+                                f"from your theatre referral by Dr. {self.request.user.get_full_name()}."
+                            ),
+                        )
+                    except Exception:
+                        pass
+
             self.object.save()
 
             # Create a generic InvoiceItem for the surgery
@@ -1850,7 +1962,7 @@ def _add_pack_to_surgery_invoice(surgery, pack_order):
         # Create invoice for surgery
         invoice = Invoice.objects.create(
             patient=surgery.patient,
-            invoice_date=surgery.scheduled_date.date(),
+            invoice_date=surgery.scheduled_date,
             due_date=surgery.scheduled_date.date() + timezone.timedelta(days=7),
             status="pending",
             subtotal=Decimal("0.00"),

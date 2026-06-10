@@ -264,7 +264,7 @@
                 </a>
                 {% endif %}
                 {% if referral.status == 'pending' and referral.authorization_status in 'authorized,not_required' %}
-                <form method="post" action="{% url 'consultations:update_referral_status_detailed' referral.id %}" 
+                <form method="post" action="{% url 'consultations:update_referral_status_detailed' referral.id %}"
                       onsubmit="return confirm('Are you sure you want to accept this referral?')" class="d-inline">
                     {% csrf_token %}
                     <input type="hidden" name="status" value="accepted">
@@ -272,6 +272,17 @@
                         <i class="fas fa-check"></i> Accept Referral
                     </button>
                 </form>
+                {% endif %}
+                {% if referral.is_theatre_referral and referral.status != 'cancelled' %}
+                    {% if referral.surgeries.exists %}
+                    <a href="{% url 'theatre:surgery_detail' referral.surgeries.first.id %}" class="btn btn-outline-success">
+                        <i class="fas fa-procedures"></i> View Scheduled Surgery
+                    </a>
+                    {% else %}
+                    <a href="{% url 'theatre:surgery_create' %}?referral={{ referral.id }}" class="btn btn-danger">
+                        <i class="fas fa-procedures"></i> Schedule Surgery
+                    </a>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>

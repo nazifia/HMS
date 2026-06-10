@@ -163,6 +163,12 @@ class ReferralForm(forms.ModelForm):
         # Import mapping functions
         from .referral_mappings import get_department_for_unit, get_department_for_specialty
 
+        # THEATRE REFERRAL: auto-resolve the theatre department and skip the
+        # specialty/unit/department requirements (theatre is the explicit destination).
+        if referral_type == 'theatre':
+            cleaned_data['referred_to_department'] = Referral.get_theatre_department()
+            return cleaned_data
+
         # ENFORCE EXPLICIT DEPARTMENT TARGETING
         # Department is ALWAYS required for all referral types to ensure explicit routing
         if not referred_to_department:

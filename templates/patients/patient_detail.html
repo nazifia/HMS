@@ -490,6 +490,10 @@
                                     <i class="fas fa-user-md" style="color:var(--p-danger);"></i>
                                     Refer
                                 </a>
+                                <a href="{% url 'consultations:create_referral_for_patient' patient.id %}?referral_type=theatre" class="qa-item">
+                                    <i class="fas fa-procedures" style="color:var(--p-danger);"></i>
+                                    Refer to Theatre
+                                </a>
                                 {% endif %}
 
                                 {% if user|has_permission:'create_invoice' or user.is_superuser %}

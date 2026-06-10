@@ -157,6 +157,17 @@ class Surgery(models.Model):
         related_name="surgery_invoices",
     )
 
+    # Link to the originating referral (when this surgery was scheduled from a
+    # theatre referral raised by another department/unit/specialty)
+    source_referral = models.ForeignKey(
+        "consultations.Referral",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="surgeries",
+        help_text="Referral that this surgery was scheduled from, if any",
+    )
+
     def __str__(self):
         # Create a mapping for status display values to avoid using get_status_display()
         status_display_map = {

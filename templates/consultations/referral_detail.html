@@ -416,6 +416,18 @@
                             </a>
                         {% endif %}
 
+                        {% if referral.is_theatre_referral and referral.status != 'cancelled' %}
+                            {% if referral.surgeries.exists %}
+                                <a href="{% url 'theatre:surgery_detail' referral.surgeries.first.id %}" class="btn btn-outline-success">
+                                    <i class="fas fa-procedures"></i> View Scheduled Surgery
+                                </a>
+                            {% else %}
+                                <a href="{% url 'theatre:surgery_create' %}?referral={{ referral.id }}" class="btn btn-danger">
+                                    <i class="fas fa-procedures"></i> Schedule Surgery in Theatre
+                                </a>
+                            {% endif %}
+                        {% endif %}
+
                         <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
                             <i class="fas fa-print"></i> Print Referral
                         </button>

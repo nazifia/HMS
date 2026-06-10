@@ -392,7 +392,21 @@ Schedule New Surgery
 
     <form method="post" id="surgery-form">
         {% csrf_token %}
-        
+
+        <!-- Scheduling from a theatre referral -->
+        {% if source_referral %}
+        <input type="hidden" name="source_referral" value="{{ source_referral.id }}">
+        <div class="alert alert-info d-flex align-items-center" role="alert">
+            <i class="fas fa-share fa-lg me-3"></i>
+            <div>
+                Scheduling surgery from
+                <a href="{% url 'consultations:referral_detail' source_referral.id %}" class="alert-link">Referral #{{ source_referral.id }}</a>
+                raised by Dr. {{ source_referral.referring_doctor.get_full_name }}.
+                Patient and clinical notes have been pre-filled — the referral will be marked accepted on save.
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Error Summary -->
         {% if form.errors or team_formset.errors or equipment_formset.errors %}
         <div class="alert alert-danger alert-dismissible fade show" role="alert">

@@ -644,6 +644,12 @@
                 <div class="bg-white py-2 collapse-inner rounded">
                     <h6 class="collapse-header">Theatre Management:</h6>
                     <a class="collapse-item {% if request.path == '/theatre/' %}active{% endif %}" href="{% url 'theatre:dashboard' %}">Dashboard</a>
+                    <a class="collapse-item text-danger fw-bold {% if 'referral_type=theatre' in request.GET.urlencode %}active{% endif %}" href="{% url 'consultations:create_referral' %}?referral_type=theatre">
+                        <i class="fas fa-procedures me-1"></i> Refer to Theatre
+                    </a>
+                    <a class="collapse-item {% if request.path == '/theatre/referrals/' %}active{% endif %}" href="{% url 'theatre:theatre_referral_list' %}">
+                        <i class="fas fa-inbox me-1"></i> Theatre Referrals
+                    </a>
                     <a class="collapse-item {% if request.path == '/theatre/surgeries/' %}active{% endif %}" href="{% url 'theatre:surgery_list' %}">Surgeries</a>
                     <a class="collapse-item {% if request.path == '/theatre/theatres/' %}active{% endif %}" href="{% url 'theatre:theatre_list' %}">Operation Theatres</a>
                     <a class="collapse-item {% if request.path == '/theatre/surgery-types/' %}active{% endif %}" href="{% url 'theatre:surgery_type_list' %}">Surgery Types</a>

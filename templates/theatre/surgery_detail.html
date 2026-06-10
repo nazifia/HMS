@@ -54,6 +54,15 @@
                             <p><strong>Primary Surgeon:</strong> {{ object.primary_surgeon }}</p>
                             <p><strong>Anesthetist:</strong> {{ object.anesthetist|default:"Not assigned" }}</p>
                             <p><strong>Expected Duration:</strong> {{ object.expected_duration }}</p>
+                            {% if object.source_referral %}
+                            <p>
+                                <strong>Source Referral:</strong>
+                                <a href="{% url 'consultations:referral_detail' object.source_referral.id %}">
+                                    Referral #{{ object.source_referral.id }}
+                                </a>
+                                <small class="text-muted">(from Dr. {{ object.source_referral.referring_doctor.get_full_name }})</small>
+                            </p>
+                            {% endif %}
                         </div>
                     </div>
                     
