@@ -70,6 +70,13 @@ class UserActivityMiddleware:
         if self.should_skip_tracking(request):
             return response
 
+        # Skip the common page-view case (successful GET) so normal navigation
+        # spawns no logging thread. Writes, errors, and redirects still tracked.
+        # Session activity is kept fresh with a cheap throttled UPDATE instead.
+        if request.method == "GET" and response.status_code == 200:
+            self._touch_session(request)
+            return response
+
         # Log activity and check suspicious patterns in background to avoid blocking the response
         threading.Thread(
             target=self._log_and_check,
@@ -81,11 +88,14 @@ class UserActivityMiddleware:
 
     def _log_and_check(self, request, response, response_time):
         """Run activity logging and suspicious-activity checks off the request thread."""
+        from django.db import connection
         try:
             self.log_user_activity(request, response, response_time)
             self.check_suspicious_activity(request, response)
         except Exception as e:
             logger.error(f"Background activity logging error: {e}")
+        finally:
+            connection.close()
 
     def should_skip_tracking(self, request):
         """Check if URL should be skipped from tracking"""
@@ -288,6 +298,65 @@ class UserActivityMiddleware:
             return {"type": object_type, "id": object_id, "repr": object_repr}
 
         return {"type": "", "id": "", "repr": ""}
+
+    # Minimum seconds between session-activity writes per session.
+    SESSION_TOUCH_INTERVAL = 30
+
+    def _touch_session(self, request):
+        """Cheaply refresh session activity on successful GETs.
+
+        Throttled via the cache so a burst of page views produces at most one
+        write per SESSION_TOUCH_INTERVAL per session. The write is a single
+        UPDATE (no model save / signals) run off the request thread.
+        """
+        if not request.user.is_authenticated:
+            return
+        if not hasattr(request, "session"):
+            return
+        session_key = request.session.session_key
+        if not session_key:
+            return
+
+        from django.core.cache import cache
+
+        throttle_key = f"sess_touch_{session_key}"
+        if cache.get(throttle_key):
+            return
+        cache.set(throttle_key, 1, self.SESSION_TOUCH_INTERVAL)
+
+        user_id = request.user.pk
+        ip_address = self.get_client_ip(request)
+        user_agent = request.META.get("HTTP_USER_AGENT", "")
+        threading.Thread(
+            target=self._do_touch_session,
+            args=(user_id, session_key, ip_address, user_agent),
+            daemon=True,
+        ).start()
+
+    @staticmethod
+    def _do_touch_session(user_id, session_key, ip_address, user_agent):
+        from django.db import connection
+        from django.db.models import F
+        try:
+            updated = UserSession.objects.filter(session_key=session_key).update(
+                last_activity=timezone.now(),
+                is_active=True,
+                page_views=F("page_views") + 1,
+                total_requests=F("total_requests") + 1,
+            )
+            if not updated:
+                UserSession.objects.get_or_create(
+                    session_key=session_key,
+                    defaults={
+                        "user_id": user_id,
+                        "ip_address": ip_address,
+                        "user_agent": user_agent,
+                    },
+                )
+        except Exception as e:
+            logger.error(f"Error touching user session: {e}")
+        finally:
+            connection.close()
 
     def update_user_session(self, user, session_key, ip_address, request):
         """Update user session tracking"""

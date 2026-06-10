@@ -493,45 +493,68 @@ class ActivityLogMiddleware:
         # Start time for response measurement
         import time
         start_time = time.time()
-        
+
         response = self.get_response(request)
-        
+
         # Calculate response time
         end_time = time.time()
         response_time_ms = int((end_time - start_time) * 1000)
-        
+
         # Skip logging for static files and media
-        if (request.path.startswith('/static/') or 
+        if (request.path.startswith('/static/') or
             request.path.startswith('/media/') or
             'favicon' in request.path):
             return response
-        
+
+        # Skip the common page-view case (GET that succeeded) to avoid
+        # spawning a logging thread on every navigation. Errors, writes,
+        # and redirects are still logged.
+        if request.method == 'GET' and response.status_code == 200:
+            return response
+
         # Only log for authenticated users
         if request.user.is_authenticated:
             # Determine category and action based on URL path
             category, action_type = self._categorize_request(request)
-            
-            # Get IP address
-            ip_address = ActivityLog._get_ip_from_request(request)
-            
-            # Log the activity
-            ActivityLog.log_activity(
+
+            # Snapshot request data now (request object is not thread-safe to
+            # touch after the response is returned) and write off-thread so the
+            # DB insert never blocks the response.
+            log_kwargs = dict(
                 user=request.user,
                 category=category,
                 action_type=action_type,
                 description=f"Accessed {request.path}",
                 request_method=request.method,
                 request_path=request.path,
-                ip_address=ip_address,
+                ip_address=ActivityLog._get_ip_from_request(request),
                 user_agent=request.META.get('HTTP_USER_AGENT', ''),
                 session_key=request.session.session_key if hasattr(request, 'session') else None,
                 response_status_code=response.status_code,
                 response_time_ms=response_time_ms,
                 success=response.status_code < 400,
-                level='info'
+                level='info',
             )
-        
+            import threading
+            threading.Thread(
+                target=self._write_log,
+                args=(log_kwargs,),
+                daemon=True,
+            ).start()
+
         return response
+
+    @staticmethod
+    def _write_log(log_kwargs):
+        """Persist the activity log off the request thread, closing the
+        thread-local DB connection afterwards to avoid leaking connections."""
+        from django.db import connection
+        try:
+            ActivityLog.log_activity(**log_kwargs)
+        except Exception as e:
+            logger.error(f"Background activity log write failed: {e}")
+        finally:
+            connection.close()
     
     def _categorize_request(self, request):
         """Categorize the request based on URL path"""
