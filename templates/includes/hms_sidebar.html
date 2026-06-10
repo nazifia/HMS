@@ -1362,101 +1362,12 @@ body.sidebar-toggled #content-wrapper {
 </style>
 
 <script>
-// Enhanced responsive sidebar behavior
+// Touch swipe-to-close for mobile sidebar (sidebar.js handles all click/toggle events)
 document.addEventListener('DOMContentLoaded', function() {
     const sidebar = document.getElementById('sidebar-container') || document.querySelector('.sidebar');
-    const sidebarToggleTop = document.getElementById('sidebarToggleTop');
-    const sidebarToggle = document.getElementById('sidebarToggle');
     const sidebarOverlay = document.getElementById('sidebar-overlay') || document.querySelector('.sidebar-overlay');
-    const mobileSidebarClose = document.getElementById('mobileSidebarClose');
 
-    // Function to check screen size
-    function isMobile() {
-        return window.innerWidth < 768;
-    }
-
-    function isTablet() {
-        return window.innerWidth >= 768 && window.innerWidth < 992;
-    }
-
-    function isDesktop() {
-        return window.innerWidth >= 992;
-    }
-
-    // Mobile sidebar toggle
-    if (sidebarToggleTop && sidebar) {
-        sidebarToggleTop.addEventListener('click', function(e) {
-            e.preventDefault();
-            if (isMobile() || isTablet()) {
-                sidebar.classList.toggle('sidebar-open');
-                if (sidebarOverlay) {
-                    sidebarOverlay.classList.toggle('active');
-                }
-                document.body.classList.toggle('sidebar-open');
-            }
-        });
-    }
-
-    // Desktop sidebar toggle
-    if (sidebarToggle && sidebar) {
-        sidebarToggle.addEventListener('click', function(e) {
-            e.preventDefault();
-            if (isDesktop()) {
-                sidebar.classList.toggle('sidebar-collapsed');
-                // Update toggle icon
-                const icon = this.querySelector('i');
-                if (icon) {
-                    icon.classList.toggle('fa-angle-left');
-                    icon.classList.toggle('fa-angle-right');
-                }
-            }
-        });
-    }
-
-    // Close mobile sidebar
-    if (mobileSidebarClose && sidebar) {
-        mobileSidebarClose.addEventListener('click', function(e) {
-            e.preventDefault();
-            sidebar.classList.remove('sidebar-open');
-            if (sidebarOverlay) {
-                sidebarOverlay.classList.remove('active');
-            }
-            document.body.classList.remove('sidebar-open');
-        });
-    }
-
-    // Close sidebar when clicking overlay
-    if (sidebarOverlay && sidebar) {
-        sidebarOverlay.addEventListener('click', function() {
-            sidebar.classList.remove('sidebar-open');
-            this.classList.remove('active');
-            document.body.classList.remove('sidebar-open');
-        });
-    }
-
-    // Handle window resize
-    let resizeTimer;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function() {
-            // Close mobile sidebar on resize to desktop
-            if (isDesktop() && sidebar) {
-                sidebar.classList.remove('sidebar-open');
-                if (sidebarOverlay) {
-                    sidebarOverlay.classList.remove('active');
-                }
-                document.body.classList.remove('sidebar-open');
-            }
-
-            // Remove collapsed state on mobile
-            if (isMobile() && sidebar) {
-                sidebar.classList.remove('sidebar-collapsed');
-            }
-        }, 250);
-    });
-
-    // Improve touch interactions on mobile
-    if (isMobile() && sidebar) {
+    if (sidebar && window.innerWidth < 768) {
         let touchStartX = 0;
         let touchEndX = 0;
 
@@ -1466,19 +1377,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         sidebar.addEventListener('touchend', function(e) {
             touchEndX = e.changedTouches[0].screenX;
-            handleSwipe();
-        }, { passive: true });
-
-        function handleSwipe() {
-            // Swipe left to close
             if (touchStartX - touchEndX > 50 && sidebar.classList.contains('sidebar-open')) {
                 sidebar.classList.remove('sidebar-open');
-                if (sidebarOverlay) {
-                    sidebarOverlay.classList.remove('active');
-                }
+                if (sidebarOverlay) sidebarOverlay.classList.remove('active');
                 document.body.classList.remove('sidebar-open');
             }
-        }
+        }, { passive: true });
     }
 });
 </script>

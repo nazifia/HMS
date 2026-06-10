@@ -7,6 +7,7 @@
 
     // Function to toggle a specific dropdown
     function toggleDropdown(dropdownId) {
+        if (!dropdownId) return false;
         const $collapse = $('#' + dropdownId);
         const $trigger = $collapse.prev('.nav-link');
         
@@ -119,6 +120,7 @@
         
         Object.keys(states).forEach(function(dropdownId) {
             if (states[dropdownId]) {
+                if (!dropdownId) return;
                 const $collapse = $('#' + dropdownId);
                 const $trigger = $collapse.prev('.nav-link');
                 
