@@ -344,7 +344,7 @@ def doctor_appointments(request, doctor_id):
     # Get appointments for the selected date
     appointments = Appointment.objects.filter(
         doctor=doctor,
-        appointment_date=selected_date
+        appointment_date__date=selected_date
     ).order_by('appointment_time')
 
     # Get doctor's schedule for the selected date
@@ -559,7 +559,7 @@ def get_available_slots(request):
     # Get existing appointments for this doctor on this date
     existing_appointments = Appointment.objects.filter(
         doctor=doctor,
-        appointment_date=selected_date,
+        appointment_date__date=selected_date,
         status__in=['scheduled', 'confirmed']
     ).values_list('appointment_time', flat=True)
 

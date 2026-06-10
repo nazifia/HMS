@@ -1271,7 +1271,9 @@ def wallet_list(request):
             wallets = wallets.filter(balance__lt=0)
 
     # Calculate statistics for filtered results using database aggregation
-    from django.db.models import Sum, Count, Q
+    # Q and Sum come from the module-level import; re-importing Q here would
+    # make it function-local and break the filters above (UnboundLocalError).
+    from django.db.models import Count
 
     wallet_stats = wallets.aggregate(
         total_balance=Sum("balance"),
@@ -1328,8 +1330,6 @@ def wallet_net_impact_global(request):
 
     # Filter by search term (name, ID, or phone)
     if search:
-        from django.db.models import Q
-
         wallets = wallets.filter(
             Q(patient__first_name__icontains=search)
             | Q(patient__last_name__icontains=search)
@@ -1339,8 +1339,6 @@ def wallet_net_impact_global(request):
 
     # Filter by patient ID or phone
     if patient_id_or_phone:
-        from django.db.models import Q
-
         wallets = wallets.filter(
             Q(patient__patient_id__icontains=patient_id_or_phone)
             | Q(patient__phone_number__icontains=patient_id_or_phone)

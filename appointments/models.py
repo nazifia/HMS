@@ -51,16 +51,16 @@ class Appointment(models.Model):
         return f"{self.patient.get_full_name()} - {self.doctor.get_full_name()} - {self.appointment_date}"
 
     def is_past_due(self):
-        return timezone.now().date() > self.appointment_date
+        return timezone.now().date() > self.appointment_date.date()
 
     def is_upcoming(self):
         """Check if appointment is today or in the future"""
         today = timezone.now().date()
-        return self.appointment_date >= today
+        return self.appointment_date.date() >= today
 
     def is_today(self):
         """Check if appointment is today"""
-        return self.appointment_date == timezone.now().date()
+        return self.appointment_date.date() == timezone.now().date()
 
     class Meta:
         ordering = ["appointment_date", "appointment_time"]
