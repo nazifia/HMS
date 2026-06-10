@@ -6,8 +6,8 @@ const HMSUI = {
         animationDuration: 300,
         notificationTimeout: 3000,
         autoRefreshInterval: 0, // Disabled for manual operation
-        sessionWarningTime: 3000000, // 50 minutes
-        sessionLogoutTime: 3600000 // 60 minutes
+        sessionWarningTime: 1500000, // 25 minutes
+        sessionLogoutTime: 1800000 // 30 minutes
     },
     
     // Session management
