@@ -182,8 +182,13 @@ class Surgery(models.Model):
         return f"Surgery for {self.patient} - {self.surgery_type} ({status_display})"
 
     def is_nhia_patient(self):
-        """Check if the patient is an NHIA patient"""
-        return hasattr(self.patient, "nhia_info") and self.patient.nhia_info is not None
+        """Check if the patient is an NHIA patient.
+
+        Uses ``patient_type`` so authorization logic stays consistent with the
+        fee/billing logic elsewhere in the theatre module, which all keys off
+        ``patient_type == "nhia"``.
+        """
+        return self.patient.patient_type == "nhia"
 
     def check_authorization_requirement(self):
         """

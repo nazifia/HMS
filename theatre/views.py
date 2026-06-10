@@ -659,7 +659,13 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
             # Update surgery with invoice and authorization code
             self.object.invoice = invoice
             self.object.authorization_code = authorization_code
-            self.object.status = "scheduled" if authorization_code else "pending"
+            # Only NHIA patients require authorization. An NHIA surgery is
+            # "pending" until an authorization code is supplied; regular
+            # patients never need one, so honor the status chosen on the form.
+            if self.object.patient.patient_type == "nhia":
+                self.object.status = "scheduled" if authorization_code else "pending"
+            else:
+                self.object.status = form.cleaned_data.get("status") or "scheduled"
 
             # Link to the originating theatre referral and mark it handled
             source_referral = self._get_source_referral()
@@ -795,10 +801,42 @@ class SurgeryUpdateView(LoginRequiredMixin, UpdateView):
 
         if form.is_valid() and team_formset.is_valid() and equipment_formset.is_valid():
             return self.form_valid(form, team_formset, equipment_formset)
-        else:
-            return self.form_invalid(form, team_formset, equipment_formset)
+
+        # Surface main-form errors as messages (previously only formset errors
+        # were reported, so a failed save looked silent to the user).
+        if not form.is_valid():
+            for field, errors in form.errors.items():
+                for error in errors:
+                    if field == "__all__":
+                        messages.error(request, f"{error}")
+                    else:
+                        messages.error(
+                            request, f"{field.replace('_', ' ').title()}: {error}"
+                        )
+
+        return self.form_invalid(form, team_formset, equipment_formset)
 
     def form_valid(self, form, team_formset, equipment_formset):
+        from decimal import Decimal
+
+        patient = form.cleaned_data["patient"]
+        auth_code = form.cleaned_data.get("authorization_code")
+        previous_auth_id = self.object.authorization_code_id
+
+        # Validate a supplied authorization code the same way the create view does.
+        if auth_code:
+            if not auth_code.is_valid():
+                messages.error(
+                    self.request, "The provided authorization code is not valid."
+                )
+                return self.form_invalid(form, team_formset, equipment_formset)
+            if auth_code.patient_id != patient.id:
+                messages.error(
+                    self.request,
+                    "The provided authorization code is not for this patient.",
+                )
+                return self.form_invalid(form, team_formset, equipment_formset)
+
         with transaction.atomic():
             self.object = form.save()
             team_formset.instance = self.object
@@ -806,8 +844,68 @@ class SurgeryUpdateView(LoginRequiredMixin, UpdateView):
             equipment_formset.instance = self.object
             equipment_formset.save()
 
+            # An NHIA surgery cannot be advanced to an active status without an
+            # authorization code; force it back to "pending". Cancelled/postponed
+            # and already-authorized surgeries keep the status chosen on the form.
+            if (
+                patient.patient_type == "nhia"
+                and not auth_code
+                and self.object.status in ("scheduled", "in_progress")
+            ):
+                self.object.status = "pending"
+                self.object.save(update_fields=["status"])
+
+            # Consume a newly attached authorization code.
+            if auth_code and auth_code.id != previous_auth_id:
+                auth_code.mark_as_used(f"Surgery #{self.object.id}")
+
+            # Keep an unpaid invoice in step with the current fee / NHIA rule.
+            self._resync_invoice(Decimal)
+
         messages.success(self.request, "Surgery updated successfully.")
         return redirect(self.get_success_url())
+
+    def _resync_invoice(self, Decimal):
+        """Update the linked invoice when the surgery fee or patient type changed.
+
+        Only touches invoices that have received no payment yet — a paid or
+        partially-paid invoice is left alone to avoid corrupting billing history.
+        """
+        invoice = self.object.invoice
+        if not invoice:
+            return
+        if (invoice.amount_paid or 0) > 0 or invoice.status in ("paid", "cancelled"):
+            return
+
+        surgery_fee = Decimal(str(self.object.surgery_type.fee))
+        if self.object.patient.patient_type == "nhia":
+            patient_payable = Decimal("0.00")
+            description = (
+                f"Theatre Procedure: {self.object.surgery_type.name} (NHIA Covered)"
+            )
+        else:
+            patient_payable = surgery_fee
+            description = f"Theatre Procedure: {self.object.surgery_type.name}"
+
+        item = invoice.items.first()
+        amount_changed = invoice.total_amount != patient_payable
+        desc_changed = bool(item) and item.description != description
+        if not amount_changed and not desc_changed:
+            return
+
+        if amount_changed:
+            invoice.subtotal = patient_payable
+            invoice.tax_amount = Decimal("0.00")
+            invoice.total_amount = patient_payable
+            if patient_payable == Decimal("0.00"):
+                invoice._auto_pay_zero_amount = True
+            invoice.save()
+
+        if item:
+            item.unit_price = patient_payable
+            item.tax_percentage = Decimal("0.00")
+            item.description = description
+            item.save()
 
     def form_invalid(self, form, team_formset, equipment_formset):
         # Add specific error messages for formsets
