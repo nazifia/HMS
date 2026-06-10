@@ -5,6 +5,46 @@
 
 {% block title %}Surgeries{% endblock %}
 
+{% block extra_css %}
+<style>
+    .surgery-list-card .surgery-table { border-collapse: separate; border-spacing: 0; }
+    .surgery-table thead th {
+        background: #f8f9fc;
+        border-top: none;
+        border-bottom: 2px solid #e3e6f0;
+        font-size: .72rem;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: #6e707e;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .surgery-table tbody td { border-top: 1px solid #eaecf4; vertical-align: middle; }
+    .surgery-table tbody tr { transition: background-color .12s ease-in-out; }
+    .surgery-table tbody tr:hover { background-color: #f6f9ff; }
+    .patient-avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px; height: 38px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #4e73df, #224abe);
+        color: #fff;
+        font-size: .75rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+    .surgery-table .badge-pill { font-size: .72rem; padding: .4em .7em; font-weight: 600; }
+    .surgery-table .badge-primary { background-color: #4e73df !important; color: #fff !important; }
+    .surgery-table .badge-success { background-color: #1cc88a !important; color: #fff !important; }
+    .surgery-table .badge-danger  { background-color: #e74a3b !important; color: #fff !important; }
+    .surgery-table .badge-secondary { background-color: #858796 !important; color: #fff !important; }
+    .surgery-table .badge-warning { background-color: #f6c23e !important; color: #1f2d3d !important; }
+    .surgery-table .badge-info    { background-color: #36b9cc !important; color: #1f2d3d !important; }
+    .surgery-table .btn-group .btn { border-radius: .25rem; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <!-- Page Heading -->
@@ -188,74 +228,95 @@
     {% endif %}
 
     <!-- Surgery List -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">All Surgeries</h6>
+    <div class="card shadow mb-4 surgery-list-card">
+        <div class="card-header py-3 d-flex flex-wrap align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-list-ul mr-2"></i>All Surgeries
+                {% if page_obj %}
+                <span class="badge badge-pill badge-primary ml-2">{{ page_obj.paginator.count }}</span>
+                {% endif %}
+            </h6>
+            <a href="{% url 'theatre:surgery_create' %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-plus fa-sm"></i> New Surgery
+            </a>
         </div>
-        <div class="card-body">
+        <div class="card-body p-0">
             {% if surgeries %}
             <div class="table-responsive">
-                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                <table class="table surgery-table align-middle mb-0" id="dataTable" width="100%" cellspacing="0">
                     <thead>
                         <tr>
-                            <th>Date & Time</th>
-                            <th>Patient</th>
+                            <th><i class="far fa-clock text-muted mr-1"></i>Date & Time</th>
+                            <th><i class="fas fa-user-injured text-muted mr-1"></i>Patient</th>
                             <th>Surgery Type</th>
-                            <th>Fee</th>
+                            <th class="text-right">Fee</th>
                             <th>Theatre</th>
                             <th>Primary Surgeon</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for surgery in surgeries %}
                         <tr>
-                            <td>{{ surgery.scheduled_date|date:"d/m/Y H:i" }}</td>
-                            <td>{{ surgery.patient }}</td>
-                            <td>{{ surgery.surgery_type }}</td>
+                            <td class="text-nowrap">
+                                <span class="d-block font-weight-bold text-gray-800">{{ surgery.scheduled_date|date:"d M Y" }}</span>
+                                <small class="text-muted"><i class="far fa-clock"></i> {{ surgery.scheduled_date|date:"H:i" }}</small>
+                            </td>
                             <td>
+                                <div class="d-flex align-items-center">
+                                    <span class="patient-avatar mr-2">{{ surgery.patient.first_name|first|upper }}{{ surgery.patient.last_name|first|upper }}</span>
+                                    <div>
+                                        <span class="d-block font-weight-bold text-gray-800">{{ surgery.patient.get_full_name|default:surgery.patient }}</span>
+                                        <small class="text-muted"><code>{{ surgery.patient.patient_id }}</code></small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ surgery.surgery_type }}</td>
+                            <td class="text-right">
                                 {% if surgery.patient.patient_type == 'nhia' %}
                                     <span class="badge badge-success">NHIA Covered</span>
                                 {% else %}
-                                    {{ surgery.surgery_type.get_fee_display }}
+                                    <span class="font-weight-bold text-gray-800">{{ surgery.surgery_type.get_fee_display }}</span>
                                 {% endif %}
                             </td>
-                            <td>{{ surgery.theatre }}</td>
+                            <td>{{ surgery.theatre|default:"—" }}</td>
                             <td>
                                 {% if surgery.primary_surgeon %}
                                     {% with surgeon=surgery.primary_surgeon %}
                                         {{ surgeon.get_full_name|default:surgeon.username }}
                                     {% endwith %}
                                 {% else %}
-                                    <span class="text-muted">Not assigned</span>
+                                    <span class="text-muted font-italic">Not assigned</span>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td class="text-center">
                                 {% if surgery.status == 'scheduled' %}
-                                <span class="badge badge-primary">{{ surgery.get_status_display }}</span>
+                                <span class="badge badge-pill badge-primary"><i class="fas fa-calendar-check"></i> {{ surgery.get_status_display }}</span>
                                 {% elif surgery.status == 'in_progress' %}
-                                <span class="badge badge-warning">{{ surgery.get_status_display }}</span>
+                                <span class="badge badge-pill badge-warning"><i class="fas fa-procedures"></i> {{ surgery.get_status_display }}</span>
                                 {% elif surgery.status == 'pending' %}
-                                <span class="badge badge-info">{{ surgery.get_status_display }}</span>
+                                <span class="badge badge-pill badge-info"><i class="fas fa-hourglass-half"></i> {{ surgery.get_status_display }}</span>
                                 {% elif surgery.status == 'completed' %}
-                                <span class="badge badge-success">{{ surgery.get_status_display }}</span>
+                                <span class="badge badge-pill badge-success"><i class="fas fa-check"></i> {{ surgery.get_status_display }}</span>
                                 {% elif surgery.status == 'cancelled' %}
-                                <span class="badge badge-danger">{{ surgery.get_status_display }}</span>
+                                <span class="badge badge-pill badge-danger"><i class="fas fa-times"></i> {{ surgery.get_status_display }}</span>
                                 {% elif surgery.status == 'postponed' %}
-                                <span class="badge badge-secondary">{{ surgery.get_status_display }}</span>
+                                <span class="badge badge-pill badge-secondary"><i class="fas fa-pause"></i> {{ surgery.get_status_display }}</span>
                                 {% endif %}
                             </td>
-                            <td>
-                                <a href="{% url 'theatre:surgery_detail' surgery.id %}" class="btn btn-sm btn-outline-info">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="{% url 'theatre:surgery_update' surgery.id %}" class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <a href="{% url 'theatre:surgery_delete' surgery.id %}" class="btn btn-sm btn-outline-danger">
-                                    <i class="fas fa-trash"></i>
-                                </a>
+                            <td class="text-center text-nowrap">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'theatre:surgery_detail' surgery.id %}" class="btn btn-outline-info" title="View" data-toggle="tooltip">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'theatre:surgery_update' surgery.id %}" class="btn btn-outline-primary" title="Edit" data-toggle="tooltip">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'theatre:surgery_delete' surgery.id %}" class="btn btn-outline-danger" title="Delete" data-toggle="tooltip">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -265,7 +326,7 @@
             
             <!-- Pagination -->
             {% if is_paginated %}
-            <div class="mt-4">
+            <div class="py-3 px-3">
                 <nav aria-label="Page navigation">
                     <ul class="pagination justify-content-center">
                         {% if page_obj.has_previous %}
@@ -311,8 +372,9 @@
             {% endif %}
             
             {% else %}
-            <div class="text-center py-4">
-                <p>No surgeries found matching your criteria.</p>
+            <div class="text-center py-5">
+                <i class="fas fa-procedures fa-3x text-gray-300 mb-3"></i>
+                <p class="text-muted mb-3">No surgeries found matching your criteria.</p>
                 <a href="{% url 'theatre:surgery_create' %}" class="btn btn-primary">
                     <i class="fas fa-plus mr-2"></i> Schedule New Surgery
                 </a>
@@ -331,6 +393,7 @@
             placeholder: "Select an option",
             allowClear: true
         });
+        $('[data-toggle="tooltip"]').tooltip();
     });
 </script>
 {% endblock %}
