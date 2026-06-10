@@ -1293,58 +1293,19 @@
     <!-- Final Scroll Prevention Script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Prevent any remaining auto-scroll behaviors
+            // Reset sidebar to top on load and block hash auto-scroll only.
+            // Do NOT override scrollIntoView or force scrollTop on mutations:
+            // sidebar.js manages its own scroll-into-view for opened dropdowns.
             const sidebar = document.getElementById('sidebar-container');
             if (sidebar) {
-                // Force sidebar to top on page load
                 setTimeout(function() {
                     sidebar.scrollTop = 0;
                 }, 100);
-                
-                // Override any scrollIntoView calls for sidebar elements
-                const sidebarElements = sidebar.querySelectorAll('*');
-                sidebarElements.forEach(element => {
-                    if (element.scrollIntoView) {
-                        element.scrollIntoView = function(options) {
-                            return false;
-                        };
-                    }
-                });
-                
-                // Prevent hash-based scrolling in sidebar
+
+                // Prevent hash-based page jump on load
                 if (window.location.hash) {
                     window.scrollTo(0, 0);
                 }
-                
-                // Monitor scroll events to detect and prevent auto-scroll
-                let userScrolling = false;
-                let scrollTimeout;
-                
-                sidebar.addEventListener('wheel', function() {
-                    userScrolling = true;
-                    clearTimeout(scrollTimeout);
-                    scrollTimeout = setTimeout(function() {
-                        userScrolling = false;
-                    }, 150);
-                });
-                
-                sidebar.addEventListener('touchstart', function() {
-                    userScrolling = true;
-                });
-                
-                // Reset scroll if it changes without user interaction
-                const observer = new MutationObserver(function(mutations) {
-                    if (!userScrolling) {
-                        sidebar.scrollTop = 0;
-                    }
-                });
-                
-                observer.observe(sidebar, { 
-                    attributes: true, 
-                    attributeFilter: ['scrollTop'],
-                    childList: true, 
-                    subtree: true 
-                });
             }
         });
     </script>
@@ -1365,56 +1326,23 @@
             }
         });
 
-        // Global error handler to prevent JavaScript errors
+        // Suppress only the known htmx "H.match" library error.
+        // Do NOT swallow generic errors (Cannot read property / is not a
+        // function / undefined is not an object) — those are real bugs.
+        function isHtmxMatchError(msg) {
+            return typeof msg === 'string' && msg.includes('H.match');
+        }
         window.addEventListener('error', function(e) {
-            // Suppress H.match errors that might break functionality
-            if (e.error && e.error.message && e.error.message.includes('H.match')) {
+            if (e.error && isHtmxMatchError(e.error.message)) {
                 e.preventDefault();
-                console.warn('Suppressed H.match error:', e.error);
-                return false;
-            }
-            
-            // Suppress undefined object errors
-            if (e.error && e.error.message && e.error.message.includes('undefined is not an object')) {
-                e.preventDefault();
-                console.warn('Suppressed undefined object error:', e.error);
-                return false;
-            }
-            
-            // Suppress other common library errors
-            if (e.error && (
-                e.error.message.includes('Cannot read property') ||
-                e.error.message.includes('Cannot access property') ||
-                e.error.message.includes('null is not an object') ||
-                e.error.message.includes('is not a function')
-            )) {
-                e.preventDefault();
-                console.warn('Suppressed library error:', e.error);
+                console.warn('Suppressed htmx H.match error:', e.error);
                 return false;
             }
         });
-
-        // Additional error handler for htmx-specific errors
-        window.addEventListener('error', function(e) {
-            if (e.error && (
-                e.error.message.includes('H.match') ||
-                e.error.message.includes('htmx') ||
-                e.error.message.includes('undefined is not an object')
-            )) {
-                e.preventDefault();
-                return false;
-            }
-        }, true); // Use capture phase for better error interception
-
-        // Additional error handler for unhandled promise rejections
         window.addEventListener('unhandledrejection', function(e) {
-            if (e.reason && e.reason.message && (
-                e.reason.message.includes('H.match') ||
-                e.reason.message.includes('undefined is not an object') ||
-                e.reason.message.includes('htmx')
-            )) {
+            if (e.reason && isHtmxMatchError(e.reason.message)) {
                 e.preventDefault();
-                console.warn('Suppressed promise rejection error:', e.reason);
+                console.warn('Suppressed htmx H.match rejection:', e.reason);
                 return false;
             }
         });
@@ -1539,43 +1467,12 @@
                 sidebarContainer.removeAttribute('data-refresh-url');
                 sidebarContainer.removeAttribute('data-auto-refresh');
                 sidebarContainer.removeAttribute('data-interval');
-                
-                // Override scroll behavior
-                sidebarContainer.scrollIntoView = function() { return false; };
+
+                // Reset scroll position once on load. Do NOT override scrollTop
+                // or scrollIntoView — that disables sidebar.js scroll handling.
                 sidebarContainer.scrollTop = 0;
-                
-                // Prevent any automatic scrolling
-                Object.defineProperty(sidebarContainer, 'scrollTop', {
-                    set: function(value) {
-                        if (this._manualScroll) {
-                            this._scrollTop = value;
-                        }
-                    },
-                    get: function() {
-                        return this._scrollTop || 0;
-                    }
-                });
             }
-            
-            // Remove conflicting click handlers - let sidebar.js handle everything
-            // Note: The sidebar.js will handle all dropdown functionality properly
-            
-            // Disable any future auto-refresh attempts
-            const originalSetInterval = window.setInterval;
-            window.setInterval = function(callback, delay, ...args) {
-                // Block intervals that might auto-refresh sidebar
-                try {
-                    const src = (typeof callback === 'function' ? callback : () => {}).toString();
-                    if (src.includes('accordionSidebar') || src.includes('sidebar-container')) {
-                        console.warn('Blocked sidebar auto-refresh interval');
-                        return null;
-                    }
-                } catch (_) {}
-                if (false) {
-                    return null;
-                }
-                return originalSetInterval.call(this, callback, delay, ...args);
-            };
+            // sidebar.js owns all dropdown/click/scroll behavior.
         });
     </script>
     
@@ -1613,30 +1510,5 @@
         document.addEventListener('htmx:responseError', function() { NProgress.done(); });
     </script>
 
-    <!-- Global Error Handler -->
-    <script>
-        // Global error handler to preventing breaking the page, but allow sidebar errors to be seen
-        window.addEventListener('error', function(e) {
-            // Ignore most non-critical errors to keep sidebar working
-            if (e.error && e.error.message) {
-                const message = e.error.message.toLowerCase();
-                
-                // Allow implementation to proceed
-                if (message.includes('cannot read properties of null') ||
-                    message.includes('addEventListener') ||
-                    message.includes('htmx') ||
-                    message.includes('alpine') ||
-                    message.includes('sidebar')) {
-                    return;
-                }
-            }
-        });
-        
-        // Handle unhandled promise rejections
-        window.addEventListener('unhandledrejection', function(e) {
-            console.warn('Unhandled promise rejection:', e.reason);
-            e.preventDefault();
-        });
-    </script>
 </body>
 </html>

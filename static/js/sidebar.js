@@ -114,26 +114,29 @@
         }
     }
 
-    // Restore dropdown states on page load
+    // Restore dropdown state on page load (accordion-safe: at most one open)
     function restoreDropdownStates() {
+        // Server already opened the dropdown matching the active path.
+        // Respect that and skip restore to avoid multiple open dropdowns.
+        if ($('.sidebar .collapse.show').length > 0) {
+            return;
+        }
+
         const states = getSavedDropdownStates();
-        
-        Object.keys(states).forEach(function(dropdownId) {
-            if (states[dropdownId]) {
-                if (!dropdownId) return;
-                const $collapse = $('#' + dropdownId);
-                const $trigger = $collapse.prev('.nav-link');
-                
-                if ($collapse.length && $trigger.length) {
-                    // Open the dropdown using Bootstrap's method
-                    $collapse.addClass('show');
-                    $trigger.removeClass('collapsed').addClass('expanded');
-                    $trigger.attr('aria-expanded', 'true');
-                    
-                    console.log('Restored dropdown state:', dropdownId, '(open)');
-                }
-            }
+        // Restore only the first saved-open dropdown (single-open accordion).
+        const openId = Object.keys(states).find(function(id) {
+            return id && states[id];
         });
+        if (!openId) return;
+
+        const $collapse = $('#' + openId);
+        const $trigger = $collapse.prev('.nav-link');
+        if ($collapse.length && $trigger.length) {
+            $collapse.addClass('show');
+            $trigger.removeClass('collapsed').addClass('expanded');
+            $trigger.attr('aria-expanded', 'true');
+            console.log('Restored dropdown state:', openId, '(open)');
+        }
     }
 
     // ============================================
