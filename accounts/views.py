@@ -31,6 +31,8 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
+from django.views.decorators.cache import never_cache
+
 # Import permission decorators
 from accounts.permissions import (
     permission_required,
@@ -140,6 +142,7 @@ from .forms import CustomLoginForm
 from .auth_wrapper import safe_authenticate
 
 
+@never_cache
 def custom_login_view(request):
     """
     Custom login view for application users (using phone numbers).
@@ -229,6 +232,7 @@ def custom_login_view(request):
     return render(request, "accounts/login.html", context)
 
 
+@never_cache
 def custom_logout_view(request):
     """
     Custom logout view that handles auto logout scenarios and AJAX requests
