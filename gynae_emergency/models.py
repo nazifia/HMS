@@ -47,6 +47,9 @@ class Gynae_emergencyRecord(models.Model):
         ordering = ['-visit_date']
         verbose_name = 'Gynae_emergency Record'
         verbose_name_plural = 'Gynae_emergency Records'
+        permissions = [
+            ('view_gynaeemergencyrecord', 'Can view gynae emergency records'),
+        ]
 
 
 class GynaeEmergencyClinicalNote(models.Model):

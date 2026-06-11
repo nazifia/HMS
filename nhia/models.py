@@ -14,6 +14,9 @@ class NHIAPatient(models.Model):
     class Meta:
         verbose_name = "NHIA Patient"
         verbose_name_plural = "NHIA Patients"
+        permissions = [
+            ("process_nhibilling", "Can process NHIA billing"),
+        ]
 
 
 class AuthorizationCode(models.Model):

@@ -261,6 +261,36 @@ class Invoice(models.Model):
             models.Index(fields=["patient", "status"]),
         ]
         ordering = ["-invoice_date"]
+        permissions = [
+            # Per-service invoice permissions (no dedicated models; canonical RBAC keys)
+            ("add_bedchargeinvoice", "Can create bed charge invoices"),
+            ("view_bedchargeinvoice", "Can view bed charge invoices"),
+            ("add_consultationinvoice", "Can create consultation invoices"),
+            ("view_consultationinvoice", "Can view consultation invoices"),
+            ("add_feedingchargeinvoice", "Can create feeding charge invoices"),
+            ("view_feedingchargeinvoice", "Can view feeding charge invoices"),
+            ("add_inpatientinvoice", "Can create inpatient invoices"),
+            ("view_inpatientinvoice", "Can view inpatient invoices"),
+            ("add_labinvoice", "Can create laboratory invoices"),
+            ("view_labinvoice", "Can view laboratory invoices"),
+            ("add_nursingcareinvoice", "Can create nursing care invoices"),
+            ("view_nursingcareinvoice", "Can view nursing care invoices"),
+            ("add_pharmacyinvoice", "Can create pharmacy invoices"),
+            ("change_pharmacyinvoice", "Can edit pharmacy invoices"),
+            ("view_pharmacyinvoice", "Can view pharmacy invoices"),
+            ("add_radiologyinvoice", "Can create radiology invoices"),
+            ("view_radiologyinvoice", "Can view radiology invoices"),
+            ("add_theatreinvoice", "Can create theatre invoices"),
+            ("view_theatreinvoice", "Can view theatre invoices"),
+            # Cross-cutting invoice actions
+            ("cancel_invoice", "Can cancel invoices"),
+            ("create_all_invoices", "Can create all invoice types"),
+            ("delete_all_invoices", "Can delete all invoice types"),
+            ("edit_all_invoices", "Can edit all invoice types"),
+            ("view_all_invoices", "Can view all invoice types"),
+            ("email_invoice", "Can email invoices"),
+            ("print_invoice", "Can print invoices"),
+        ]
 
 
 class InvoiceItem(models.Model):
@@ -333,3 +363,6 @@ class Payment(models.Model):
             models.Index(fields=["created_at"], name="idx_payment_created"),
         ]
         ordering = ["-payment_date", "-created_at"]
+        permissions = [
+            ("refund_payment", "Can refund payments"),
+        ]

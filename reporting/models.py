@@ -25,6 +25,14 @@ class Report(models.Model):
 
     # Add any custom methods here
 
+    class Meta:
+        permissions = [
+            ('view_billingreport', 'Can view billing reports'),
+            ('view_dailycashreport', 'Can view daily cash reports'),
+            ('view_financialreport', 'Can view financial reports'),
+            ('view_revenuereport', 'Can view revenue reports'),
+        ]
+
 class ReportExecution(models.Model):
     report = models.ForeignKey(Report, on_delete=models.CASCADE, related_name='executions')
     parameters = models.TextField(blank=True, null=True)  # JSON string of parameters used

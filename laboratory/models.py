@@ -265,6 +265,9 @@ class TestResult(models.Model):
             models.Index(fields=["result_date"]),
         ]
         ordering = ["-result_date", "-created_at"]
+        permissions = [
+            ("add_labresult", "Can enter laboratory results"),
+        ]
 
 
 class TestResultParameter(models.Model):

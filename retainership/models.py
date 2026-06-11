@@ -21,3 +21,8 @@ class RetainershipPatient(models.Model):
     class Meta:
         verbose_name = "Retainership Patient"
         verbose_name_plural = "Retainership Patients"
+        permissions = [
+            ("add_insurancepolicy", "Can create insurance policies"),
+            ("change_insurancepolicy", "Can edit insurance policies"),
+            ("view_insurancepolicy", "Can view insurance policies"),
+        ]

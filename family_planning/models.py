@@ -51,6 +51,9 @@ class Family_planningRecord(models.Model):
         ordering = ["-visit_date"]
         verbose_name = "Family_planning Record"
         verbose_name_plural = "Family_planning Records"
+        permissions = [
+            ("view_familyplanningrecord", "Can view family planning records"),
+        ]
 
 
 class FamilyPlanningClinicalNote(models.Model):

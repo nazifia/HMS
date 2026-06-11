@@ -1472,6 +1472,11 @@ class PatientWallet(models.Model):
     class Meta:
         verbose_name = "Patient Wallet"
         verbose_name_plural = "Patient Wallets"
+        permissions = [
+            ("deposit_to_wallet", "Can deposit to patient wallet"),
+            ("refund_walletpayment", "Can refund wallet payments"),
+            ("withdraw_from_wallet", "Can withdraw from patient wallet"),
+        ]
 
 
 class WalletTransaction(models.Model):
