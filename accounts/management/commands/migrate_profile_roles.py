@@ -30,6 +30,9 @@ DEFAULT_ROLE_MAPPING = {
     'radiology_staff': 'radiology_staff',
     'accountant': 'accountant',
     'health_record_officer': 'health_record_officer',
+    'desk_officer': 'desk_officer',
+    'cashier_accountant': 'cashier_accountant',
+    'theatre_staff': 'theatre_staff',
 }
 
 

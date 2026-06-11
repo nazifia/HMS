@@ -739,14 +739,14 @@ PERMISSION_DEFINITIONS = {
         "category": "patient_management",
         "description": "Can manage NHIA patients (view, create, edit)",
         "model": "NHIAPatient",
-        "is_custom": True,
+        "is_custom": False,
     },
     "retainership.manage": {
         "django_codename": "retainership.change_retainershippatient",
         "category": "patient_management",
         "description": "Can manage Retainership patients (view, create, edit)",
         "model": "RetainershipPatient",
-        "is_custom": True,
+        "is_custom": False,
     },
     # --------------------------------------------------------------------------
     # Specialty Medical Modules
@@ -1558,10 +1558,14 @@ def validate_permission_definitions():
                 f"Permission '{key}' has invalid django_codename: '{django_codename}' (expected 'app_label.codename')"
             )
 
-        # Check for duplicates
+        # Check for duplicates. Multiple custom keys deliberately map to the
+        # same Django permission (backward-compat aliases used in sidebar
+        # templates, e.g. 'appointments.create' and 'create_appointment'), so a
+        # duplicate is a warning, not a hard error.
         if django_codename in seen_django_codenames:
-            errors.append(
-                f"Duplicate django_codename '{django_codename}' found (for {key})"
+            warnings_list.append(
+                f"Duplicate django_codename '{django_codename}' found (for {key}) "
+                f"- alias of an earlier permission key"
             )
         else:
             seen_django_codenames.add(django_codename)
@@ -1943,6 +1947,17 @@ ROLE_PERMISSIONS = {
             # NHIA Billing
             "nhia.view",
             "nhia.billing",
+        ],
+    },
+    "theatre_staff": {
+        "description": "Theatre Staff - Operating theatre, surgery scheduling, and surgical records",
+        "permissions": [
+            "view_dashboard",
+            "patients.view",
+            "appointments.view",
+            # Theatre URLs are gated on inpatient.view in the access-control middleware
+            "inpatient.view",
+            "reports.view",
         ],
     },
 }

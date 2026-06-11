@@ -1547,7 +1547,7 @@ def expense_list(request):
 
 
 @login_required
-@permission_required("pharmacy.add")
+@permission_required("pharmacy.create")
 def expense_create(request):
     """View for creating a new expense"""
     from pharmacy.models import PharmacyExpense
@@ -1641,7 +1641,7 @@ def expense_edit(request, expense_id):
 
 
 @login_required
-@permission_required("pharmacy.delete")
+@permission_required("pharmacy.edit")
 def expense_delete(request, expense_id):
     """View for deleting an expense"""
     from pharmacy.models import PharmacyExpense

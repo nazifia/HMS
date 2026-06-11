@@ -2,7 +2,6 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from accounts.permissions import permission_required as custom_permission_required
 from django.db import transaction
 from django.core.paginator import Paginator
 from django.contrib.auth.models import User
@@ -25,7 +24,6 @@ def home_view(request):
 
 
 @login_required
-@custom_permission_required("core.view")
 def notifications_list(request):
     """
     List user notifications
@@ -42,7 +40,6 @@ def notifications_list(request):
 
 
 @login_required
-@custom_permission_required("core.edit")
 def mark_notification_read(request, notification_id):
     """
     Mark notification as read - allows any staff member to mark authorization request notifications
@@ -75,7 +72,6 @@ def mark_notification_read(request, notification_id):
 
 
 @login_required
-@custom_permission_required("core.create")
 def create_prescription_view(request, patient_id, module_name):
     """
     Create prescription for patient from any module
@@ -88,7 +84,6 @@ def create_prescription_view(request, patient_id, module_name):
 
 
 @login_required
-@custom_permission_required("core.view")
 def patient_prescriptions_view(request, patient_id):
     """
     View patient prescriptions
@@ -254,7 +249,6 @@ def test_performance(request):
 
 
 @login_required
-@custom_permission_required("core.view")
 def request_nhia_authorization_form(request, model_type, object_id):
     """
     Display form to request NHIA authorization
@@ -360,7 +354,6 @@ Please generate an authorization code for this patient to proceed with treatment
 
 @login_required
 @require_POST
-@custom_permission_required("core.create")
 def request_nhia_authorization(request):
     """
     Send NHIA authorization request notification to desk office staff (AJAX endpoint)

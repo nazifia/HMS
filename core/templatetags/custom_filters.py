@@ -322,10 +322,15 @@ def calculate_average(data_list, field):
     Usage: {% calculate_average trends 'total_revenue' %}
     """
     try:
-        if not data_list:
+        items = [item for item in data_list if item]
+        if not items:
             return "0.00"
-        total = sum(float(item.get(field, 0)) for item in data_list if item)
-        avg = total / len([item for item in data_list if item])
+        # NOTE: builtins.sum is shadowed by the module-level `sum` filter above,
+        # so accumulate manually to avoid a TypeError that zeroed this out.
+        total = 0.0
+        for item in items:
+            total += float(item.get(field, 0))
+        avg = total / len(items)
         return f"{avg:,.2f}"
     except (ValueError, TypeError):
         return "0.00"

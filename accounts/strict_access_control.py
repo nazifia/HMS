@@ -50,6 +50,17 @@ class StrictAccessControlMiddleware(MiddlewareMixin):
     - User is a superuser
     """
 
+    # Specialty clinical modules: access restricted to clinical cadres + admin.
+    # Receptionists, finance, pharmacy, lab, radiology have no business in these
+    # record systems even though they may hold consultations.view.
+    SPECIALTY_CLINICAL_NAMESPACES = {
+        "dental", "ophthalmic", "ent", "oncology", "scbu", "anc", "labor",
+        "icu", "family_planning", "gynae_emergency", "neurology", "dermatology",
+        "emergency", "general_medicine", "pediatrics", "surgery", "cardiology",
+        "orthopedics",
+    }
+    CLINICAL_ALLOWED_ROLES = {"admin", "doctor", "nurse"}
+
     def __init__(self, get_response=None):
         self.get_response = get_response
         self.strict_mode = getattr(settings, "STRICT_ACCESS_CONTROL", True)
@@ -179,6 +190,17 @@ class StrictAccessControlMiddleware(MiddlewareMixin):
                 return True
         return False
 
+    def _get_namespace(self, request):
+        """Resolve the URL namespace (falls back to first path segment)."""
+        try:
+            resolved = resolve(request.path)
+            if resolved.namespace:
+                return resolved.namespace
+        except Exception:
+            pass
+        parts = request.path.strip("/").split("/")
+        return parts[0] if parts and parts[0] else None
+
     def _get_required_permission(self, request):
         """
         Determine the required permission for the current URL.
@@ -241,6 +263,14 @@ class StrictAccessControlMiddleware(MiddlewareMixin):
         # Superusers have full access
         if user.is_superuser:
             return True, "Superuser access granted"
+
+        # Specialty clinical modules: restricted to clinical cadres + admin
+        namespace = self._get_namespace(request)
+        if namespace in self.SPECIALTY_CLINICAL_NAMESPACES:
+            user_roles = get_user_roles(user)
+            if any(r in self.CLINICAL_ALLOWED_ROLES for r in user_roles):
+                return True, "Clinical access to specialty module granted"
+            return False, "Specialty module restricted to clinical staff (doctor/nurse)"
 
         # Get required permission for this URL
         required_permission = self._get_required_permission(request)

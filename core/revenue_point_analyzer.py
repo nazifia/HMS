@@ -672,12 +672,14 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
         """
         trends = []
 
+        # Anchor to the selected range end (falls back to today) so a custom
+        # date range actually drives the data instead of always using "now".
+        anchor_date = getattr(self, 'end_date', None) or timezone.now().date()
+
         for i in range(months):
-            # Calculate date range for each month (going backwards from current date)
-            end_date = timezone.now().date()
-            # Calculate the month start by going back i months
-            year = end_date.year
-            month = end_date.month - i
+            # Calculate the month start by going back i months from the anchor
+            year = anchor_date.year
+            month = anchor_date.month - i
 
             # Handle year rollover
             while month <= 0:

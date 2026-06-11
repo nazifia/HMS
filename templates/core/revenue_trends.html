@@ -445,6 +445,9 @@ function initializeCharts() {
     const pharmacyData = trendsData.map(trend => parseFloat(trend.pharmacy));
     const laboratoryData = trendsData.map(trend => parseFloat(trend.laboratory));
     const consultationsData = trendsData.map(trend => parseFloat(trend.consultations));
+    const theatreData = trendsData.map(trend => parseFloat(trend.theatre));
+    const admissionsData = trendsData.map(trend => parseFloat(trend.admissions));
+    const generalData = trendsData.map(trend => parseFloat(trend.general));
     const walletData = trendsData.map(trend => parseFloat(trend.wallet));
 
     console.log('Parsed data values:');
@@ -493,6 +496,39 @@ function initializeCharts() {
             data: consultationsData,
             borderColor: '#f6c23e',
             backgroundColor: '#f6c23e',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: false,
+            pointRadius: 4,
+            pointHoverRadius: 6
+        },
+        {
+            label: 'Theatre',
+            data: theatreData,
+            borderColor: '#6f42c1',
+            backgroundColor: '#6f42c1',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: false,
+            pointRadius: 4,
+            pointHoverRadius: 6
+        },
+        {
+            label: 'Admissions',
+            data: admissionsData,
+            borderColor: '#fd7e14',
+            backgroundColor: '#fd7e14',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: false,
+            pointRadius: 4,
+            pointHoverRadius: 6
+        },
+        {
+            label: 'General',
+            data: generalData,
+            borderColor: '#20c997',
+            backgroundColor: '#20c997',
             borderWidth: 2,
             tension: 0.3,
             fill: false,

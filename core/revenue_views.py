@@ -219,8 +219,8 @@ def revenue_trends_view(request):
         else:
             end_date = datetime(end_year, end_month + 1, 1).date() - timedelta(days=1)
 
-        # Calculate number of months between start and end
-        months = (end_year - start_year) * 12 + (end_month - start_month) + 1
+        # Calculate number of months between start and end (guard inverted ranges)
+        months = max(1, (end_year - start_year) * 12 + (end_month - start_month) + 1)
 
         analyzer = RevenuePointBreakdownAnalyzer(start_date, end_date)
 
@@ -229,7 +229,7 @@ def revenue_trends_view(request):
             trends = analyzer.get_monthly_trends(months)
         else:
             # Get trends for specific department
-            trends = _get_department_trends(department, months)
+            trends = _get_department_trends(department, months, end_date)
 
         # Convert for JSON
         trends_json = _convert_decimals_for_json(trends)
@@ -300,8 +300,8 @@ def revenue_trends_api(request):
         else:
             end_date = datetime(end_year, end_month + 1, 1).date() - timedelta(days=1)
 
-        # Calculate number of months between start and end
-        months = (end_year - start_year) * 12 + (end_month - start_month) + 1
+        # Calculate number of months between start and end (guard inverted ranges)
+        months = max(1, (end_year - start_year) * 12 + (end_month - start_month) + 1)
 
         analyzer = RevenuePointBreakdownAnalyzer(start_date, end_date)
 
@@ -310,7 +310,7 @@ def revenue_trends_api(request):
             trends = analyzer.get_monthly_trends(months)
         else:
             # Get trends for specific department
-            trends = _get_department_trends(department, months)
+            trends = _get_department_trends(department, months, end_date)
 
         # Convert for JSON
         trends = _convert_decimals_for_json(trends)
@@ -521,13 +521,15 @@ def _convert_decimals_for_json(data):
         return data
 
 
-def _get_department_trends(department, months):
+def _get_department_trends(department, months, end_date=None):
     """
     Get trend data for specific department.
     Returns data in format expected by revenue_trends template.
     """
     trends = []
-    end_date = timezone.now().date()
+    # Anchor to the selected range end so a custom date range drives the data.
+    if end_date is None:
+        end_date = timezone.now().date()
 
     for i in range(months):
         # Calculate month date range (going backwards from current date)
