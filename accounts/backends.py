@@ -81,7 +81,16 @@ class AdminBackend(ModelBackend):
 class RolePermissionBackend(ModelBackend):
     """
     Backend that adds role-based permissions to the user.
+
+    Permission-only backend: it must NOT attempt authentication. Inheriting
+    ModelBackend.authenticate would run a full PBKDF2 "dummy" hash (~0.4s) on
+    every login because the username lookup misses (USERNAME_FIELD is
+    phone_number), needlessly slowing every login. Authentication is handled by
+    AdminBackend and PhoneNumberBackend.
     """
+    def authenticate(self, request, username=None, password=None, **kwargs):
+        return None
+
     def get_all_permissions(self, user_obj, obj=None):
         if not user_obj.is_active or user_obj.is_anonymous or obj is not None:
             return set()

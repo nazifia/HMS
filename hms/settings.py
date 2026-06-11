@@ -374,8 +374,10 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 AUTHENTICATION_BACKENDS = [
     "accounts.backends.AdminBackend",  # First: Handle admin/username logins
     "accounts.backends.PhoneNumberBackend",  # Second: Handle phone number logins
-    "accounts.backends.RolePermissionBackend",  # Third: Role-based permissions
-    "django.contrib.auth.backends.ModelBackend",  # Fourth: Django's default backend as fallback
+    "accounts.backends.RolePermissionBackend",  # Third: Role-based permissions (no auth)
+    # NOTE: plain ModelBackend deliberately omitted. AdminBackend already
+    # subclasses ModelBackend (covers username auth + default Django perms);
+    # adding it back makes every login run an extra ~0.4s PBKDF2 dummy hash.
 ]
 
 # Login URLs - these remain the same for your application
