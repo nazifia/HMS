@@ -1,16 +1,22 @@
 from django.core.cache import cache
+from django.utils.functional import SimpleLazyObject
 from patients.models import Patient
 
 def all_patients(request):
-    patients = cache.get('ctx_all_patients')
-    if patients is None:
-        patients = list(
-            Patient.objects.filter(is_active=True)
-            .only('id', 'first_name', 'last_name', 'patient_id', 'phone_number', 'gender', 'date_of_birth')
-            .order_by('first_name', 'last_name')
-        )
-        cache.set('ctx_all_patients', patients, 300)
-    return {'all_patients': patients}
+    # Lazy: the cache/DB lookup only fires if a template actually iterates
+    # `all_patients` (only ~8 dropdown templates do). Every other page pays
+    # zero cost instead of a per-request DatabaseCache SELECT + unpickle.
+    def _load():
+        patients = cache.get('ctx_all_patients')
+        if patients is None:
+            patients = list(
+                Patient.objects.filter(is_active=True)
+                .only('id', 'first_name', 'last_name', 'patient_id', 'phone_number', 'gender', 'date_of_birth')
+                .order_by('first_name', 'last_name')
+            )
+            cache.set('ctx_all_patients', patients, 300)
+        return patients
+    return {'all_patients': SimpleLazyObject(_load)}
 
 
 def current_patient_context(request):

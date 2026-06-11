@@ -5,30 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% load permission_tags %}
     {% load core_tags %}
+    {% load static %}
+    {% load compress %}
     <title>{% block title %}Hospital Management System{% endblock %}</title>
 
-    <!-- Preconnect to CDN origins for faster resource fetching -->
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="preconnect" href="https://code.jquery.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.datatables.net" crossorigin>
-    <link rel="preconnect" href="https://unpkg.com" crossorigin>
-
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
-    <!-- DataTables CSS -->
-    <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-
-    <!-- Select2 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
-
-    <!-- NProgress (page load progress bar) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.css">
+    <!-- Vendor CSS (self-hosted; bundled + hashed in production) -->
+    {% compress css %}
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/datatables/dataTables.bootstrap5.min.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/select2/select2.min.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/select2/select2-bootstrap-5-theme.min.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/nprogress/nprogress.css' %}">
+    {% endcompress %}
     <style>
         #nprogress .bar { background: #4e73df; height: 3px; }
         #nprogress .peg { box-shadow: 0 0 10px #4e73df, 0 0 5px #4e73df; }
@@ -779,16 +768,16 @@
     </div>
 
     <!-- Alpine.js -->
-    <script defer src="https://unpkg.com/alpinejs@3.13.8/dist/cdn.min.js"></script>
+    <script defer src="{% static 'vendor/alpine/alpine.min.js' %}"></script>
 
     <!-- jQuery - Load FIRST before any scripts that use it -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{% static 'vendor/jquery/jquery-3.6.0.min.js' %}"></script>
 
     <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
 
     <!-- HTMX (loaded after jQuery/Bootstrap so it doesn't block head parsing) -->
-    <script src="https://unpkg.com/htmx.org@1.9.10/dist/htmx.min.js"></script>
+    <script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
     <script>
         (function() {
             if (typeof htmx === 'undefined') return;
@@ -1278,11 +1267,11 @@
     </script>
 
     <!-- DataTables JS -->
-    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+    <script src="{% static 'vendor/datatables/jquery.dataTables.min.js' %}"></script>
+    <script src="{% static 'vendor/datatables/dataTables.bootstrap5.min.js' %}"></script>
 
     <!-- Select2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{% static 'vendor/select2/select2.min.js' %}"></script>
 
     <!-- Custom JS -->
     {% load static %}
@@ -1477,7 +1466,7 @@
     </script>
     
     <!-- NProgress page-navigation loading bar -->
-    <script src="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.js"></script>
+    <script src="{% static 'vendor/nprogress/nprogress.min.js' %}"></script>
     <script>
         NProgress.configure({ showSpinner: false, trickleSpeed: 150, minimum: 0.1 });
 

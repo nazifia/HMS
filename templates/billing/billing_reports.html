@@ -5,7 +5,7 @@
 {% block title %}Billing Reports - Hospital Management System{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="/static/vendor/datatables/dataTables.bootstrap5.min.css">
 <style>
     .report-card {
         transition: transform 0.2s, box-shadow 0.2s;
@@ -444,9 +444,9 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+<script src="/static/vendor/chartjs/chart.umd.min.js"></script>
+<script src="/static/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/static/vendor/datatables/dataTables.bootstrap5.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Revenue Chart

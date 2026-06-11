@@ -552,13 +552,21 @@ HOSPITAL_PHONE = os.environ.get("HOSPITAL_PHONE", "(555) 123-4567")
 HOSPITAL_EMAIL = os.environ.get("HOSPITAL_EMAIL", "info@citygeneralhospital.com")
 
 # Cache Configuration
-# Using DatabaseCache for shared caching across all processes
-# This fixes the LocMemCache issue where each process has its own cache
+# Production: DatabaseCache gives shared caching across all worker processes
+# (fixes the LocMemCache issue where each process has its own cache).
+# Development: runserver is single-process, so the cross-process concern does
+# not apply. LocMemCache serves cache reads from memory instead of issuing a
+# SQLite SELECT per cache.get (sessions, permission/role context processors,
+# etc.), which removes several DB round-trips from every page load. The env
+# var CACHE_BACKEND still overrides either default.
+_DEFAULT_CACHE_BACKEND = (
+    "django.core.cache.backends.locmem.LocMemCache"
+    if DEBUG
+    else "django.core.cache.backends.db.DatabaseCache"
+)
 CACHES = {
     "default": {
-        "BACKEND": os.environ.get(
-            "CACHE_BACKEND", "django.core.cache.backends.db.DatabaseCache"
-        ),
+        "BACKEND": os.environ.get("CACHE_BACKEND", _DEFAULT_CACHE_BACKEND),
         "LOCATION": os.environ.get("CACHE_LOCATION", "cache_table"),
         "TIMEOUT": int(os.environ.get("CACHE_TIMEOUT", "300")),  # 5 minutes default
         "OPTIONS": {

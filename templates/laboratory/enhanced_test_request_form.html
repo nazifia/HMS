@@ -4,8 +4,8 @@
 
 {% block extra_css %}
 <!-- Select2 CSS - Fixed patient field issue -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css?v=4" rel="stylesheet" />
-<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css?v=4" rel="stylesheet" />
+<link href="/static/vendor/select2/select2.min.css?v=4" rel="stylesheet" />
+<link href="/static/vendor/select2/select2-bootstrap-5-theme.min.css?v=4" rel="stylesheet" />
 <style>
 .autocomplete-results {
     position: absolute;
@@ -765,7 +765,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {% block extra_js %}
 <!-- Select2 JavaScript - Fixed patient field issue -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js?v=4"></script>
+<script src="/static/vendor/select2/select2.min.js?v=4"></script>
 <script>
 // Initialize Select2 for other form fields
 $(document).ready(function() {
