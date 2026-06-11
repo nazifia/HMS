@@ -473,7 +473,7 @@ PERMISSION_DEFINITIONS = {
         "is_custom": False,
     },
     "manage_departments": {
-        "django_codename": "core.view_department",
+        "django_codename": "accounts.view_department",
         "category": "administration",
         "description": "Can manage departments",
         "model": "Department",

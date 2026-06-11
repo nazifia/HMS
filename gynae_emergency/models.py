@@ -49,6 +49,8 @@ class Gynae_emergencyRecord(models.Model):
         verbose_name_plural = 'Gynae_emergency Records'
         permissions = [
             ('view_gynaeemergencyrecord', 'Can view gynae emergency records'),
+            ('add_gynaeemergencyrecord', 'Can create gynae emergency records'),
+            ('change_gynaeemergencyrecord', 'Can edit gynae emergency records'),
         ]
 
 

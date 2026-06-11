@@ -53,6 +53,8 @@ class Family_planningRecord(models.Model):
         verbose_name_plural = "Family_planning Records"
         permissions = [
             ("view_familyplanningrecord", "Can view family planning records"),
+            ("add_familyplanningrecord", "Can create family planning records"),
+            ("change_familyplanningrecord", "Can edit family planning records"),
         ]
 
 
