@@ -183,6 +183,7 @@ class Referral(models.Model):
         ('department', 'Department'),
         ('specialty', 'Specialty'),
         ('unit', 'Unit'),
+        ('ward', 'Ward'),
         ('theatre', 'Theatre (Surgery)'),
     )
 
@@ -205,7 +206,8 @@ class Referral(models.Model):
     referred_to_department = models.ForeignKey('accounts.Department', on_delete=models.CASCADE, related_name='referrals_received', null=True, blank=True)
     referred_to_specialty = models.CharField(max_length=100, blank=True, null=True, help_text="Specialty within the department")
     referred_to_unit = models.CharField(max_length=100, blank=True, null=True, help_text="Specific unit within the department")
-    
+    referred_to_ward = models.ForeignKey('inpatient.Ward', on_delete=models.SET_NULL, related_name='referrals_received', null=True, blank=True, help_text="Target ward for ward referrals")
+
     # Keep the old doctor field for backward compatibility and specific doctor referrals
     referred_to_doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='direct_referrals_received', null=True, blank=True)
     
@@ -255,6 +257,8 @@ class Referral(models.Model):
             destination = f"{self.referred_to_unit} Unit"
             if self.referred_to_department:
                 destination += f" ({self.referred_to_department.name})"
+        elif self.referral_type == 'ward' and self.referred_to_ward:
+            destination = f"{self.referred_to_ward.name} Ward"
         elif self.referral_type == 'theatre':
             destination = "Theatre (Surgery)"
         else:
@@ -281,6 +285,10 @@ class Referral(models.Model):
             if self.referred_to_department:
                 dest += f" ({self.referred_to_department.name})"
             return dest
+        elif self.referral_type == 'ward':
+            if self.referred_to_ward:
+                return f"{self.referred_to_ward.name} ({self.referred_to_ward.get_ward_type_display()})"
+            return "Unspecified Ward"
         elif self.referral_type == 'theatre':
             if self.referred_to_department:
                 return f"Theatre / Surgery ({self.referred_to_department.name})"
@@ -340,6 +348,14 @@ class Referral(models.Model):
                 if 'surgeon' in spec or 'anesthet' in spec or 'theatre' in spec or 'theater' in spec:
                     return True
             return False
+
+        # Ward referrals: accepted by the ward's primary doctor or any assigned ward staff
+        if self.referral_type == 'ward':
+            if not self.referred_to_ward:
+                return False
+            if self.referred_to_ward.primary_doctor_id == user.id:
+                return True
+            return self.referred_to_ward.staff.filter(id=user.id).exists()
 
         # For department/specialty/unit referrals, strictly check if user works in that area
         if hasattr(user, 'profile') and user.profile:
@@ -451,10 +467,15 @@ class Referral(models.Model):
             return None
 
         if self.authorization_status == 'required':
+            from_unit = (
+                self.referring_doctor.profile.department.name
+                if self.referring_doctor and getattr(self.referring_doctor, 'profile', None) and self.referring_doctor.profile.department
+                else 'NHIA'
+            )
             return (
                 f"This referral requires desk office authorization. "
-                f"The patient is an NHIA patient referred from {self.referring_doctor.profile.department.name if self.referring_doctor.profile and self.referring_doctor.profile.department else 'NHIA'} "
-                f"to {self.referred_to_department.name}. Please contact the desk office to obtain authorization before proceeding."
+                f"The patient is an NHIA patient referred from {from_unit} "
+                f"to {self.get_referral_destination()}. Please contact the desk office to obtain authorization before proceeding."
             )
         elif self.authorization_status == 'pending':
             return (

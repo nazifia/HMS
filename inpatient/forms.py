@@ -14,7 +14,7 @@ def get_specialization_choices():
 class WardForm(forms.ModelForm):
     class Meta:
         model = Ward
-        fields = ['name', 'ward_type', 'floor', 'description', 'capacity', 'charge_per_day', 'is_active']
+        fields = ['name', 'ward_type', 'floor', 'description', 'capacity', 'charge_per_day', 'is_active', 'primary_doctor', 'staff']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'ward_type': forms.Select(attrs={'class': 'form-select'}),
@@ -23,7 +23,24 @@ class WardForm(forms.ModelForm):
             'capacity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
             'charge_per_day': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'step': '0.01'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'primary_doctor': forms.Select(attrs={'class': 'form-select select2'}),
+            'staff': forms.SelectMultiple(attrs={'class': 'form-select select2'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from django.db.models import Q
+        # Only physicians may admit/accept patients into a ward.
+        physicians = User.objects.filter(
+            Q(profile__role='doctor') | Q(profile__specialization__isnull=False),
+            is_active=True
+        ).distinct().order_by('first_name', 'last_name')
+        self.fields['primary_doctor'].queryset = physicians
+        self.fields['primary_doctor'].empty_label = "Select Primary Doctor (Optional)"
+        self.fields['primary_doctor'].required = False
+        self.fields['staff'].queryset = physicians
+        self.fields['staff'].required = False
+        self.fields['staff'].help_text = "Physicians who can admit/accept patients and ward referrals."
 
 class BedForm(forms.ModelForm):
     class Meta:

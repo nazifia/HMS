@@ -114,6 +114,20 @@
                             </div>
                         </div>
 
+                        <!-- Ward Selection -->
+                        <div class="row" id="ward_section" style="display: none;">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.referred_to_ward.id_for_label }}" class="form-label">{{ form.referred_to_ward.label }}</label>
+                                    {{ form.referred_to_ward }}
+                                    {% if form.referred_to_ward.errors %}
+                                        <div class="text-danger">{{ form.referred_to_ward.errors }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">Refer the patient to a specific ward.</small>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label for="{{ form.reason.id_for_label }}" class="form-label">Reason for Referral</label>
                             {{ form.reason }}
@@ -277,16 +291,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const specialtyUnitSection = document.getElementById('specialty_unit_section');
     const specialtyField = document.getElementById('specialty_field');
     const unitField = document.getElementById('unit_field');
+    const wardSection = document.getElementById('ward_section');
 
     function toggleFields() {
         const selectedType = referralTypeSelect.value;
         console.log('Selected referral type:', selectedType); // Debug log
-        
+
         // Hide all sections first
         if (departmentSection) departmentSection.style.display = 'none';
         if (specialtyUnitSection) specialtyUnitSection.style.display = 'none';
         if (specialtyField) specialtyField.style.display = 'none';
         if (unitField) unitField.style.display = 'none';
+        if (wardSection) wardSection.style.display = 'none';
 
         // Show relevant sections based on selection
         if (selectedType) {
@@ -306,6 +322,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (departmentSection) departmentSection.style.display = 'block';
                     if (specialtyUnitSection) specialtyUnitSection.style.display = 'block';
                     if (unitField) unitField.style.display = 'block';
+                    break;
+                case 'ward':
+                    if (wardSection) wardSection.style.display = 'block';
+                    break;
+                case 'theatre':
+                    // Theatre auto-resolves its destination; no extra fields needed.
                     break;
                 default:
                     // Show department section by default

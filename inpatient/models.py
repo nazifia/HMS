@@ -44,6 +44,7 @@ class Ward(models.Model):
     charge_per_day = models.DecimalField(max_digits=10, decimal_places=2)
     is_active = models.BooleanField(default=True)
     primary_doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='primary_wards', help_text='Primary doctor responsible for this ward')
+    staff = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='assigned_wards', help_text='Physicians assigned to this ward who can admit/accept patients and ward referrals')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

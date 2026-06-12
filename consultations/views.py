@@ -851,9 +851,10 @@ def referral_list(request):
         Q(assigned_doctor=doctor) |     # Assigned referrals
         (Q(referral_type='department') & Q(referred_to_department=doctor.profile.department) if hasattr(doctor, 'profile') and doctor.profile and doctor.profile.department else Q(pk=None)) |  # Department referrals
         (Q(referral_type='specialty') & Q(referred_to_department=doctor.profile.department) & Q(referred_to_specialty__icontains=doctor.profile.specialization) if hasattr(doctor, 'profile') and doctor.profile and doctor.profile.department and doctor.profile.specialization else Q(pk=None)) |  # Specialty referrals
-        (Q(referral_type='unit') & Q(referred_to_department=doctor.profile.department) if hasattr(doctor, 'profile') and doctor.profile and doctor.profile.department else Q(pk=None))  # Unit referrals
+        (Q(referral_type='unit') & Q(referred_to_department=doctor.profile.department) if hasattr(doctor, 'profile') and doctor.profile and doctor.profile.department else Q(pk=None)) |  # Unit referrals
+        (Q(referral_type='ward') & (Q(referred_to_ward__primary_doctor=doctor) | Q(referred_to_ward__staff=doctor)))  # Ward referrals (primary doctor or assigned ward staff)
     ).select_related(
-        'patient', 'referring_doctor', 'assigned_doctor', 
+        'patient', 'referring_doctor', 'assigned_doctor',
         'referred_to_department', 'consultation'
     ).distinct().order_by('-referral_date') if hasattr(doctor, 'profile') and doctor.profile else Referral.objects.filter(
         Q(assigned_doctor=doctor)
@@ -913,7 +914,7 @@ def update_referral_status(request, referral_id):
     # Check if the logged-in user can update this referral
     can_update = False
     
-    if referral.referral_type in ['department', 'specialty', 'unit', 'theatre']:
+    if referral.referral_type in ['department', 'specialty', 'unit', 'theatre', 'ward']:
         # Department/specialty/unit referral - check if user can accept
         can_update = referral.can_be_accepted_by(request.user)
     
@@ -932,7 +933,7 @@ def update_referral_status(request, referral_id):
             referral.status = status
             
             # If accepting a department/specialty/unit referral, assign the doctor
-            if status == 'accepted' and referral.referral_type in ['department', 'specialty', 'unit', 'theatre']:
+            if status == 'accepted' and referral.referral_type in ['department', 'specialty', 'unit', 'theatre', 'ward']:
                 referral.assigned_doctor = request.user
             
             referral.save()
@@ -1049,7 +1050,7 @@ def referral_detail(request, referral_id):
         can_view = True
     elif referral.assigned_doctor == request.user:
         can_view = True
-    elif referral.referral_type in ['department', 'specialty', 'unit', 'theatre'] and referral.can_be_accepted_by(request.user):
+    elif referral.referral_type in ['department', 'specialty', 'unit', 'theatre', 'ward'] and referral.can_be_accepted_by(request.user):
         can_view = True
         
     if not can_view:
@@ -1086,7 +1087,7 @@ def update_referral_status_detailed(request, referral_id):
     # Check permissions
     can_update = False
 
-    if referral.referral_type in ['department', 'specialty', 'unit', 'theatre']:
+    if referral.referral_type in ['department', 'specialty', 'unit', 'theatre', 'ward']:
         # Department/specialty/unit referral
         can_update = (referral.can_be_accepted_by(request.user) or
                      referral.referring_doctor == request.user or
@@ -1127,13 +1128,13 @@ def update_referral_status_detailed(request, referral_id):
                     referral.notes = f"[{timezone.now().strftime('%Y-%m-%d %H:%M')} - {request.user.get_full_name()}] Status changed from {old_status} to {status}: {notes}"
 
             # If accepting a department/specialty/unit referral, assign the doctor
-            if status == 'accepted' and referral.referral_type in ['department', 'specialty', 'unit', 'theatre']:
+            if status == 'accepted' and referral.referral_type in ['department', 'specialty', 'unit', 'theatre', 'ward']:
                 referral.assigned_doctor = request.user
 
             referral.save()
 
             # Create notification for the other party
-            if referral.referral_type in ['department', 'specialty', 'unit', 'theatre'] and referral.can_be_accepted_by(request.user):
+            if referral.referral_type in ['department', 'specialty', 'unit', 'theatre', 'ward'] and referral.can_be_accepted_by(request.user):
                 # Notify referring doctor
                 from core.models import InternalNotification
                 InternalNotification.objects.create(
@@ -1204,7 +1205,7 @@ def reject_referral(request, referral_id):
     # Check permissions - user must be able to accept the referral to reject it
     can_reject = False
 
-    if referral.referral_type in ['department', 'specialty', 'unit', 'theatre']:
+    if referral.referral_type in ['department', 'specialty', 'unit', 'theatre', 'ward']:
         # Department/specialty/unit referral - check if user can accept it
         can_reject = referral.can_be_accepted_by(request.user)
 
@@ -1274,7 +1275,7 @@ def complete_referral(request, referral_id):
     # Check permissions
     can_complete = False
 
-    if referral.referral_type in ['department', 'specialty', 'unit', 'theatre']:
+    if referral.referral_type in ['department', 'specialty', 'unit', 'theatre', 'ward']:
         # Department/specialty/unit referral - check if user is assigned or can accept
         can_complete = (referral.assigned_doctor == request.user or
                        referral.can_be_accepted_by(request.user))
@@ -1432,7 +1433,7 @@ def create_referral(request, patient_id=None):
                 referring_dept = getattr(referral.referring_doctor.profile, 'department', None) if hasattr(referral.referring_doctor, 'profile') else None
                 
                 # For department/specialty/unit referrals, check the department
-                if referral.referral_type in ['department', 'specialty', 'unit', 'theatre'] and referral.referred_to_department:
+                if referral.referral_type in ['department', 'specialty', 'unit', 'theatre', 'ward'] and referral.referred_to_department:
                     referred_dept = referral.referred_to_department
                 else:
                     referred_dept = None

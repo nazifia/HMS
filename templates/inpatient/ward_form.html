@@ -108,6 +108,28 @@
                         </div>
                     </div>
                     
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.primary_doctor.id_for_label }}" class="form-label">Primary Doctor</label>
+                                {{ form.primary_doctor|add_class:"form-select" }}
+                                {% if form.primary_doctor.errors %}
+                                    <div class="text-danger">{{ form.primary_doctor.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.staff.id_for_label }}" class="form-label">Ward Staff</label>
+                                {{ form.staff|add_class:"form-select" }}
+                                <small class="form-text text-muted">{{ form.staff.help_text }}</small>
+                                {% if form.staff.errors %}
+                                    <div class="text-danger">{{ form.staff.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row">
                         <div class="col-md-12">
                             <div class="d-flex justify-content-between">

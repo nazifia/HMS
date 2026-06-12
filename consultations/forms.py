@@ -78,13 +78,14 @@ class ReferralForm(forms.ModelForm):
 
     class Meta:
         model = Referral
-        fields = ['patient', 'referral_type', 'referred_to_department', 'referred_to_specialty', 'referred_to_unit', 'referred_to_doctor', 'reason', 'notes']
+        fields = ['patient', 'referral_type', 'referred_to_department', 'referred_to_specialty', 'referred_to_unit', 'referred_to_ward', 'referred_to_doctor', 'reason', 'notes']
         widgets = {
             'patient': forms.Select(attrs={'class': 'form-select'}),
             'referral_type': forms.Select(attrs={'class': 'form-select', 'id': 'id_referral_type'}),
             'referred_to_department': forms.Select(attrs={'class': 'form-select', 'id': 'id_referred_to_department'}),
             'referred_to_specialty': forms.TextInput(attrs={'class': 'form-control', 'id': 'id_referred_to_specialty', 'placeholder': 'e.g., Cardiology, Neurology'}),
             'referred_to_unit': forms.TextInput(attrs={'class': 'form-control', 'id': 'id_referred_to_unit', 'placeholder': 'e.g., ICU, Emergency'}),
+            'referred_to_ward': forms.Select(attrs={'class': 'form-select', 'id': 'id_referred_to_ward'}),
             'referred_to_doctor': forms.Select(attrs={'class': 'form-select select2', 'id': 'id_referred_to_doctor'}),
             'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
@@ -96,6 +97,14 @@ class ReferralForm(forms.ModelForm):
         # Set querysets for dropdowns
         self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
         self.fields['referred_to_department'].queryset = Department.objects.all().order_by('name')
+
+        # Ward referral target
+        from inpatient.models import Ward
+        self.fields['referred_to_ward'].queryset = Ward.objects.filter(is_active=True).order_by('name')
+        self.fields['referred_to_ward'].empty_label = "Select Ward"
+        self.fields['referred_to_ward'].label = "Target Ward"
+        self.fields['referred_to_ward'].required = False
+        self.fields['referred_to_ward'].help_text = "Select the ward that will receive this referral."
         
         # Add unit suggestions as placeholder
         from .department_units import COMMON_UNITS
@@ -167,6 +176,12 @@ class ReferralForm(forms.ModelForm):
         # specialty/unit/department requirements (theatre is the explicit destination).
         if referral_type == 'theatre':
             cleaned_data['referred_to_department'] = Referral.get_theatre_department()
+            return cleaned_data
+
+        # WARD REFERRAL: ward is the explicit destination; department not required.
+        if referral_type == 'ward':
+            if not cleaned_data.get('referred_to_ward'):
+                raise forms.ValidationError("Please select a ward for ward referral.")
             return cleaned_data
 
         # ENFORCE EXPLICIT DEPARTMENT TARGETING
