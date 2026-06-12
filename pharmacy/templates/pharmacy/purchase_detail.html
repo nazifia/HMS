@@ -763,11 +763,11 @@
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text">₦</span>
-                                    <input type="number" class="form-control" id="payment_amount" 
-                                           name="payment_amount" value="{{ purchase.total_amount }}" 
-                                           step="0.01" min="0" required>
+                                    <input type="number" class="form-control" id="payment_amount"
+                                           name="payment_amount" value="{{ purchase.get_outstanding_amount }}"
+                                           step="0.01" min="0.01" max="{{ purchase.get_outstanding_amount }}" required>
                                 </div>
-                                <div class="form-text">Total due: {{ purchase.total_amount|currency }}</div>
+                                <div class="form-text">Outstanding: {{ purchase.get_outstanding_amount|currency }} of {{ purchase.total_amount|currency }} total (partial payments allowed)</div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -779,9 +779,10 @@
                                     <option value="">Select Payment Method</option>
                                     <option value="cash">Cash</option>
                                     <option value="bank_transfer">Bank Transfer</option>
-                                    <option value="check">Check</option>
+                                    <option value="cheque">Cheque</option>
                                     <option value="credit_card">Credit Card</option>
-                                    <option value="wallet">Wallet</option>
+                                    <option value="mobile_money">Mobile Money</option>
+                                    <option value="other">Other</option>
                                 </select>
                             </div>
                         </div>

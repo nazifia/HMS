@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ page_title }}</h1>
+        <div>
+            <a href="{% url 'pharmacy:supplier_detail' supplier.id %}" class="btn btn-sm btn-secondary shadow-sm">
+                <i class="fas fa-arrow-left fa-sm"></i> Back to Supplier
+            </a>
+            <a href="{% url 'pharmacy:add_purchase' %}" class="btn btn-sm btn-primary shadow-sm">
+                <i class="fas fa-plus fa-sm text-white-50"></i> New Purchase Order
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Supplier</h6>
+                </div>
+                <div class="card-body">
+                    <h5>{{ supplier.name }}</h5>
+                    {% if supplier.contact_person %}<p class="mb-1"><i class="fas fa-user me-1"></i> {{ supplier.contact_person }}</p>{% endif %}
+                    <p class="mb-1"><i class="fas fa-phone me-1"></i> {{ supplier.phone_number }}</p>
+                    {% if supplier.email %}<p class="mb-1"><i class="fas fa-envelope me-1"></i> {{ supplier.email }}</p>{% endif %}
+                    <p class="mb-0 text-muted">{{ supplier.city }}, {{ supplier.state }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Frequently Ordered Medications</h6>
+                </div>
+                <div class="card-body">
+                    {% if frequently_ordered %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Medication</th>
+                                    <th class="text-end">Times Ordered</th>
+                                    <th class="text-end">Total Quantity</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in frequently_ordered %}
+                                <tr>
+                                    <td>{{ item.medication__name }}</td>
+                                    <td class="text-end">{{ item.order_count }}</td>
+                                    <td class="text-end">{{ item.total_quantity }}</td>
+                                    <td>
+                                        <a href="{% url 'pharmacy:create_procurement_request' item.medication_id %}"
+                                           class="btn btn-sm btn-primary" title="Create Procurement Request">
+                                            <i class="fas fa-cart-plus"></i> Reorder
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-pills fa-3x text-gray-300 mb-3"></i>
+                        <h5 class="text-gray-600">No order history with this supplier</h5>
+                        <p class="text-muted">Create a purchase order to start tracking frequently ordered medications.</p>
+                        <a href="{% url 'pharmacy:add_purchase' %}" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i> New Purchase Order
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

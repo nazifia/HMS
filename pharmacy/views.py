@@ -878,20 +878,6 @@ def delete_supplier(request, supplier_id):
 @login_required
 @permission_required("pharmacy.create")
 def quick_procurement(request, supplier_id):
-    """View for deleting a supplier"""
-    supplier = get_object_or_404(Supplier, id=supplier_id, is_active=True)
-    context = {
-        "supplier": supplier,
-        "page_title": f"Delete Supplier - {supplier.name}",
-        "active_nav": "pharmacy",
-    }
-
-    return render(request, "pharmacy/delete_supplier.html", context)
-
-
-@login_required
-@permission_required("pharmacy.create")
-def quick_procurement(request, supplier_id):
     """View for quick procurement from a supplier"""
     supplier = get_object_or_404(Supplier, id=supplier_id, is_active=True)
 
@@ -922,18 +908,14 @@ def procurement_dashboard(request):
 
     # Get procurement statistics
     total_purchases = Purchase.objects.count()
-    pending_orders = (
-        Purchase.objects.filter(approval_status="pending")
-        .select_related("supplier")
-        .order_by("-purchase_date")[:10]
-    )
-    total_pending_orders = pending_orders.count()
+    pending_qs = Purchase.objects.filter(approval_status="pending")
+    total_pending_orders = pending_qs.count()
     total_pending_value = (
-        Purchase.objects.filter(approval_status="pending").aggregate(
-            total=Sum("total_amount")
-        )["total"]
-        or 0
+        pending_qs.aggregate(total=Sum("total_amount"))["total"] or 0
     )
+    pending_orders = pending_qs.select_related("supplier").order_by(
+        "-purchase_date"
+    )[:10]
 
     # Get recent purchases
     recent_orders = Purchase.objects.select_related("supplier").order_by(
@@ -941,10 +923,11 @@ def procurement_dashboard(request):
     )[:10]
 
     # Get low stock items from ActiveStoreInventory
-    low_stock_medications = ActiveStoreInventory.objects.filter(
+    low_stock_qs = ActiveStoreInventory.objects.filter(
         stock_quantity__lte=F("reorder_level")
-    ).select_related("medication", "active_store__dispensary")[:20]
-    low_stock_count = low_stock_medications.count()
+    ).select_related("medication", "active_store__dispensary")
+    low_stock_count = low_stock_qs.count()
+    low_stock_medications = low_stock_qs[:20]
 
     # Get top suppliers in last 90 days
     ninety_days_ago = timezone.now() - timedelta(days=90)
@@ -990,14 +973,14 @@ def procurement_analytics(request):
     if start_date:
         try:
             start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
-            purchases_qs = purchases_qs.filter(purchase_date__gte=start_date_obj)
+            purchases_qs = purchases_qs.filter(purchase_date__date__gte=start_date_obj)
         except ValueError:
             pass
 
     if end_date:
         try:
             end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
-            purchases_qs = purchases_qs.filter(purchase_date__lte=end_date_obj)
+            purchases_qs = purchases_qs.filter(purchase_date__date__lte=end_date_obj)
         except ValueError:
             pass
 
@@ -1021,10 +1004,12 @@ def procurement_analytics(request):
             total_orders=Count("id"),
             total_value=Sum("total_amount"),
             avg_order_value=Avg("total_amount"),
-            on_time_deliveries=Count(
+            on_time_deliveries=Sum(
                 Case(
                     When(
-                        expected_delivery_date__gte=F("purchase_date"),
+                        actual_delivery_date__isnull=False,
+                        expected_delivery_date__isnull=False,
+                        actual_delivery_date__lte=F("expected_delivery_date"),
                         then=Value(1),
                     ),
                     default=Value(0),
@@ -1068,13 +1053,23 @@ def procurement_analytics(request):
         "medication", "active_store__dispensary"
     )[:50]
 
+    inventory_items = list(inventory_items)
+    dispensed_totals = {
+        (row["prescription_item__medication"], row["dispensary"]): row["total"]
+        for row in DispensingLog.objects.filter(
+            prescription_item__medication__in=[i.medication_id for i in inventory_items],
+            dispensary__in=[i.active_store.dispensary_id for i in inventory_items],
+        )
+        .values("prescription_item__medication", "dispensary")
+        .annotate(total=Sum("dispensed_quantity"))
+    }
+
     inventory_turnover = []
     for item in inventory_items:
         dispensed = (
-            DispensingLog.objects.filter(
-                prescription_item__medication=item.medication,
-                dispensary=item.active_store.dispensary,
-            ).aggregate(total=Sum("dispensed_quantity"))["total"]
+            dispensed_totals.get(
+                (item.medication_id, item.active_store.dispensary_id)
+            )
             or 0
         )
         stock = item.stock_quantity or 0
@@ -1274,7 +1269,7 @@ def expense_analysis(request):
     if start_date:
         try:
             start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
-            purchases_qs = purchases_qs.filter(purchase_date__gte=start_date_obj)
+            purchases_qs = purchases_qs.filter(purchase_date__date__gte=start_date_obj)
             expenses_qs = expenses_qs.filter(expense_date__gte=start_date_obj)
         except ValueError:
             pass
@@ -1282,7 +1277,7 @@ def expense_analysis(request):
     if end_date:
         try:
             end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
-            purchases_qs = purchases_qs.filter(purchase_date__lte=end_date_obj)
+            purchases_qs = purchases_qs.filter(purchase_date__date__lte=end_date_obj)
             expenses_qs = expenses_qs.filter(expense_date__lte=end_date_obj)
         except ValueError:
             pass
@@ -4051,6 +4046,11 @@ def manage_purchases(request):
     if status:
         purchases = purchases.filter(approval_status=status)
 
+    # Filter by payment status
+    payment_status = request.GET.get("payment_status", "")
+    if payment_status:
+        purchases = purchases.filter(payment_status=payment_status)
+
     # Pagination
     paginator = Paginator(purchases, 10)
     page_number = request.GET.get("page")
@@ -4061,7 +4061,7 @@ def manage_purchases(request):
         "page_obj": page_obj,  # Keep for pagination
         "search_query": search_query,
         "status": status,
-        "payment_status": request.GET.get("payment_status", ""),
+        "payment_status": payment_status,
         "title": "Manage Purchases",
         "active_nav": "pharmacy",
     }
@@ -4243,26 +4243,27 @@ def process_purchase_payment(request, purchase_id):
         payment_notes = request.POST.get("payment_notes", "")
 
         try:
-            payment_amount = float(payment_amount)
+            from decimal import Decimal, InvalidOperation
+
+            try:
+                payment_amount = Decimal(payment_amount).quantize(Decimal("0.01"))
+            except (InvalidOperation, TypeError):
+                raise ValueError("Invalid payment amount.")
 
             # Validate payment amount
             if payment_amount <= 0:
                 messages.error(request, "Payment amount must be greater than zero.")
                 return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
-            if payment_amount != float(purchase.total_amount):
+            outstanding = purchase.get_outstanding_amount()
+            if payment_amount > outstanding:
                 messages.error(
                     request,
-                    f"Payment amount must match the total amount (₦{purchase.total_amount}).",
+                    f"Payment amount exceeds outstanding balance (₦{outstanding}).",
                 )
                 return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
             with transaction.atomic():
-                # Update purchase payment status
-                purchase.payment_status = "paid"
-                purchase.payment_date = timezone.now()
-                purchase.save()
-
                 # Create payment record
                 from .models import PurchasePayment
 
@@ -4276,10 +4277,24 @@ def process_purchase_payment(request, purchase_id):
                     payment_date=timezone.now(),
                 )
 
-                messages.success(
-                    request,
-                    f"Payment of ₦{payment_amount:,.2f} processed successfully for Purchase #{purchase.invoice_number}.",
-                )
+                # Update purchase payment status based on total paid
+                if payment_amount >= outstanding:
+                    purchase.payment_status = "paid"
+                    purchase.payment_date = timezone.now()
+                else:
+                    purchase.payment_status = "partial"
+                purchase.save(update_fields=["payment_status", "payment_date"])
+
+                if purchase.payment_status == "paid":
+                    messages.success(
+                        request,
+                        f"Payment of ₦{payment_amount:,.2f} processed. Purchase #{purchase.invoice_number} fully paid.",
+                    )
+                else:
+                    messages.success(
+                        request,
+                        f"Partial payment of ₦{payment_amount:,.2f} recorded. Outstanding: ₦{purchase.get_outstanding_amount():,.2f}.",
+                    )
                 return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
         except ValueError:
@@ -4629,6 +4644,9 @@ def approve_purchase(request, purchase_id):
                 purchase.approval_notes = approval_notes
                 purchase.approval_updated_at = timezone.now()
                 purchase.save()
+
+                # Receive purchased items into bulk store / dispensary stock
+                purchase.receive_to_inventory()
 
                 # Create approval record
                 from .models import PurchaseApproval

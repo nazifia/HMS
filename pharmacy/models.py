@@ -62,7 +62,7 @@ class Supplier(models.Model):
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
     postal_code = models.CharField(max_length=20, blank=True, null=True)
-    country = models.CharField(max_length=100, default="India")
+    country = models.CharField(max_length=100, default="Nigeria")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -136,6 +136,7 @@ class Purchase(models.Model):
         max_length=20, choices=PRIORITY_LEVEL_CHOICES, default="normal"
     )
     expected_delivery_date = models.DateTimeField(null=True, blank=True)
+    actual_delivery_date = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Purchase #{self.invoice_number} - {self.supplier.name}"
@@ -179,6 +180,36 @@ class Purchase(models.Model):
             "pending",
             "partial",
         ]
+
+    def get_amount_paid(self):
+        """Total of all recorded payments"""
+        from django.db.models import Sum
+
+        return self.payments.aggregate(total=Sum("amount"))["total"] or 0
+
+    def get_outstanding_amount(self):
+        """Remaining balance to be paid"""
+        return self.total_amount - self.get_amount_paid()
+
+    def receive_to_inventory(self):
+        """Receive all purchase items into stock. Called once on approval —
+        approval is only possible from 'pending', so this cannot double-add."""
+        for item in self.items.select_related("medication"):
+            item.add_to_bulk_store()
+
+            # Maintain legacy dispensary inventory for backward compatibility
+            if self.dispensary:
+                inventory, _ = MedicationInventory.objects.get_or_create(
+                    medication=item.medication,
+                    dispensary=self.dispensary,
+                    defaults={"stock_quantity": 0},
+                )
+                inventory.stock_quantity += item.quantity
+                inventory.last_restock_date = timezone.now()
+                inventory.save()
+
+        self.actual_delivery_date = timezone.now()
+        self.save(update_fields=["actual_delivery_date"])
 
     class Meta:
         ordering = ["-created_at"]
@@ -268,21 +299,8 @@ class PurchaseItem(models.Model):
         # Always calculate total price
         self.total_price = self.quantity * self.unit_price
 
-        if not self.pk:  # If this is a new item (not an update)
-            # Add to bulk store instead of directly to dispensary
-            self._add_to_bulk_store()
-
-            # Also maintain legacy dispensary inventory for backward compatibility
-            if self.purchase.dispensary:
-                inventory, created = MedicationInventory.objects.get_or_create(
-                    medication=self.medication,
-                    dispensary=self.purchase.dispensary,
-                    defaults={"stock_quantity": 0},  # Initialize if new
-                )
-                inventory.stock_quantity += self.quantity
-                inventory.last_restock_date = timezone.now()
-                inventory.save()
-
+        # Inventory is NOT updated here: stock is received via
+        # Purchase.receive_to_inventory() when the purchase is approved.
         super().save(*args, **kwargs)
 
         # Update purchase total amount after saving the item
@@ -294,7 +312,7 @@ class PurchaseItem(models.Model):
         # Update purchase total amount after deleting the item
         purchase.update_total_amount()
 
-    def _add_to_bulk_store(self):
+    def add_to_bulk_store(self):
         """Add procured medication to bulk store"""
         # Get or create a default bulk store
         bulk_store, created = BulkStore.objects.get_or_create(
