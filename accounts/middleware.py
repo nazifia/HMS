@@ -319,10 +319,16 @@ class UserActivityMiddleware:
 
         from django.core.cache import cache
 
+        # A broken cache backend (e.g. missing DatabaseCache table) must never
+        # take down an authenticated page. Degrade to "always touch" instead of
+        # raising out of the request thread.
         throttle_key = f"sess_touch_{session_key}"
-        if cache.get(throttle_key):
-            return
-        cache.set(throttle_key, 1, self.SESSION_TOUCH_INTERVAL)
+        try:
+            if cache.get(throttle_key):
+                return
+            cache.set(throttle_key, 1, self.SESSION_TOUCH_INTERVAL)
+        except Exception as e:
+            logger.warning(f"Session-touch throttle cache unavailable: {e}")
 
         user_id = request.user.pk
         ip_address = self.get_client_ip(request)
