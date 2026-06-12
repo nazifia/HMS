@@ -1275,9 +1275,8 @@
 
     <!-- Custom JS -->
     {% load static %}
-    {% compress js %}
-    <script src="{% static 'js/sidebar.js' %}"></script>
-    {% endcompress %}
+    {# sidebar.js: mtime cache-bust (static_v) so edits never serve stale; kept out of {% compress %} which mishandles query strings #}
+    <script src="{% static_v 'js/sidebar.js' %}"></script>
 
     <!-- Final Scroll Prevention Script -->
     <script>

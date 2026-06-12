@@ -2,6 +2,8 @@
 Template tags for core functionality and role-based UI
 """
 
+import os
+
 from django import template
 from django.contrib.auth import get_user_model
 from django.utils.safestring import mark_safe
@@ -425,3 +427,27 @@ def count_add_permissions(grouped_permissions):
         )
     except Exception:
         return 0
+
+
+@register.simple_tag
+def static_v(path):
+    """
+    Cache-busting static URL: appends the file's modification time as ?v=<mtime>.
+
+    The query string changes whenever the file is edited, so browsers fetch the
+    new copy automatically. No manual version bump, no collectstatic step, and it
+    works under DEBUG=True (unlike ManifestStaticFilesStorage).
+    """
+    from django.contrib.staticfiles import finders
+    from django.templatetags.static import static
+
+    url = static(path)
+    try:
+        absolute = finders.find(path)
+        if absolute and os.path.exists(absolute):
+            mtime = int(os.path.getmtime(absolute))
+            sep = "&" if "?" in url else "?"
+            url = f"{url}{sep}v={mtime}"
+    except Exception:
+        pass
+    return url
