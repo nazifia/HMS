@@ -45,17 +45,24 @@ def create_pharmacy_invoice(request, prescription, subtotal_value, force_new=Fal
         messages.info(request, f"[create_pharmacy_invoice] Note: {str(e)}")
 
     try:
-        pharmacy_service = Service.objects.get(name__iexact="Medication Dispensing")
-        messages.info(
-            request,
-            f"[create_pharmacy_invoice] Found 'Medication Dispensing' service. ID: {pharmacy_service.id}, Tax: {pharmacy_service.tax_percentage}%",
-        )
-    except Service.DoesNotExist:
-        messages.error(
-            request,
-            "Billing service 'Medication Dispensing' not found. Invoice cannot be created. Please configure this service in the billing module.",
-        )
-        return None
+        pharmacy_service = Service.objects.filter(name__iexact="Medication Dispensing").first()
+        if pharmacy_service is None:
+            pharmacy_service = Service.objects.create(
+                name="Medication Dispensing",
+                description="Dispensing of prescribed medications",
+                price=Decimal("0.00"),
+                category=None,
+                is_active=True,
+            )
+            messages.info(
+                request,
+                f"[create_pharmacy_invoice] Auto-created 'Medication Dispensing' service. ID: {pharmacy_service.id}",
+            )
+        else:
+            messages.info(
+                request,
+                f"[create_pharmacy_invoice] Found 'Medication Dispensing' service. ID: {pharmacy_service.id}, Tax: {pharmacy_service.tax_percentage}%",
+            )
     except Exception as e:
         messages.error(
             request,
