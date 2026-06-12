@@ -811,7 +811,7 @@
                 {% endif %}
 
                 {% if can_pay_with_wallet %}
-                    <button type="button" class="btn btn-success" data-toggle="modal" data-target="#walletPayModal">
+                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#walletPayModal">
                         <i class="fas fa-wallet"></i> Pay from Wallet ({{ cart_payable_now|currency }})
                     </button>
                 {% endif %}
@@ -936,9 +936,7 @@
                     <h5 class="modal-title" id="walletPayModalLabel">
                         <i class="fas fa-wallet"></i> Pay from Patient Wallet
                     </h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form method="post" action="{% url 'pharmacy:pay_cart_from_wallet' cart.id %}">
                     {% csrf_token %}
@@ -976,7 +974,7 @@
                         {% endif %}
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-success">
                             <i class="fas fa-check"></i> Confirm Payment
                         </button>
@@ -995,9 +993,7 @@
                     <h5 class="modal-title" id="substituteModalLabel">
                         <i class="fas fa-exchange-alt"></i> Substitute Medication
                     </h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form method="post" id="substituteForm">
                     {% csrf_token %}
@@ -1047,7 +1043,7 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                             <i class="fas fa-times"></i> Cancel
                         </button>
                         <button type="submit" class="btn btn-primary">
