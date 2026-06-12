@@ -945,6 +945,28 @@
 <!-- End of Sidebar -->
 
 <style>
+/* Desktop sidebar fully-hidden state (toggled via topbar hamburger) */
+@media (min-width: 768px) {
+    .sidebar.sidebar-hidden,
+    #sidebar-container.sidebar-hidden {
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+        overflow: hidden !important;
+        border: none !important;
+        opacity: 0;
+        transition: width 0.3s ease, opacity 0.2s ease;
+    }
+
+    /* Do not expand on hover while fully hidden */
+    .sidebar.sidebar-hidden:hover,
+    #sidebar-container.sidebar-hidden:hover {
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+    }
+}
+
 /* Desktop sidebar collapsed state */
 .sidebar.sidebar-collapsed,
 #sidebar-container.sidebar-collapsed {
