@@ -697,9 +697,11 @@
                                                         {% if inventory.stock_quantity > 50 %}
                                                             <div class="stock-progress-bar high" style="width: 100%"></div>
                                                         {% elif inventory.stock_quantity > 20 %}
-                                                            <div class="stock-progress-bar medium" style="width: {{ inventory.stock_quantity }}%"></div>
+                                                            <div class="stock-progress-bar medium" style="width: 60%"></div>
+                                                        {% elif inventory.stock_quantity > 0 %}
+                                                            <div class="stock-progress-bar low" style="width: 25%"></div>
                                                         {% else %}
-                                                            <div class="stock-progress-bar low" style="width: {% if inventory.stock_quantity > 0 %}{{ inventory.stock_quantity|add:20 }}{% else %}0{% endif %}%"></div>
+                                                            <div class="stock-progress-bar low" style="width: 0"></div>
                                                         {% endif %}
                                                     </div>
                                                     <span class="stock-badge {% if inventory.is_low_stock %}low-stock{% elif inventory.stock_quantity > 0 %}in-stock{% else %}out-stock{% endif %}">

@@ -305,8 +305,11 @@ def features_showcase(request):
 @permission_required("pharmacy.view")
 def inventory_list(request):
     """View for listing pharmacy inventory - Optimized with select_related"""
-    # Get all medications with optimized query
-    medications = Medication.objects.filter(is_active=True).select_related("category")
+    # Get all medications with optimized query (prefetch inventories + dispensary
+    # to avoid N+1 in the template stock-status column)
+    medications = Medication.objects.select_related("category").prefetch_related(
+        "inventories__dispensary"
+    )
 
     # Initialize the search form
     form = MedicationSearchForm(request.GET or None)
@@ -325,12 +328,12 @@ def inventory_list(request):
     if category_id:
         medications = medications.filter(category_id=category_id)
 
-    # Filter by active status
+    # Filter by active status (default to active when not specified)
     is_active = request.GET.get("is_active", "")
-    if is_active == "active":
-        medications = medications.filter(is_active=True)
-    elif is_active == "inactive":
+    if is_active == "inactive":
         medications = medications.filter(is_active=False)
+    else:
+        medications = medications.filter(is_active=True)
 
     # Pagination
     paginator = Paginator(medications, 10)
@@ -344,16 +347,15 @@ def inventory_list(request):
     total_medications = Medication.objects.count()
     active_count = Medication.objects.filter(is_active=True).count()
 
-    # Count low stock items (check inventory levels)
-    from django.db.models import Sum
-
-    low_stock_count = 0
-    all_meds = Medication.objects.filter(is_active=True).prefetch_related("inventories")
-    for med in all_meds:
-        for inv in med.inventories.all():
-            if inv.is_low_stock:
-                low_stock_count += 1
-                break
+    # Count active medications with at least one low-stock inventory (single query)
+    low_stock_count = (
+        Medication.objects.filter(
+            is_active=True,
+            inventories__stock_quantity__lte=F("inventories__reorder_level"),
+        )
+        .distinct()
+        .count()
+    )
 
     context = {
         "page_obj": page_obj,
