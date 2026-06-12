@@ -298,6 +298,26 @@ def view_cart(request, cart_id):
     if cart.invoice and cart.invoice.payments.exists():
         payment_details = cart.invoice.payments.all().order_by("-payment_date")
 
+    # Get patient wallet (for wallet payment option)
+    from patients.models import PatientWallet
+
+    patient_wallet, _ = PatientWallet.objects.get_or_create(
+        patient=cart.prescription.patient, defaults={"balance": Decimal("0.00")}
+    )
+
+    # Amount needed to pay this cart's invoice (balance if invoiced, else payable estimate)
+    if cart.invoice:
+        cart_payable_now = cart.invoice.get_balance()
+    else:
+        cart_payable_now = patient_payable
+
+    # Can wallet pay be offered? (cart has unpaid invoice, or is active+ready to invoice)
+    can_pay_with_wallet = False
+    if cart.invoice and cart.invoice.status != "paid":
+        can_pay_with_wallet = True
+    elif not cart.invoice and can_checkout:
+        can_pay_with_wallet = True
+
     # Get all available medications in the dispensary for substitution
     available_medications = []
     if cart.dispensary and cart.status == "active":
@@ -368,6 +388,10 @@ def view_cart(request, cart_id):
         "checkout_message": checkout_message,
         "is_nhia_patient": is_nhia_patient,
         "payment_details": payment_details,
+        "patient_wallet": patient_wallet,
+        "cart_payable_now": cart_payable_now,
+        "can_pay_with_wallet": can_pay_with_wallet,
+        "wallet_balance_sufficient": patient_wallet.balance >= cart_payable_now,
         "available_medications": json.dumps(available_medications),
         "page_title": f"Prescription Cart #{cart.id}",
         "active_nav": "pharmacy",
@@ -580,6 +604,140 @@ def generate_invoice_from_cart(request, cart_id):
     except Exception as e:
         messages.error(request, f"Error generating invoice: {str(e)}")
         return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+
+@login_required
+@permission_required("pharmacy.edit")
+def pay_cart_from_wallet(request, cart_id):
+    """
+    Pay a cart's invoice directly from the patient's wallet.
+    Auto-generates the invoice first if the cart is active and ready.
+    On success the cart is marked 'paid' and ready for dispensing.
+    """
+    from pharmacy_billing.models import Payment as PharmacyPayment
+    from patients.models import PatientWallet
+    from core.models import InternalNotification
+
+    cart = get_object_or_404(PrescriptionCart, id=cart_id)
+
+    # Validate pharmacist access to cart's dispensary
+    if not request.user.is_superuser and cart.dispensary:
+        if hasattr(request.user, "can_access_dispensary"):
+            if not request.user.can_access_dispensary(cart.dispensary):
+                messages.error(
+                    request,
+                    f"You don't have permission to process payment for '{cart.dispensary.name}'. "
+                    f"This cart is assigned to a dispensary you're not authorized to access.",
+                )
+                return redirect("pharmacy:cart_list")
+
+    if request.method != "POST":
+        return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+    try:
+        with transaction.atomic():
+            # Ensure there is an invoice to pay; auto-generate if cart is active & ready
+            invoice = cart.invoice
+            if invoice is None:
+                can_checkout, message = cart.can_generate_invoice()
+                if not can_checkout:
+                    messages.error(request, f"Cannot process payment: {message}")
+                    return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+                invoice = create_pharmacy_invoice(
+                    request, cart.prescription, cart.get_patient_payable(), force_new=False
+                )
+                if not invoice:
+                    messages.error(request, "Failed to create invoice for payment.")
+                    return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+                cart.invoice = invoice
+                cart.status = "invoiced"
+                cart.save(update_fields=["invoice", "status"])
+
+            # Already paid?
+            if invoice.status == "paid":
+                if cart.status in ["active", "invoiced"]:
+                    cart.status = "paid"
+                    cart.save(update_fields=["status"])
+                messages.info(request, "This invoice has already been paid.")
+                return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+            amount = invoice.get_balance()
+            if amount <= 0:
+                messages.info(request, "Nothing to pay on this invoice.")
+                return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+            # Get/create patient wallet
+            patient = cart.prescription.patient
+            wallet, _ = PatientWallet.objects.get_or_create(
+                patient=patient, defaults={"balance": Decimal("0.00")}
+            )
+
+            # Block if insufficient balance unless explicitly allowed (wallet may go negative)
+            allow_negative = request.POST.get("allow_negative") == "true"
+            if wallet.balance < amount and not allow_negative:
+                messages.error(
+                    request,
+                    f"Insufficient wallet balance. Available: ₦{wallet.balance:.2f}, "
+                    f"required: ₦{amount:.2f}. Top up the wallet or allow an overdraft.",
+                )
+                return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+            # Record payment + debit wallet
+            payment = PharmacyPayment.objects.create(
+                invoice=invoice,
+                amount=amount,
+                payment_method="wallet",
+                received_by=request.user,
+                notes=f"Paid from patient wallet (Cart #{cart.id})",
+            )
+
+            wallet.debit(
+                amount=amount,
+                description=f"Payment for prescription #{cart.prescription.id} (Cart #{cart.id})",
+                transaction_type="pharmacy_payment",
+                user=request.user,
+                invoice=invoice,
+                payment_instance=payment,
+            )
+
+            # Update invoice
+            invoice.amount_paid += amount
+            invoice.status = "paid"
+            invoice.save()
+
+            # Update cart + prescription
+            cart.status = "paid"
+            cart.save(update_fields=["status"])
+
+            prescription = cart.prescription
+            if hasattr(prescription, "payment_status"):
+                prescription.payment_status = "paid"
+                prescription.save(update_fields=["payment_status"])
+
+            log_audit_action(
+                request.user,
+                "create",
+                payment,
+                f"Wallet payment of ₦{amount:.2f} for cart #{cart.id} "
+                f"(prescription #{prescription.id})",
+            )
+
+            if prescription.doctor:
+                InternalNotification.objects.create(
+                    user=prescription.doctor,
+                    message=f"Wallet payment of ₦{amount:.2f} recorded for prescription #{prescription.id}",
+                )
+
+        messages.success(
+            request,
+            f"✅ Paid ₦{amount:.2f} from patient wallet. Cart is ready for dispensing.",
+        )
+    except Exception as e:
+        messages.error(request, f"Error processing wallet payment: {str(e)}")
+
+    return redirect("pharmacy:view_cart", cart_id=cart.id)
 
 
 @login_required

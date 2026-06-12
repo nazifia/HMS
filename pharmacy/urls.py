@@ -581,6 +581,11 @@ urlpatterns = [
         name="generate_invoice_from_cart",
     ),
     path(
+        "cart/<int:cart_id>/pay-from-wallet/",
+        cart_views.pay_cart_from_wallet,
+        name="pay_cart_from_wallet",
+    ),
+    path(
         "cart/<int:cart_id>/complete-dispensing/",
         cart_views.complete_dispensing_from_cart,
         name="complete_dispensing_from_cart",

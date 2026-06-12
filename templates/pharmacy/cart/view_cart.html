@@ -810,6 +810,12 @@
                     </form>
                 {% endif %}
 
+                {% if can_pay_with_wallet %}
+                    <button type="button" class="btn btn-success" data-toggle="modal" data-target="#walletPayModal">
+                        <i class="fas fa-wallet"></i> Pay from Wallet ({{ cart_payable_now|currency }})
+                    </button>
+                {% endif %}
+
                 {% if cart.status in 'active,invoiced' %}
                     <a href="{% url 'pharmacy:cancel_cart' cart.id %}" class="btn btn-cancel">
                         <i class="fas fa-times"></i> Cancel Cart
@@ -921,6 +927,66 @@
         </div>
     </div>
 </div>
+    <!-- Wallet Payment Modal -->
+    {% if can_pay_with_wallet %}
+    <div class="modal fade" id="walletPayModal" tabindex="-1" role="dialog" aria-labelledby="walletPayModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="walletPayModalLabel">
+                        <i class="fas fa-wallet"></i> Pay from Patient Wallet
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="post" action="{% url 'pharmacy:pay_cart_from_wallet' cart.id %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <div class="summary-item">
+                            <span>Patient:</span>
+                            <span><strong>{{ cart.prescription.patient.get_full_name }}</strong></span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Wallet Balance:</span>
+                            <span><strong>{{ patient_wallet.balance|currency }}</strong></span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Amount to Pay:</span>
+                            <span><strong>{{ cart_payable_now|currency }}</strong></span>
+                        </div>
+                        <hr>
+                        {% if wallet_balance_sufficient %}
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle"></i>
+                                {{ cart_payable_now|currency }} will be debited from the patient's wallet
+                                and the cart marked paid, ready for dispensing.
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Wallet balance is insufficient for this payment.
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="allow_negative" value="true" id="allowNegative">
+                                <label class="form-check-label" for="allowNegative">
+                                    Allow wallet overdraft (balance will go negative)
+                                </label>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check"></i> Confirm Payment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Substitution Modal -->
     <div class="modal fade" id="substituteModal" tabindex="-1" role="dialog" aria-labelledby="substituteModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
