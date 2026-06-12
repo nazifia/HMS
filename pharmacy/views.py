@@ -6484,7 +6484,7 @@ def prescription_payment(request, prescription_id):
     # Get or create pharmacy invoice
     pharmacy_invoice = (
         PharmacyInvoice.objects.filter(prescription=prescription)
-        .order_by("-created_at")
+        .order_by("-invoice_date", "-id")
         .first()
     )
     if pharmacy_invoice is None:
@@ -6886,7 +6886,7 @@ def billing_office_medication_payment(request, prescription_id):
     # Get or create pharmacy invoice
     pharmacy_invoice = (
         PharmacyInvoice.objects.filter(prescription=prescription)
-        .order_by("-created_at")
+        .order_by("-invoice_date", "-id")
         .first()
     )
     if pharmacy_invoice is None:
