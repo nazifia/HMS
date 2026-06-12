@@ -254,9 +254,12 @@ class SessionTimeoutMiddleware:
             messages.warning(request, "Your session has expired. Please log in again.")
             return redirect('accounts:login')
         
-        # Update last activity time
-        request.session['last_activity'] = now.timestamp()
-        
+        # Refresh the inactivity timer ONLY on genuine user activity, so an
+        # idle user is actually logged out. Background AJAX polling (status
+        # widgets, notification refresh, etc.) must NOT keep the session alive.
+        if self._is_user_activity(request):
+            request.session['last_activity'] = now.timestamp()
+
         # Add session info to request for templates
         request.session_info = {
             'time_remaining': timeout_seconds - time_since_last_activity,
@@ -266,6 +269,36 @@ class SessionTimeoutMiddleware:
 
         response = self.get_response(request)
         return response
+
+    def _is_user_activity(self, request):
+        """Return True if the request reflects genuine user interaction.
+
+        Real activity = a top-level page navigation, or an explicit ping
+        fired by client-side input events (mousedown/keydown/scroll/touch).
+        Background AJAX polling (Sec-Fetch-Dest: empty / cors) must NOT
+        refresh the inactivity timer, otherwise idle users are never logged
+        out while a page silently polls the server.
+        """
+        # Explicit user-driven activity signals.
+        try:
+            activity_paths = (
+                reverse('accounts:activity_ping'),
+                reverse('accounts:extend_session'),
+            )
+            if request.path in activity_paths:
+                return True
+        except Exception:
+            pass
+
+        # Modern browsers send Sec-Fetch-* metadata. 'document' = real
+        # navigation; 'empty'/'cors' = fetch/XHR (background polling).
+        fetch_dest = request.headers.get('Sec-Fetch-Dest')
+        if fetch_dest:
+            return fetch_dest == 'document'
+
+        # Fallback for older clients without Sec-Fetch-* headers: treat
+        # non-AJAX requests as navigation.
+        return request.headers.get('X-Requested-With') != 'XMLHttpRequest'
 
     def get_timeout_for_user(self, user):
         """Get appropriate timeout period based on user type"""
