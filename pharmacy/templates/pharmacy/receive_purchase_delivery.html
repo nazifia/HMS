@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'pharmacy:purchase_detail' purchase.id %}" class="btn btn-secondary btn-sm">
+            <i class="fas fa-arrow-left"></i> Back to Purchase
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                Receive Delivery - Purchase #{{ purchase.invoice_number }}
+                ({{ purchase.supplier.name }})
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                Enter the quantity received for each item in this delivery.
+                Leave blank or 0 for items not delivered yet — you can record
+                additional deliveries later.
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Medication</th>
+                                <th>Batch</th>
+                                <th>Ordered</th>
+                                <th>Already Received</th>
+                                <th>Outstanding</th>
+                                <th style="width: 160px;">Receive Now</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td>{{ item.medication.name }}</td>
+                                <td>{{ item.batch_number|default:"-" }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>{{ item.quantity_received }}</td>
+                                <td class="fw-bold">{{ item.quantity_outstanding }}</td>
+                                <td>
+                                    {% if item.quantity_outstanding > 0 %}
+                                    <input type="number" class="form-control"
+                                           name="received_qty_{{ item.id }}"
+                                           min="0" max="{{ item.quantity_outstanding }}"
+                                           value="{{ item.quantity_outstanding }}">
+                                    {% else %}
+                                    <span class="badge bg-success">Complete</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-truck-loading"></i> Receive Into Stock
+                </button>
+                <a href="{% url 'pharmacy:purchase_detail' purchase.id %}" class="btn btn-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

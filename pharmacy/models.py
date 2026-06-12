@@ -138,6 +138,15 @@ class Purchase(models.Model):
     expected_delivery_date = models.DateTimeField(null=True, blank=True)
     actual_delivery_date = models.DateTimeField(null=True, blank=True)
 
+    DELIVERY_STATUS_CHOICES = [
+        ("pending", "Awaiting Delivery"),
+        ("partial", "Partially Received"),
+        ("received", "Fully Received"),
+    ]
+    delivery_status = models.CharField(
+        max_length=20, choices=DELIVERY_STATUS_CHOICES, default="pending", db_index=True
+    )
+
     def __str__(self):
         return f"Purchase #{self.invoice_number} - {self.supplier.name}"
 
@@ -175,11 +184,13 @@ class Purchase(models.Model):
         )
 
     def can_be_paid(self):
-        """Check if purchase can be paid"""
-        return self.approval_status == "approved" and self.payment_status in [
-            "pending",
-            "partial",
-        ]
+        """Check if purchase can be paid. Payment is only allowed once goods
+        have been received (fully or partially)."""
+        return (
+            self.approval_status == "approved"
+            and self.delivery_status in ["partial", "received"]
+            and self.payment_status in ["pending", "partial"]
+        )
 
     def get_amount_paid(self):
         """Total of all recorded payments"""
@@ -191,11 +202,44 @@ class Purchase(models.Model):
         """Remaining balance to be paid"""
         return self.total_amount - self.get_amount_paid()
 
-    def receive_to_inventory(self):
-        """Receive all purchase items into stock. Called once on approval —
-        approval is only possible from 'pending', so this cannot double-add."""
-        for item in self.items.select_related("medication"):
-            item.add_to_bulk_store()
+    def can_receive_delivery(self):
+        """Goods can only be received against an approved purchase that is
+        not yet fully delivered."""
+        return self.approval_status == "approved" and self.delivery_status in [
+            "pending",
+            "partial",
+        ]
+
+    def receive_items(self, received_quantities):
+        """Receive delivered goods into stock.
+
+        ``received_quantities`` maps PurchaseItem id -> quantity received in
+        this delivery. Quantities are validated against each item's
+        outstanding balance. Supports partial deliveries; updates
+        delivery_status and stamps actual_delivery_date when fully received.
+        Caller is responsible for wrapping in a transaction and locking the
+        purchase row.
+        """
+        items = {item.pk: item for item in self.items.select_related("medication")}
+
+        for item_id, qty in received_quantities.items():
+            item = items.get(item_id)
+            if item is None:
+                raise ValueError(f"Item {item_id} does not belong to this purchase.")
+            if qty < 0:
+                raise ValueError(f"{item.medication.name}: quantity cannot be negative.")
+            outstanding = item.quantity - item.quantity_received
+            if qty > outstanding:
+                raise ValueError(
+                    f"{item.medication.name}: received quantity ({qty}) exceeds "
+                    f"outstanding balance ({outstanding})."
+                )
+            if qty == 0:
+                continue
+
+            item.add_to_bulk_store(qty)
+            item.quantity_received += qty
+            item.save(update_fields=["quantity_received"])
 
             # Maintain legacy dispensary inventory for backward compatibility
             if self.dispensary:
@@ -204,12 +248,22 @@ class Purchase(models.Model):
                     dispensary=self.dispensary,
                     defaults={"stock_quantity": 0},
                 )
-                inventory.stock_quantity += item.quantity
+                inventory.stock_quantity += qty
                 inventory.last_restock_date = timezone.now()
                 inventory.save()
 
-        self.actual_delivery_date = timezone.now()
-        self.save(update_fields=["actual_delivery_date"])
+        fully_received = all(
+            item.quantity_received >= item.quantity for item in items.values()
+        )
+        any_received = any(item.quantity_received > 0 for item in items.values())
+
+        if fully_received:
+            self.delivery_status = "received"
+            self.actual_delivery_date = timezone.now()
+            self.save(update_fields=["delivery_status", "actual_delivery_date"])
+        elif any_received:
+            self.delivery_status = "partial"
+            self.save(update_fields=["delivery_status"])
 
     class Meta:
         ordering = ["-created_at"]
@@ -287,10 +341,15 @@ class PurchaseItem(models.Model):
     )
     medication = models.ForeignKey(Medication, on_delete=models.CASCADE)
     quantity = models.IntegerField()
+    quantity_received = models.PositiveIntegerField(default=0)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     batch_number = models.CharField(max_length=50, blank=True, null=True)
     expiry_date = models.DateField()
+
+    @property
+    def quantity_outstanding(self):
+        return self.quantity - self.quantity_received
 
     def __str__(self):
         return f"{self.medication.name} - {self.quantity} units"
@@ -300,7 +359,7 @@ class PurchaseItem(models.Model):
         self.total_price = self.quantity * self.unit_price
 
         # Inventory is NOT updated here: stock is received via
-        # Purchase.receive_to_inventory() when the purchase is approved.
+        # Purchase.receive_items() when the delivery arrives.
         super().save(*args, **kwargs)
 
         # Update purchase total amount after saving the item
@@ -312,8 +371,11 @@ class PurchaseItem(models.Model):
         # Update purchase total amount after deleting the item
         purchase.update_total_amount()
 
-    def add_to_bulk_store(self):
-        """Add procured medication to bulk store"""
+    def add_to_bulk_store(self, quantity=None):
+        """Add received medication to bulk store. ``quantity`` defaults to the
+        full ordered quantity for backward compatibility."""
+        if quantity is None:
+            quantity = self.quantity
         # Get or create a default bulk store
         bulk_store, created = BulkStore.objects.get_or_create(
             name="Main Bulk Store",
@@ -345,11 +407,11 @@ class PurchaseItem(models.Model):
 
         if not created:
             # Update existing inventory
-            bulk_inventory.stock_quantity += self.quantity
+            bulk_inventory.stock_quantity += quantity
             bulk_inventory.save()
         else:
             # Set initial quantity for new inventory
-            bulk_inventory.stock_quantity = self.quantity
+            bulk_inventory.stock_quantity = quantity
             bulk_inventory.save()
 
 
@@ -620,7 +682,9 @@ class BulkStoreInventory(models.Model):
     def calculate_marked_up_cost(self):
         """Calculate cost after applying markup percentage"""
         if self.unit_cost and self.markup_percentage is not None:
-            markup_multiplier = 1 + (self.markup_percentage / 100)
+            from decimal import Decimal
+
+            markup_multiplier = 1 + (Decimal(str(self.markup_percentage)) / 100)
             return self.unit_cost * markup_multiplier
         return self.unit_cost
 

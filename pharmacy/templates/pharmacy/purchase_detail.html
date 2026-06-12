@@ -228,6 +228,20 @@
                             <span class="badge bg-secondary">{{ purchase.get_payment_status_display }}</span>
                         {% endif %}
                     </p>
+                    <p><strong><i class="fas fa-truck-loading me-2"></i>Delivery Status:</strong>
+                        {% if purchase.delivery_status == 'pending' %}
+                            <span class="badge bg-warning">Awaiting Delivery</span>
+                        {% elif purchase.delivery_status == 'partial' %}
+                            <span class="badge bg-info">Partially Received</span>
+                        {% elif purchase.delivery_status == 'received' %}
+                            <span class="badge bg-success">Fully Received</span>
+                        {% endif %}
+                        {% if purchase.can_receive_delivery %}
+                            <a href="{% url 'pharmacy:receive_purchase_delivery' purchase.id %}" class="btn btn-sm btn-outline-success ms-2">
+                                <i class="fas fa-dolly"></i> Receive Delivery
+                            </a>
+                        {% endif %}
+                    </p>
                     <p><strong><i class="fas fa-hospital me-2"></i>Dispensary:</strong> {{ purchase.dispensary.name|default:"N/A" }}</p>
                     <p><strong><i class="fas fa-sticky-note me-2"></i>Notes:</strong> {{ purchase.notes|default:"No notes" }}</p>
                     <p><strong><i class="fas fa-user me-2"></i>Created By:</strong> {{ purchase.created_by.get_full_name|default:"System" }}</p>
@@ -260,7 +274,7 @@
             <h6 class="m-0 font-weight-bold text-primary mb-0">
                 <i class="fas fa-pills me-2"></i>Purchase Items
             </h6>
-            {% if purchase.payment_status == 'pending' %}
+            {% if purchase.approval_status == 'draft' or purchase.approval_status == 'pending' %}
             <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addPurchaseItemModal">
                 <i class="fas fa-plus me-1"></i>Add Item
             </button>
@@ -527,9 +541,20 @@
             </button>
         {% endif %}
 
-        <!-- Payment Processing Buttons (only for approved purchases) -->
+        <!-- Receive Delivery Button (only for approved, not fully received) -->
+        {% if purchase.can_receive_delivery %}
+            <a href="{% url 'pharmacy:receive_purchase_delivery' purchase.id %}" class="btn btn-primary">
+                <i class="fas fa-dolly me-1"></i> Receive Delivery
+            </a>
+        {% endif %}
+
+        <!-- Payment Processing Buttons (only after goods received) -->
         {% if purchase.approval_status == 'approved' %}
-            {% if purchase.payment_status == 'pending' %}
+            {% if purchase.delivery_status == 'pending' %}
+                <button class="btn btn-secondary" disabled title="Payment is allowed only after goods have been received">
+                    <i class="fas fa-credit-card me-1"></i> Payment Awaiting Delivery
+                </button>
+            {% elif purchase.payment_status == 'pending' %}
                 <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#processPaymentModal">
                     <i class="fas fa-credit-card me-1"></i> Process Payment
                 </button>

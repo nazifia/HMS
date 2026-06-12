@@ -231,6 +231,11 @@ urlpatterns = [
         name="reject_purchase",
     ),
     path(
+        "purchases/<int:purchase_id>/receive/",
+        views.receive_purchase_delivery,
+        name="receive_purchase_delivery",
+    ),
+    path(
         "purchases/<int:purchase_id>/edit-delivery-date/",
         views.edit_purchase_delivery_date,
         name="edit_purchase_delivery_date",

@@ -4236,6 +4236,14 @@ def process_purchase_payment(request, purchase_id):
         messages.warning(request, "This purchase has already been paid.")
         return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
+    if purchase.delivery_status == "pending":
+        messages.error(
+            request,
+            "Payment is only allowed after goods have been received. "
+            "Record a delivery for this purchase first.",
+        )
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
+
     if request.method == "POST":
         payment_amount = request.POST.get("payment_amount")
         payment_method = request.POST.get("payment_method")
@@ -4255,15 +4263,27 @@ def process_purchase_payment(request, purchase_id):
                 messages.error(request, "Payment amount must be greater than zero.")
                 return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
-            outstanding = purchase.get_outstanding_amount()
-            if payment_amount > outstanding:
-                messages.error(
-                    request,
-                    f"Payment amount exceeds outstanding balance (₦{outstanding}).",
-                )
-                return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
             with transaction.atomic():
+                # Lock the row so concurrent payments can't both pass the
+                # outstanding-balance check and overpay.
+                purchase = Purchase.objects.select_for_update().get(id=purchase_id)
+
+                if purchase.payment_status == "paid":
+                    messages.warning(request, "This purchase has already been paid.")
+                    return redirect(
+                        "pharmacy:purchase_detail", purchase_id=purchase.id
+                    )
+
+                outstanding = purchase.get_outstanding_amount()
+                if payment_amount > outstanding:
+                    messages.error(
+                        request,
+                        f"Payment amount exceeds outstanding balance (₦{outstanding}).",
+                    )
+                    return redirect(
+                        "pharmacy:purchase_detail", purchase_id=purchase.id
+                    )
+
                 # Create payment record
                 from .models import PurchasePayment
 
@@ -4315,6 +4335,20 @@ def add_purchase_item(request, purchase_id):
     from django.http import JsonResponse
 
     purchase = get_object_or_404(Purchase, id=purchase_id)
+
+    # Items may only change while the purchase is editable; once approved,
+    # stock receipt is based on the item list, so it must be frozen.
+    if purchase.approval_status not in ["draft", "pending"]:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "Cannot add items to approved or rejected purchases.",
+                },
+                status=400,
+            )
+        messages.error(request, "Cannot add items to approved or rejected purchases.")
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     if request.method == "POST":
         form = PurchaseItemForm(request.POST)
@@ -4639,14 +4673,23 @@ def approve_purchase(request, purchase_id):
 
         try:
             with transaction.atomic():
+                # Lock the row and re-check status so two concurrent approvers
+                # cannot both approve the same purchase.
+                purchase = Purchase.objects.select_for_update().get(id=purchase_id)
+                if not purchase.can_be_approved():
+                    messages.error(
+                        request,
+                        "This purchase cannot be approved in its current status.",
+                    )
+                    return redirect(
+                        "pharmacy:purchase_detail", purchase_id=purchase.id
+                    )
+
                 purchase.approval_status = "approved"
                 purchase.current_approver = request.user
                 purchase.approval_notes = approval_notes
                 purchase.approval_updated_at = timezone.now()
                 purchase.save()
-
-                # Receive purchased items into bulk store / dispensary stock
-                purchase.receive_to_inventory()
 
                 # Create approval record
                 from .models import PurchaseApproval
@@ -4662,7 +4705,8 @@ def approve_purchase(request, purchase_id):
 
                 messages.success(
                     request,
-                    f"Purchase #{purchase.invoice_number} approved successfully.",
+                    f"Purchase #{purchase.invoice_number} approved. "
+                    "Stock will be added when the delivery is received.",
                 )
                 return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
@@ -4748,6 +4792,91 @@ def reject_purchase(request, purchase_id):
     }
 
     return render(request, "pharmacy/confirm_reject_purchase.html", context)
+
+
+@login_required
+@permission_required("pharmacy.edit")
+def receive_purchase_delivery(request, purchase_id):
+    """Record goods received against an approved purchase (supports partial
+    deliveries). Stock enters the bulk store here, not at approval."""
+    from django.db import transaction
+    from .models import Purchase
+
+    purchase = get_object_or_404(Purchase, id=purchase_id)
+
+    if not purchase.can_receive_delivery():
+        messages.error(
+            request,
+            "Deliveries can only be received for approved purchases that are "
+            "not yet fully received.",
+        )
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
+
+    if request.method == "POST":
+        try:
+            with transaction.atomic():
+                # Lock the row so concurrent receipts can't double-add stock.
+                purchase = Purchase.objects.select_for_update().get(id=purchase_id)
+                if not purchase.can_receive_delivery():
+                    messages.error(
+                        request, "This purchase can no longer receive deliveries."
+                    )
+                    return redirect(
+                        "pharmacy:purchase_detail", purchase_id=purchase.id
+                    )
+
+                received_quantities = {}
+                for item in purchase.items.all():
+                    raw = request.POST.get(f"received_qty_{item.id}", "").strip()
+                    if raw == "":
+                        continue
+                    try:
+                        received_quantities[item.id] = int(raw)
+                    except ValueError:
+                        raise ValueError(
+                            f"{item.medication.name}: invalid quantity '{raw}'."
+                        )
+
+                if not any(qty > 0 for qty in received_quantities.values()):
+                    messages.error(
+                        request, "Enter a received quantity for at least one item."
+                    )
+                    return redirect(
+                        "pharmacy:receive_purchase_delivery", purchase_id=purchase.id
+                    )
+
+                purchase.receive_items(received_quantities)
+
+            if purchase.delivery_status == "received":
+                messages.success(
+                    request,
+                    f"Purchase #{purchase.invoice_number} fully received into stock.",
+                )
+            else:
+                messages.success(
+                    request,
+                    f"Partial delivery recorded for Purchase #{purchase.invoice_number}.",
+                )
+            return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
+
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect(
+                "pharmacy:receive_purchase_delivery", purchase_id=purchase.id
+            )
+        except Exception as e:
+            messages.error(request, f"Error receiving delivery: {str(e)}")
+            return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
+
+    # GET - show receive form with outstanding quantities
+    items = purchase.items.select_related("medication")
+    context = {
+        "purchase": purchase,
+        "items": items,
+        "title": f"Receive Delivery - Purchase #{purchase.invoice_number}",
+        "active_nav": "pharmacy",
+    }
+    return render(request, "pharmacy/receive_purchase_delivery.html", context)
 
 
 @login_required
