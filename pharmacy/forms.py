@@ -20,6 +20,7 @@ from .models import (
     MedicalPackItem,
     PackOrder,
     BulkStore,
+    BulkStoreInventory,
     ActiveStore,
     MedicationTransfer,
 )
@@ -1083,6 +1084,72 @@ class BulkStoreForm(forms.ModelForm):
         self.fields[
             "manager"
         ].help_text = "The user responsible for managing this bulk store's inventory"
+
+
+class BulkStoreInventoryForm(forms.ModelForm):
+    """Form for directly adding/receiving medication stock into a bulk store
+    without going through the purchase workflow (e.g. opening stock, donations,
+    manual adjustments)."""
+
+    expiry_date = forms.DateField(
+        widget=forms.DateInput(
+            attrs={
+                "type": "date",
+                "class": "form-control",
+                "min": timezone.now().date().isoformat(),
+            }
+        )
+    )
+
+    class Meta:
+        model = BulkStoreInventory
+        fields = [
+            "bulk_store",
+            "medication",
+            "batch_number",
+            "stock_quantity",
+            "expiry_date",
+            "unit_cost",
+            "markup_percentage",
+            "supplier",
+        ]
+        widgets = {
+            "bulk_store": forms.Select(attrs={"class": "form-control"}),
+            "medication": forms.Select(attrs={"class": "form-control"}),
+            "batch_number": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Batch number (auto-generated if blank)",
+                }
+            ),
+            "stock_quantity": forms.NumberInput(
+                attrs={"class": "form-control", "min": "1"}
+            ),
+            "unit_cost": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01", "min": "0"}
+            ),
+            "markup_percentage": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01", "min": "0", "max": "100"}
+            ),
+            "supplier": forms.Select(attrs={"class": "form-control"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["bulk_store"].queryset = BulkStore.objects.filter(is_active=True)
+        self.fields["medication"].queryset = Medication.objects.filter(
+            is_active=True
+        ).order_by("name")
+        self.fields["supplier"].queryset = Supplier.objects.filter(is_active=True)
+        self.fields["supplier"].empty_label = "Select Supplier (Optional)"
+        self.fields["batch_number"].required = False
+        self.fields["supplier"].required = False
+
+    def clean_stock_quantity(self):
+        qty = self.cleaned_data.get("stock_quantity")
+        if qty is None or qty <= 0:
+            raise forms.ValidationError("Quantity must be greater than zero.")
+        return qty
 
 
 class PrescriptionPaymentForm(forms.ModelForm):

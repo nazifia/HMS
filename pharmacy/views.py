@@ -2614,6 +2614,83 @@ def edit_bulk_store(request, bulk_store_id):
 
 
 @login_required
+def add_bulk_store_inventory(request):
+    """Directly add medication stock into a bulk store without a purchase.
+
+    Covers opening stock, donations, manual corrections, etc. Merges into an
+    existing batch (same medication + bulk store + batch number) when present,
+    otherwise creates a new inventory record.
+    """
+    from .forms import BulkStoreInventoryForm
+
+    if not user_has_bulk_store_edit_permission(request.user):
+        messages.error(
+            request, "You do not have permission to add bulk store inventory."
+        )
+        return redirect("pharmacy:bulk_store_dashboard")
+
+    if request.method == "POST":
+        form = BulkStoreInventoryForm(request.POST)
+        # Re-check permission against the chosen bulk store (manager scope)
+        if form.is_valid():
+            bulk_store = form.cleaned_data["bulk_store"]
+            if not user_has_bulk_store_edit_permission(request.user, bulk_store):
+                messages.error(
+                    request,
+                    "You do not have permission to add inventory to this bulk store.",
+                )
+                return redirect("pharmacy:bulk_store_dashboard")
+
+            medication = form.cleaned_data["medication"]
+            quantity = form.cleaned_data["stock_quantity"]
+            batch_number = form.cleaned_data.get("batch_number") or (
+                f"BATCH-{timezone.now().strftime('%Y%m%d')}-{medication.pk}"
+            )
+
+            with transaction.atomic():
+                inventory, created = BulkStoreInventory.objects.get_or_create(
+                    medication=medication,
+                    bulk_store=bulk_store,
+                    batch_number=batch_number,
+                    defaults={
+                        "stock_quantity": 0,
+                        "expiry_date": form.cleaned_data["expiry_date"],
+                        "unit_cost": form.cleaned_data["unit_cost"],
+                        "markup_percentage": form.cleaned_data["markup_percentage"],
+                        "supplier": form.cleaned_data.get("supplier"),
+                        "purchase_date": timezone.now(),
+                    },
+                )
+                inventory.stock_quantity += quantity
+                if not created:
+                    # Refresh editable details on top-up
+                    inventory.expiry_date = form.cleaned_data["expiry_date"]
+                    inventory.unit_cost = form.cleaned_data["unit_cost"]
+                    inventory.markup_percentage = form.cleaned_data["markup_percentage"]
+                    if form.cleaned_data.get("supplier"):
+                        inventory.supplier = form.cleaned_data["supplier"]
+                inventory.save()
+
+            messages.success(
+                request,
+                f"Added {quantity} unit(s) of {medication.name} "
+                f"(batch {batch_number}) to {bulk_store.name}.",
+            )
+            return redirect("pharmacy:bulk_store_dashboard")
+    else:
+        form = BulkStoreInventoryForm()
+
+    context = {
+        "form": form,
+        "title": "Add Bulk Store Inventory",
+        "page_title": "Add Stock to Bulk Store",
+        "active_nav": "pharmacy",
+    }
+
+    return render(request, "pharmacy/add_bulk_store_inventory.html", context)
+
+
+@login_required
 @permission_required("pharmacy.view")
 def active_store_detail(request, dispensary_id):
     """View for displaying active store details and managing transfers"""

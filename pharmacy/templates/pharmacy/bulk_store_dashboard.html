@@ -43,6 +43,9 @@
                 <i class="fas fa-arrow-left"></i> Back to Procurement
             </a>
             {% if can_edit_bulk_store %}
+            <a href="{% url 'pharmacy:add_bulk_store_inventory' %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Add Stock
+            </a>
             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#bulkMarkupModal">
                 <i class="fas fa-percent"></i> Apply Bulk Markup
             </button>

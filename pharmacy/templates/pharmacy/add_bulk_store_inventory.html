@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}{{ title }} - HMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+    }
+
+    .form-card .card-header {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        border-radius: 12px 12px 0 0;
+        padding: 1.25rem 1.5rem;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: #374151;
+    }
+
+    .form-control:focus {
+        border-color: #059669;
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <div class="d-flex align-items-center mb-4">
+                <a href="{% url 'pharmacy:bulk_store_dashboard' %}" class="btn btn-outline-secondary me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h4 class="mb-1">{{ page_title }}</h4>
+                    <small class="text-muted">Add medication stock directly to a bulk store (opening stock, donations, manual corrections)</small>
+                </div>
+            </div>
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="form-card card">
+                <div class="card-header">
+                    <h5 class="mb-0 text-white">
+                        <i class="fas fa-boxes me-2"></i>Stock Details
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.bulk_store.id_for_label }}" class="form-label">
+                                    Bulk Store <span class="text-danger">*</span>
+                                </label>
+                                {{ form.bulk_store }}
+                                {% for error in form.bulk_store.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.medication.id_for_label }}" class="form-label">
+                                    Medication <span class="text-danger">*</span>
+                                </label>
+                                {{ form.medication }}
+                                {% for error in form.medication.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.batch_number.id_for_label }}" class="form-label">
+                                    Batch Number
+                                </label>
+                                {{ form.batch_number }}
+                                <div class="form-text">Leave blank to auto-generate. Matching an existing batch tops it up.</div>
+                                {% for error in form.batch_number.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.stock_quantity.id_for_label }}" class="form-label">
+                                    Quantity <span class="text-danger">*</span>
+                                </label>
+                                {{ form.stock_quantity }}
+                                {% for error in form.stock_quantity.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.expiry_date.id_for_label }}" class="form-label">
+                                    Expiry Date <span class="text-danger">*</span>
+                                </label>
+                                {{ form.expiry_date }}
+                                {% for error in form.expiry_date.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.unit_cost.id_for_label }}" class="form-label">
+                                    Unit Cost <span class="text-danger">*</span>
+                                </label>
+                                {{ form.unit_cost }}
+                                {% for error in form.unit_cost.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.markup_percentage.id_for_label }}" class="form-label">
+                                    Markup %
+                                </label>
+                                {{ form.markup_percentage }}
+                                {% for error in form.markup_percentage.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ form.supplier.id_for_label }}" class="form-label">
+                                Supplier
+                            </label>
+                            {{ form.supplier }}
+                            {% for error in form.supplier.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-plus me-2"></i>Add Stock
+                            </button>
+                            <a href="{% url 'pharmacy:bulk_store_dashboard' %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
