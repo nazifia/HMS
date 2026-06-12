@@ -67,6 +67,21 @@
         display: flex; align-items: center; justify-content: space-between;
     }
     .pd-card-body { padding: 1.25rem; }
+    /* Clinical note (clerking proforma) read view */
+    .pd-note { background:#fff; border:1px solid var(--p-gray-200); border-radius:var(--p-radius); margin-bottom:0.85rem; overflow:hidden; }
+    .pd-note > summary { list-style:none; cursor:pointer; padding:0.75rem 1rem; display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; background:var(--p-gray-100); }
+    .pd-note > summary::-webkit-details-marker { display:none; }
+    .pd-note > summary::before { content:"\f078"; font-family:"Font Awesome 5 Free"; font-weight:900; font-size:0.7rem; color:var(--p-gray-500); transition:transform .15s; }
+    .pd-note[open] > summary::before { transform:rotate(180deg); }
+    .pd-note .nt-date { font-weight:700; font-size:0.85rem; white-space:nowrap; }
+    .pd-note .nt-doc { font-size:0.8rem; color:var(--p-gray-500); }
+    .pd-note .nt-snippet { font-size:0.8rem; color:var(--p-gray-500); margin-left:auto; max-width:45%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pd-note .nt-body { padding:0.5rem 1rem 1rem; }
+    .pd-note .nt-section { padding:0.6rem 0; border-top:1px solid var(--p-gray-100); }
+    .pd-note .nt-section:first-child { border-top:none; }
+    .pd-note .nt-label { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; color:var(--p-primary, #2563eb); margin-bottom:0.2rem; }
+    .pd-note .nt-text { font-size:0.86rem; white-space:pre-wrap; word-break:break-word; color:var(--p-gray-700, #374151); }
+    .pd-note .nt-actions { display:flex; gap:0.4rem; }
 
     /* ── Profile section ── */
     .patient-avatar {
@@ -755,34 +770,36 @@
                             <a href="{% url 'patients:add_clinical_note' patient.id %}"><i class="fas fa-plus me-1"></i>Add Note</a>
                         </div>
                         {% if clinical_notes %}
-                        <div class="table-responsive">
-                            <table class="pd-table">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Note</th>
-                                        <th>Doctor</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for note in clinical_notes %}
-                                    <tr>
-                                        <td style="white-space:nowrap;">{{ note.date|date:"d M Y H:i" }}</td>
-                                        <td>
-                                            {% if note.presenting_complaint %}<strong>PC:</strong> {{ note.presenting_complaint|truncatewords:20 }}<br>{% endif %}
-                                            {% if note.provisional_diagnosis %}<strong>Dx:</strong> {{ note.provisional_diagnosis|truncatewords:15 }}{% endif %}
-                                            {% if note.note %}{{ note.note|truncatewords:15 }}{% endif %}
-                                        </td>
-                                        <td>{{ note.doctor.get_full_name }}</td>
-                                        <td>
-                                            <a href="{% url 'patients:edit_clinical_note' note.id %}" class="act-btn" title="Edit"><i class="fas fa-edit"></i></a>
-                                            <a href="{% url 'patients:delete_clinical_note' note.id %}" class="act-btn danger" title="Delete"><i class="fas fa-trash"></i></a>
-                                        </td>
-                                    </tr>
+                        <div class="pd-notes-list">
+                            {% for note in clinical_notes %}
+                            <details class="pd-note"{% if forloop.first %} open{% endif %}>
+                                <summary>
+                                    <span class="nt-date">{{ note.date|date:"d M Y H:i" }}</span>
+                                    <span class="nt-doc"><i class="fas fa-user-md me-1"></i>{{ note.doctor.get_full_name|default:"—" }}</span>
+                                    {% if note.presenting_complaint %}<span class="nt-snippet">{{ note.presenting_complaint|truncatewords:12 }}</span>{% endif %}
+                                </summary>
+                                <div class="nt-body">
+                                    {% for label, value in note.clerking_sections %}
+                                    <div class="nt-section">
+                                        <div class="nt-label">{{ label }}</div>
+                                        <div class="nt-text">{{ value }}</div>
+                                    </div>
+                                    {% empty %}
+                                    {% if not note.note %}<div class="nt-section"><div class="nt-text text-muted">No details recorded for this note.</div></div>{% endif %}
                                     {% endfor %}
-                                </tbody>
-                            </table>
+                                    {% if note.note %}
+                                    <div class="nt-section">
+                                        <div class="nt-label">Additional Notes</div>
+                                        <div class="nt-text">{{ note.note }}</div>
+                                    </div>
+                                    {% endif %}
+                                    <div class="nt-section nt-actions">
+                                        <a href="{% url 'patients:edit_clinical_note' note.id %}" class="act-btn" title="Edit"><i class="fas fa-edit"></i></a>
+                                        <a href="{% url 'patients:delete_clinical_note' note.id %}" class="act-btn danger" title="Delete" onclick="return confirm('Delete this note?');"><i class="fas fa-trash"></i></a>
+                                    </div>
+                                </div>
+                            </details>
+                            {% endfor %}
                         </div>
                         {% else %}
                             <div class="pd-empty">

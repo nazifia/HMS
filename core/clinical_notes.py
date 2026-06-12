@@ -139,6 +139,20 @@ class NigerianClerkingNote(models.Model):
     def has_clerking_content(self):
         return any(getattr(self, name) for name in CLERKING_FIELDS)
 
+    @property
+    def clerking_sections(self):
+        """Return [(label, value)] for every clerking field that has content.
+
+        Used by read-only views/templates to render the proforma in clinical
+        order without hard-coding each field.
+        """
+        sections = []
+        for name in CLERKING_FIELDS:
+            value = getattr(self, name)
+            if value:
+                sections.append((CLERKING_LABELS[name], value))
+        return sections
+
 
 # Mapping used by data migrations to preserve legacy SOAP content when a model
 # is converted from SOAP to the clerking proforma.
