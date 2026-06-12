@@ -688,24 +688,6 @@ def audit_logs(request):
 
 @login_required
 @user_passes_test(lambda u: u.is_superuser or u.is_staff)
-def permission_management(request):
-    permissions = Permission.objects.all()
-    form = PermissionFilterForm(request.GET)
-    if form.is_valid():
-        content_type = form.cleaned_data.get("content_type")
-        if content_type:
-            permissions = permissions.filter(content_type=content_type)
-
-    context = {
-        "permissions": permissions,
-        "form": form,
-        "page_title": "Permission Management",
-    }
-    return render(request, "accounts/permission_management.html", context)
-
-
-@login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def bulk_user_actions(request):
     if request.method == "POST":
         form = BulkUserActionForm(request.POST)
@@ -2135,7 +2117,7 @@ def bulk_user_actions(request):
 @login_required
 @permission_required("roles.view")
 def permission_management(request):
-    """View for managing permissions"""
+    """Browse permissions and assign them to a selected role in-place."""
     from django.contrib.auth.models import Permission
 
     form = PermissionFilterForm(request.GET)
@@ -2157,6 +2139,31 @@ def permission_management(request):
                 | Q(content_type__model__icontains=search)
             )
 
+    # Optional target role for in-place assignment
+    roles = Role.objects.all().order_by("name")
+    selected_role = None
+    direct_perm_ids = []
+    inherited_perm_ids = []
+    role_param = request.GET.get("role")
+    if role_param:
+        selected_role = Role.objects.filter(pk=role_param).first()
+        if selected_role:
+            direct_set = set(
+                selected_role.permissions.values_list("id", flat=True)
+            )
+            # Permissions gained via parent roles are read-only here
+            inherited_set = {
+                p.id for p in selected_role.get_all_permissions()
+            } - direct_set
+            # Lists so they are JSON-serializable for json_script in the template
+            direct_perm_ids = sorted(direct_set)
+            inherited_perm_ids = sorted(inherited_set)
+
+    # In-place assignment requires roles.edit (matches the AJAX endpoint guard)
+    can_edit = request.user.is_superuser or user_has_permission(
+        request.user, "roles.edit"
+    )
+
     # Group permissions by content type
     grouped_permissions = {}
     for permission in permissions:
@@ -2168,6 +2175,11 @@ def permission_management(request):
         grouped_permissions[app_model].append(permission)
 
     context = {
+        "roles": roles,
+        "selected_role": selected_role,
+        "direct_perm_ids": direct_perm_ids,
+        "inherited_perm_ids": inherited_perm_ids,
+        "can_edit": can_edit,
         "form": form,
         "grouped_permissions": grouped_permissions,
         "page_title": "Permission Management",

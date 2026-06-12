@@ -1,5 +1,4 @@
 {% extends 'base.html' %}
-{% load custom_filters %}
 {% load core_tags %}
 {% block title %}Permission Management - Hospital Management System{% endblock %}
 
@@ -17,16 +16,17 @@
     .permission-group-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        padding: 1rem;
+        padding: 0.75rem 1rem;
         border-radius: 0.375rem 0.375rem 0 0;
         font-weight: 600;
     }
+    .permission-group-header .form-check-input { cursor: pointer; }
     .permission-list {
-        padding: 1rem;
+        padding: 0.5rem 1rem;
     }
     .permission-item {
         padding: 0.5rem;
-        border-bottom: 1px solid #f8f9fa;
+        border-bottom: 1px solid #f1f3f5;
         transition: background-color 0.2s;
     }
     .permission-item:hover {
@@ -38,6 +38,16 @@
     .permission-badge {
         font-size: 0.75rem;
     }
+    .assign-bar {
+        position: sticky;
+        bottom: 0;
+        z-index: 1020;
+        background: #fff;
+        border-top: 2px solid #667eea;
+        padding: 0.75rem 1rem;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+    }
+    .perm-checkbox:disabled { opacity: 0.55; }
 </style>
 {% endblock %}
 
@@ -64,80 +74,46 @@
         {% endfor %}
     {% endif %}
 
-    <div class="row mt-2 mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-info-circle me-2"></i>Permission System Information</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6>Permission Types:</h6>
-                            <ul class="list-unstyled">
-                                <li><span class="badge bg-success me-2">Create</span> Add new records</li>
-                                <li><span class="badge bg-primary me-2">Update</span> Modify existing records</li>
-                                <li><span class="badge bg-danger me-2">Delete</span> Remove records</li>
-                                <li><span class="badge bg-info me-2">View</span> Read/view records</li>
-                                <li><span class="badge bg-secondary me-2">Custom</span> Special permissions</li>
-                            </ul>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>How to Use:</h6>
-                            <ol>
-                                <li>Permissions are automatically created for each model</li>
-                                <li>Assign permissions to roles in <a href="{% url 'accounts:role_management' %}">Role Management</a></li>
-                                <li>Assign roles to users to grant permissions</li>
-                                <li>Use decorators in views to check permissions</li>
-                            </ol>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Role selector: pick a role to assign permissions in-place -->
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-user-shield me-2"></i>Assign Permissions to a Role</h5>
         </div>
-    </div>
-
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end" id="role-select-form">
+                <div class="col-md-6">
+                    <label class="form-label" for="role-select">Target role</label>
+                    <select name="role" id="role-select" class="form-select" onchange="document.getElementById('role-select-form').submit()">
+                        <option value="">— Browse only (no role selected) —</option>
+                        {% for role in roles %}
+                        <option value="{{ role.id }}" {% if selected_role and role.id == selected_role.id %}selected{% endif %}>{{ role.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:create_role' %}" class="btn btn-outline-primary w-100 mb-2">
-                                <i class="fas fa-plus me-2"></i>Create New Role
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:role_management' %}" class="btn btn-outline-success w-100 mb-2">
-                                <i class="fas fa-user-shield me-2"></i>Manage Roles
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:user_dashboard' %}" class="btn btn-outline-info w-100 mb-2">
-                                <i class="fas fa-users me-2"></i>Manage Users
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="{% url 'accounts:activity_alerts' %}" class="btn btn-outline-warning w-100 mb-2">
-                                <i class="fas fa-history me-2"></i>View Audit Logs
-                            </a>
-                        </div>
-                    </div>
+                <div class="col-md-6">
+                    {% if selected_role %}
+                        <p class="mb-1">
+                            <span class="badge bg-success me-1">{{ direct_perm_ids|length }} direct</span>
+                            <span class="badge bg-secondary me-1">{{ inherited_perm_ids|length }} inherited</span>
+                            {% if not can_edit %}<span class="badge bg-danger">read-only (no roles.edit)</span>{% endif %}
+                        </p>
+                        <small class="text-muted">Tick/untick permissions below, then <strong>Save</strong>. Inherited permissions (from parent roles) are locked.</small>
+                    {% else %}
+                        <small class="text-muted">Select a role to enable in-place assignment. Without a role this page is a read-only catalogue.</small>
+                    {% endif %}
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 
     <!-- Filter Form -->
     <div class="card mb-4">
         <div class="card-header">
-            <h5><i class="fas fa-filter me-2"></i>Filter Permissions</h5>
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filter Permissions</h5>
         </div>
         <div class="card-body">
             <form method="get" class="row g-3">
+                {% if selected_role %}<input type="hidden" name="role" value="{{ selected_role.id }}">{% endif %}
                 <div class="col-md-4">
                     {{ form.content_type.label_tag }}
                     {{ form.content_type }}
@@ -184,75 +160,114 @@
         <div class="col-md-3">
             <div class="card text-center bg-warning text-white">
                 <div class="card-body">
-                    <h4>{% count_add_permissions grouped_permissions %}</h4>
-                    <p class="mb-0">Create Permissions</p>
+                    <h4 id="selected-count">{{ direct_perm_ids|length }}</h4>
+                    <p class="mb-0">Selected for Role</p>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Permissions by Content Type -->
-    <div class="row">
-        {% for app_model, permissions in grouped_permissions.items %}
-        <div class="col-md-6 mb-4">
-            <div class="permission-group">
-                <div class="permission-group-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">
-                            <i class="fas fa-cube me-2"></i>{{ app_model|title }}
-                        </h6>
-                        <span class="badge bg-light text-dark permission-count-badge" data-total="{{ permissions|length }}">{{ permissions|length }} permissions</span>
-                    </div>
-                </div>
-                <div class="permission-list">
-                    {% for permission in permissions %}
-                    <div class="permission-item">
+    {{ direct_perm_ids|json_script:"all-direct-ids" }}
+    <form id="assign-form" data-role-id="{{ selected_role.id|default:'' }}">
+        {% csrf_token %}
+        <div class="row">
+            {% for app_model, permissions in grouped_permissions.items %}
+            <div class="col-md-6 mb-4">
+                <div class="permission-group">
+                    <div class="permission-group-header">
                         <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>{{ permission.name }}</strong>
-                                <br>
-                                <small class="text-muted">
-                                    <i class="fas fa-code me-1"></i>{{ permission.codename }}
-                                </small>
-                            </div>
-                            <div>
-                                {% if 'add' in permission.codename %}
-                                    <span class="badge bg-success permission-badge">Create</span>
-                                {% elif 'change' in permission.codename %}
-                                    <span class="badge bg-primary permission-badge">Update</span>
-                                {% elif 'delete' in permission.codename %}
-                                    <span class="badge bg-danger permission-badge">Delete</span>
-                                {% elif 'view' in permission.codename %}
-                                    <span class="badge bg-info permission-badge">View</span>
-                                {% else %}
-                                    <span class="badge bg-secondary permission-badge">Custom</span>
+                            <h6 class="mb-0">
+                                {% if selected_role and can_edit %}
+                                <input class="form-check-input me-2 group-toggle" type="checkbox" title="Select all editable in this group">
                                 {% endif %}
-                            </div>
+                                <i class="fas fa-cube me-2"></i>{{ app_model|title }}
+                            </h6>
+                            <span class="badge bg-light text-dark permission-count-badge" data-total="{{ permissions|length }}">{{ permissions|length }} permissions</span>
                         </div>
                     </div>
-                    {% endfor %}
+                    <div class="permission-list">
+                        {% for permission in permissions %}
+                        <div class="permission-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    {% if selected_role %}
+                                    <div class="form-check me-2 mb-0">
+                                        <input class="form-check-input perm-checkbox" type="checkbox"
+                                               value="{{ permission.id }}"
+                                               {% if permission.id in direct_perm_ids %}checked{% endif %}
+                                               {% if permission.id in inherited_perm_ids or not can_edit %}checked disabled{% endif %}>
+                                    </div>
+                                    {% endif %}
+                                    <div>
+                                        <strong>{{ permission.name }}</strong>
+                                        {% if permission.id in inherited_perm_ids %}
+                                            <span class="badge bg-secondary ms-1" title="Granted via a parent role">inherited</span>
+                                        {% endif %}
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="fas fa-code me-1"></i>{{ permission.codename }}
+                                        </small>
+                                    </div>
+                                </div>
+                                <div>
+                                    {% if permission.codename|slice:":4" == "add_" %}
+                                        <span class="badge bg-success permission-badge">Create</span>
+                                    {% elif permission.codename|slice:":7" == "change_" %}
+                                        <span class="badge bg-primary permission-badge">Update</span>
+                                    {% elif permission.codename|slice:":7" == "delete_" %}
+                                        <span class="badge bg-danger permission-badge">Delete</span>
+                                    {% elif permission.codename|slice:":5" == "view_" %}
+                                        <span class="badge bg-info permission-badge">View</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary permission-badge">Custom</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
-        </div>
-        {% empty %}
-        <div class="col-12">
-            <div class="alert alert-info text-center">
-                <i class="fas fa-info-circle me-2"></i>
-                No permissions found matching your criteria.
+            {% empty %}
+            <div class="col-12">
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No permissions found matching your criteria.
+                </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
-
+    </form>
 </div>
+
+{% if selected_role and can_edit %}
+<div class="assign-bar">
+    <div class="container-fluid d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fas fa-user-shield me-2 text-primary"></i>
+            Assigning to <strong>{{ selected_role.name }}</strong> —
+            <span id="bar-count">{{ direct_perm_ids|length }}</span> direct permission(s).
+            <small class="text-muted">Inherited permissions are not changed.</small>
+        </div>
+        <div>
+            <button type="button" id="reset-btn" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-undo me-1"></i>Reset
+            </button>
+            <button type="button" id="save-btn" class="btn btn-success">
+                <i class="fas fa-save me-1"></i>Save Assignments
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // ---- client-side live search over rendered permissions ----
     const searchInput = document.querySelector('input[name="search"]');
-    if (!searchInput) return;
-
     function applySearch(term) {
         const searchTerm = term.toLowerCase();
         document.querySelectorAll('.permission-group').forEach(function(group) {
@@ -263,28 +278,123 @@ document.addEventListener('DOMContentLoaded', function() {
                 item.style.display = show ? 'block' : 'none';
                 if (show) visibleCount++;
             });
-
             const badge = group.querySelector('.permission-count-badge');
             if (badge) {
-                if (searchTerm) {
-                    badge.textContent = `${visibleCount} permissions`;
-                } else {
-                    const total = badge.getAttribute('data-total') || visibleCount;
-                    badge.textContent = `${total} permissions`;
-                }
+                badge.textContent = searchTerm
+                    ? `${visibleCount} permissions`
+                    : `${badge.getAttribute('data-total') || visibleCount} permissions`;
             }
-
-            if (searchTerm && visibleCount === 0) {
-                group.style.display = 'none';
-            } else {
-                group.style.display = '';
-            }
+            group.closest('.col-md-6').style.display =
+                (searchTerm && visibleCount === 0) ? 'none' : '';
         });
     }
+    if (searchInput) {
+        searchInput.addEventListener('input', function() { applySearch(this.value || ''); });
+    }
 
-    searchInput.addEventListener('input', function() {
-        applySearch(this.value || '');
+    // ---- in-place role assignment ----
+    const assignForm = document.getElementById('assign-form');
+    if (!assignForm) return;
+    const roleId = assignForm.getAttribute('data-role-id');
+    const saveBtn = document.getElementById('save-btn');
+    if (!roleId || !saveBtn) return;
+
+    // Count only editable (direct) checked boxes; inherited boxes are disabled.
+    const countSelected = () =>
+        Array.from(document.querySelectorAll('.perm-checkbox:checked'))
+            .filter(c => !c.disabled).length;
+
+    function refreshCounts() {
+        const n = countSelected();
+        const sel = document.getElementById('selected-count');
+        const bar = document.getElementById('bar-count');
+        if (sel) sel.textContent = n;
+        if (bar) bar.textContent = n;
+    }
+
+    // group "select all" toggles only the editable boxes in that group
+    document.querySelectorAll('.group-toggle').forEach(function(toggle) {
+        toggle.addEventListener('change', function() {
+            const boxes = this.closest('.permission-group')
+                .querySelectorAll('.perm-checkbox:not(:disabled)');
+            boxes.forEach(b => { b.checked = toggle.checked; });
+            refreshCounts();
+        });
     });
+    document.querySelectorAll('.perm-checkbox').forEach(function(box) {
+        box.addEventListener('change', refreshCounts);
+    });
+
+    // Reset = reload current view (re-fetch role's saved state)
+    const resetBtn = document.getElementById('reset-btn');
+    if (resetBtn) resetBtn.addEventListener('click', () => window.location.reload());
+
+    function getCsrf() {
+        const el = assignForm.querySelector('[name=csrfmiddlewaretoken]');
+        return el ? el.value : '';
+    }
+
+    // Direct permissions the role had at page load (full set, independent of any
+    // server-side content_type/search filter that may hide rows).
+    let allDirect = [];
+    const allDirectEl = document.getElementById('all-direct-ids');
+    if (allDirectEl) {
+        try { allDirect = JSON.parse(allDirectEl.textContent) || []; } catch (e) { allDirect = []; }
+    }
+
+    saveBtn.addEventListener('click', function() {
+        // The endpoint REPLACES all direct permissions, so we must send the role's
+        // complete intended direct set — not just what is rendered. Build it as:
+        //   (checked, editable, rendered boxes)  +  (direct perms filtered out of view)
+        // Disabled boxes are inherited-only and are excluded (inherited != direct).
+        const renderedSet = new Set(
+            Array.from(document.querySelectorAll('.perm-checkbox')).map(c => parseInt(c.value, 10))
+        );
+        const checkedRendered = Array.from(document.querySelectorAll('.perm-checkbox:checked'))
+            .filter(c => !c.disabled)
+            .map(c => parseInt(c.value, 10));
+        // Direct perms not currently rendered (hidden by a server-side filter) are preserved.
+        const preserved = allDirect.filter(id => !renderedSet.has(id));
+        const ids = Array.from(new Set([...checkedRendered, ...preserved]));
+
+        saveBtn.disabled = true;
+        const original = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+
+        fetch("{% url 'accounts:ajax_update_role_permissions' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrf()
+            },
+            body: JSON.stringify({ role_id: roleId, permission_ids: ids })
+        })
+        .then(r => r.json())
+        .then(data => {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = original;
+            if (data.success) {
+                showToast(`Saved: ${data.total_permissions} direct permission(s) `
+                    + `(+${data.added_count} / -${data.removed_count}).`, 'success');
+            } else {
+                showToast('Save failed: ' + (data.error || 'unknown error'), 'danger');
+            }
+        })
+        .catch(err => {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = original;
+            showToast('Network error: ' + err, 'danger');
+        });
+    });
+
+    function showToast(msg, kind) {
+        const wrap = document.createElement('div');
+        wrap.className = `alert alert-${kind} alert-dismissible fade show position-fixed`;
+        wrap.style.cssText = 'top:1rem;right:1rem;z-index:1080;max-width:380px;';
+        wrap.innerHTML = msg + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+        document.body.appendChild(wrap);
+        setTimeout(() => wrap.remove(), 5000);
+    }
 });
 </script>
 {% endblock %}

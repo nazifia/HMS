@@ -95,6 +95,7 @@
                     {% if user.is_superuser or user|has_permission:'roles.view' %}
                     <a class="collapse-item {% if 'permission_management' in request.path %}active{% endif %}" href="{% url 'accounts:permission_management' %}">
                         <i class="fas fa-key me-2"></i>System Permissions
+                        <small class="text-muted d-block" style="font-size:0.7rem;">Browse catalogue &amp; assign permissions to a role</small>
                     </a>
                     {% endif %}
                     <div class="collapse-divider"></div>
