@@ -1,4 +1,5 @@
 from django.db import models
+from core.clinical_notes import NigerianClerkingNote
 from django.utils import timezone
 from patients.models import Patient
 from django.conf import settings
@@ -175,13 +176,9 @@ class DermatologyTest(models.Model):
         verbose_name_plural = "Dermatology Tests"
 
 
-class DermatologyClinicalNote(models.Model):
-    """SOAP (Subjective, Objective, Assessment, Plan) clinical notes for dermatology records"""
+class DermatologyClinicalNote(NigerianClerkingNote):
+    """Nigerian clerking proforma clinical notes for dermatology records"""
     dermatology_record = models.ForeignKey(DermatologyRecord, on_delete=models.CASCADE, related_name='clinical_notes')
-    subjective = models.TextField(help_text="Patient's description of symptoms, concerns, and history")
-    objective = models.TextField(help_text="Observable findings, examination results, and measurements")
-    assessment = models.TextField(help_text="Clinical assessment, diagnosis, and interpretation")
-    plan = models.TextField(help_text="Treatment plan, interventions, and follow-up")
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='dermatology_clinical_notes_created')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

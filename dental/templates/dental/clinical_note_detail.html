@@ -24,34 +24,7 @@
                 </small>
             </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <h6 class="text-primary"><i class="fas fa-comment-dots"></i> Subjective (S)</h6>
-                        <div class="border rounded p-3 bg-light">
-                            {{ note.subjective|linebreaks }}
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <h6 class="text-success"><i class="fas fa-stethoscope"></i> Objective (O)</h6>
-                        <div class="border rounded p-3 bg-light">
-                            {{ note.objective|linebreaks }}
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <h6 class="text-warning"><i class="fas fa-diagnoses"></i> Assessment (A)</h6>
-                        <div class="border rounded p-3 bg-light">
-                            {{ note.assessment|linebreaks }}
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <h6 class="text-info"><i class="fas fa-tasks"></i> Plan (P)</h6>
-                        <div class="border rounded p-3 bg-light">
-                            {{ note.plan|linebreaks }}
-                        </div>
-                    </div>
-                </div>
+                {% include 'includes/clerking_note_detail.html' with note=note %}
                 <div class="row mt-3">
                     <div class="col-12">
                         <small class="text-muted">

@@ -23,7 +23,7 @@ class InternalNotificationAdmin(admin.ModelAdmin):
 class SOAPNoteAdmin(admin.ModelAdmin):
     list_display = ['consultation', 'created_by', 'created_at']
     list_filter = ['created_at', 'created_by']
-    search_fields = ['subjective', 'objective', 'assessment', 'plan']
+    search_fields = ['presenting_complaint', 'history_of_presenting_complaint', 'provisional_diagnosis', 'management_plan']
     readonly_fields = ['created_at', 'updated_at']
     raw_id_fields = ['consultation', 'created_by']
 

@@ -188,32 +188,7 @@
                              aria-labelledby="heading{{ note.id }}"
                              data-bs-parent="#clinicalNotesAccordion">
                             <div class="accordion-body">
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <h6 class="text-primary"><i class="fas fa-comment-dots"></i> Subjective</h6>
-                                        <div class="border rounded p-2 bg-light">
-                                            <small>{{ note.subjective|linebreaks }}</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <h6 class="text-success"><i class="fas fa-stethoscope"></i> Objective</h6>
-                                        <div class="border rounded p-2 bg-light">
-                                            <small>{{ note.objective|linebreaks }}</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <h6 class="text-warning"><i class="fas fa-diagnoses"></i> Assessment</h6>
-                                        <div class="border rounded p-2 bg-light">
-                                            <small>{{ note.assessment|linebreaks }}</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <h6 class="text-info"><i class="fas fa-tasks"></i> Plan</h6>
-                                        <div class="border rounded p-2 bg-light">
-                                            <small>{{ note.plan|linebreaks }}</small>
-                                        </div>
-                                    </div>
-                                </div>
+                                {% include 'includes/clerking_note_detail.html' with note=note %}
                                 <div class="mt-2">
                                     <a href="{% url 'dental:view_clinical_note' note.id %}" class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-eye"></i> View Full

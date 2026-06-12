@@ -5,6 +5,7 @@ from core.medical_forms import MedicalRecordSearchForm
 from core.patient_search_forms import PatientSearchForm
 from django.conf import settings
 from typing import Any, cast
+from core.clinical_notes import CLERKING_FIELDS, CLERKING_LABELS, clerking_widgets
 
 
 class DentalRecordForm(forms.ModelForm):
@@ -155,36 +156,11 @@ class DentalXRayForm(forms.ModelForm):
 
 
 class DentalClinicalNoteForm(forms.ModelForm):
-    """Form for creating and editing dental clinical notes (SOAP format)"""
+    """Form for the Nigerian clerking proforma clinical note."""
 
     class Meta:
         model = DentalClinicalNote
-        fields = ['subjective', 'objective', 'assessment', 'plan']
-        widgets = {
-            'subjective': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': "Patient's description of symptoms, concerns, and dental history..."
-            }),
-            'objective': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Observable findings, examination results, tooth conditions...'
-            }),
-            'assessment': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Clinical assessment, diagnosis, and interpretation...'
-            }),
-            'plan': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Treatment plan, interventions, follow-up appointments...'
-            }),
-        }
-        labels = {
-            'subjective': 'Subjective (S)',
-            'objective': 'Objective (O)',
-            'assessment': 'Assessment (A)',
-            'plan': 'Plan (P)',
-        }
+        fields = CLERKING_FIELDS
+        widgets = clerking_widgets()
+        labels = CLERKING_LABELS
+

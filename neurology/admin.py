@@ -31,7 +31,7 @@ class NeurologyTestAdmin(admin.ModelAdmin):
 class NeurologyClinicalNoteAdmin(admin.ModelAdmin):
     list_display = ('neurology_record', 'created_by', 'created_at')
     list_filter = ('created_at',)
-    search_fields = ('neurology_record__patient__first_name', 'neurology_record__patient__last_name', 'subjective', 'assessment')
+    search_fields = ('neurology_record__patient__first_name', 'neurology_record__patient__last_name', 'presenting_complaint', 'provisional_diagnosis')
     raw_id_fields = ('neurology_record', 'created_by')
     ordering = ('-created_at',)
 

@@ -1,5 +1,6 @@
 from django import forms
 from django.db.models import Q
+from core.clinical_notes import CLERKING_FIELDS, CLERKING_LABELS, clerking_widgets
 from .models import Patient, MedicalHistory, Vitals, ClinicalNote, PhysiotherapyRequest, SharedWallet, WalletMembership
 from django.core.validators import RegexValidator
 from doctors.models import Specialization
@@ -1204,21 +1205,24 @@ class RetainershipIndependentPatientForm(PatientForm):
 
 
 class ClinicalNoteForm(forms.ModelForm):
-    """Form for adding and editing clinical notes"""
+    """Form for adding and editing clinical notes (Nigerian clerking proforma)"""
 
     note = forms.CharField(
+        required=False,
         widget=forms.Textarea(attrs={
             'class': 'form-control',
-            'rows': 5,
-            'placeholder': 'Enter clinical note content...'
+            'rows': 3,
+            'placeholder': 'Additional notes / remarks...'
         }),
-        label='Clinical Note',
-        help_text='Enter detailed clinical observations and recommendations'
+        label='Additional Notes',
+        help_text='Any extra remarks not covered above'
     )
 
     class Meta:
         model = ClinicalNote
-        fields = ['note', 'doctor']
+        fields = CLERKING_FIELDS + ['note', 'doctor']
+        widgets = clerking_widgets()
+        labels = CLERKING_LABELS
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)

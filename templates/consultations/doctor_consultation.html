@@ -125,10 +125,7 @@
                                 <thead>
                                     <tr>
                                         <th>Date</th>
-                                        <th>Subjective</th>
-                                        <th>Objective</th>
-                                        <th>Assessment</th>
-                                        <th>Plan</th>
+                                        <th>Clinical Note (Clerking)</th>
                                         <th>By</th>
                                     </tr>
                                 </thead>
@@ -136,14 +133,11 @@
                                     {% for note in consultation.soap_notes.all %}
                                     <tr>
                                         <td>{{ note.created_at|date:'Y-m-d H:i' }}</td>
-                                        <td>{{ note.subjective|linebreaksbr }}</td>
-                                        <td>{{ note.objective|linebreaksbr }}</td>
-                                        <td>{{ note.assessment|linebreaksbr }}</td>
-                                        <td>{{ note.plan|linebreaksbr }}</td>
+                                        <td>{% include 'includes/clerking_note_detail.html' with note=note %}</td>
                                         <td>{{ note.created_by.get_full_name }}</td>
                                     </tr>
                                     {% empty %}
-                                    <tr><td colspan="6">No SOAP notes yet.</td></tr>
+                                    <tr><td colspan="3">No clinical notes yet.</td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>

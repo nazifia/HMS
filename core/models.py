@@ -4,6 +4,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from core.clinical_notes import NigerianClerkingNote
 import logging
 
 # Avoid circular imports by using string references for foreign keys
@@ -82,14 +83,10 @@ class InternalNotification(models.Model):
             models.Index(fields=['created_at']),
         ]
 
-class SOAPNote(models.Model):
-    """SOAP (Subjective, Objective, Assessment, Plan) notes for consultations"""
+class SOAPNote(NigerianClerkingNote):
+    """Clinical note in the Nigerian clerking proforma format (class name kept for compatibility)."""
     consultation = models.ForeignKey('consultations.Consultation', on_delete=models.CASCADE, related_name='core_soap_notes')
     created_by = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True)
-    subjective = models.TextField(help_text="Patient's description of symptoms")
-    objective = models.TextField(help_text="Observable findings and test results")
-    assessment = models.TextField(help_text="Clinical assessment and diagnosis")
-    plan = models.TextField(help_text="Treatment plan and follow-up")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

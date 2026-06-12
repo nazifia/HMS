@@ -3,6 +3,7 @@ from .models import AncRecord, AncClinicalNote
 from core.medical_forms import MedicalRecordSearchForm
 from patients.models import Patient
 from doctors.models import Doctor
+from core.clinical_notes import CLERKING_FIELDS, CLERKING_LABELS, clerking_widgets
 
 class AncRecordForm(forms.ModelForm):
     class Meta:
@@ -70,36 +71,11 @@ class AncRecordSearchForm(MedicalRecordSearchForm):
     pass
 
 class AncClinicalNoteForm(forms.ModelForm):
-    """Form for creating and editing anc clinical notes (SOAP format)"""
+    """Form for the Nigerian clerking proforma clinical note."""
 
     class Meta:
         model = AncClinicalNote
-        fields = ['subjective', 'objective', 'assessment', 'plan']
-        widgets = {
-            'subjective': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': "Patient's description of symptoms, concerns, and history..."
-            }),
-            'objective': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Observable findings, examination results, measurements...'
-            }),
-            'assessment': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Clinical assessment, diagnosis, and interpretation...'
-            }),
-            'plan': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Treatment plan, interventions, follow-up...'
-            }),
-        }
-        labels = {
-            'subjective': 'Subjective (S)',
-            'objective': 'Objective (O)',
-            'assessment': 'Assessment (A)',
-            'plan': 'Plan (P)',
-        }
+        fields = CLERKING_FIELDS
+        widgets = clerking_widgets()
+        labels = CLERKING_LABELS
+

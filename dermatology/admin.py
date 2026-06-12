@@ -31,7 +31,7 @@ class DermatologyTestAdmin(admin.ModelAdmin):
 class DermatologyClinicalNoteAdmin(admin.ModelAdmin):
     list_display = ('dermatology_record', 'created_by', 'created_at')
     list_filter = ('created_at',)
-    search_fields = ('dermatology_record__patient__first_name', 'dermatology_record__patient__last_name', 'subjective', 'assessment')
+    search_fields = ('dermatology_record__patient__first_name', 'dermatology_record__patient__last_name', 'presenting_complaint', 'provisional_diagnosis')
     raw_id_fields = ('dermatology_record', 'created_by')
     ordering = ('-created_at',)
 

@@ -178,13 +178,13 @@
             <div class="card shadow mb-4">
                 <div class="card-header section-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-notes-medical me-2"></i>SOAP Notes
+                        <i class="fas fa-notes-medical me-2"></i>Clinical Notes (Clerking)
                         <span class="badge bg-secondary ms-2">{{ analytics.soap_count }}</span>
                     </h6>
                     {% if consultation.doctor == request.user or request.user.is_superuser or request.user.is_staff %}
                     {% if consultation.status != 'completed' and consultation.status != 'cancelled' %}
                     <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#soapNoteForm">
-                        <i class="fas fa-plus"></i> Add SOAP Note
+                        <i class="fas fa-plus"></i> Add Clinical Note
                     </button>
                     {% endif %}
                     {% endif %}
@@ -196,31 +196,10 @@
                     <div class="card-body border-bottom bg-light">
                         <form method="post" action="{% url 'consultations:add_soap_note' consultation.id %}">
                             {% csrf_token %}
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label fw-bold small text-primary">S — Subjective</label>
-                                    <textarea name="subjective" class="form-control" rows="3"
-                                              placeholder="Patient's reported symptoms, history..."></textarea>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fw-bold small text-success">O — Objective</label>
-                                    <textarea name="objective" class="form-control" rows="3"
-                                              placeholder="Examination findings, vitals, labs..."></textarea>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fw-bold small text-warning">A — Assessment</label>
-                                    <textarea name="assessment" class="form-control" rows="3"
-                                              placeholder="Diagnosis, clinical impression..."></textarea>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fw-bold small text-info">P — Plan</label>
-                                    <textarea name="plan" class="form-control" rows="3"
-                                              placeholder="Treatment plan, follow-up..."></textarea>
-                                </div>
-                            </div>
+                            {% include 'includes/clerking_note_inputs.html' %}
                             <div class="mt-3 d-flex gap-2">
                                 <button type="submit" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-save me-1"></i>Save SOAP Note
+                                    <i class="fas fa-save me-1"></i>Save Clinical Note
                                 </button>
                                 <button type="button" class="btn btn-outline-secondary btn-sm"
                                         data-bs-toggle="collapse" data-bs-target="#soapNoteForm">
@@ -244,24 +223,7 @@
                                     {{ note.created_by.get_full_name|default:"Unknown" }} &mdash; {{ note.created_at|date:"M d, Y H:i" }}
                                 </small>
                             </div>
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <strong class="small text-primary">S — Subjective</strong>
-                                    <p class="mb-0 small mt-1" style="white-space:pre-line;">{{ note.subjective }}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <strong class="small text-success">O — Objective</strong>
-                                    <p class="mb-0 small mt-1" style="white-space:pre-line;">{{ note.objective }}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <strong class="small text-warning">A — Assessment</strong>
-                                    <p class="mb-0 small mt-1" style="white-space:pre-line;">{{ note.assessment }}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <strong class="small text-info">P — Plan</strong>
-                                    <p class="mb-0 small mt-1" style="white-space:pre-line;">{{ note.plan }}</p>
-                                </div>
-                            </div>
+                            {% include 'includes/clerking_note_detail.html' with note=note %}
                         </div>
                     </div>
                     {% endfor %}

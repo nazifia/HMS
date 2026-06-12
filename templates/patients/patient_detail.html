@@ -769,7 +769,11 @@
                                     {% for note in clinical_notes %}
                                     <tr>
                                         <td style="white-space:nowrap;">{{ note.date|date:"d M Y H:i" }}</td>
-                                        <td>{{ note.note|linebreaks }}</td>
+                                        <td>
+                                            {% if note.presenting_complaint %}<strong>PC:</strong> {{ note.presenting_complaint|truncatewords:20 }}<br>{% endif %}
+                                            {% if note.provisional_diagnosis %}<strong>Dx:</strong> {{ note.provisional_diagnosis|truncatewords:15 }}{% endif %}
+                                            {% if note.note %}{{ note.note|truncatewords:15 }}{% endif %}
+                                        </td>
                                         <td>{{ note.doctor.get_full_name }}</td>
                                         <td>
                                             <a href="{% url 'patients:edit_clinical_note' note.id %}" class="act-btn" title="Edit"><i class="fas fa-edit"></i></a>

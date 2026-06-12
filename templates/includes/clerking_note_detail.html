@@ -1,0 +1,49 @@
+{% comment %}
+Renders a clinical note in the Nigerian clerking proforma format.
+Usage: {% include 'includes/clerking_note_detail.html' with note=note %}
+Only sections with content are shown.
+{% endcomment %}
+<div class="clerking-note">
+  {% if note.presenting_complaint %}
+  <div class="mb-3"><h6 class="text-primary border-bottom pb-1">Presenting Complaint (PC)</h6><p class="mb-0">{{ note.presenting_complaint|linebreaks }}</p></div>
+  {% endif %}
+  {% if note.history_of_presenting_complaint %}
+  <div class="mb-3"><h6 class="text-primary border-bottom pb-1">History of Presenting Complaint (HPC)</h6><p class="mb-0">{{ note.history_of_presenting_complaint|linebreaks }}</p></div>
+  {% endif %}
+  {% if note.past_medical_surgical_history %}
+  <div class="mb-3"><h6 class="text-primary border-bottom pb-1">Past Medical &amp; Surgical History</h6><p class="mb-0">{{ note.past_medical_surgical_history|linebreaks }}</p></div>
+  {% endif %}
+  {% if note.drug_history_allergies %}
+  <div class="mb-3"><h6 class="text-primary border-bottom pb-1">Drug History &amp; Allergies</h6><p class="mb-0">{{ note.drug_history_allergies|linebreaks }}</p></div>
+  {% endif %}
+  {% if note.family_social_history %}
+  <div class="mb-3"><h6 class="text-primary border-bottom pb-1">Family &amp; Social History</h6><p class="mb-0">{{ note.family_social_history|linebreaks }}</p></div>
+  {% endif %}
+  {% if note.review_of_systems %}
+  <div class="mb-3"><h6 class="text-primary border-bottom pb-1">Review of Systems (ROS)</h6><p class="mb-0">{{ note.review_of_systems|linebreaks }}</p></div>
+  {% endif %}
+  {% if note.general_examination %}
+  <div class="mb-3"><h6 class="text-primary border-bottom pb-1">General Examination</h6><p class="mb-0">{{ note.general_examination|linebreaks }}</p></div>
+  {% endif %}
+  {% if note.systemic_examination %}
+  <div class="mb-3"><h6 class="text-primary border-bottom pb-1">Systemic Examination</h6><p class="mb-0">{{ note.systemic_examination|linebreaks }}</p></div>
+  {% endif %}
+  {% if note.summary %}
+  <div class="mb-3"><h6 class="text-primary border-bottom pb-1">Summary</h6><p class="mb-0">{{ note.summary|linebreaks }}</p></div>
+  {% endif %}
+  {% if note.provisional_diagnosis %}
+  <div class="mb-3"><h6 class="text-primary border-bottom pb-1">Provisional Diagnosis</h6><p class="mb-0">{{ note.provisional_diagnosis|linebreaks }}</p></div>
+  {% endif %}
+  {% if note.differential_diagnosis %}
+  <div class="mb-3"><h6 class="text-primary border-bottom pb-1">Differential Diagnosis</h6><p class="mb-0">{{ note.differential_diagnosis|linebreaks }}</p></div>
+  {% endif %}
+  {% if note.investigations %}
+  <div class="mb-3"><h6 class="text-primary border-bottom pb-1">Investigations</h6><p class="mb-0">{{ note.investigations|linebreaks }}</p></div>
+  {% endif %}
+  {% if note.management_plan %}
+  <div class="mb-3"><h6 class="text-primary border-bottom pb-1">Management / Treatment Plan</h6><p class="mb-0">{{ note.management_plan|linebreaks }}</p></div>
+  {% endif %}
+  {% if not note.has_clerking_content %}
+  <p class="text-muted mb-0"><em>No clerking details recorded.</em></p>
+  {% endif %}
+</div>

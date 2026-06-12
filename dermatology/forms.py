@@ -4,6 +4,7 @@ from .models import DermatologyRecord, DermatologyService, DermatologyTest, Derm
 from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query
 from django.utils import timezone
+from core.clinical_notes import CLERKING_FIELDS, CLERKING_LABELS, clerking_widgets
 
 class DermatologyRecordForm(ModelForm):
     """Form for creating and updating dermatology records with patient search"""
@@ -102,17 +103,14 @@ class DermatologyTestForm(ModelForm):
         }
 
 class DermatologyClinicalNoteForm(ModelForm):
-    """Form for adding clinical notes (SOAP format)"""
-    
+    """Form for the Nigerian clerking proforma clinical note."""
+
     class Meta:
         model = DermatologyClinicalNote
-        fields = ['subjective', 'objective', 'assessment', 'plan']
-        widgets = {
-            'subjective': forms.Textarea(attrs={'rows': 4}),
-            'objective': forms.Textarea(attrs={'rows': 4}),
-            'assessment': forms.Textarea(attrs={'rows': 4}),
-            'plan': forms.Textarea(attrs={'rows': 4}),
-        }
+        fields = CLERKING_FIELDS
+        widgets = clerking_widgets()
+        labels = CLERKING_LABELS
+
 
 class PatientSearchForm(forms.Form):
     """Form for searching patients in dermatology module"""

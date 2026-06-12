@@ -801,37 +801,33 @@ def create_consultation(request, patient_id):
 @login_required
 @permission_required('consultations.edit')
 def add_soap_note(request, consultation_id):
-    """Create a SOAP note for a consultation via POST."""
+    """Create a clinical (Nigerian clerking proforma) note for a consultation via POST."""
+    from core.clinical_notes import CLERKING_FIELDS
+
     consultation = get_object_or_404(Consultation, id=consultation_id)
 
     if request.method == 'POST':
-        subjective = request.POST.get('subjective', '').strip()
-        objective = request.POST.get('objective', '').strip()
-        assessment = request.POST.get('assessment', '').strip()
-        plan = request.POST.get('plan', '').strip()
+        values = {f: request.POST.get(f, '').strip() for f in CLERKING_FIELDS}
 
-        if not all([subjective, objective, assessment, plan]):
-            messages.error(request, "All four SOAP fields (Subjective, Objective, Assessment, Plan) are required.")
+        if not any(values.values()):
+            messages.error(request, "At least one clerking section must be filled.")
             return redirect('consultations:consultation_detail', consultation_id=consultation.id)
 
         soap_note = SOAPNote.objects.create(
             consultation=consultation,
-            subjective=subjective,
-            objective=objective,
-            assessment=assessment,
-            plan=plan,
             created_by=request.user,
+            **values,
         )
 
-        log_audit_action(request.user, 'create', soap_note, f"Created SOAP note for consultation {consultation.id}")
+        log_audit_action(request.user, 'create', soap_note, f"Created clinical note for consultation {consultation.id}")
 
         if consultation.doctor and consultation.doctor != request.user:
             InternalNotification.objects.create(
                 user=consultation.doctor,
-                message=f"A new SOAP note was added for consultation with {consultation.patient.get_full_name()}"
+                message=f"A new clinical note was added for consultation with {consultation.patient.get_full_name()}"
             )
 
-        messages.success(request, "SOAP note added successfully.")
+        messages.success(request, "Clinical note added successfully.")
         return redirect('consultations:consultation_detail', consultation_id=consultation.id)
 
     return redirect('consultations:consultation_detail', consultation_id=consultation.id)

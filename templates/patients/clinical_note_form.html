@@ -26,25 +26,16 @@
                         </div>
                     {% endif %}
                     
+                    {% for field in form.hidden_fields %}{{ field }}{% endfor %}
                     <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label for="{{ form.doctor.id_for_label }}" class="form-label">Doctor</label>
-                            {{ form.doctor|add_class:"form-control" }}
-                            {% if form.doctor.errors %}
-                                <div class="text-danger">
-                                    {{ form.doctor.errors }}
-                                </div>
-                            {% endif %}
+                        {% for field in form.visible_fields %}
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+                            {% if field.errors %}<div class="text-danger">{{ field.errors }}</div>{% endif %}
                         </div>
-                        <div class="col-md-12 mb-3">
-                            <label for="{{ form.note.id_for_label }}" class="form-label">Clinical Note</label>
-                            {{ form.note|add_class:"form-control" }}
-                            {% if form.note.errors %}
-                                <div class="text-danger">
-                                    {{ form.note.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
+                        {% endfor %}
                     </div>
                     
                     <div class="d-flex justify-content-between mt-4">

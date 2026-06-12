@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
+from core.clinical_notes import NigerianClerkingNote
 User = settings.AUTH_USER_MODEL
 from patients.models import Patient, Vitals
 from appointments.models import Appointment
@@ -477,13 +478,9 @@ class Referral(models.Model):
         ordering = ['-referral_date']
 
 
-class SOAPNote(models.Model):
-    """Model for SOAP (Subjective, Objective, Assessment, Plan) clinical notes"""
+class SOAPNote(NigerianClerkingNote):
+    """Clinical note in the Nigerian clerking proforma format (class name kept for compatibility)."""
     consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name='soap_notes', db_index=True)
-    subjective = models.TextField()
-    objective = models.TextField()
-    assessment = models.TextField()
-    plan = models.TextField()
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_soap_notes')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

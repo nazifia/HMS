@@ -1,0 +1,59 @@
+{% comment %}
+Raw textarea inputs for the Nigerian clerking proforma, for plain (non-Django-form)
+POST forms. Field names match core.clinical_notes.CLERKING_FIELDS.
+Optional context: prefix (defaults to none) and a `note` instance to pre-fill values.
+{% endcomment %}
+<div class="row g-3">
+  <div class="col-md-6">
+    <label class="form-label fw-bold small text-primary">Presenting Complaint (PC)</label>
+    <textarea name="presenting_complaint" class="form-control" rows="2" placeholder="Main complaint(s) and duration...">{{ note.presenting_complaint|default:'' }}</textarea>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-bold small text-primary">History of Presenting Complaint (HPC)</label>
+    <textarea name="history_of_presenting_complaint" class="form-control" rows="2" placeholder="Onset, course, associated symptoms...">{{ note.history_of_presenting_complaint|default:'' }}</textarea>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-bold small">Past Medical &amp; Surgical History</label>
+    <textarea name="past_medical_surgical_history" class="form-control" rows="2" placeholder="Previous illnesses, admissions, surgeries...">{{ note.past_medical_surgical_history|default:'' }}</textarea>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-bold small">Drug History &amp; Allergies</label>
+    <textarea name="drug_history_allergies" class="form-control" rows="2" placeholder="Current medications and known allergies...">{{ note.drug_history_allergies|default:'' }}</textarea>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-bold small">Family &amp; Social History</label>
+    <textarea name="family_social_history" class="form-control" rows="2" placeholder="Family illnesses, occupation, lifestyle...">{{ note.family_social_history|default:'' }}</textarea>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-bold small">Review of Systems (ROS)</label>
+    <textarea name="review_of_systems" class="form-control" rows="2" placeholder="Systematic enquiry across body systems...">{{ note.review_of_systems|default:'' }}</textarea>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-bold small text-success">General Examination</label>
+    <textarea name="general_examination" class="form-control" rows="2" placeholder="General condition, vital signs, pallor, oedema...">{{ note.general_examination|default:'' }}</textarea>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-bold small text-success">Systemic Examination</label>
+    <textarea name="systemic_examination" class="form-control" rows="2" placeholder="Findings per system examined...">{{ note.systemic_examination|default:'' }}</textarea>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-bold small">Summary</label>
+    <textarea name="summary" class="form-control" rows="2" placeholder="Brief case summary...">{{ note.summary|default:'' }}</textarea>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-bold small text-warning">Provisional Diagnosis</label>
+    <textarea name="provisional_diagnosis" class="form-control" rows="2" placeholder="Most likely diagnosis...">{{ note.provisional_diagnosis|default:'' }}</textarea>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-bold small text-warning">Differential Diagnosis</label>
+    <textarea name="differential_diagnosis" class="form-control" rows="2" placeholder="Other diagnoses considered...">{{ note.differential_diagnosis|default:'' }}</textarea>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-bold small">Investigations</label>
+    <textarea name="investigations" class="form-control" rows="2" placeholder="Investigations requested and results...">{{ note.investigations|default:'' }}</textarea>
+  </div>
+  <div class="col-md-12">
+    <label class="form-label fw-bold small text-info">Management / Treatment Plan</label>
+    <textarea name="management_plan" class="form-control" rows="3" placeholder="Treatment, interventions, follow-up, patient education...">{{ note.management_plan|default:'' }}</textarea>
+  </div>
+</div>

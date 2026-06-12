@@ -25,8 +25,8 @@
                     </div>
                     <div class="card-body">
                         <p><strong>Doctor:</strong> {{ clinical_note.doctor.get_full_name }}</p>
-                        <p><strong>Note:</strong></p>
-                        <p>{{ clinical_note.note|linebreaks }}</p>
+                        {% include 'includes/clerking_note_detail.html' with note=clinical_note %}
+                        {% if clinical_note.note %}<p><strong>Additional Notes:</strong></p><p>{{ clinical_note.note|linebreaks }}</p>{% endif %}
                     </div>
                 </div>
                 

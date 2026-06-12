@@ -2,6 +2,7 @@ from django.db import models
 from django.db.models import Sum, Count
 from django.utils import timezone
 from django.conf import settings
+from core.clinical_notes import NigerianClerkingNote
 import random
 import logging
 from decimal import Decimal
@@ -1718,8 +1719,8 @@ class NHIAPatient(Patient):
         super().save(*args, **kwargs)
 
 
-class ClinicalNote(models.Model):
-    """Model for clinical notes associated with patients"""
+class ClinicalNote(NigerianClerkingNote):
+    """Patient clinical note in the Nigerian clerking proforma format"""
 
     patient = models.ForeignKey(
         Patient, on_delete=models.CASCADE, related_name="clinical_notes"
@@ -1731,7 +1732,7 @@ class ClinicalNote(models.Model):
         blank=True,
         related_name="clinical_notes",
     )
-    note = models.TextField(help_text="Clinical note content")
+    note = models.TextField(blank=True, default="", help_text="Additional notes / remarks")
     date = models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
