@@ -693,13 +693,16 @@ def pay_cart_from_wallet(request, cart_id):
                 notes=f"Paid from patient wallet (Cart #{cart.id})",
             )
 
+            # Note: WalletTransaction.invoice/payment FKs point to billing.* models,
+            # not pharmacy_billing.*; omit them to avoid a type mismatch.
             wallet.debit(
                 amount=amount,
-                description=f"Payment for prescription #{cart.prescription.id} (Cart #{cart.id})",
+                description=(
+                    f"Payment for prescription #{cart.prescription.id} "
+                    f"(Cart #{cart.id}, Pharmacy Invoice #{invoice.id})"
+                ),
                 transaction_type="pharmacy_payment",
                 user=request.user,
-                invoice=invoice,
-                payment_instance=payment,
             )
 
             # Update invoice
