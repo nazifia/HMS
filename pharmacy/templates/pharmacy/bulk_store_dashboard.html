@@ -306,13 +306,26 @@
                                     </td>
                                     <td>
                                         {% if can_edit_bulk_store %}
-                                        <button class="btn btn-sm btn-info edit-markup-btn"
+                                        <a href="{% url 'pharmacy:edit_bulk_store_inventory' item.id %}"
+                                           class="btn btn-sm btn-primary mb-1">
+                                            <i class="fas fa-pen"></i> Edit Item
+                                        </a>
+                                        <button class="btn btn-sm btn-info edit-markup-btn mb-1"
                                                 data-item-id="{{ item.id }}"
                                                 data-current-markup="{{ item.markup_percentage }}"
                                                 data-medication-name="{{ item.medication.name }}"
                                                 data-batch-number="{{ item.batch_number }}">
                                             <i class="fas fa-edit"></i> Edit Markup
                                         </button>
+                                        <form method="post"
+                                              action="{% url 'pharmacy:delete_bulk_store_inventory' item.id %}"
+                                              class="d-inline"
+                                              onsubmit="return confirm('Delete {{ item.medication.name|escapejs }} (batch {{ item.batch_number|escapejs }})? This cannot be undone.');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-danger mb-1">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </form>
                                         {% else %}
                                         <span class="text-muted small">
                                             <i class="fas fa-lock"></i> Read-only

@@ -2691,6 +2691,114 @@ def add_bulk_store_inventory(request):
 
 
 @login_required
+def edit_bulk_store_inventory(request, item_id):
+    """Edit an existing bulk store inventory item in place.
+
+    Adjusts the stored values directly (stock count, batch, expiry, costing,
+    supplier). bulk_store and medication stay fixed.
+    """
+    from .forms import BulkStoreInventoryEditForm
+
+    item = get_object_or_404(
+        BulkStoreInventory.objects.select_related("medication", "bulk_store"),
+        id=item_id,
+    )
+
+    if not user_has_bulk_store_edit_permission(request.user, item.bulk_store):
+        messages.error(
+            request,
+            "You do not have permission to edit inventory in this bulk store.",
+        )
+        return redirect("pharmacy:bulk_store_dashboard")
+
+    if request.method == "POST":
+        form = BulkStoreInventoryEditForm(request.POST, instance=item)
+        if form.is_valid():
+            old_qty = item.stock_quantity
+            old_markup = item.markup_percentage
+            obj = form.save()  # save() auto-recalculates marked_up_cost
+
+            try:
+                from core.models import AuditLog
+
+                AuditLog.objects.create(
+                    user=request.user,
+                    action="BULK_STORE_ITEM_EDITED",
+                    details=(
+                        f"Edited {obj.medication.name} (Batch: {obj.batch_number}) "
+                        f"in {obj.bulk_store.name}: qty {old_qty}->{obj.stock_quantity}, "
+                        f"markup {old_markup}%->{obj.markup_percentage}%"
+                    ),
+                )
+            except Exception:
+                pass
+
+            messages.success(
+                request,
+                f"Updated {obj.medication.name} (batch {obj.batch_number}) "
+                f"in {obj.bulk_store.name}.",
+            )
+            return redirect("pharmacy:bulk_store_dashboard")
+    else:
+        form = BulkStoreInventoryEditForm(instance=item)
+
+    context = {
+        "form": form,
+        "item": item,
+        "title": "Edit Bulk Store Inventory",
+        "page_title": f"Edit {item.medication.name} - {item.bulk_store.name}",
+        "active_nav": "pharmacy",
+    }
+    return render(request, "pharmacy/edit_bulk_store_inventory.html", context)
+
+
+@login_required
+def delete_bulk_store_inventory(request, item_id):
+    """Delete a bulk store inventory item (POST only)."""
+    item = get_object_or_404(
+        BulkStoreInventory.objects.select_related("medication", "bulk_store"),
+        id=item_id,
+    )
+
+    if not user_has_bulk_store_edit_permission(request.user, item.bulk_store):
+        messages.error(
+            request,
+            "You do not have permission to delete inventory in this bulk store.",
+        )
+        return redirect("pharmacy:bulk_store_dashboard")
+
+    if request.method != "POST":
+        messages.error(request, "Invalid request method.")
+        return redirect("pharmacy:bulk_store_dashboard")
+
+    med_name = item.medication.name
+    batch = item.batch_number
+    store_name = item.bulk_store.name
+    qty = item.stock_quantity
+
+    item.delete()
+
+    try:
+        from core.models import AuditLog
+
+        AuditLog.objects.create(
+            user=request.user,
+            action="BULK_STORE_ITEM_DELETED",
+            details=(
+                f"Deleted {med_name} (Batch: {batch}, qty {qty}) "
+                f"from {store_name}"
+            ),
+        )
+    except Exception:
+        pass
+
+    messages.success(
+        request, f"Deleted {med_name} (batch {batch}) from {store_name}."
+    )
+    return redirect("pharmacy:bulk_store_dashboard")
+
+
+@login_required
 @permission_required("pharmacy.view")
 def active_store_detail(request, dispensary_id):
     """View for displaying active store details and managing transfers"""

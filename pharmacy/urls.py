@@ -159,6 +159,16 @@ urlpatterns = [
         name="add_bulk_store_inventory",
     ),
     path(
+        "bulk-store/inventory/<int:item_id>/edit/",
+        views.edit_bulk_store_inventory,
+        name="edit_bulk_store_inventory",
+    ),
+    path(
+        "bulk-store/inventory/<int:item_id>/delete/",
+        views.delete_bulk_store_inventory,
+        name="delete_bulk_store_inventory",
+    ),
+    path(
         "bulk-stores/<int:bulk_store_id>/edit/",
         views.edit_bulk_store,
         name="edit_bulk_store",

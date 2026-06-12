@@ -1152,6 +1152,63 @@ class BulkStoreInventoryForm(forms.ModelForm):
         return qty
 
 
+class BulkStoreInventoryEditForm(forms.ModelForm):
+    """Form for editing an existing bulk store inventory item in place.
+
+    Unlike BulkStoreInventoryForm (which adds/tops-up stock), this edits the
+    record directly: stock_quantity is the absolute on-hand value and allows 0
+    (e.g. write-off). bulk_store and medication are fixed once created.
+    """
+
+    expiry_date = forms.DateField(
+        widget=forms.DateInput(
+            attrs={"type": "date", "class": "form-control"}
+        )
+    )
+
+    class Meta:
+        model = BulkStoreInventory
+        fields = [
+            "batch_number",
+            "stock_quantity",
+            "expiry_date",
+            "unit_cost",
+            "markup_percentage",
+            "supplier",
+        ]
+        widgets = {
+            "batch_number": forms.TextInput(attrs={"class": "form-control"}),
+            "stock_quantity": forms.NumberInput(
+                attrs={"class": "form-control", "min": "0"}
+            ),
+            "unit_cost": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01", "min": "0"}
+            ),
+            "markup_percentage": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01", "min": "0", "max": "100"}
+            ),
+            "supplier": forms.Select(attrs={"class": "form-control"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["supplier"].queryset = Supplier.objects.filter(is_active=True)
+        self.fields["supplier"].empty_label = "Select Supplier (Optional)"
+        self.fields["supplier"].required = False
+
+    def clean_stock_quantity(self):
+        qty = self.cleaned_data.get("stock_quantity")
+        if qty is None or qty < 0:
+            raise forms.ValidationError("Quantity cannot be negative.")
+        return qty
+
+    def clean_markup_percentage(self):
+        markup = self.cleaned_data.get("markup_percentage")
+        if markup is not None and (markup < 0 or markup > 100):
+            raise forms.ValidationError("Markup must be between 0 and 100.")
+        return markup
+
+
 class PrescriptionPaymentForm(forms.ModelForm):
     """Form for processing payments for prescriptions with dual payment method support"""
 
