@@ -2484,7 +2484,7 @@ def bulk_store_dashboard(request):
         .order_by("medication__name")
     )
 
-    can_edit_bulk_store = any(
+    can_edit_bulk_store = user_has_bulk_store_edit_permission(request.user) or any(
         user_has_bulk_store_edit_permission(request.user, bs) for bs in bulk_stores
     )
 
