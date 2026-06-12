@@ -189,6 +189,16 @@ urlpatterns = [
         name="approve_medication_transfer",
     ),
     path(
+        "dispensaries/<int:dispensary_id>/active-store/bulk-approve-transfers/",
+        views.bulk_approve_medication_transfers,
+        name="bulk_approve_medication_transfers",
+    ),
+    path(
+        "dispensaries/<int:dispensary_id>/active-store/bulk-approve-dispensary-transfers/",
+        views.bulk_approve_dispensary_transfers,
+        name="bulk_approve_dispensary_transfers",
+    ),
+    path(
         "bulk-store/transfer/<int:transfer_id>/execute/",
         views.execute_medication_transfer,
         name="execute_medication_transfer",

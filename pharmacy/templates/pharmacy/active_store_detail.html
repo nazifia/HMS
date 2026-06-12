@@ -333,58 +333,146 @@
     <!-- Pending Bulk Store Transfers -->
     {% if pending_medication_transfers %}
         <div class="inventory-card">
-            <div class="card-header bg-info text-white">
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
                     <i class="fas fa-hourglass-half me-2"></i>
                     Pending Bulk Store Transfers ({{ pending_medication_transfers.count }})
                 </h5>
+                <button type="submit" form="bulkApproveForm" class="btn btn-sm btn-light"
+                        id="bulkApproveBtn" disabled
+                        onclick="return confirm('Approve and execute all selected transfers?')">
+                    <i class="fas fa-check-double"></i> Approve Selected
+                </button>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Transfer ID</th>
-                                <th>Medication</th>
-                                <th>Quantity</th>
-                                <th>Batch Number</th>
-                                <th>From Bulk Store</th>
-                                <th>Requested By</th>
-                                <th>Requested At</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for transfer in pending_medication_transfers %}
-                                <tr class="transfer-pending">
-                                    <td><strong>#{{ transfer.id }}</strong></td>
-                                    <td>{{ transfer.medication.name }}</td>
-                                    <td>{{ transfer.quantity }}</td>
-                                    <td>{{ transfer.batch_number|default:"-" }}</td>
-                                    <td>{{ transfer.from_bulk_store.name }}</td>
-                                    <td>{{ transfer.requested_by.get_full_name|default:transfer.requested_by.username }}</td>
-                                    <td>{{ transfer.created_at|date:"M d, Y H:i" }}</td>
-                                    <td>
-                                        <form method="post" action="{% url 'pharmacy:approve_medication_transfer' transfer.id %}" class="d-inline">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-primary"
+                <form method="post" action="{% url 'pharmacy:bulk_approve_medication_transfers' dispensary.id %}" id="bulkApproveForm">
+                    {% csrf_token %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:36px;">
+                                        <input type="checkbox" id="selectAllTransfers" title="Select all">
+                                    </th>
+                                    <th>Transfer ID</th>
+                                    <th>Medication</th>
+                                    <th>Quantity</th>
+                                    <th>Batch Number</th>
+                                    <th>From Bulk Store</th>
+                                    <th>Requested By</th>
+                                    <th>Requested At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transfer in pending_medication_transfers %}
+                                    <tr class="transfer-pending">
+                                        <td>
+                                            <input type="checkbox" name="transfer_ids" value="{{ transfer.id }}" class="transfer-checkbox">
+                                        </td>
+                                        <td><strong>#{{ transfer.id }}</strong></td>
+                                        <td>{{ transfer.medication.name }}</td>
+                                        <td>{{ transfer.quantity }}</td>
+                                        <td>{{ transfer.batch_number|default:"-" }}</td>
+                                        <td>{{ transfer.from_bulk_store.name }}</td>
+                                        <td>{{ transfer.requested_by.get_full_name|default:transfer.requested_by.username }}</td>
+                                        <td>{{ transfer.created_at|date:"M d, Y H:i" }}</td>
+                                        <td>
+                                            <button type="submit" form="approveForm{{ transfer.id }}" class="btn btn-sm btn-primary"
                                                     onclick="return confirm('Approve this transfer request? This will move {{ transfer.quantity }} units of {{ transfer.medication.name }} from bulk store to active store.')">
-                                                <i class="fas fa-check"></i> Approve & Execute
+                                                <i class="fas fa-check"></i> Approve &amp; Execute
                                             </button>
-                                        </form>
-                                        <form method="post" action="{% url 'pharmacy:cancel_medication_transfer' transfer.id %}" class="d-inline">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-danger"
+                                            <button type="submit" form="cancelForm{{ transfer.id }}" class="btn btn-sm btn-danger"
                                                     onclick="return confirm('Cancel this transfer request?')">
                                                 <i class="fas fa-times"></i> Cancel
                                             </button>
-                                        </form>
-                                    </td>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
+                {% for transfer in pending_medication_transfers %}
+                    <form method="post" action="{% url 'pharmacy:approve_medication_transfer' transfer.id %}" id="approveForm{{ transfer.id }}" class="d-none">
+                        {% csrf_token %}
+                    </form>
+                    <form method="post" action="{% url 'pharmacy:cancel_medication_transfer' transfer.id %}" id="cancelForm{{ transfer.id }}" class="d-none">
+                        {% csrf_token %}
+                    </form>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if pending_dispensary_transfers %}
+        <div class="inventory-card">
+            <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-hourglass-half me-2"></i>
+                    Pending Dispensary Transfers ({{ pending_dispensary_transfers.count }})
+                </h5>
+                <button type="submit" form="bulkApproveDispForm" class="btn btn-sm btn-dark"
+                        id="bulkApproveDispBtn" disabled
+                        onclick="return confirm('Approve and execute all selected dispensary transfers?')">
+                    <i class="fas fa-check-double"></i> Approve Selected
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <form method="post" action="{% url 'pharmacy:bulk_approve_dispensary_transfers' dispensary.id %}" id="bulkApproveDispForm">
+                    {% csrf_token %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:36px;">
+                                        <input type="checkbox" id="selectAllDispTransfers" title="Select all">
+                                    </th>
+                                    <th>Transfer ID</th>
+                                    <th>Medication</th>
+                                    <th>Quantity</th>
+                                    <th>To Dispensary</th>
+                                    <th>Requested By</th>
+                                    <th>Requested At</th>
+                                    <th>Actions</th>
                                 </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                {% for transfer in pending_dispensary_transfers %}
+                                    <tr class="transfer-pending">
+                                        <td>
+                                            <input type="checkbox" name="transfer_ids" value="{{ transfer.id }}" class="disp-transfer-checkbox">
+                                        </td>
+                                        <td><strong>#{{ transfer.id }}</strong></td>
+                                        <td>{{ transfer.medication.name }}</td>
+                                        <td>{{ transfer.quantity }}</td>
+                                        <td>{{ transfer.to_dispensary.name }}</td>
+                                        <td>{{ transfer.requested_by.get_full_name|default:transfer.requested_by.username }}</td>
+                                        <td>{{ transfer.created_at|date:"M d, Y H:i" }}</td>
+                                        <td>
+                                            <button type="submit" form="approveDispForm{{ transfer.id }}" class="btn btn-sm btn-primary"
+                                                    onclick="return confirm('Approve this transfer request? This will move {{ transfer.quantity }} units of {{ transfer.medication.name }} from active store to {{ transfer.to_dispensary.name }}.')">
+                                                <i class="fas fa-check"></i> Approve &amp; Execute
+                                            </button>
+                                            <button type="submit" form="cancelDispForm{{ transfer.id }}" class="btn btn-sm btn-danger"
+                                                    onclick="return confirm('Cancel this transfer request?')">
+                                                <i class="fas fa-times"></i> Cancel
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
+                {% for transfer in pending_dispensary_transfers %}
+                    <form method="post" action="{% url 'pharmacy:approve_dispensary_transfer' transfer.id %}" id="approveDispForm{{ transfer.id }}" class="d-none">
+                        {% csrf_token %}
+                    </form>
+                    <form method="post" action="{% url 'pharmacy:cancel_dispensary_transfer' transfer.id %}" id="cancelDispForm{{ transfer.id }}" class="d-none">
+                        {% csrf_token %}
+                    </form>
+                {% endfor %}
             </div>
         </div>
     {% endif %}
@@ -429,6 +517,60 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Bulk approval of pending bulk store transfers
+    const selectAll = document.getElementById('selectAllTransfers');
+    const checkboxes = document.querySelectorAll('.transfer-checkbox');
+    const bulkBtn = document.getElementById('bulkApproveBtn');
+
+    function updateBulkBtn() {
+        if (!bulkBtn) return;
+        const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+        bulkBtn.disabled = !anyChecked;
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            checkboxes.forEach(cb => { cb.checked = selectAll.checked; });
+            updateBulkBtn();
+        });
+    }
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            if (selectAll) {
+                selectAll.checked = Array.from(checkboxes).every(c => c.checked);
+            }
+            updateBulkBtn();
+        });
+    });
+
+    // Bulk approval of pending dispensary transfers
+    const selectAllDisp = document.getElementById('selectAllDispTransfers');
+    const dispCheckboxes = document.querySelectorAll('.disp-transfer-checkbox');
+    const bulkDispBtn = document.getElementById('bulkApproveDispBtn');
+
+    function updateBulkDispBtn() {
+        if (!bulkDispBtn) return;
+        const anyChecked = Array.from(dispCheckboxes).some(cb => cb.checked);
+        bulkDispBtn.disabled = !anyChecked;
+    }
+
+    if (selectAllDisp) {
+        selectAllDisp.addEventListener('change', function() {
+            dispCheckboxes.forEach(cb => { cb.checked = selectAllDisp.checked; });
+            updateBulkDispBtn();
+        });
+    }
+
+    dispCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            if (selectAllDisp) {
+                selectAllDisp.checked = Array.from(dispCheckboxes).every(c => c.checked);
+            }
+            updateBulkDispBtn();
+        });
+    });
 });
 </script>
 {% endblock %}

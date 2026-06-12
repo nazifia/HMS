@@ -3691,6 +3691,135 @@ def approve_medication_transfer(request, transfer_id):
 
 @login_required
 @permission_required("pharmacy.edit")
+def bulk_approve_medication_transfers(request, dispensary_id):
+    """Approve and execute multiple pending bulk store transfers at once."""
+    dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
+    active_store = getattr(dispensary, "active_store", None)
+
+    if not active_store:
+        messages.error(request, f"No active store found for {dispensary.name}.")
+        return redirect("pharmacy:dispensary_list")
+
+    redirect_url = redirect(
+        "pharmacy:active_store_detail", dispensary_id=dispensary_id
+    )
+
+    if request.method != "POST":
+        return redirect_url
+
+    transfer_ids = request.POST.getlist("transfer_ids")
+    if not transfer_ids:
+        messages.error(request, "No transfers selected.")
+        return redirect_url
+
+    transfers = MedicationTransfer.objects.filter(
+        id__in=transfer_ids, to_active_store=active_store
+    )
+
+    approved = 0
+    errors = []
+    for transfer in transfers:
+        try:
+            if not transfer.can_approve():
+                errors.append(
+                    f"Transfer #{transfer.id}: cannot be approved in current status."
+                )
+                continue
+
+            transfer.approved_by = request.user
+            transfer.approved_at = timezone.now()
+            transfer.status = "in_transit"
+            transfer.save()
+
+            transfer.execute_transfer(request.user)
+
+            transfer.status = "delivered"
+            transfer.delivered_by = request.user
+            transfer.delivered_at = timezone.now()
+            transfer.save()
+            approved += 1
+        except ValueError as ve:
+            errors.append(f"Transfer #{transfer.id}: {str(ve)}")
+        except Exception as e:
+            errors.append(f"Transfer #{transfer.id}: {str(e)}")
+
+    if approved:
+        messages.success(
+            request,
+            f"✅ {approved} transfer(s) approved and delivered to {dispensary.name}.",
+        )
+    for error in errors:
+        messages.warning(request, error)
+    if not approved and not errors:
+        messages.error(request, "No transfers were approved.")
+
+    return redirect_url
+
+
+@login_required
+@permission_required("pharmacy.edit")
+def bulk_approve_dispensary_transfers(request, dispensary_id):
+    """Approve and execute multiple pending dispensary transfers at once."""
+    dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
+    active_store = getattr(dispensary, "active_store", None)
+
+    if not active_store:
+        messages.error(request, f"No active store found for {dispensary.name}.")
+        return redirect("pharmacy:dispensary_list")
+
+    redirect_url = redirect(
+        "pharmacy:active_store_detail", dispensary_id=dispensary_id
+    )
+
+    if request.method != "POST":
+        return redirect_url
+
+    transfer_ids = request.POST.getlist("transfer_ids")
+    if not transfer_ids:
+        messages.error(request, "No transfers selected.")
+        return redirect_url
+
+    transfers = DispensaryTransfer.objects.filter(
+        id__in=transfer_ids, from_active_store=active_store
+    )
+
+    approved = 0
+    errors = []
+    for transfer in transfers:
+        try:
+            if not transfer.can_approve():
+                errors.append(
+                    f"Transfer #{transfer.id}: cannot be approved in current status."
+                )
+                continue
+
+            transfer.approved_by = request.user
+            transfer.approved_at = timezone.now()
+            transfer.status = "in_transit"
+            transfer.save()
+
+            transfer.execute_transfer(request.user)
+            approved += 1
+        except ValueError as ve:
+            errors.append(f"Transfer #{transfer.id}: {str(ve)}")
+        except Exception as e:
+            errors.append(f"Transfer #{transfer.id}: {str(e)}")
+
+    if approved:
+        messages.success(
+            request,
+            f"✅ {approved} dispensary transfer(s) approved and executed from {dispensary.name}.",
+        )
+    for error in errors:
+        messages.warning(request, error)
+    if not approved and not errors:
+        messages.error(request, "No transfers were approved.")
+
+    return redirect_url
+
+
+@login_required
+@permission_required("pharmacy.edit")
 def execute_medication_transfer(request, transfer_id):
     """View for executing a medication transfer and completing delivery process"""
     transfer = get_object_or_404(MedicationTransfer, id=transfer_id)
