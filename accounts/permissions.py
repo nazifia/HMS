@@ -270,6 +270,13 @@ PERMISSION_DEFINITIONS = {
         "model": "Prescription",
         "is_custom": True,
     },
+    "pharmacy.bulk_store_edit": {
+        "django_codename": "pharmacy.change_bulkstoreinventory",
+        "category": "pharmacy",
+        "description": "Can add and edit bulk store inventory",
+        "model": "BulkStoreInventory",
+        "is_custom": False,
+    },
     "prescriptions.view": {
         "django_codename": "pharmacy.view_prescription",
         "category": "pharmacy",
@@ -1779,6 +1786,7 @@ ROLE_PERMISSIONS = {
             "pharmacy.create",
             "pharmacy.edit",
             "pharmacy.dispense",
+            "pharmacy.bulk_store_edit",
             "prescriptions.view",
             "prescriptions.edit",
             "reports.view",
