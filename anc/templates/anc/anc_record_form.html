@@ -233,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load all doctors for dropdown
     function loadAllDoctors() {
-        fetch('/accounts/api/users/?role=doctor')
+        fetch('/doctors/api/list/')
             .then(response => response.json())
             .then(data => {
                 const options = data.map(doctor => {
@@ -312,7 +312,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             doctorSearchTimeout = setTimeout(() => {
-                fetch('/accounts/api/users/?role=doctor')
+                fetch('/doctors/api/list/')
                     .then(response => response.json())
                     .then(data => {
                         // Filter doctors based on search term

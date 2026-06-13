@@ -408,7 +408,7 @@ def add_clinical_note(request, record_id):
             clinical_note.created_by = request.user
             clinical_note.save()
             messages.success(request, 'Clinical note added successfully.')
-            return redirect('anc:record_detail', record_id=record.pk)
+            return redirect('anc:anc_record_detail', record_id=record.pk)
     else:
         form = AncClinicalNoteForm()
 
@@ -431,7 +431,7 @@ def edit_clinical_note(request, note_id):
         if form.is_valid():
             form.save()
             messages.success(request, 'Clinical note updated successfully.')
-            return redirect('anc:record_detail', record_id=record.pk)
+            return redirect('anc:anc_record_detail', record_id=record.pk)
     else:
         form = AncClinicalNoteForm(instance=note)
 
@@ -453,7 +453,7 @@ def delete_clinical_note(request, note_id):
     if request.method == 'POST':
         note.delete()
         messages.success(request, 'Clinical note deleted successfully.')
-        return redirect('anc:record_detail', record_id=record_id)
+        return redirect('anc:anc_record_detail', record_id=record_id)
 
     context = {
         'note': note

@@ -37,5 +37,6 @@ urlpatterns = [
     path('admin/specializations/<int:specialization_id>/delete/', views.delete_specialization, name='delete_specialization'),
     
     # API endpoints
+    path('api/list/', views.api_doctor_list, name='api_doctor_list'),
     path('api/<int:doctor_id>/availability/', views.get_doctor_availability, name='get_doctor_availability'),
 ]

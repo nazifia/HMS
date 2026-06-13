@@ -295,8 +295,8 @@ $(document).ready(function() {
 
     let allDoctors = [];
 
-    $.get('/accounts/api/users/?role=doctor', function(response) {
-        allDoctors = response.users || [];
+    $.get('/doctors/api/list/', function(response) {
+        allDoctors = response || [];
         allDoctors.forEach(function(doctor) {
             const option = new Option(doctor.full_name, doctor.id);
             $('#doctor_dropdown').append(option);

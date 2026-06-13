@@ -331,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Load all doctors on page load
         $.ajax({
-            url: '/accounts/api/users/?role=doctor',
+            url: '/doctors/api/list/',
             method: 'GET',
             dataType: 'json',
             success: function(data) {

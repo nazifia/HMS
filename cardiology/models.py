@@ -1,3 +1,5 @@
+import math
+
 from django.db import models
 from core.clinical_notes import NigerianClerkingNote
 from django.conf import settings
@@ -13,6 +15,21 @@ class CardiologyRecord(models.Model):
     
     # Cardiology-specific fields
     chest_pain_type = models.CharField(max_length=50, blank=True, null=True, help_text='Type of chest pain (e.g., Angina, Myocardial Infarction, Non-cardiac)')
+
+    # ECG structured measurements (used by compute_ecg)
+    ECG_AXIS_CHOICES = (
+        ('normal', 'Normal Axis (-30° to +90°)'),
+        ('lad', 'Left Axis Deviation'),
+        ('rad', 'Right Axis Deviation'),
+        ('extreme', 'Extreme Axis Deviation'),
+    )
+    ecg_pr_interval = models.IntegerField(blank=True, null=True, help_text='PR interval in ms (normal 120-200)')
+    ecg_qrs_duration = models.IntegerField(blank=True, null=True, help_text='QRS duration in ms (normal < 120)')
+    ecg_qt_interval = models.IntegerField(blank=True, null=True, help_text='Measured QT interval in ms')
+    ecg_qtc_interval = models.DecimalField(max_digits=6, decimal_places=1, blank=True, null=True, help_text='Corrected QT (Bazett), auto-calculated in ms')
+    ecg_axis = models.CharField(max_length=10, choices=ECG_AXIS_CHOICES, blank=True, null=True, help_text='QRS electrical axis')
+    ecg_interpretation = models.TextField(blank=True, null=True, help_text='Auto-generated ECG interpretation summary')
+
     ecg_findings = models.TextField(blank=True, null=True, help_text='ECG/EKG findings and interpretation')
     echocardiogram_results = models.TextField(blank=True, null=True, help_text='Echocardiogram results and findings')
     stress_test_results = models.TextField(blank=True, null=True, help_text='Stress test results and interpretation')
@@ -37,6 +54,79 @@ class CardiologyRecord(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def compute_ecg(self):
+        """Derive QTc (Bazett) and an auto-interpretation from ECG measurements + vitals.
+
+        Sets ecg_qtc_interval and ecg_interpretation. Safe to call repeatedly.
+        Returns the list of interpretation lines.
+        """
+        findings = []
+
+        # --- Rate ---
+        hr = self.heart_rate
+        if hr:
+            if hr < 60:
+                findings.append(f"Bradycardia (HR {hr} bpm).")
+            elif hr > 100:
+                findings.append(f"Tachycardia (HR {hr} bpm).")
+            else:
+                findings.append(f"Normal rate (HR {hr} bpm).")
+
+        # --- Rhythm ---
+        if self.rhythm:
+            r = self.rhythm.lower()
+            if 'fib' in r:
+                findings.append("Atrial fibrillation pattern reported — irregularly irregular rhythm.")
+            elif 'flutter' in r:
+                findings.append("Atrial flutter pattern reported.")
+
+        # --- PR interval ---
+        pr = self.ecg_pr_interval
+        if pr:
+            if pr < 120:
+                findings.append(f"Short PR interval ({pr} ms) — consider pre-excitation (e.g. WPW).")
+            elif pr > 200:
+                findings.append(f"Prolonged PR interval ({pr} ms) — first-degree AV block.")
+
+        # --- QRS duration ---
+        qrs = self.ecg_qrs_duration
+        if qrs and qrs >= 120:
+            findings.append(f"Wide QRS ({qrs} ms) — bundle branch block / IVCD.")
+
+        # --- QTc (Bazett: QTc = QT / sqrt(RR)), RR in seconds from HR ---
+        qtc = None
+        if self.ecg_qt_interval and hr:
+            rr = 60.0 / hr  # seconds
+            qtc = self.ecg_qt_interval / math.sqrt(rr)
+            self.ecg_qtc_interval = round(qtc, 1)
+
+            # Sex-specific prolongation thresholds
+            sex = getattr(self.patient, 'gender', None)
+            upper = 470 if sex == 'F' else 450
+            if qtc >= 500:
+                findings.append(f"QTc {qtc:.0f} ms — markedly prolonged, high torsades risk.")
+            elif qtc > upper:
+                findings.append(f"QTc {qtc:.0f} ms — prolonged (threshold {upper} ms).")
+            elif qtc < 350:
+                findings.append(f"QTc {qtc:.0f} ms — short QT.")
+            else:
+                findings.append(f"QTc {qtc:.0f} ms — normal.")
+        else:
+            self.ecg_qtc_interval = None
+
+        # --- Axis ---
+        if self.ecg_axis and self.ecg_axis != 'normal':
+            findings.append(f"{self.get_ecg_axis_display()}.")
+
+        self.ecg_interpretation = "\n".join(findings) if findings else None
+        return findings
+
+    def save(self, *args, **kwargs):
+        # Recompute ECG-derived values on every save
+        if self.patient_id:
+            self.compute_ecg()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Cardiology Record for {self.patient.get_full_name()} - {self.visit_date.strftime('%Y-%m-%d')}"

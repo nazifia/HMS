@@ -209,8 +209,8 @@ $(document).ready(function() {
     let allDoctors = [];
 
     // Load all doctors via AJAX
-    $.get('/accounts/api/users/?role=doctor', function(response) {
-        allDoctors = response.users || [];
+    $.get('/doctors/api/list/', function(response) {
+        allDoctors = response || [];
         // Populate dropdown
         allDoctors.forEach(function(doctor) {
             const option = new Option(doctor.full_name, doctor.id);

@@ -175,7 +175,7 @@ $(document).ready(function() {
 
     // Load all doctors via AJAX
     $.ajax({
-        url: '/accounts/api/users/?role=doctor',
+        url: '/doctors/api/list/',
         method: 'GET',
         success: function(data) {
             allDoctors = data || [];

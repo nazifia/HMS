@@ -57,35 +57,14 @@
                         </div>
                     </div>
 
-                    <!-- Doctor Selection with Search -->
-                    <div class="form-group">
-                        <label for="{{ form.doctor.id_for_label }}">Doctor</label>
-
-                        <!-- Enhanced Doctor Search Field -->
-                        <div class="input-group mb-2">
-                            <input type="text" id="doctor_search" class="form-control" placeholder="Search by name...">
-                            <button class="btn btn-outline-secondary" type="button" id="clear_doctor_search">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-
-                        <!-- Doctor Dropdown with Select2 -->
-                        <select id="doctor_dropdown" class="form-control select2" data-placeholder="Select a doctor...">
-                            <option value="">Select a doctor...</option>
-                        </select>
-
-                        <!-- Hidden field for form submission -->
-                        {{ form.doctor|add_class:"d-none" }}
-
-                        <!-- Selected Doctor Info -->
-                        <div id="selected_doctor_info" class="mt-2 p-2 bg-light rounded" style="display: none;">
-                            <strong>Selected Doctor:</strong>
-                            <span id="doctor_name"></span>
-                            <br>
-                            <small class="text-muted">
-                                Department: <span id="doctor_department"></span>
-                            </small>
-                        </div>
+                    <!-- Doctor Selection (searchable select2 over Doctor records) -->
+                    <div class="form-group mb-3">
+                        <label for="{{ form.doctor.id_for_label }}" class="form-label">Doctor</label>
+                        {{ form.doctor }}
+                        {% if form.doctor.errors %}
+                            <div class="text-danger">{{ form.doctor.errors }}</div>
+                        {% endif %}
+                        <div class="form-text">Type to search by name; assigns the attending cardiologist.</div>
                     </div>
 
                     <hr class="my-3">
@@ -128,13 +107,48 @@
                     <h5 class="text-primary"><i class="fas fa-heart"></i> Cardiac Assessment</h5>
 
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             {{ form.chest_pain_type|as_crispy_field }}
                         </div>
-                        <div class="col-md-6">
+                    </div>
+
+                    <h6 class="text-secondary mt-2"><i class="fas fa-wave-square"></i> ECG Measurements</h6>
+                    <div class="row">
+                        <div class="col-md-3">
+                            {{ form.ecg_pr_interval|as_crispy_field }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.ecg_qrs_duration|as_crispy_field }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.ecg_qt_interval|as_crispy_field }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.ecg_axis|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <!-- Live ECG interpretation (client-side preview) -->
+                    <div id="ecg-interpretation" class="alert alert-secondary d-none">
+                        <strong><i class="fas fa-stethoscope"></i> Auto ECG Interpretation</strong>
+                        <div id="ecg-qtc" class="small fw-bold mt-1"></div>
+                        <ul id="ecg-findings" class="small mb-0 mt-1"></ul>
+                        <div class="form-text">Preview only — saved interpretation recomputed on the server.</div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
                             {{ form.ecg_findings|as_crispy_field }}
                         </div>
                     </div>
+
+                    {% if record and record.ecg_interpretation %}
+                    <div class="alert alert-info">
+                        <strong><i class="fas fa-stethoscope"></i> Saved ECG Interpretation</strong>
+                        {% if record.ecg_qtc_interval %}<div class="small fw-bold">QTc (Bazett): {{ record.ecg_qtc_interval }} ms</div>{% endif %}
+                        <pre class="small mb-0" style="white-space: pre-wrap;">{{ record.ecg_interpretation }}</pre>
+                    </div>
+                    {% endif %}
 
                     <div class="row">
                         <div class="col-md-6">
@@ -282,91 +296,63 @@ document.addEventListener('DOMContentLoaded', function() {
             $('#{{ form.patient.id_for_label|safe }}').trigger('change');
         }
 
-        // ========== Doctor Search Functionality ==========
-        let allDoctors = [];
-        let doctorSearchTimeout;
+        // ========== Live ECG Interpretation (mirrors server compute_ecg) ==========
+        const sex = "{{ record.patient.gender|default:'' }}";
 
-        // Load all doctors on page load
-        $.ajax({
-            url: '/accounts/api/users/?role=doctor',
-            dataType: 'json',
-            success: function(data) {
-                allDoctors = data || [];
-                // Populate dropdown
-                const $dropdown = $('#doctor_dropdown');
-                $dropdown.empty();
-                $dropdown.append('<option value="">Select a doctor...</option>');
-                allDoctors.forEach(function(doctor) {
-                    const fullName = doctor.full_name || (doctor.first_name && doctor.last_name
-                        ? doctor.first_name + ' ' + doctor.last_name
-                        : doctor.username || 'Unknown');
-                    $dropdown.append('<option value="' + doctor.id + '" data-name="' + fullName + '">' + fullName + '</option>');
-                });
-                // Initialize Select2 on doctor dropdown
-                $dropdown.select2({
-                    placeholder: "Select a doctor...",
-                    allowClear: true
-                });
-                // Pre-fill if editing
-                const initialDoctorId = $('#{{ form.doctor.id_for_label|safe }}').val();
-                if (initialDoctorId) {
-                    $dropdown.val(initialDoctorId).trigger('change');
-                }
+        function computeEcg() {
+            const hr = parseInt($('#id_heart_rate').val(), 10);
+            const pr = parseInt($('#id_ecg_pr_interval').val(), 10);
+            const qrs = parseInt($('#id_ecg_qrs_duration').val(), 10);
+            const qt = parseInt($('#id_ecg_qt_interval').val(), 10);
+            const axis = $('#id_ecg_axis').val();
+            const rhythm = ($('#id_rhythm').val() || '').toLowerCase();
+            const findings = [];
+            let qtcText = '';
+
+            if (!isNaN(hr)) {
+                if (hr < 60) findings.push('Bradycardia (HR ' + hr + ' bpm).');
+                else if (hr > 100) findings.push('Tachycardia (HR ' + hr + ' bpm).');
+                else findings.push('Normal rate (HR ' + hr + ' bpm).');
             }
-        });
+            if (rhythm.includes('fib')) findings.push('Atrial fibrillation pattern reported.');
+            else if (rhythm.includes('flutter')) findings.push('Atrial flutter pattern reported.');
 
-        // Doctor search input with debounce
-        $('#doctor_search').on('input', function() {
-            clearTimeout(doctorSearchTimeout);
-            const searchTerm = $(this).val().toLowerCase();
-            doctorSearchTimeout = setTimeout(function() {
-                const $dropdown = $('#doctor_dropdown');
-                $dropdown.empty();
-                $dropdown.append('<option value="">Select a doctor...</option>');
-                allDoctors.forEach(function(doctor) {
-                    const fullName = doctor.full_name || (doctor.first_name && doctor.last_name
-                        ? doctor.first_name + ' ' + doctor.last_name
-                        : doctor.username || 'Unknown');
-                    if (fullName.toLowerCase().includes(searchTerm)) {
-                        $dropdown.append('<option value="' + doctor.id + '" data-name="' + fullName + '">' + fullName + '</option>');
-                    }
-                });
-                $dropdown.select2('destroy').select2({
-                    placeholder: "Select a doctor...",
-                    allowClear: true
-                });
-            }, 300);
-        });
-
-        // Handle doctor dropdown selection
-        $(document).on('select2:select', '#doctor_dropdown', function(e) {
-            const doctorId = $(this).val();
-            const selectedOption = $(this).find(':selected');
-            const doctorName = selectedOption.data('name');
-            const doctor = allDoctors.find(d => String(d.id) === String(doctorId));
-            if (doctor || doctorName) {
-                // Update hidden field
-                $('#{{ form.doctor.id_for_label|safe }}').val(doctorId);
-                // Update info display
-                $('#doctor_name').text(doctorName);
-                $('#doctor_department').text(doctor ? (doctor.department || 'N/A') : 'N/A');
-                $('#selected_doctor_info').show();
+            if (!isNaN(pr)) {
+                if (pr < 120) findings.push('Short PR (' + pr + ' ms) — consider pre-excitation (WPW).');
+                else if (pr > 200) findings.push('Prolonged PR (' + pr + ' ms) — first-degree AV block.');
             }
-        });
+            if (!isNaN(qrs) && qrs >= 120) findings.push('Wide QRS (' + qrs + ' ms) — BBB / IVCD.');
 
-        // Handle clear doctor search
-        $('#clear_doctor_search').on('click', function() {
-            $('#doctor_search').val('');
-            $('#doctor_dropdown').val('').trigger('change');
-            $('#{{ form.doctor.id_for_label|safe }}').val('');
-            $('#selected_doctor_info').hide();
-        });
+            if (!isNaN(qt) && !isNaN(hr) && hr > 0) {
+                const rr = 60.0 / hr;
+                const qtc = qt / Math.sqrt(rr);
+                const upper = (sex === 'F') ? 470 : 450;
+                qtcText = 'QTc (Bazett): ' + qtc.toFixed(0) + ' ms';
+                if (qtc >= 500) findings.push('QTc ' + qtc.toFixed(0) + ' ms — markedly prolonged, high torsades risk.');
+                else if (qtc > upper) findings.push('QTc ' + qtc.toFixed(0) + ' ms — prolonged (threshold ' + upper + ' ms).');
+                else if (qtc < 350) findings.push('QTc ' + qtc.toFixed(0) + ' ms — short QT.');
+                else findings.push('QTc ' + qtc.toFixed(0) + ' ms — normal.');
+            }
 
-        // Handle Select2 clear
-        $(document).on('select2:clear', '#doctor_dropdown', function() {
-            $('#{{ form.doctor.id_for_label|safe }}').val('');
-            $('#selected_doctor_info').hide();
-        });
+            if (axis && axis !== 'normal') {
+                findings.push($('#id_ecg_axis option:selected').text() + '.');
+            }
+
+            const $box = $('#ecg-interpretation');
+            const $list = $('#ecg-findings');
+            $list.empty();
+            if (findings.length) {
+                findings.forEach(function(f) { $list.append('<li>' + f + '</li>'); });
+                $('#ecg-qtc').text(qtcText);
+                $box.removeClass('d-none');
+            } else {
+                $box.addClass('d-none');
+            }
+        }
+
+        $('#id_heart_rate, #id_ecg_pr_interval, #id_ecg_qrs_duration, #id_ecg_qt_interval, #id_rhythm').on('input', computeEcg);
+        $('#id_ecg_axis').on('change', computeEcg);
+        computeEcg();
     }
 });
 </script>

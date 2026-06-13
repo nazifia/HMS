@@ -390,7 +390,7 @@ def add_clinical_note(request, record_id):
             clinical_note.created_by = request.user
             clinical_note.save()
             messages.success(request, 'Clinical note added successfully.')
-            return redirect('family_planning:record_detail', record_id=record.pk)
+            return redirect('family_planning:family_planning_record_detail', record_id=record.pk)
     else:
         form = FamilyPlanningClinicalNoteForm()
 
@@ -413,7 +413,7 @@ def edit_clinical_note(request, note_id):
         if form.is_valid():
             form.save()
             messages.success(request, 'Clinical note updated successfully.')
-            return redirect('family_planning:record_detail', record_id=record.pk)
+            return redirect('family_planning:family_planning_record_detail', record_id=record.pk)
     else:
         form = FamilyPlanningClinicalNoteForm(instance=note)
 
@@ -435,7 +435,7 @@ def delete_clinical_note(request, note_id):
     if request.method == 'POST':
         note.delete()
         messages.success(request, 'Clinical note deleted successfully.')
-        return redirect('family_planning:record_detail', record_id=record_id)
+        return redirect('family_planning:family_planning_record_detail', record_id=record_id)
 
     context = {
         'note': note

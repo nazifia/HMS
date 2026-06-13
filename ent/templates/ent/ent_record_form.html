@@ -215,7 +215,7 @@ $(document).ready(function() {
     // Load all doctors on page load
     function loadDoctors() {
         $.ajax({
-            url: '/accounts/api/users/?role=doctor',
+            url: '/doctors/api/list/',
             method: 'GET',
             success: function(data) {
                 allDoctors = data || [];

@@ -32,6 +32,37 @@ from accounts.models import CustomUser
 from accounts.permissions import permission_required
 
 
+@login_required
+def api_doctor_list(request):
+    """JSON list of doctors keyed by Doctor PK (not CustomUser PK).
+
+    Specialty record forms (cardiology, ent, oncology, ...) bind a `doctor`
+    ForeignKey to doctors.Doctor. Their dropdowns must therefore submit a
+    Doctor PK. The older /accounts/api/users endpoint returns CustomUser PKs,
+    which silently failed to save. Returns a bare JSON array.
+    """
+    qs = Doctor.objects.select_related("user", "department").all()
+
+    role = request.GET.get("role")  # accepted for backward-compat, ignored
+    del role
+
+    results = []
+    for doctor in qs:
+        results.append(
+            {
+                "id": doctor.id,  # Doctor PK — the FK target
+                "user_id": doctor.user_id,
+                "first_name": doctor.user.first_name,
+                "last_name": doctor.user.last_name,
+                "username": doctor.user.username,
+                "full_name": doctor.get_full_name(),
+                "department": doctor.department.name if doctor.department else None,
+            }
+        )
+
+    return JsonResponse(results, safe=False)
+
+
 # Doctor List and Detail Views - Require users.view permission
 @login_required
 @permission_required("users.view")

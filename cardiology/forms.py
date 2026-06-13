@@ -1,5 +1,6 @@
 from django import forms
 from patients.models import Patient
+from doctors.models import Doctor
 from .models import CardiologyRecord, CardiologyClinicalNote
 from core.medical_forms import MedicalRecordSearchForm
 from core.clinical_notes import CLERKING_FIELDS, CLERKING_LABELS, clerking_widgets
@@ -26,6 +27,10 @@ class CardiologyRecordForm(forms.ModelForm):
             'doctor',
             'visit_date',
             'chest_pain_type',
+            'ecg_pr_interval',
+            'ecg_qrs_duration',
+            'ecg_qt_interval',
+            'ecg_axis',
             'ecg_findings',
             'echocardiogram_results',
             'stress_test_results',
@@ -45,6 +50,11 @@ class CardiologyRecordForm(forms.ModelForm):
         ]
         widgets = {
             'patient': forms.Select(attrs={'class': 'form-select select2 patient-select'}),
+            'doctor': forms.Select(attrs={'class': 'form-select select2 doctor-select'}),
+            'ecg_pr_interval': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'ms (120-200)'}),
+            'ecg_qrs_duration': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'ms (< 120)'}),
+            'ecg_qt_interval': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'ms'}),
+            'ecg_axis': forms.Select(attrs={'class': 'form-select'}),
             'visit_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
             'follow_up_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'chest_pain_type': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Angina, Myocardial Infarction'}),
@@ -68,6 +78,13 @@ class CardiologyRecordForm(forms.ModelForm):
 
         # Custom label_from_instance to show patient ID for better identification
         patient_field.label_from_instance = self._format_patient_label
+
+        # Doctor dropdown: real Doctor records (FK target), searchable via select2
+        doctor_field = self.fields['doctor']
+        doctor_field.queryset = Doctor.objects.select_related('user').all()
+        doctor_field.required = False
+        doctor_field.empty_label = "Select a doctor..."
+        doctor_field.label_from_instance = lambda obj: obj.get_full_name()
 
         # If editing an existing record, populate the search field
         if self.instance and self.instance.pk and self.instance.patient:
