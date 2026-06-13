@@ -59,18 +59,31 @@ def safe_authenticate(request, username=None, password=None, **kwargs):
     try:
         # Import here to avoid circular imports
         from django.contrib.auth import authenticate as django_authenticate
-        
-        # Try authentication with console output suppressed
-        with suppress_console_output():
+
+        # The console-suppression hack works around a Windows-only OSError
+        # [Errno 22] when Unicode is written to the dev console. It replaces the
+        # PROCESS-GLOBAL sys.stdout/stderr, which is NOT thread-safe: under a
+        # multi-threaded WSGI server (production) it corrupts I/O across
+        # concurrent requests. Only apply it on Windows; elsewhere authenticate
+        # directly.
+        if sys.platform == "win32":
+            with suppress_console_output():
+                user = django_authenticate(
+                    request=request,
+                    username=username,
+                    password=password,
+                    **kwargs
+                )
+        else:
             user = django_authenticate(
                 request=request,
                 username=username,
                 password=password,
                 **kwargs
             )
-        
+
         return user
-        
+
     except OSError as e:
         # Log the error to file (not console)
         logger.error(f"OSError during authentication: {e}", exc_info=True)
@@ -91,7 +104,10 @@ def safe_authenticate(request, username=None, password=None, **kwargs):
             return None
             
     except Exception as e:
-        # Log any other unexpected errors
+        # Do NOT swallow non-OSError failures. Returning None here would make a
+        # real DB/session/backend error look like a failed login (wrong
+        # credentials), masking the actual problem. Log it, then re-raise so the
+        # caller / error handling sees the true cause.
         logger.error(f"Unexpected error during authentication: {e}", exc_info=True)
-        return None
+        raise
 
