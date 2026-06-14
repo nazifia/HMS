@@ -307,3 +307,41 @@ class PermissionGroup(models.Model):
         verbose_name = 'Permission Group'
         verbose_name_plural = 'Permission Groups'
         db_table = 'core_permissiongroup'
+
+
+class ServicePoint(models.Model):
+    """
+    A physical/logical desk where patients are received, registered, and routed
+    to a physician (e.g. reception, health-records, triage, billing desk).
+
+    Staff are assignable to one or more points. A patient's registration point
+    and the waiting-list entry that sends them onward both reference a point.
+    """
+    POINT_TYPE_CHOICES = (
+        ('reception', 'Reception'),
+        ('records', 'Health Records'),
+        ('triage', 'Triage'),
+        ('billing', 'Billing/Cashier'),
+    )
+
+    name = models.CharField(max_length=100)
+    point_type = models.CharField(max_length=20, choices=POINT_TYPE_CHOICES, default='reception')
+    location = models.CharField(max_length=100, blank=True, null=True, help_text='Physical location/desk label')
+    description = models.TextField(blank=True, null=True)
+    staff = models.ManyToManyField(
+        'accounts.CustomUser',
+        blank=True,
+        related_name='service_points',
+        help_text='Receptionists / records officers assigned to this point',
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['point_type', 'name']
+        verbose_name = 'Service Point'
+        verbose_name_plural = 'Service Points'
+
+    def __str__(self):
+        return f"{self.name} ({self.get_point_type_display()})"

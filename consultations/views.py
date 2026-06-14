@@ -718,6 +718,15 @@ def create_consultation(request, patient_id):
     """View for creating a new consultation"""
     patient = get_object_or_404(Patient, id=patient_id)
 
+    # Guard: regular patient must have paid the registration fee (be active) first.
+    if patient.patient_type == 'regular' and not patient.is_active:
+        messages.error(
+            request,
+            f"Cannot start a consultation for {patient.get_full_name()}: the registration fee "
+            f"is unpaid (patient inactive)."
+        )
+        return redirect('patients:detail', patient_id=patient.id)
+
     # Check if there's an appointment for today
     today = timezone.now().date()
     appointment = Appointment.objects.filter(
@@ -1653,8 +1662,34 @@ def add_to_waiting_list(request, patient_id=None):
         form.fields['patient'].queryset = Patient.objects.all()
         if form.is_valid():
             waiting_entry = form.save(commit=False)
+
+            # Guard: a regular patient must have paid the registration fee (active) first.
+            patient = waiting_entry.patient
+            if patient.patient_type == 'regular' and not patient.is_active:
+                messages.error(
+                    request,
+                    f"{patient.get_full_name()} cannot be sent to a physician: the registration "
+                    f"fee is unpaid (patient inactive). Please collect the registration fee first."
+                )
+                return redirect('consultations:add_to_waiting_list')
+
             waiting_entry.created_by = request.user
             waiting_entry.save()
+
+            # Auto-create the outpatient consultation-fee invoice for regular patients.
+            try:
+                from billing.fee_utils import create_consultation_fee
+                consult_invoice = create_consultation_fee(
+                    patient, request.user, service_point=waiting_entry.service_point
+                )
+                if consult_invoice:
+                    messages.info(
+                        request,
+                        f"Consultation fee invoice #{consult_invoice.invoice_number} "
+                        f"(₦{consult_invoice.total_amount}) created for {patient.get_full_name()}."
+                    )
+            except Exception:
+                pass
 
             if waiting_entry.doctor:
                 messages.success(request, f"{waiting_entry.patient.get_full_name()} added to waiting list for Dr. {waiting_entry.doctor.get_full_name()} in Room {waiting_entry.consulting_room.room_number}.")
@@ -1687,6 +1722,10 @@ def update_waiting_status(request, entry_id):
 
             # If status is 'in_progress', create a consultation if it doesn't exist
             if status == 'in_progress' and not hasattr(waiting_entry, 'consultation'):
+                patient = waiting_entry.patient
+                if patient.patient_type == 'regular' and not patient.is_active:
+                    messages.error(request, f"Cannot start consultation: {patient.get_full_name()}'s registration fee is unpaid (patient inactive).")
+                    return redirect('consultations:waiting_list')
                 if waiting_entry.doctor is not None:
                     consultation = Consultation.objects.create(
                         patient=waiting_entry.patient,
@@ -1753,6 +1792,11 @@ def doctor_waiting_list(request):
 def start_consultation(request, entry_id):
     """View for starting a consultation from the waiting list"""
     waiting_entry = get_object_or_404(WaitingList, id=entry_id, doctor=request.user)
+
+    # Guard: regular patient must have paid the registration fee (be active).
+    if waiting_entry.patient.patient_type == 'regular' and not waiting_entry.patient.is_active:
+        messages.error(request, f"Cannot start consultation: {waiting_entry.patient.get_full_name()}'s registration fee is unpaid (patient inactive).")
+        return redirect('consultations:doctor_waiting_list')
 
     # Update waiting entry status
     waiting_entry.status = 'in_progress'

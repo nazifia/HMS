@@ -181,13 +181,35 @@ def register_patient(request):
     if request.method == "POST":
         form = PatientForm(request.POST, request.FILES)
         if form.is_valid():
-            patient = form.save(commit=False)
-            # Ensure patient is always registered as active
-            patient.is_active = True
-            patient.save()
-            messages.success(
-                request, f"Patient {patient.get_full_name()} registered successfully."
-            )
+            from django.db import transaction
+            from billing.fee_utils import create_registration_fee
+
+            with transaction.atomic():
+                patient = form.save()
+                # Apply registration-fee policy (sets is_active per type/payment).
+                invoice = create_registration_fee(patient, request.user)
+
+            if patient.patient_type == "nhia":
+                messages.success(
+                    request,
+                    f"NHIA patient {patient.get_full_name()} registered (registration free). Patient is active.",
+                )
+            elif patient.patient_type == "retainership":
+                messages.success(
+                    request,
+                    f"Retainership patient {patient.get_full_name()} registered. Registration fee paid from wallet; patient is active.",
+                )
+            elif invoice:
+                messages.warning(
+                    request,
+                    f"Patient {patient.get_full_name()} registered. A registration fee invoice "
+                    f"(#{invoice.invoice_number}, ₦{invoice.total_amount}) was created. The patient becomes "
+                    f"active once this fee is paid.",
+                )
+            else:
+                messages.success(
+                    request, f"Patient {patient.get_full_name()} registered successfully."
+                )
             return redirect("patients:detail", patient_id=patient.id)
     else:
         form = PatientForm(initial={"is_active": True})
@@ -1504,9 +1526,17 @@ def register_nhia_patient(request, patient_id):
         return redirect("patients:detail", patient_id=patient.id)
 
     if request.method == "POST":
-        # Update patient type to NHIA
+        # Update patient type to NHIA. Registration is free for NHIA, so cancel any
+        # outstanding self-pay registration invoice and activate the patient.
         patient.patient_type = "nhia"
+        patient.is_active = True
         patient.save()
+
+        Invoice.objects.filter(
+            patient=patient,
+            source_app="registration",
+            status__in=["draft", "pending", "partially_paid"],
+        ).update(status="cancelled")
 
         # Create NHIA patient record
         nhia_patient = NHIAPatient.objects.create(
@@ -1584,7 +1614,22 @@ def register_retainership_patient(request, patient_id):
     if request.method == "POST":
         # Update patient type to retainership
         patient.patient_type = "retainership"
+        patient.is_active = True
         patient.save()
+
+        # Pay any outstanding self-pay registration invoice from the wallet.
+        from billing.fee_utils import pay_invoice_from_wallet
+
+        pending_reg = Invoice.objects.filter(
+            patient=patient,
+            source_app="registration",
+            status__in=["draft", "pending", "partially_paid"],
+        ).first()
+        if pending_reg:
+            try:
+                pay_invoice_from_wallet(pending_reg, request.user)
+            except Exception:
+                pass
 
         # Generate a retainership registration number (3 billion to 4 billion range)
         import random

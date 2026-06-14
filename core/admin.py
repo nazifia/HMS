@@ -1,5 +1,13 @@
 from django.contrib import admin
-from .models import AuditLog, InternalNotification, SOAPNote, UIPermission, PermissionGroup
+from .models import AuditLog, InternalNotification, SOAPNote, UIPermission, PermissionGroup, ServicePoint
+
+
+@admin.register(ServicePoint)
+class ServicePointAdmin(admin.ModelAdmin):
+    list_display = ['name', 'point_type', 'location', 'is_active', 'created_at']
+    list_filter = ['point_type', 'is_active']
+    search_fields = ['name', 'location']
+    filter_horizontal = ['staff']
 
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):

@@ -202,6 +202,24 @@ def update_invoice_status_based_on_payments(sender, instance, **kwargs):
         Invoice.objects.filter(pk=instance.pk).update(status=expected_status)
 
 
+@receiver(post_save, sender=Invoice)
+def activate_patient_on_registration_payment(sender, instance, **kwargs):
+    """
+    Activate a patient once their registration-fee invoice is fully paid.
+
+    Regular (self-pay) patients are registered inactive; paying the registration
+    invoice (by cashier or wallet) flips them to active. Covers both create and
+    update of the invoice/payment.
+    """
+    if instance.source_app != 'registration' or instance.status != 'paid':
+        return
+
+    patient = instance.patient
+    if patient and not patient.is_active:
+        patient.is_active = True
+        patient.save(update_fields=['is_active'])
+
+
 # ==================== Wallet Transaction Signal Handlers ====================
 
 # Note: Wallet balance is already updated by the PatientWallet.debit() and credit()

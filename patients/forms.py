@@ -247,13 +247,21 @@ class PatientForm(forms.ModelForm):
             'emergency_contact_relation', 'emergency_contact_phone', 'address',
             'city', 'state', 'postal_code', 'country', 'allergies', 'chronic_diseases',
             'current_medications', 'insurance_provider', 'insurance_policy_number',
-            'insurance_expiry_date', 'occupation', 'notes', 'photo', 'id_document'
+            'insurance_expiry_date', 'occupation', 'notes', 'photo', 'id_document',
+            'service_point',
         ]
         widgets = {
             'date_of_birth': forms.DateInput(attrs={'type': 'date'}),
             'address': forms.Textarea(attrs={'rows': 3}),
             'notes': forms.Textarea(attrs={'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'service_point' in self.fields:
+            from core.models import ServicePoint
+            self.fields['service_point'].queryset = ServicePoint.objects.filter(is_active=True)
+            self.fields['service_point'].required = False
 
     def clean_email(self):
         email = self.cleaned_data.get('email')

@@ -34,6 +34,7 @@ class WaitingList(models.Model):
     )
 
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='waiting_entries')
+    service_point = models.ForeignKey('core.ServicePoint', on_delete=models.SET_NULL, null=True, blank=True, related_name='routed_waiting_entries', help_text='Reception/records point that routed this patient')
     consulting_room = models.ForeignKey(ConsultingRoom, on_delete=models.CASCADE, related_name='waiting_patients')
     doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assigned_patients', null=True, blank=True)
     appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, blank=True, related_name='waiting_entry')

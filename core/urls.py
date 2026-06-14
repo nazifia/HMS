@@ -6,10 +6,16 @@ from . import reporting_integration
 from . import authorization_views
 from . import admin_views
 from . import ui_permission_views
+from . import service_point_views
 
 app_name = 'core'
 
 urlpatterns = [
+    # Service Points (reception/records routing desks)
+    path('service-points/', service_point_views.service_point_list, name='service_point_list'),
+    path('service-points/create/', service_point_views.service_point_create, name='service_point_create'),
+    path('service-points/<int:pk>/edit/', service_point_views.service_point_edit, name='service_point_edit'),
+
     path('notifications/', views.notifications_list, name='notifications_list'),
     path('notifications/<int:notification_id>/read/', views.mark_notification_read, name='mark_notification_read'),
 

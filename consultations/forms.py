@@ -38,19 +38,24 @@ class WaitingListForm(forms.ModelForm):
     
     class Meta:
         model = WaitingList
-        fields = ['patient', 'consulting_room', 'doctor', 'appointment', 'priority', 'notes']
+        fields = ['patient', 'service_point', 'consulting_room', 'doctor', 'appointment', 'priority', 'notes']
         widgets = {
             'patient': forms.Select(attrs={'class': 'form-select select2'}),
+            'service_point': forms.Select(attrs={'class': 'form-select select2'}),
             'consulting_room': forms.Select(attrs={'class': 'form-select select2'}),
             'doctor': forms.Select(attrs={'class': 'form-select select2'}),
             'appointment': forms.Select(attrs={'class': 'form-select select2'}),
             'priority': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Set querysets for dropdowns
+        from core.models import ServicePoint
+        self.fields['service_point'].queryset = ServicePoint.objects.filter(is_active=True)
+        self.fields['service_point'].required = False
+        self.fields['service_point'].empty_label = "Select Service Point (Optional)"
         self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
         self.fields['consulting_room'].queryset = ConsultingRoom.objects.filter(is_active=True).order_by('room_number')
         self.fields['doctor'].queryset = CustomUser.objects.filter(is_active=True, profile__role='doctor').order_by('first_name', 'last_name')

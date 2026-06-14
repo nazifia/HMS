@@ -69,6 +69,8 @@ class Invoice(models.Model):
         ("pharmacy", "Pharmacy"),
         ("appointment", "Appointment"),
         ("theatre", "Theatre"),
+        ("registration", "Registration"),
+        ("consultation", "Consultation"),
         ("billing", "Billing/General"),  # For invoices created directly
         ("other", "Other"),
     )

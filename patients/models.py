@@ -302,6 +302,16 @@ class Patient(models.Model):
     insurance_policy_number = models.CharField(max_length=50, blank=True, null=True)
     insurance_expiry_date = models.DateField(blank=True, null=True)
 
+    # Registration / routing
+    service_point = models.ForeignKey(
+        "core.ServicePoint",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="registered_patients",
+        help_text="Reception/records point where this patient was registered",
+    )
+
     # Additional Information
     occupation = models.CharField(max_length=100, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)

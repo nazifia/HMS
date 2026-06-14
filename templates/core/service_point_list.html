@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Service Points - HMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0"><i class="fas fa-map-marker-alt"></i> Service Points</h1>
+            <p class="text-muted mb-0">Reception / records desks where patients are registered and routed</p>
+        </div>
+        {% if can_manage %}
+        <a href="{% url 'core:service_point_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> New Service Point
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Location</th>
+                        <th>Staff</th>
+                        <th>Status</th>
+                        {% if can_manage %}<th></th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for point in service_points %}
+                    <tr>
+                        <td>{{ point.name }}</td>
+                        <td><span class="badge bg-info">{{ point.get_point_type_display }}</span></td>
+                        <td>{{ point.location|default:"—" }}</td>
+                        <td>
+                            {% for member in point.staff.all %}
+                                <span class="badge bg-secondary">{{ member.get_full_name|default:member.username }}</span>
+                            {% empty %}<span class="text-muted">No staff assigned</span>{% endfor %}
+                        </td>
+                        <td>
+                            {% if point.is_active %}<span class="badge bg-success">Active</span>
+                            {% else %}<span class="badge bg-danger">Inactive</span>{% endif %}
+                        </td>
+                        {% if can_manage %}
+                        <td class="text-end">
+                            <a href="{% url 'core:service_point_edit' point.pk %}" class="btn btn-sm btn-outline-warning">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">No service points defined yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
