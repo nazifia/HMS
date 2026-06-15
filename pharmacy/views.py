@@ -6792,12 +6792,15 @@ def print_prescription(request, prescription_id):
 
     # Get pharmacy invoice if exists
     pharmacy_invoice = None
-    try:
-        from pharmacy_billing.models import Invoice as PharmacyInvoice
+    from pharmacy_billing.models import Invoice as PharmacyInvoice
 
-        pharmacy_invoice = PharmacyInvoice.objects.get(prescription=prescription)
-    except PharmacyInvoice.DoesNotExist:
-        pharmacy_invoice = None
+    # Use filter().last() instead of get(): a prescription may have more than
+    # one Invoice (e.g. re-billing), which makes get() raise MultipleObjectsReturned.
+    pharmacy_invoice = (
+        PharmacyInvoice.objects.filter(prescription=prescription)
+        .order_by("invoice_date", "id")
+        .last()
+    )
 
     # Get dispensing logs for items
     item_ids = [item.id for item in prescription_items]

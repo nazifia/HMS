@@ -1,5 +1,6 @@
 from decimal import Decimal, InvalidOperation
 from django.utils import timezone
+from django.db.models import Sum
 from billing.models import Service
 from .models import Invoice as PharmacyInvoice
 from django.contrib import messages
@@ -29,6 +30,42 @@ def create_pharmacy_invoice(request, prescription, subtotal_value, force_new=Fal
             messages.error(
                 request,
                 f"[create_pharmacy_invoice] Error checking for existing invoice: {str(e)}",
+            )
+
+    # Guard against duplicate full charges:
+    # If existing PAID invoices already cover the prescription's full patient
+    # portion, do NOT create another invoice. This stops double-billing when a
+    # cart is paid then cancelled and a fresh cart re-bills the full amount.
+    # Genuine partial dispensing still works because the already-paid total is
+    # less than the full payable, so a new invoice is allowed for the remainder.
+    if not force_new:
+        try:
+            paid_total = PharmacyInvoice.objects.filter(
+                prescription=prescription, status="paid"
+            ).aggregate(t=Sum("total_amount"))["t"] or Decimal("0.00")
+            breakdown = prescription.get_pricing_breakdown()
+            full_payable = Decimal(
+                str(breakdown.get("patient_portion", 0))
+            ).quantize(Decimal("0.01"))
+            if full_payable > 0 and paid_total >= full_payable:
+                existing_paid = (
+                    PharmacyInvoice.objects.filter(
+                        prescription=prescription, status="paid"
+                    )
+                    .order_by("invoice_date", "id")
+                    .last()
+                )
+                messages.warning(
+                    request,
+                    f"[create_pharmacy_invoice] Prescription ID {prescription.id} is already "
+                    f"fully paid (₦{paid_total} >= ₦{full_payable}). Reusing existing paid "
+                    f"invoice #{existing_paid.id} instead of creating a duplicate.",
+                )
+                return existing_paid
+        except Exception as e:
+            messages.error(
+                request,
+                f"[create_pharmacy_invoice] Error checking full-payment guard: {str(e)}",
             )
 
     # Check if there's a PAID invoice - for partial dispensing we need a new invoice
