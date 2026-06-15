@@ -163,9 +163,20 @@
 {% endblock %}
 
 {% block content %}
-<button onclick="window.print()" class="btn btn-primary print-button no-print">
-    <i class="fas fa-print"></i> Print Receipt
-</button>
+<div class="print-button no-print btn-group">
+    <button onclick="window.print()" class="btn btn-primary">
+        <i class="fas fa-print"></i> Print A4
+    </button>
+    <a href="?format=thermal&auto=1" class="btn btn-outline-secondary" target="_blank">
+        <i class="fas fa-receipt"></i> Thermal 80mm
+    </a>
+    <a href="?format=thermal&width=58&auto=1" class="btn btn-outline-secondary" target="_blank">
+        <i class="fas fa-receipt"></i> 58mm
+    </a>
+    <a href="?format=pdf" class="btn btn-danger" target="_blank">
+        <i class="fas fa-file-pdf"></i> A4 PDF
+    </a>
+</div>
 
 <div class="receipt-container">
     <!-- Receipt Header -->
@@ -331,6 +342,7 @@
         <p>This is a computer-generated receipt.</p>
         <p>Printed on {{ now|date:"M d, Y H:i" }}</p>
         <p>Thank you for choosing our services!</p>
+        <p>Powered by: Nazz Tech - 08032194090</p>
     </div>
 </div>
 {% endblock %}

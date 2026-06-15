@@ -1225,6 +1225,11 @@ def cart_list(request):
 def cart_receipt(request, cart_id):
     """
     Display printable cart receipt.
+
+    Supports three output formats via ?format=:
+      - (default)  full A4-style HTML receipt, browser print
+      - thermal    80mm/58mm thermal-roll HTML, browser print
+      - pdf        downloadable A4 PDF generated with ReportLab
     """
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
 
@@ -1242,18 +1247,245 @@ def cart_receipt(request, cart_id):
     # Get hospital information (you may need to adjust this based on your settings)
     from django.conf import settings
 
+    hospital_name = getattr(settings, "HOSPITAL_NAME", "Hospital Management System")
+    hospital_address = getattr(settings, "HOSPITAL_ADDRESS", "")
+    hospital_phone = getattr(settings, "HOSPITAL_PHONE", "")
+
+    output = (request.GET.get("format") or "").lower()
+
+    if output == "pdf":
+        return _cart_receipt_pdf(cart, hospital_name, hospital_address, hospital_phone)
+
+    if output == "thermal":
+        # 80mm default; allow ?width=58 for narrow rolls.
+        roll_width = "58" if request.GET.get("width") == "58" else "80"
+        context = {
+            "cart": cart,
+            "hospital_name": hospital_name,
+            "hospital_address": hospital_address,
+            "hospital_phone": hospital_phone,
+            "now": timezone.now(),
+            "roll_width": roll_width,
+            "auto_print": request.GET.get("auto") == "1",
+        }
+        return render(request, "pharmacy/cart/cart_receipt_thermal.html", context)
+
     context = {
         "cart": cart,
-        "hospital_name": getattr(
-            settings, "HOSPITAL_NAME", "Hospital Management System"
-        ),
-        "hospital_address": getattr(settings, "HOSPITAL_ADDRESS", ""),
-        "hospital_phone": getattr(settings, "HOSPITAL_PHONE", ""),
+        "hospital_name": hospital_name,
+        "hospital_address": hospital_address,
+        "hospital_phone": hospital_phone,
         "now": timezone.now(),
         "page_title": f"Cart Receipt #{cart.id}",
     }
 
     return render(request, "pharmacy/cart/cart_receipt.html", context)
+
+
+def _cart_receipt_pdf(cart, hospital_name, hospital_address, hospital_phone):
+    """Render an A4 PDF of the cart receipt using ReportLab.
+
+    Helvetica has no Naira (NGN) glyph, so amounts are prefixed "NGN " to
+    avoid tofu boxes in the PDF output.
+    """
+    from io import BytesIO
+    from django.http import HttpResponse
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import (
+        SimpleDocTemplate,
+        Paragraph,
+        Spacer,
+        Table,
+        TableStyle,
+    )
+
+    def money(value):
+        try:
+            return f"NGN {float(value or 0):,.2f}"
+        except (TypeError, ValueError):
+            return "NGN 0.00"
+
+    patient = cart.prescription.patient
+    is_nhia = bool(getattr(patient, "is_nhia_patient", False))
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        topMargin=18 * mm,
+        bottomMargin=18 * mm,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        title=f"Cart Receipt #{cart.id}",
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "rcptTitle", parent=styles["Title"], fontSize=16, spaceAfter=2
+    )
+    sub_style = ParagraphStyle(
+        "rcptSub", parent=styles["Normal"], alignment=1, textColor=colors.grey
+    )
+    h_style = ParagraphStyle(
+        "rcptH", parent=styles["Heading4"], spaceBefore=10, spaceAfter=4
+    )
+    small = ParagraphStyle(
+        "rcptSmall", parent=styles["Normal"], fontSize=8, textColor=colors.grey
+    )
+
+    elements = []
+    elements.append(Paragraph(hospital_name or "Hospital Management System", title_style))
+    if hospital_address:
+        elements.append(Paragraph(hospital_address, sub_style))
+    if hospital_phone:
+        elements.append(Paragraph(hospital_phone, sub_style))
+    elements.append(Paragraph("PRESCRIPTION CART RECEIPT", sub_style))
+    elements.append(Spacer(1, 8))
+
+    # Cart + patient info side by side
+    created_by = cart.created_by.get_full_name() if cart.created_by else ""
+    info_left = [
+        ["Cart ID:", f"#{cart.id}"],
+        ["Status:", cart.get_status_display()],
+        ["Created:", cart.created_at.strftime("%b %d, %Y %H:%M")],
+        ["Created By:", created_by],
+    ]
+    if cart.dispensary:
+        info_left.append(["Dispensary:", cart.dispensary.name])
+
+    info_right = [
+        ["Patient:", patient.get_full_name()],
+        ["Patient ID:", patient.patient_id],
+        ["Prescription:", f"#{cart.prescription.id}"],
+    ]
+    if is_nhia:
+        info_right.append(["NHIA No:", getattr(patient, "nhia_number", "") or ""])
+
+    rows = max(len(info_left), len(info_right))
+    info_left += [["", ""]] * (rows - len(info_left))
+    info_right += [["", ""]] * (rows - len(info_right))
+    info_data = [
+        [l[0], l[1], r[0], r[1]] for l, r in zip(info_left, info_right)
+    ]
+    info_table = Table(info_data, colWidths=[28 * mm, 50 * mm, 28 * mm, 48 * mm])
+    info_table.setStyle(
+        TableStyle(
+            [
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("TEXTCOLOR", (0, 0), (0, -1), colors.grey),
+                ("TEXTCOLOR", (2, 0), (2, -1), colors.grey),
+                ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+                ("FONTNAME", (3, 0), (3, -1), "Helvetica-Bold"),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]
+        )
+    )
+    elements.append(info_table)
+
+    if is_nhia:
+        elements.append(Spacer(1, 6))
+        elements.append(
+            Paragraph(
+                "<b>NHIA Patient:</b> Patient pays 10%, NHIA covers 90% of medication costs.",
+                small,
+            )
+        )
+
+    elements.append(Paragraph("Items", h_style))
+
+    if is_nhia:
+        header = ["Medication", "Qty", "Unit Price", "Subtotal", "Patient 10%", "NHIA 90%"]
+        col_widths = [50 * mm, 13 * mm, 25 * mm, 27 * mm, 27 * mm, 27 * mm]
+    else:
+        header = ["Medication", "Qty", "Unit Price", "Subtotal"]
+        col_widths = [78 * mm, 18 * mm, 35 * mm, 35 * mm]
+
+    item_data = [header]
+    for item in cart.items.all():
+        med = item.prescription_item.medication
+        name = med.name + (f" {med.strength}" if med.strength else "")
+        row = [
+            Paragraph(name, styles["Normal"]),
+            str(item.quantity),
+            money(item.unit_price),
+            money(item.get_subtotal()),
+        ]
+        if is_nhia:
+            row += [money(item.get_patient_pays()), money(item.get_nhia_covers())]
+        item_data.append(row)
+
+    item_table = Table(item_data, colWidths=col_widths, repeatRows=1)
+    item_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#333333")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+                ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+                ("ALIGN", (1, 0), (1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8f9fa")]),
+                ("LINEBELOW", (0, 0), (-1, -1), 0.5, colors.HexColor("#dee2e6")),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    elements.append(item_table)
+
+    # Summary
+    summary_data = [["Subtotal:", money(cart.get_subtotal())]]
+    if is_nhia:
+        summary_data.append(["NHIA Coverage (90%):", money(cart.get_nhia_coverage())])
+        summary_data.append(["Patient Pays (10%):", money(cart.get_patient_payable())])
+    else:
+        summary_data.append(["Total Amount:", money(cart.get_patient_payable())])
+
+    summary_table = Table(summary_data, colWidths=[60 * mm, 40 * mm], hAlign="RIGHT")
+    summary_table.setStyle(
+        TableStyle(
+            [
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+                ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                ("LINEABOVE", (0, -1), (-1, -1), 1, colors.HexColor("#333333")),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    elements.append(Spacer(1, 10))
+    elements.append(summary_table)
+
+    if cart.invoice:
+        elements.append(Paragraph("Invoice Information", h_style))
+        elements.append(
+            Paragraph(
+                f"Invoice #{cart.invoice.id} &mdash; {cart.invoice.get_status_display()}",
+                styles["Normal"],
+            )
+        )
+
+    elements.append(Spacer(1, 30))
+    elements.append(
+        Paragraph(
+            "This is a computer-generated receipt. "
+            f"Printed on {timezone.now().strftime('%b %d, %Y %H:%M')}.",
+            small,
+        )
+    )
+
+    doc.build(elements)
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type="application/pdf")
+    response["Content-Disposition"] = (
+        f'inline; filename="cart_receipt_{cart.id}.pdf"'
+    )
+    return response
 
 
 @login_required

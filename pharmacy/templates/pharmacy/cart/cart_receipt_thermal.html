@@ -1,0 +1,138 @@
+{% load static %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart Receipt #{{ cart.id }} (Thermal)</title>
+    <style>
+        /* 80mm thermal roll. Use 58mm by appending ?format=thermal&width=58 */
+        :root { --roll: {{ roll_width|default:"80" }}mm; }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: "Courier New", monospace;
+            font-size: 12px;
+            line-height: 1.35;
+            color: #000;
+            background: #fff;
+            width: var(--roll);
+            margin: 0 auto;
+            padding: 4px 6px;
+        }
+
+        .center { text-align: center; }
+        .right { text-align: right; }
+        .bold { font-weight: bold; }
+        .small { font-size: 10px; }
+        .hr { border-top: 1px dashed #000; margin: 4px 0; }
+
+        .head .name { font-size: 14px; font-weight: bold; }
+        .row { display: flex; justify-content: space-between; gap: 6px; }
+        .row .lbl { white-space: nowrap; }
+        .row .val { text-align: right; }
+
+        table { width: 100%; border-collapse: collapse; }
+        td { vertical-align: top; padding: 1px 0; }
+        .qty { width: 18%; }
+        .amt { width: 32%; text-align: right; }
+        .desc { width: 50%; word-break: break-word; }
+
+        .total-row { font-weight: bold; font-size: 13px; }
+
+        .no-print { margin: 8px 0; text-align: center; }
+
+        @media print {
+            @page { size: var(--roll) auto; margin: 0; }
+            body { width: var(--roll); }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button onclick="window.print()">Print</button>
+        <a href="?format=pdf">A4 PDF</a>
+        <a href="{% url 'pharmacy:cart_receipt' cart.id %}">Full receipt</a>
+    </div>
+
+    <div class="head center">
+        <div class="name">{{ hospital_name|default:"Hospital Management System" }}</div>
+        {% if hospital_address %}<div class="small">{{ hospital_address }}</div>{% endif %}
+        {% if hospital_phone %}<div class="small">{{ hospital_phone }}</div>{% endif %}
+        <div class="bold" style="margin-top:3px;">CART RECEIPT</div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="row"><span class="lbl">Cart:</span><span class="val">#{{ cart.id }}</span></div>
+    <div class="row"><span class="lbl">Date:</span><span class="val">{{ cart.created_at|date:"d/m/y H:i" }}</span></div>
+    <div class="row"><span class="lbl">By:</span><span class="val">{{ cart.created_by.get_full_name }}</span></div>
+    {% if cart.dispensary %}<div class="row"><span class="lbl">Disp:</span><span class="val">{{ cart.dispensary.name }}</span></div>{% endif %}
+
+    <div class="hr"></div>
+
+    <div class="row"><span class="lbl">Patient:</span><span class="val">{{ cart.prescription.patient.get_full_name }}</span></div>
+    <div class="row"><span class="lbl">ID:</span><span class="val">{{ cart.prescription.patient.patient_id }}</span></div>
+    <div class="row"><span class="lbl">Rx:</span><span class="val">#{{ cart.prescription.id }}</span></div>
+    {% if cart.prescription.patient.is_nhia_patient %}
+    <div class="small bold">NHIA: patient 10% / NHIA 90%</div>
+    {% endif %}
+
+    <div class="hr"></div>
+
+    <table>
+        <tbody>
+            {% for item in cart.items.all %}
+            <tr>
+                <td colspan="3" class="bold">{{ item.prescription_item.medication.name }} {{ item.prescription_item.medication.strength }}</td>
+            </tr>
+            <tr>
+                <td class="qty">{{ item.quantity }} x</td>
+                <td class="desc">{{ item.unit_price|currency }}</td>
+                <td class="amt">{{ item.get_subtotal|currency }}</td>
+            </tr>
+            {% if cart.prescription.patient.is_nhia_patient %}
+            <tr class="small">
+                <td colspan="2">Pt 10%: {{ item.get_patient_pays|currency }}</td>
+                <td class="amt">NHIA: {{ item.get_nhia_covers|currency }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="hr"></div>
+
+    <div class="row"><span class="lbl">Subtotal:</span><span class="val">{{ cart.get_subtotal|currency }}</span></div>
+    {% if cart.prescription.patient.is_nhia_patient %}
+    <div class="row"><span class="lbl">NHIA 90%:</span><span class="val">{{ cart.get_nhia_coverage|currency }}</span></div>
+    {% endif %}
+    <div class="row total-row">
+        <span class="lbl">{% if cart.prescription.patient.is_nhia_patient %}Pt Pays:{% else %}TOTAL:{% endif %}</span>
+        <span class="val">{{ cart.get_patient_payable|currency }}</span>
+    </div>
+
+    {% if cart.invoice %}
+    <div class="hr"></div>
+    <div class="row"><span class="lbl">Invoice:</span><span class="val">#{{ cart.invoice.id }} ({{ cart.invoice.get_status_display }})</span></div>
+    {% endif %}
+
+    <div class="hr"></div>
+    <div class="center small">
+        <div>Computer-generated receipt</div>
+        <div>{{ now|date:"d/m/y H:i" }}</div>
+        <div>Thank you!</div>
+        <div>Powered by: Nazz Tech - 08032194090</div>
+    </div>
+
+    <script>
+        // Auto-open print dialog for thermal workflow
+        window.addEventListener('load', function () {
+            {% if auto_print %}window.print();{% endif %}
+        });
+    </script>
+</body>
+</html>
