@@ -9,12 +9,13 @@ from django.template.loader import render_to_string
 from django.core.cache import cache
 from decimal import Decimal
 import csv
-from .models import Invoice, InvoiceItem, Payment, Service
+from .models import Invoice, InvoiceItem, Payment, Service, ServiceCategory
 from .forms import (
     InvoiceForm,
     InvoiceItemForm,
     PaymentForm,
     ServiceForm,
+    ServiceCategoryForm,
     InvoiceSearchForm,
 )
 from patients.models import Patient
@@ -451,20 +452,37 @@ def record_payment(request, invoice_id):
 @permission_required("billing.view")
 def service_list(request):
     """View for listing all services"""
-    services = Service.objects.all().order_by("name")
+    services = Service.objects.select_related("category").all().order_by("name")
+    categories = ServiceCategory.objects.all().order_by("name")
+
+    form = ServiceForm()
+    category_form = ServiceCategoryForm()
 
     if request.method == "POST":
-        form = ServiceForm(request.POST)
-        if form.is_valid():
-            service = form.save()
-            messages.success(
-                request, f"Service {service.name} has been added successfully."
-            )
-            return redirect("billing:services")
-    else:
-        form = ServiceForm()
+        if request.POST.get("form_type") == "category":
+            category_form = ServiceCategoryForm(request.POST)
+            if category_form.is_valid():
+                category = category_form.save()
+                messages.success(
+                    request, f"Category {category.name} has been added successfully."
+                )
+                return redirect("billing:services")
+        else:
+            form = ServiceForm(request.POST)
+            if form.is_valid():
+                service = form.save()
+                messages.success(
+                    request, f"Service {service.name} has been added successfully."
+                )
+                return redirect("billing:services")
 
-    context = {"services": services, "form": form, "title": "Manage Services"}
+    context = {
+        "services": services,
+        "categories": categories,
+        "form": form,
+        "category_form": category_form,
+        "title": "Manage Services",
+    }
 
     return render(request, "billing/service_list.html", context)
 

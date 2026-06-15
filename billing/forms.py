@@ -1,6 +1,6 @@
 from django import forms
 from django.utils import timezone
-from .models import Invoice, InvoiceItem, Payment, Service
+from .models import Invoice, InvoiceItem, Payment, Service, ServiceCategory
 from core.billing_office_integration import BillingOfficeFormMixin
 from patients.models import Patient
 
@@ -188,6 +188,18 @@ class ServiceForm(forms.ModelForm):
                 attrs={"class": "form-control", "min": "0", "step": "0.01"}
             ),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+        }
+
+
+class ServiceCategoryForm(forms.ModelForm):
+    """Form for creating service categories"""
+
+    class Meta:
+        model = ServiceCategory
+        fields = ["name", "description"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control"}),
+            "description": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
 
 
