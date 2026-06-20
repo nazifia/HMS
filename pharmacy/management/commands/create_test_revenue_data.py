@@ -6,7 +6,7 @@ import random
 
 from patients.models import Patient, PatientWallet, WalletTransaction
 from billing.models import Invoice, Payment as BillingPayment, Service
-from pharmacy_billing.models import Payment as PharmacyPayment
+from billing.models import Payment as PharmacyPayment
 from pharmacy.models import DispensingLog, Prescription, PrescriptionItem, Medication
 from accounts.models import CustomUser
 

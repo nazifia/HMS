@@ -5555,7 +5555,7 @@ def prescription_detail(request, prescription_id):
     # Get pharmacy invoice if exists
     pharmacy_invoice = None
     try:
-        from pharmacy_billing.models import Invoice as PharmacyInvoice
+        from billing.models import Invoice as PharmacyInvoice
 
         pharmacy_invoice = PharmacyInvoice.objects.filter(
             prescription=prescription
@@ -6088,8 +6088,8 @@ def dispense_prescription(request, prescription_id):
                     )
 
                 # Create invoice based on dispensed quantities
-                from pharmacy_billing.models import Invoice as PharmacyInvoice
-                from pharmacy_billing.utils import create_pharmacy_invoice
+                from billing.models import Invoice as PharmacyInvoice
+                from pharmacy.billing_utils import create_pharmacy_invoice
 
                 # Check if invoice already exists
                 try:
@@ -6468,11 +6468,11 @@ def delete_prescription_item(request, item_id):
 @login_required
 def prescription_payment(request, prescription_id):
     """View for prescription payment - patient wallet focused"""
-    from pharmacy_billing.models import (
+    from billing.models import (
         Invoice as PharmacyInvoice,
         Payment as PharmacyPayment,
     )
-    from pharmacy_billing.utils import create_pharmacy_invoice
+    from pharmacy.billing_utils import create_pharmacy_invoice
     from patients.models import PatientWallet
     from .forms import PrescriptionPaymentForm
     from django.db import transaction
@@ -6533,7 +6533,13 @@ def prescription_payment(request, prescription_id):
                     transaction_id = form.cleaned_data.get("transaction_id", "")
                     notes = form.cleaned_data.get("notes", "")
 
-                    # Create payment record using pharmacy billing system
+                    # When paying from the wallet, mark the method "wallet" so the
+                    # billing signal performs the single wallet debit; the signal
+                    # also recomputes invoice.amount_paid + status from the sum of
+                    # payments. Doing either here too would double-count.
+                    if payment_source == "patient_wallet":
+                        payment_method = "wallet"
+
                     payment = PharmacyPayment.objects.create(
                         invoice=pharmacy_invoice,
                         amount=amount,
@@ -6543,20 +6549,8 @@ def prescription_payment(request, prescription_id):
                         received_by=request.user,
                     )
 
-                    # Handle wallet payment
-                    if payment_source == "patient_wallet":
-                        # Use wallet's debit method to ensure proper transaction creation
-                        patient_wallet.debit(
-                            amount=amount,
-                            description=f"Payment for prescription #{prescription.id}",
-                            transaction_type="pharmacy_payment",
-                            user=request.user,
-                        )
-
-                    # Update invoice
-                    pharmacy_invoice.amount_paid += amount
+                    pharmacy_invoice.refresh_from_db()
                     if pharmacy_invoice.amount_paid >= pharmacy_invoice.total_amount:
-                        pharmacy_invoice.status = "paid"
                         prescription.payment_status = "paid"
                         prescription.save(update_fields=["payment_status"])
 
@@ -6673,7 +6667,7 @@ def prescription_payment(request, prescription_id):
 @login_required
 def process_outstanding_wallet_payment(request, prescription_id):
     """View for processing outstanding payments from patient wallet"""
-    from pharmacy_billing.models import Invoice as PharmacyInvoice
+    from billing.models import Invoice as PharmacyInvoice
     from patients.models import PatientWallet
     from django.db import transaction
     from core.audit_utils import log_audit_action
@@ -6792,7 +6786,7 @@ def print_prescription(request, prescription_id):
 
     # Get pharmacy invoice if exists
     pharmacy_invoice = None
-    from pharmacy_billing.models import Invoice as PharmacyInvoice
+    from billing.models import Invoice as PharmacyInvoice
 
     # Use filter().last() instead of get(): a prescription may have more than
     # one Invoice (e.g. re-billing), which makes get() raise MultipleObjectsReturned.
@@ -6874,11 +6868,11 @@ def print_prescription(request, prescription_id):
 @login_required
 def billing_office_medication_payment(request, prescription_id):
     """View for billing office medication payment - dual payment source support"""
-    from pharmacy_billing.models import (
+    from billing.models import (
         Invoice as PharmacyInvoice,
         Payment as PharmacyPayment,
     )
-    from pharmacy_billing.utils import create_pharmacy_invoice
+    from pharmacy.billing_utils import create_pharmacy_invoice
     from patients.models import PatientWallet
     from django.db import transaction
     from core.audit_utils import log_audit_action
@@ -6962,42 +6956,23 @@ def billing_office_medication_payment(request, prescription_id):
                     received_by=request.user,
                 )
 
-                # Handle wallet payment
-                if payment_source == "patient_wallet":
-                    # Use wallet's debit method to ensure proper transaction creation
-                    patient_wallet.debit(
-                        amount=amount,
-                        description=f"Payment for prescription #{prescription.id} (Billing office)",
-                        transaction_type="pharmacy_payment",
-                        user=request.user,
-                    )
-
-                # Update invoice
-                pharmacy_invoice.amount_paid += amount
+                # Wallet debit (when method == "wallet") and invoice.amount_paid +
+                # status are handled by billing signals; recompute from DB.
+                pharmacy_invoice.refresh_from_db()
                 if pharmacy_invoice.amount_paid >= pharmacy_invoice.total_amount:
-                    pharmacy_invoice.status = "paid"
-                    # Mark that this is a manual payment processed by billing staff
-                    pharmacy_invoice._manual_payment_processed = True
                     prescription.payment_status = "paid"
                     prescription.save(update_fields=["payment_status"])
 
-                    # Update cart status to 'paid' if invoice is fully paid - treat each cart independently
+                    # Mark fully-paid carts as paid (each cart independently).
                     from pharmacy.cart_models import PrescriptionCart
 
                     carts = PrescriptionCart.objects.filter(
                         invoice=pharmacy_invoice, status="invoiced"
                     )
                     for cart in carts:
-                        # Check if this individual cart can be marked as paid
-                        if cart.can_generate_invoice()[
-                            0
-                        ]:  # Verify cart is in valid state for payment
+                        if cart.can_generate_invoice()[0]:
                             cart.status = "paid"
                             cart.save(update_fields=["status"])
-                else:
-                    pharmacy_invoice.status = "partially_paid"
-
-                pharmacy_invoice.save()
 
                 # Audit log
                 log_audit_action(
@@ -7213,8 +7188,8 @@ def pharmacist_generate_invoice(request, prescription_id):
     Only generates invoice for medications that are available in the selected dispensary.
     Accepts custom quantities from pharmacist input.
     """
-    from pharmacy_billing.models import Invoice as PharmacyInvoice
-    from pharmacy_billing.utils import create_pharmacy_invoice
+    from billing.models import Invoice as PharmacyInvoice
+    from pharmacy.billing_utils import create_pharmacy_invoice
     from django.db import transaction
     from core.audit_utils import log_audit_action
     import json
@@ -9048,7 +9023,7 @@ def pharmacy_payment_receipt(request, payment_id):
     Generate and display printable payment receipt for pharmacy payments.
     Works with both pharmacy_billing.Payment and billing.Payment models.
     """
-    from pharmacy_billing.models import (
+    from billing.models import (
         Payment as PharmacyPayment,
         Invoice as PharmacyInvoice,
     )

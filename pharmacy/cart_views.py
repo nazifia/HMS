@@ -18,8 +18,8 @@ import json
 from .cart_models import PrescriptionCart, PrescriptionCartItem
 from .models import Prescription, PrescriptionItem, Dispensary, DispensingLog
 from .models import ActiveStoreInventory, MedicationInventory
-from pharmacy_billing.models import Invoice as PharmacyInvoice
-from pharmacy_billing.utils import create_pharmacy_invoice
+from billing.models import Invoice as PharmacyInvoice
+from pharmacy.billing_utils import create_pharmacy_invoice
 from core.audit_utils import log_audit_action
 
 
@@ -614,7 +614,7 @@ def pay_cart_from_wallet(request, cart_id):
     Auto-generates the invoice first if the cart is active and ready.
     On success the cart is marked 'paid' and ready for dispensing.
     """
-    from pharmacy_billing.models import Payment as PharmacyPayment
+    from billing.models import Payment as PharmacyPayment
     from patients.models import PatientWallet
     from core.models import InternalNotification
 
@@ -684,31 +684,21 @@ def pay_cart_from_wallet(request, cart_id):
                 )
                 return redirect("pharmacy:view_cart", cart_id=cart.id)
 
-            # Record payment + debit wallet
+            # Record payment. billing signals handle the rest: a wallet-method
+            # payment debits the patient wallet once, and invoice.amount_paid +
+            # status are recomputed from the sum of payments. Doing those here
+            # too would double-debit the wallet.
             payment = PharmacyPayment.objects.create(
                 invoice=invoice,
                 amount=amount,
                 payment_method="wallet",
                 received_by=request.user,
-                notes=f"Paid from patient wallet (Cart #{cart.id})",
-            )
-
-            # Note: WalletTransaction.invoice/payment FKs point to billing.* models,
-            # not pharmacy_billing.*; omit them to avoid a type mismatch.
-            wallet.debit(
-                amount=amount,
-                description=(
+                notes=(
                     f"Payment for prescription #{cart.prescription.id} "
-                    f"(Cart #{cart.id}, Pharmacy Invoice #{invoice.id})"
+                    f"(Cart #{cart.id})"
                 ),
-                transaction_type="pharmacy_payment",
-                user=request.user,
             )
-
-            # Update invoice
-            invoice.amount_paid += amount
-            invoice.status = "paid"
-            invoice.save()
+            invoice.refresh_from_db()
 
             # Update cart + prescription
             cart.status = "paid"

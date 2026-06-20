@@ -918,7 +918,7 @@ def create_invoice_for_prescription(request, prescription_id):
 def medication_billing_dashboard(request):
     """Dashboard for medication billing management"""
     from pharmacy.models import Prescription
-    from pharmacy_billing.models import Invoice as PharmacyInvoice
+    from billing.models import Invoice as PharmacyInvoice
 
     # Get prescriptions with pending payments
     pending_prescriptions = (
@@ -929,7 +929,9 @@ def medication_billing_dashboard(request):
 
     # Get pharmacy invoices
     pharmacy_invoices = (
-        PharmacyInvoice.objects.filter(status__in=["pending", "partially_paid"])
+        PharmacyInvoice.objects.filter(
+            source_app="pharmacy", status__in=["pending", "partially_paid"]
+        )
         .select_related("patient", "prescription")
         .order_by("-invoice_date")
     )
@@ -956,7 +958,7 @@ def medication_billing_dashboard(request):
 def prescription_billing_detail(request, prescription_id):
     """Detailed view for prescription billing with individual item breakdown"""
     from pharmacy.models import Prescription
-    from pharmacy_billing.models import (
+    from billing.models import (
         Invoice as PharmacyInvoice,
         Payment as PharmacyPayment,
     )
@@ -971,7 +973,7 @@ def prescription_billing_detail(request, prescription_id):
     pharmacy_invoice = None
     try:
         # Use filter().first() to handle any potential duplicates gracefully
-        pharmacy_invoice = PharmacyInvoice.objects.filter(prescription=prescription).order_by('-id').first()
+        pharmacy_invoice = PharmacyInvoice.objects.filter(prescription=prescription, source_app="pharmacy").order_by('-id').first()
     except Exception as e:
         pharmacy_invoice = None
 
@@ -1030,11 +1032,11 @@ def prescription_billing_detail(request, prescription_id):
 def process_medication_payment(request, prescription_id):
     """Process payment for medication prescription from billing office"""
     from pharmacy.models import Prescription
-    from pharmacy_billing.models import (
+    from billing.models import (
         Invoice as PharmacyInvoice,
         Payment as PharmacyPayment,
     )
-    from pharmacy_billing.utils import create_pharmacy_invoice
+    from pharmacy.billing_utils import create_pharmacy_invoice
     from django.db import transaction
 
     prescription = get_object_or_404(Prescription, id=prescription_id)
@@ -1043,7 +1045,7 @@ def process_medication_payment(request, prescription_id):
     pharmacy_invoice = None
     try:
         # Use filter().first() to handle any potential duplicates gracefully
-        pharmacy_invoice = PharmacyInvoice.objects.filter(prescription=prescription).order_by('-id').first()
+        pharmacy_invoice = PharmacyInvoice.objects.filter(prescription=prescription, source_app="pharmacy").order_by('-id').first()
     except Exception as e:
         pharmacy_invoice = None
 
@@ -1096,18 +1098,12 @@ def process_medication_payment(request, prescription_id):
                     received_by=request.user,
                 )
 
-                # Update invoice
-                pharmacy_invoice.amount_paid += amount
+                # Wallet debit (if payment_method == "wallet") and
+                # invoice.amount_paid + status are handled by billing signals.
+                pharmacy_invoice.refresh_from_db()
                 if pharmacy_invoice.amount_paid >= pharmacy_invoice.total_amount:
-                    pharmacy_invoice.status = "paid"
-                    # Mark that this is a manual payment processed by billing staff
-                    pharmacy_invoice._manual_payment_processed = True
                     prescription.payment_status = "paid"
                     prescription.save(update_fields=["payment_status"])
-                else:
-                    pharmacy_invoice.status = "partially_paid"
-
-                pharmacy_invoice.save()
 
                 messages.success(
                     request, f"Payment of ₦{amount:.2f} recorded successfully."

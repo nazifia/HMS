@@ -34,7 +34,6 @@ except ImportError:
 
 from .revenue_point_analyzer import RevenuePointFilterHelper
 from billing.models import Payment as BillingPayment
-from pharmacy_billing.models import Payment as PharmacyPayment
 from patients.models import WalletTransaction
 
 

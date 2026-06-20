@@ -16,7 +16,6 @@ from core.department_revenue_utils import DepartmentRevenueCalculator, RevenueCo
 from core.reporting_integration import RevenueReportGenerator, RevenueReportExecutor
 
 from billing.models import Invoice, Payment as BillingPayment, Service, ServiceCategory
-from pharmacy_billing.models import Payment as PharmacyPayment
 from pharmacy.models import DispensingLog, Medication, PrescriptionItem, Prescription
 from patients.models import Patient, WalletTransaction, PatientWallet
 from appointments.models import Appointment
