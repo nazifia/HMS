@@ -221,7 +221,8 @@ class Admission(models.Model):
                 # Create a transaction record for this adjustment
                 try:
                     WalletTransaction.objects.create(
-                        wallet=wallet,
+                        patient_wallet=wallet,
+                        patient=self.patient,
                         transaction_type='adjustment',
                         amount=current_balance - new_balance,  # Positive if balance decreased
                         balance_after=new_balance,

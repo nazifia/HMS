@@ -891,63 +891,78 @@ class MedicationTransfer(models.Model):
             raise ValueError("Transfer cannot be executed in current status")
 
         with transaction.atomic():
-            # Find bulk store inventory
-            bulk_inventory = BulkStoreInventory.objects.filter(
+            # Candidate bulk batches, locked so concurrent transfers can't both
+            # pass the stock check (double-spend). When batch_number is pinned we
+            # transfer that one batch; otherwise we FIFO across all batches of the
+            # medication (oldest expiry first), so a request larger than any single
+            # batch still succeeds when total stock is sufficient.
+            bulk_qs = BulkStoreInventory.objects.select_for_update().filter(
                 medication=self.medication,
                 bulk_store=self.from_bulk_store,
-                batch_number=self.batch_number,
-                stock_quantity__gte=self.quantity,
-            ).first()
+            )
+            if self.batch_number:
+                bulk_qs = bulk_qs.filter(batch_number=self.batch_number)
+            bulk_batches = list(bulk_qs.order_by("expiry_date", "id"))
 
-            if not bulk_inventory:
-                raise ValueError("Insufficient stock in bulk store")
-
-            # Check if medication is expired
-            if (
-                bulk_inventory.expiry_date
-                and bulk_inventory.expiry_date < timezone.now().date()
-            ):
+            if not bulk_batches:
                 raise ValueError(
-                    f"Cannot transfer expired medication. Batch {bulk_inventory.batch_number} expired on {bulk_inventory.expiry_date}"
+                    f"Batch {self.batch_number} not found in bulk store"
+                    if self.batch_number
+                    else f"No stock for {self.medication.name} in bulk store"
                 )
 
-            # Reduce bulk store inventory
-            bulk_inventory.stock_quantity -= self.quantity
-            bulk_inventory.save()
+            # Never transfer expired stock.
+            today = timezone.now().date()
+            available = [
+                b for b in bulk_batches
+                if not (b.expiry_date and b.expiry_date < today)
+            ]
+            total_available = sum(b.stock_quantity for b in available)
+            if total_available < self.quantity:
+                raise ValueError(
+                    f"Insufficient non-expired stock in bulk store: "
+                    f"have {total_available}, need {self.quantity}"
+                )
 
-            # Get or create consolidated active store inventory
-            active_inventory, created = ActiveStoreInventory.objects.get_or_create(
+            # Get or create consolidated active store inventory. Summary fields
+            # (stock_quantity, batch_number, expiry_date) are recomputed below.
+            active_inventory, _ = ActiveStoreInventory.objects.get_or_create(
                 medication=self.medication,
                 active_store=self.to_active_store,
                 defaults={
                     "stock_quantity": 0,
-                    "reorder_level": self.medication.reorder_level
-                    if hasattr(self.medication, "reorder_level")
-                    else 10,
-                    "batch_number": self.batch_number,
-                    "expiry_date": self.expiry_date or bulk_inventory.expiry_date,
-                    "unit_cost": bulk_inventory.marked_up_cost
-                    or bulk_inventory.unit_cost,
+                    "reorder_level": getattr(self.medication, "reorder_level", 10),
+                    "batch_number": available[0].batch_number,
+                    "expiry_date": available[0].expiry_date,
+                    "unit_cost": available[0].marked_up_cost
+                    or available[0].unit_cost,
                     "last_restock_date": timezone.now(),
                 },
             )
 
-            # Create or update batch record for FIFO tracking
-            batch_record, batch_created = ActiveStoreBatch.objects.get_or_create(
-                active_inventory=active_inventory,
-                batch_number=self.batch_number,
-                defaults={
-                    "quantity": self.quantity,
-                    "expiry_date": self.expiry_date or bulk_inventory.expiry_date,
-                    "unit_cost": bulk_inventory.marked_up_cost
-                    or bulk_inventory.unit_cost,
-                },
-            )
+            # Deduct FIFO, mirroring each source batch into its own ActiveStoreBatch
+            # so per-batch expiry/cost survive into the active store.
+            remaining = self.quantity
+            for src in available:
+                if remaining <= 0:
+                    break
+                take = min(src.stock_quantity, remaining)
+                src.stock_quantity -= take
+                src.save(update_fields=["stock_quantity"])
+                remaining -= take
 
-            if not batch_created:
-                # Update existing batch
-                batch_record.quantity += self.quantity
-                batch_record.save()
+                batch_record, batch_created = ActiveStoreBatch.objects.get_or_create(
+                    active_inventory=active_inventory,
+                    batch_number=src.batch_number,
+                    defaults={
+                        "quantity": take,
+                        "expiry_date": src.expiry_date,
+                        "unit_cost": src.marked_up_cost or src.unit_cost,
+                    },
+                )
+                if not batch_created:
+                    batch_record.quantity += take
+                    batch_record.save(update_fields=["quantity"])
 
             # Update consolidated inventory summary
             active_inventory.last_restock_date = timezone.now()
@@ -2628,42 +2643,92 @@ class InterDispensaryTransfer(models.Model):
             raise ValueError("Cannot execute self-transfer")
 
         with transaction.atomic():
-            # Check availability again
-            can_transfer, message = self.check_availability()
-            if not can_transfer:
-                raise ValueError(message)
+            # Stock lives in ActiveStoreInventory/ActiveStoreBatch — validate and
+            # mutate the SAME ledger (the old code validated ActiveStoreInventory
+            # but moved MedicationInventory, so the real ledger never changed and
+            # legacy rows went negative).
+            source_store = getattr(self.from_dispensary, "active_store", None)
+            dest_store = getattr(self.to_dispensary, "active_store", None)
+            if not source_store:
+                raise ValueError(f"No active store for {self.from_dispensary.name}")
+            if not dest_store:
+                raise ValueError(f"No active store for {self.to_dispensary.name}")
 
-            # Find or create source inventory (legacy MedicationInventory model)
-            # Note: Stock is tracked in ActiveStoreInventory, this is for backward compatibility
-            source_inventory, created = MedicationInventory.objects.get_or_create(
+            # Lock source row so concurrent transfers can't double-spend.
+            source_inv = (
+                ActiveStoreInventory.objects.select_for_update()
+                .filter(medication=self.medication, active_store=source_store)
+                .first()
+            )
+            if not source_inv or source_inv.stock_quantity < self.quantity:
+                have = source_inv.stock_quantity if source_inv else 0
+                raise ValueError(
+                    f"Insufficient stock. Available: {have}, Required: {self.quantity}"
+                )
+
+            dest_inv, _ = ActiveStoreInventory.objects.get_or_create(
                 medication=self.medication,
-                dispensary=self.from_dispensary,
+                active_store=dest_store,
                 defaults={
                     "stock_quantity": 0,
-                    "reorder_level": self.medication.reorder_level
-                    if hasattr(self.medication, "reorder_level")
-                    else 10,
+                    "reorder_level": getattr(self.medication, "reorder_level", 10),
                 },
             )
 
-            # Find or create destination inventory
-            dest_inventory, created = MedicationInventory.objects.get_or_create(
-                medication=self.medication,
-                dispensary=self.to_dispensary,
-                defaults={
-                    "stock_quantity": 0,
-                    "reorder_level": self.medication.reorder_level
-                    if hasattr(self.medication, "reorder_level")
-                    else 10,
-                },
-            )
+            # FIFO across source batches into dest batches, preserving expiry/cost.
+            remaining = self.quantity
+            for batch in source_inv.batches.filter(quantity__gt=0).order_by(
+                "expiry_date", "received_date"
+            ):
+                if remaining <= 0:
+                    break
+                take = min(batch.quantity, remaining)
+                batch.quantity -= take
+                remaining -= take
 
-            # Update quantities
-            source_inventory.stock_quantity -= self.quantity
-            source_inventory.save()
+                dest_batch, created = ActiveStoreBatch.objects.get_or_create(
+                    active_inventory=dest_inv,
+                    batch_number=batch.batch_number,
+                    defaults={
+                        "quantity": take,
+                        "expiry_date": batch.expiry_date,
+                        "unit_cost": batch.unit_cost,
+                    },
+                )
+                if not created:
+                    dest_batch.quantity += take
+                    dest_batch.save(update_fields=["quantity"])
 
-            dest_inventory.stock_quantity += self.quantity
-            dest_inventory.save()
+                if batch.quantity == 0:
+                    batch.delete()
+                else:
+                    batch.save(update_fields=["quantity"])
+
+            if remaining > 0:
+                raise ValueError(
+                    f"Could not fulfill transfer. Short by {remaining} units."
+                )
+
+            source_inv.update_summary_fields()
+            dest_inv.last_restock_date = timezone.now()
+            dest_inv.update_summary_fields()
+
+            # Legacy MedicationInventory mirror (backward compat), kept consistent
+            # with the real ledger rather than mutated independently.
+            for disp, delta in (
+                (self.from_dispensary, -self.quantity),
+                (self.to_dispensary, self.quantity),
+            ):
+                legacy, _ = MedicationInventory.objects.get_or_create(
+                    medication=self.medication,
+                    dispensary=disp,
+                    defaults={
+                        "stock_quantity": 0,
+                        "reorder_level": getattr(self.medication, "reorder_level", 10),
+                    },
+                )
+                legacy.stock_quantity = max(0, legacy.stock_quantity + delta)
+                legacy.save(update_fields=["stock_quantity"])
 
             # Update transfer status
             self.status = "completed"

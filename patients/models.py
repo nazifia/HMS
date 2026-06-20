@@ -62,24 +62,29 @@ class SharedWallet(models.Model):
         if amount <= 0:
             raise ValueError("Credit amount must be positive.")
 
-        self.balance += amount
-        self.save(update_fields=["balance", "last_updated"])
+        from django.db import transaction as db_transaction
 
-        # Create transaction record
-        WalletTransaction.objects.create(
-            shared_wallet=self,
-            patient=patient,
-            transaction_type=transaction_type,
-            amount=amount,
-            balance_after=self.balance,
-            description=description,
-            created_by=user,
-            invoice=invoice,
-            payment=payment_instance,
-            admission=admission,
-        )
+        with db_transaction.atomic():
+            locked = SharedWallet.objects.select_for_update().get(pk=self.pk)
+            locked.balance += amount
+            locked.save(update_fields=["balance", "last_updated"])
+            self.balance = locked.balance
 
-        return self.transactions.latest("created_at")
+            # Create transaction record
+            txn = WalletTransaction.objects.create(
+                shared_wallet=self,
+                patient=patient,
+                transaction_type=transaction_type,
+                amount=amount,
+                balance_after=self.balance,
+                description=description,
+                created_by=user,
+                invoice=invoice,
+                payment=payment_instance,
+                admission=admission,
+            )
+
+        return txn
 
     def _debit(
         self,
@@ -98,22 +103,27 @@ class SharedWallet(models.Model):
         if amount <= 0:
             raise ValueError("Debit amount must be positive.")
 
-        self.balance -= amount
-        self.save(update_fields=["balance", "last_updated"])
+        from django.db import transaction as db_transaction
 
-        # Create transaction record
-        transaction = WalletTransaction.objects.create(
-            shared_wallet=self,
-            patient=patient,
-            transaction_type=transaction_type,
-            amount=amount,
-            balance_after=self.balance,
-            description=description,
-            created_by=user,
-            invoice=invoice,
-            payment=payment_instance,
-            admission=admission,
-        )
+        with db_transaction.atomic():
+            locked = SharedWallet.objects.select_for_update().get(pk=self.pk)
+            locked.balance -= amount
+            locked.save(update_fields=["balance", "last_updated"])
+            self.balance = locked.balance
+
+            # Create transaction record
+            transaction = WalletTransaction.objects.create(
+                shared_wallet=self,
+                patient=patient,
+                transaction_type=transaction_type,
+                amount=amount,
+                balance_after=self.balance,
+                description=description,
+                created_by=user,
+                invoice=invoice,
+                payment=payment_instance,
+                admission=admission,
+            )
 
         return transaction
 
@@ -662,28 +672,34 @@ class PatientWallet(models.Model):
                 patient=self.patient,
             )
         else:
-            # Original individual wallet logic
-            original_balance = self.balance
-            self.balance += amount
-            self.save(update_fields=["balance", "last_updated"])
+            # Individual wallet: lock the row so concurrent credits/debits
+            # don't clobber each other (lost-update). select_for_update is a
+            # no-op on sqlite but enforced on MySQL (prod).
+            from django.db import transaction as db_transaction
 
-            # Create transaction record for the credit
-            transaction = WalletTransaction.objects.create(
-                patient_wallet=self,
-                patient=self.patient,
-                transaction_type=transaction_type,
-                amount=amount,
-                balance_after=self.balance,
-                description=description,
-                created_by=user,
-                invoice=invoice,
-                payment=payment_instance,
-                admission=admission,
-            )
+            with db_transaction.atomic():
+                locked = PatientWallet.objects.select_for_update().get(pk=self.pk)
+                locked.balance += amount
+                locked.save(update_fields=["balance", "last_updated"])
+                self.balance = locked.balance
 
-            # If apply_to_outstanding is True, automatically apply funds to outstanding charges
-            if apply_to_outstanding:
-                self._apply_funds_to_outstanding(amount, user)
+                # Create transaction record for the credit
+                transaction = WalletTransaction.objects.create(
+                    patient_wallet=self,
+                    patient=self.patient,
+                    transaction_type=transaction_type,
+                    amount=amount,
+                    balance_after=self.balance,
+                    description=description,
+                    created_by=user,
+                    invoice=invoice,
+                    payment=payment_instance,
+                    admission=admission,
+                )
+
+                # If apply_to_outstanding is True, apply funds in the same txn
+                if apply_to_outstanding:
+                    self._apply_funds_to_outstanding(amount, user)
 
             return transaction
 
@@ -718,83 +734,30 @@ class PatientWallet(models.Model):
                 patient=self.patient,
             )
         else:
-            # Original individual wallet logic
-            original_balance = self.balance
-            self.balance -= amount
-            self.save(update_fields=["balance", "last_updated"])
+            # Individual wallet: lock the row to avoid lost updates (see credit()).
+            from django.db import transaction as db_transaction
 
-            # Create transaction record
-            transaction = WalletTransaction.objects.create(
-                patient_wallet=self,
-                patient=self.patient,
-                transaction_type=transaction_type,
-                amount=amount,
-                balance_after=self.balance,
-                description=description,
-                created_by=user,
-                invoice=invoice,
-                payment=payment_instance,
-                admission=admission,
-            )
+            with db_transaction.atomic():
+                locked = PatientWallet.objects.select_for_update().get(pk=self.pk)
+                locked.balance -= amount
+                locked.save(update_fields=["balance", "last_updated"])
+                self.balance = locked.balance
 
-            # Check if this debit creates a negative balance
-            # This would be the case when balance goes from positive to negative
-            if self.balance < 0 and original_balance >= 0:
-                # The balance just crossed from positive to negative
-                # We could send a notification here
-                pass
+                # Create transaction record
+                transaction = WalletTransaction.objects.create(
+                    patient_wallet=self,
+                    patient=self.patient,
+                    transaction_type=transaction_type,
+                    amount=amount,
+                    balance_after=self.balance,
+                    description=description,
+                    created_by=user,
+                    invoice=invoice,
+                    payment=payment_instance,
+                    admission=admission,
+                )
 
             return transaction
-
-    def credit(
-        self,
-        amount,
-        description="Credit",
-        transaction_type="credit",
-        user=None,
-        invoice=None,
-        payment_instance=None,
-        admission=None,
-        apply_to_outstanding=False,
-    ):
-        """Credit amount to wallet and create transaction record
-
-        Args:
-            amount: Amount to credit to wallet
-            description: Description for the transaction
-            transaction_type: Type of transaction
-            user: User making the transaction
-            invoice: Related invoice if any
-            payment_instance: Related payment instance if any
-            admission: Related admission if any
-            apply_to_outstanding: If True, automatically apply funds to outstanding charges
-        """
-        if amount <= 0:
-            raise ValueError("Credit amount must be positive.")
-
-        original_balance = self.balance
-        self.balance += amount
-        self.save(update_fields=["balance", "last_updated"])
-
-        # Create transaction record for the credit
-        transaction = WalletTransaction.objects.create(
-            patient_wallet=self,
-            patient=self.patient,
-            transaction_type=transaction_type,
-            amount=amount,
-            balance_after=self.balance,
-            description=description,
-            created_by=user,
-            invoice=invoice,
-            payment=payment_instance,
-            admission=admission,
-        )
-
-        # If apply_to_outstanding is True, automatically apply funds to outstanding charges
-        if apply_to_outstanding:
-            self._apply_funds_to_outstanding(amount, user)
-
-        return transaction
 
     def _apply_funds_to_outstanding(self, available_funds, user=None):
         """Apply available funds to outstanding charges from admissions and invoices
@@ -912,50 +875,6 @@ class PatientWallet(models.Model):
             )
 
             funds_to_apply -= amount_to_apply
-
-    def debit(
-        self,
-        amount,
-        description="Debit",
-        transaction_type="debit",
-        user=None,
-        invoice=None,
-        payment_instance=None,
-        admission=None,
-    ):
-        """Debit amount from wallet and create transaction record"""
-        if amount <= 0:
-            raise ValueError("Debit amount must be positive.")
-        # Allow balance to go negative
-        # if amount > self.balance:
-        #     raise ValueError("Insufficient wallet balance.")
-
-        original_balance = self.balance
-        self.balance -= amount
-        self.save(update_fields=["balance", "last_updated"])
-
-        # Create transaction record
-        transaction = WalletTransaction.objects.create(
-            patient_wallet=self,
-            patient=self.patient,
-            transaction_type=transaction_type,
-            amount=amount,
-            balance_after=self.balance,
-            description=description,
-            created_by=user,
-            invoice=invoice,
-            payment=payment_instance,
-            admission=admission,
-        )
-
-        # Check if this debit creates a negative balance
-        # This would be the case when balance goes from positive to negative
-        if self.balance < 0 and original_balance >= 0:
-            # The balance just crossed from positive to negative
-            # We could send a notification here
-            pass
-
-        return transaction
 
     def settle_outstanding_balance(self, description="Balance settlement", user=None):
         """
