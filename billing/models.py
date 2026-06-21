@@ -1,3 +1,5 @@
+import logging
+
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
@@ -7,6 +9,8 @@ from appointments.models import Appointment
 from laboratory.models import TestRequest
 from pharmacy.models import Prescription
 from radiology.models import RadiologyOrder
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceCategory(models.Model):
@@ -214,10 +218,11 @@ class Invoice(models.Model):
                 if self.status in ["paid", "partially_paid"]:
                     admission.amount_paid = self.amount_paid
                     admission.save(update_fields=["amount_paid"])
-            except Exception as e:
+            except Exception:
                 # Log the error if the admission object cannot be found or updated
-                print(
-                    f"Error updating admission amount_paid for invoice {self.invoice_number}: {e}"
+                logger.warning(
+                    "Error updating admission amount_paid for invoice %s",
+                    self.invoice_number, exc_info=True,
                 )
 
         # Update related service statuses if applicable

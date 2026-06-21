@@ -1170,8 +1170,14 @@ class Prescription(models.Model):
 
     def save(self, *args, **kwargs):
         """Override save to auto-check authorization requirement"""
-        # Auto-check authorization requirement on save
-        self.check_authorization_requirement()
+        # check_authorization_requirement only writes requires_authorization /
+        # authorization_status. On a targeted update_fields save that excludes
+        # both, the recompute can't be persisted anyway, so skip it and avoid a
+        # wasted NHIA lookup on every status/payment-only save.
+        update_fields = kwargs.get("update_fields")
+        auth_written = {"requires_authorization", "authorization_status"}
+        if update_fields is None or auth_written & set(update_fields):
+            self.check_authorization_requirement()
         super().save(*args, **kwargs)
 
     def get_total_prescribed_price(self):  # Renamed for clarity

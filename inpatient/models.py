@@ -260,11 +260,11 @@ class Admission(models.Model):
         # Update bed status when admission is created or status changes
         if is_new and self.bed and self.status == 'admitted':
             self.bed.is_occupied = True
-            self.bed.save()
+            self.bed.save(update_fields=['is_occupied'])
         elif old_instance and old_instance.status == 'admitted' and self.status != 'admitted':
             if self.bed:
                 self.bed.is_occupied = False
-                self.bed.save()
+                self.bed.save(update_fields=['is_occupied'])
 
         # No redirect from model save method
 
