@@ -2,9 +2,9 @@ from django.contrib import admin
 
 # Try to import models, but handle ImportError gracefully
 try:
-    from .models import MedicationCategory, Medication, Supplier, Purchase, PurchaseItem, Prescription, PrescriptionItem, Dispensary, MedicationInventory
+    from .models import MedicationCategory, Medication, Supplier, Purchase, PurchaseItem, Prescription, PrescriptionItem, Dispensary
     DISPENSARY_AVAILABLE = True
-    MEDICATION_INVENTORY_AVAILABLE = True
+    MEDICATION_INVENTORY_AVAILABLE = False
 except ImportError:
     # If some models are not available, import only the available ones
     from .models import MedicationCategory, Medication, Supplier, Purchase, PurchaseItem, Prescription, PrescriptionItem
@@ -116,14 +116,6 @@ try:
 
 except ImportError:
     pass
-
-if MEDICATION_INVENTORY_AVAILABLE:
-    @admin.register(MedicationInventory)
-    class MedicationInventoryAdmin(admin.ModelAdmin):
-        list_display = ('medication', 'dispensary', 'stock_quantity', 'reorder_level', 'last_restock_date')
-        list_filter = ('dispensary', 'last_restock_date')
-        search_fields = ('medication__name', 'dispensary__name')
-        date_hierarchy = 'last_restock_date'
 
 # Register Prescription Cart models
 try:

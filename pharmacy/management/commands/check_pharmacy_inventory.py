@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.db.models import F
-from pharmacy.models import Medication, MedicationInventory, BulkStoreInventory
+from pharmacy.models import Medication, ActiveStoreInventory, BulkStoreInventory
 from datetime import timedelta
 
 class Command(BaseCommand):
@@ -55,9 +55,9 @@ class Command(BaseCommand):
         """Check for medications with low stock levels"""
         self.stdout.write('Checking for low stock medications...')
         
-        low_stock_items = MedicationInventory.objects.filter(
+        low_stock_items = ActiveStoreInventory.objects.filter(
             stock_quantity__lte=F('reorder_level')
-        ).select_related('medication', 'dispensary')
+        ).select_related('medication', 'active_store__dispensary')
 
         if low_stock_items.exists():
             self.stdout.write(
@@ -66,7 +66,7 @@ class Command(BaseCommand):
             for item in low_stock_items:
                 self.stdout.write(
                     f'  - {item.medication.name} ({item.medication.strength}) '
-                    f'at {item.dispensary.name}: {item.stock_quantity} units '
+                    f'at {item.active_store.dispensary.name}: {item.stock_quantity} units '
                     f'(reorder level: {item.reorder_level})'
                 )
         else:
@@ -80,11 +80,11 @@ class Command(BaseCommand):
         
         expiry_date = timezone.now().date() + timedelta(days=days)
         
-        # Check dispensary inventory
-        expiring_items = MedicationInventory.objects.filter(
+        # Check active store inventory
+        expiring_items = ActiveStoreInventory.objects.filter(
             medication__expiry_date__lte=expiry_date,
             medication__expiry_date__gte=timezone.now().date()
-        ).select_related('medication', 'dispensary')
+        ).select_related('medication', 'active_store__dispensary')
 
         # Check bulk store inventory
         expiring_bulk_items = BulkStoreInventory.objects.filter(
@@ -101,7 +101,7 @@ class Command(BaseCommand):
                     days_until_expiry = (item.medication.expiry_date - timezone.now().date()).days
                     self.stdout.write(
                         f'  - {item.medication.name} ({item.medication.strength}) '
-                        f'at {item.dispensary.name} expires in {days_until_expiry} days '
+                        f'at {item.active_store.dispensary.name} expires in {days_until_expiry} days '
                         f'({item.medication.expiry_date.strftime("%Y-%m-%d")})'
                     )
 

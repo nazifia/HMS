@@ -17,7 +17,7 @@ django.setup()
 from django.utils import timezone
 from pharmacy.models import (
     Medication, MedicationCategory, Pack, PackItem, 
-    Dispensary, ActiveStore, ActiveStoreInventory, MedicationInventory
+    Dispensary, ActiveStore, ActiveStoreInventory
 )
 
 def demonstrate_transfer_logic():
@@ -49,7 +49,7 @@ def demonstrate_transfer_logic():
     
     print("4. Key Features:")
     print("   - Automatic transfers when processing pack orders")
-    print("   - Backward compatibility with legacy MedicationInventory model")
+    print("   - Stock tracked in the dispensary active store")
     print("   - Error handling that continues processing even if individual transfers fail")
     print("   - Audit trail through the DispensaryTransfer model")
     print("   - Respects user-dispensary associations when available\n")

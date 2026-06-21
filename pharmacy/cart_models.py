@@ -416,7 +416,7 @@ class PrescriptionCartItem(models.Model):
             self.available_stock = 0
             return
 
-        from pharmacy.models import ActiveStoreInventory, MedicationInventory
+        from pharmacy.models import ActiveStoreInventory
 
         # Use substitute medication if present, otherwise use prescribed medication
         medication = self.get_effective_medication()
@@ -459,24 +459,6 @@ class PrescriptionCartItem(models.Model):
             logger.error(
                 f"Unexpected error in update_available_stock for dispensary {dispensary.id}: {e}"
             )
-
-        # Check legacy inventory if no stock found
-        if total_stock == 0:
-            try:
-                # Aggregate all legacy inventory items for this medication in the dispensary
-                from django.db.models import Sum
-
-                legacy_summary = MedicationInventory.objects.filter(
-                    medication=medication, dispensary=dispensary, stock_quantity__gt=0
-                ).aggregate(total_stock=Sum("stock_quantity"))
-
-                total_stock = legacy_summary["total_stock"] or 0
-
-            except Exception as e:
-                import logging
-
-                logger = logging.getLogger(__name__)
-                logger.warning(f"Error checking legacy inventory: {e}")
 
         self.available_stock = total_stock
 
@@ -566,7 +548,7 @@ class PrescriptionCartItem(models.Model):
         if not self.cart.dispensary:
             return []
 
-        from pharmacy.models import ActiveStoreInventory, MedicationInventory
+        from pharmacy.models import ActiveStoreInventory
 
         medication = self.prescription_item.medication
         dispensary = self.cart.dispensary
@@ -584,52 +566,6 @@ class PrescriptionCartItem(models.Model):
                 # Filter by similar generic name first (more reliable for alternatives)
                 from pharmacy.models import Medication
 
-                similar_meds = similar_meds.filter(
-                    medication__generic_name=medication.generic_name
-                ) | similar_meds.filter(medication__name__iexact=medication.name)
-
-                similar_meds = (
-                    similar_meds.select_related("medication")
-                    .values(
-                        "medication__id",
-                        "medication__name",
-                        "medication__strength",
-                        "medication__dosage_form",
-                    )
-                    .annotate(total_stock=Sum("stock_quantity"))
-                    .distinct()
-                )
-
-                for med in similar_meds:
-                    strength = med["medication__strength"] or ""
-                    dosage = med["medication__dosage_form"] or ""
-                    name_parts = [med["medication__name"], strength, dosage]
-                    full_name = " ".join([p for p in name_parts if p])
-
-                    # Get price from the medication
-                    try:
-                        med_obj = Medication.objects.get(id=med["medication__id"])
-                        price = float(med_obj.price) if med_obj.price else 0
-                    except:
-                        price = 0
-
-                    alternatives.append(
-                        {
-                            "id": med["medication__id"],
-                            "name": full_name,
-                            "strength": strength,
-                            "dosage_form": dosage,
-                            "stock": med["total_stock"],
-                            "price": price,
-                        }
-                    )
-            else:
-                # Fallback to legacy MedicationInventory (older system)
-                similar_meds = MedicationInventory.objects.filter(
-                    dispensary=dispensary, stock_quantity__gt=0
-                ).exclude(medication=medication)
-
-                # Filter by similar generic name first (more reliable for alternatives)
                 similar_meds = similar_meds.filter(
                     medication__generic_name=medication.generic_name
                 ) | similar_meds.filter(medication__name__iexact=medication.name)

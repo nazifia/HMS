@@ -6,7 +6,7 @@ from django.utils.decorators import method_decorator
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.http import JsonResponse
-from ..models import Medication, MedicationCategory, Supplier, Prescription, PrescriptionItem, Dispensary, MedicationInventory
+from ..models import Medication, MedicationCategory, Supplier, Prescription, PrescriptionItem, Dispensary
 from .serializers import (
     MedicationSerializer, MedicationCategorySerializer, SupplierSerializer,
     PrescriptionSerializer, PrescriptionItemSerializer

@@ -246,17 +246,6 @@ class Purchase(models.Model):
             item.quantity_received += qty
             item.save(update_fields=["quantity_received"])
 
-            # Maintain legacy dispensary inventory for backward compatibility
-            if self.dispensary:
-                inventory, _ = MedicationInventory.objects.get_or_create(
-                    medication=item.medication,
-                    dispensary=self.dispensary,
-                    defaults={"stock_quantity": 0},
-                )
-                inventory.stock_quantity += qty
-                inventory.last_restock_date = timezone.now()
-                inventory.save()
-
         fully_received = all(
             item.quantity_received >= item.quantity for item in items.values()
         )
@@ -619,28 +608,6 @@ class ActiveStore(models.Model):
 
     class Meta:
         ordering = ["name"]
-
-
-class MedicationInventory(models.Model):
-    """Legacy model for tracking medication inventory in dispensaries (maintained for backward compatibility)"""
-
-    medication = models.ForeignKey(
-        Medication, on_delete=models.CASCADE, related_name="inventories"
-    )
-    dispensary = models.ForeignKey(
-        Dispensary, on_delete=models.CASCADE, related_name="medications"
-    )
-    stock_quantity = models.IntegerField(default=0)
-    reorder_level = models.IntegerField(default=10)
-    last_restock_date = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.medication.name} at {self.dispensary.name}"
-
-    def is_low_stock(self):
-        return self.stock_quantity <= self.reorder_level
 
 
 class BulkStoreInventory(models.Model):
@@ -1713,19 +1680,22 @@ class DispensaryTransfer(models.Model):
             pass
 
     def execute_transfer(self, user):
-        """Execute the transfer by moving stock from active store to dispensary using FIFO"""
+        """Acknowledge the transfer of stock to a dispensary.
+
+        The dispensary dispenses directly from its active store, so there is no
+        separate dispensary-shelf tier to move stock into (the legacy
+        MedicationInventory ledger was retired in backlog #6). Stock stays in
+        the active store where dispensing reads it; we only validate that the
+        active store holds enough and mark the transfer completed.
+        ponytail: record-only now; the whole DispensaryTransfer workflow is a
+        candidate for removal in a follow-up.
+        """
         if not self.can_execute():
             raise ValueError("Transfer cannot be executed in current status")
 
         with transaction.atomic():
-            # Import models here to avoid circular imports
-            from .models import (
-                ActiveStoreInventory,
-                ActiveStoreBatch,
-                MedicationInventory,
-            )
+            from .models import ActiveStoreInventory
 
-            # Find active store inventory
             active_inventory = ActiveStoreInventory.objects.filter(
                 medication=self.medication, active_store=self.from_active_store
             ).first()
@@ -1733,45 +1703,7 @@ class DispensaryTransfer(models.Model):
             if not active_inventory or active_inventory.stock_quantity < self.quantity:
                 raise ValueError("Insufficient stock in active store")
 
-            # Use FIFO: deduct from oldest batches first
-            remaining_qty = self.quantity
-            batches = active_inventory.batches.filter(quantity__gt=0).order_by(
-                "expiry_date", "received_date"
-            )
-
-            for batch in batches:
-                if remaining_qty <= 0:
-                    break
-
-                deduct_qty = min(batch.quantity, remaining_qty)
-                batch.quantity -= deduct_qty
-                remaining_qty -= deduct_qty
-
-                if batch.quantity == 0:
-                    batch.delete()  # Remove empty batches
-                else:
-                    batch.save()
-
-            if remaining_qty > 0:
-                raise ValueError(
-                    f"Could not fulfill transfer. Short by {remaining_qty} units."
-                )
-
-            # Update consolidated active store inventory
-            active_inventory.update_summary_fields()
-
-            # Add to dispensary inventory (legacy model for backward compatibility)
-            dispensary_inventory, created = MedicationInventory.objects.get_or_create(
-                medication=self.medication,
-                dispensary=self.to_dispensary,
-                defaults={"stock_quantity": 0, "reorder_level": 10},
-            )
-
-            dispensary_inventory.stock_quantity += self.quantity
-            dispensary_inventory.last_restock_date = timezone.now()
-            dispensary_inventory.save()
-
-            # Update transfer status
+            # Update transfer status (stock remains in the active store).
             self.status = "completed"
             self.transferred_by = user
             self.transferred_at = timezone.now()
@@ -2112,128 +2044,9 @@ class PackOrder(models.Model):
                 # Continue with processing even if transfers fail
                 logger.warning("Pack order %s: opportunistic transfer step failed, continuing", self.id, exc_info=True)
 
-        # Now, ensure that medications are moved from active store to the respective dispensary
-        # This is for cases where we want to ensure the dispensary has the required medications
-        try:
-            # Try to get user's associated dispensary
-            if hasattr(user, "profile") and hasattr(user.profile, "dispensary"):
-                dispensary = user.profile.dispensary
-            else:
-                # Use default dispensary
-                dispensary = Dispensary.objects.filter(is_active=True).first()
-
-            if dispensary:
-                active_store = getattr(dispensary, "active_store", None)
-                if active_store:
-                    # For each medication in the pack, ensure it's available in the dispensary
-                    for pack_item in self.pack.items.all():
-                        medication = pack_item.medication
-                        required_quantity = pack_item.quantity
-
-                        # Check if medication is available in the active store
-                        active_inventory = ActiveStoreInventory.objects.filter(
-                            medication=medication,
-                            active_store=active_store,
-                            stock_quantity__gte=required_quantity,
-                        ).first()
-
-                        if not active_inventory:
-                            # If not available in active store, check if it's in legacy inventory
-                            try:
-                                legacy_inventory = MedicationInventory.objects.get(
-                                    medication=medication,
-                                    dispensary=dispensary,
-                                    stock_quantity__gte=required_quantity,
-                                )
-                                # If found in legacy inventory, we'll use that for dispensing
-                                # No transfer needed in this case
-                                pass
-                            except MedicationInventory.DoesNotExist:
-                                # Medication not available in either inventory
-                                # This will be handled during prescription dispensing
-                                pass
-                        else:
-                            # Medication is available in active store
-                            # Check if it's also available in the dispensary (legacy inventory)
-                            # If not, create a transfer from active store to dispensary
-                            try:
-                                dispensary_inventory = MedicationInventory.objects.get(
-                                    medication=medication, dispensary=dispensary
-                                )
-                                # If dispensary already has this medication, check if quantity is sufficient
-                                if (
-                                    dispensary_inventory.stock_quantity
-                                    < required_quantity
-                                ):
-                                    # Need to transfer more from active store to dispensary
-                                    shortage = (
-                                        required_quantity
-                                        - dispensary_inventory.stock_quantity
-                                    )
-
-                                    # Create dispensary transfer request
-                                    from .models import DispensaryTransfer
-
-                                    dispensary_transfer = (
-                                        DispensaryTransfer.objects.create(
-                                            medication=medication,
-                                            from_active_store=active_store,
-                                            to_dispensary=dispensary,
-                                            quantity=shortage,
-                                            batch_number=active_inventory.batch_number,
-                                            expiry_date=active_inventory.expiry_date,
-                                            unit_cost=active_inventory.unit_cost,
-                                            status="pending",
-                                            requested_by=user,
-                                        )
-                                    )
-
-                                    # Approve and execute transfer immediately
-                                    dispensary_transfer.approved_by = user
-                                    dispensary_transfer.approved_at = timezone.now()
-                                    dispensary_transfer.status = "in_transit"
-                                    dispensary_transfer.save()
-
-                                    try:
-                                        dispensary_transfer.execute_transfer(user)
-                                    except Exception as e:
-                                        # Log the error but continue processing
-                                        logger.warning("Pack order %s: opportunistic transfer step failed, continuing", self.id, exc_info=True)
-                            except MedicationInventory.DoesNotExist:
-                                # Dispensary doesn't have this medication at all
-                                # Create a transfer from active store to dispensary
-                                from .models import DispensaryTransfer
-
-                                dispensary_transfer = DispensaryTransfer.objects.create(
-                                    medication=medication,
-                                    from_active_store=active_store,
-                                    to_dispensary=dispensary,
-                                    quantity=required_quantity,
-                                    batch_number=active_inventory.batch_number,
-                                    expiry_date=active_inventory.expiry_date,
-                                    unit_cost=active_inventory.unit_cost,
-                                    status="pending",
-                                    requested_by=user,
-                                )
-
-                                # Approve and execute transfer immediately
-                                dispensary_transfer.approved_by = user
-                                dispensary_transfer.approved_at = timezone.now()
-                                dispensary_transfer.status = "in_transit"
-                                dispensary_transfer.save()
-
-                                try:
-                                    dispensary_transfer.execute_transfer(user)
-                                except Exception as e:
-                                    # Log the error but continue processing
-                                    logger.warning("Pack order %s: opportunistic transfer step failed, continuing", self.id, exc_info=True)
-        except Exception:
-            # Best-effort legacy dispensary top-up; never block order processing
-            # on it. NOTE: this block writes the legacy MedicationInventory ledger
-            # and only binds `Dispensary` when there were missing medications, so
-            # it no-ops (UnboundLocalError) on the common path. Slated for removal
-            # with the legacy ledger in backlog #6; logged at debug, not warning.
-            logger.debug("Pack order %s: legacy dispensary top-up skipped", self.id, exc_info=True)
+        # Dispensing reads the dispensary's active store directly, so no
+        # active-store -> dispensary-shelf top-up is needed here. (Removed with
+        # the legacy MedicationInventory ledger in backlog #6.)
 
         # Build the prescription + its items + status flips atomically. If any
         # step fails the whole block rolls back (including the pack order's own
@@ -2731,23 +2544,6 @@ class InterDispensaryTransfer(models.Model):
             source_inv.update_summary_fields()
             dest_inv.last_restock_date = timezone.now()
             dest_inv.update_summary_fields()
-
-            # Legacy MedicationInventory mirror (backward compat), kept consistent
-            # with the real ledger rather than mutated independently.
-            for disp, delta in (
-                (self.from_dispensary, -self.quantity),
-                (self.to_dispensary, self.quantity),
-            ):
-                legacy, _ = MedicationInventory.objects.get_or_create(
-                    medication=self.medication,
-                    dispensary=disp,
-                    defaults={
-                        "stock_quantity": 0,
-                        "reorder_level": getattr(self.medication, "reorder_level", 10),
-                    },
-                )
-                legacy.stock_quantity = max(0, legacy.stock_quantity + delta)
-                legacy.save(update_fields=["stock_quantity"])
 
             # Update transfer status
             self.status = "completed"

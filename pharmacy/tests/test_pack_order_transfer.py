@@ -3,7 +3,8 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from pharmacy.models import (
     Medication, MedicationCategory, MedicalPack, MedicalPackItem, PackOrder,
-    Dispensary, ActiveStore, ActiveStoreInventory, ActiveStoreBatch, MedicationInventory
+    Dispensary, ActiveStore, ActiveStoreInventory, ActiveStoreBatch,
+    DispensaryTransfer,
 )
 from patients.models import Patient
 from datetime import timedelta
@@ -237,3 +238,27 @@ class PackOrderTransferTest(TestCase):
         self.pack_order.save(update_fields=['status'])
         prescription = self.pack_order.process_order(self.user)
         self.assertEqual(prescription.items.count(), 2)
+
+    def test_dispensary_transfer_keeps_stock_in_active_store(self):
+        """After #6, executing a dispensary transfer must not move/lose stock:
+        the dispensary dispenses from its active store, so stock stays there."""
+        future_date = timezone.now().date() + timedelta(days=365)
+        inv = ActiveStoreInventory.objects.create(
+            medication=self.medication1, active_store=self.active_store,
+            batch_number='B1', stock_quantity=20,
+            expiry_date=future_date, unit_cost=8.00,
+        )
+        transfer = DispensaryTransfer.objects.create(
+            medication=self.medication1,
+            from_active_store=self.active_store,
+            to_dispensary=self.dispensary,
+            quantity=5,
+            batch_number='B1', expiry_date=future_date, unit_cost=8.00,
+            status='in_transit', requested_by=self.user, approved_by=self.user,
+        )
+
+        transfer.execute_transfer(self.user)
+
+        inv.refresh_from_db()
+        self.assertEqual(inv.stock_quantity, 20)  # stock not deducted
+        self.assertEqual(transfer.status, 'completed')

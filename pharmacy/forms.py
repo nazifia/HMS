@@ -2,6 +2,7 @@ import logging
 import calendar
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db.models import Sum
 from django.utils import timezone
 from .models import (
     MedicationCategory,
@@ -13,7 +14,6 @@ from .models import (
     PrescriptionItem,
     DispensingLog,
     Dispensary,
-    MedicationInventory,
     ActiveStoreInventory,
     MedicalPack,
     PackItem,
@@ -461,49 +461,23 @@ class DispenseItemForm(forms.Form):
                 self.prescription_item.is_dispensed
             )  # Based on new logic (qty_dispensed_so_far >= quantity)
 
-            # Get available stock from both inventory models for the selected dispensary
+            # Available stock = sum across the dispensary's active store
             available_stock = 0
             if self.selected_dispensary:
-                try:
-                    # First try MedicationInventory (legacy)
-                    med_inventory = MedicationInventory.objects.get(
-                        medication=self.prescription_item.medication,
-                        dispensary=self.selected_dispensary,
+                active_store = getattr(
+                    self.selected_dispensary, "active_store", None
+                )
+                if active_store:
+                    available_stock = (
+                        ActiveStoreInventory.objects.filter(
+                            medication=self.prescription_item.medication,
+                            active_store=active_store,
+                        ).aggregate(total=Sum("stock_quantity"))["total"]
+                        or 0
                     )
-                    available_stock = med_inventory.stock_quantity
-                    logging.debug(
-                        f"  Available stock at selected dispensary ({self.selected_dispensary.name}): {available_stock}"
-                    )
-                except MedicationInventory.DoesNotExist:
-                    # If not found, try ActiveStoreInventory (new)
-                    try:
-                        active_store = getattr(
-                            self.selected_dispensary, "active_store", None
-                        )
-                        if active_store:
-                            # Handle multiple inventory records by summing all available stock
-                            inventories = ActiveStoreInventory.objects.filter(
-                                medication=self.prescription_item.medication,
-                                active_store=active_store,
-                            )
-                            available_stock = sum(
-                                inv.stock_quantity for inv in inventories
-                            )
-                            logging.debug(
-                                f"  Available stock at selected dispensary ({self.selected_dispensary.name}): {available_stock}"
-                            )
-                        else:
-                            available_stock = 0
-                            logging.debug(
-                                f"  No active store found for {self.selected_dispensary.name}"
-                            )
-                    except ActiveStoreInventory.DoesNotExist:
-                        available_stock = (
-                            0  # No inventory for this medication at this dispensary
-                        )
-                        logging.debug(
-                            f"  No inventory found for {self.prescription_item.medication.name} at {self.selected_dispensary.name}"
-                        )
+                logging.debug(
+                    f"  Available stock at selected dispensary ({self.selected_dispensary.name}): {available_stock}"
+                )
 
             # Store available stock as instance variable for template access
             self.available_stock = available_stock
@@ -614,35 +588,22 @@ class DispenseItemForm(forms.Form):
         remaining_qty = self.prescription_item.remaining_quantity_to_dispense
         is_fully_dispensed = self.prescription_item.is_dispensed
 
-        # Get available stock from both inventory models for the selected dispensary
+        # Available stock = sum across the dispensary's active store.
         # Use effective dispensary (form dispensary OR selected_dispensary)
         effective_dispensary_for_stock = dispensary or self.selected_dispensary
         available_stock = 0
         if effective_dispensary_for_stock:
-            try:
-                # First try MedicationInventory (legacy)
-                med_inventory = MedicationInventory.objects.get(
-                    medication=self.prescription_item.medication,
-                    dispensary=effective_dispensary_for_stock,
+            active_store = getattr(
+                effective_dispensary_for_stock, "active_store", None
+            )
+            if active_store:
+                available_stock = (
+                    ActiveStoreInventory.objects.filter(
+                        medication=self.prescription_item.medication,
+                        active_store=active_store,
+                    ).aggregate(total=Sum("stock_quantity"))["total"]
+                    or 0
                 )
-                available_stock = med_inventory.stock_quantity
-            except MedicationInventory.DoesNotExist:
-                # If not found, try ActiveStoreInventory (new)
-                try:
-                    active_store = getattr(
-                        effective_dispensary_for_stock, "active_store", None
-                    )
-                    if active_store:
-                        # Handle multiple inventory records by summing all available stock
-                        inventories = ActiveStoreInventory.objects.filter(
-                            medication=self.prescription_item.medication,
-                            active_store=active_store,
-                        )
-                        available_stock = sum(inv.stock_quantity for inv in inventories)
-                    else:
-                        available_stock = 0
-                except Exception as e:
-                    available_stock = 0
         else:
             # No dispensary selected yet; skip stock validation until dispensary provided
             available_stock = None
@@ -1311,20 +1272,6 @@ class PrescriptionPaymentForm(forms.ModelForm):
         # Wallet balance validation removed to support negative balances
 
         return cleaned_data
-
-
-class MedicationInventoryForm(forms.ModelForm):
-    """Form for managing medication inventory in dispensaries"""
-
-    class Meta:
-        model = MedicationInventory
-        fields = ["medication", "dispensary", "stock_quantity", "reorder_level"]
-        widgets = {
-            "medication": forms.Select(attrs={"class": "form-control"}),
-            "dispensary": forms.Select(attrs={"class": "form-control"}),
-            "stock_quantity": forms.NumberInput(attrs={"class": "form-control"}),
-            "reorder_level": forms.NumberInput(attrs={"class": "form-control"}),
-        }
 
 
 class ActiveStoreInventoryForm(forms.ModelForm):

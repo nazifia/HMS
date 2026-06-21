@@ -4,9 +4,9 @@ API views for inventory management
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse, HttpResponse
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.template.loader import render_to_string
-from ..models import Medication, Dispensary, MedicationInventory, ActiveStoreInventory
+from ..models import Medication, Dispensary, ActiveStoreInventory
 from ..views import user_has_inventory_edit_permission
 
 
@@ -36,42 +36,38 @@ def check_medication_inventory(request):
                 medication = Medication.objects.get(id=medication_id, is_active=True)
                 dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
                 
-                # Get inventory for the medication
-                try:
-                    inventory = MedicationInventory.objects.get(
-                        medication=medication,
-                        dispensary=dispensary
+                # Available stock = sum across the dispensary's active store
+                active_store = getattr(dispensary, "active_store", None)
+                quantity_available = 0
+                if active_store:
+                    quantity_available = (
+                        ActiveStoreInventory.objects.filter(
+                            medication=medication, active_store=active_store
+                        ).aggregate(total=Sum("stock_quantity"))["total"]
+                        or 0
                     )
-                    
-                    quantity_available = inventory.stock_quantity
-                    required_quantity = quantity
-                    feasible = quantity_available >= required_quantity
-                    
-                    # Determine status color
-                    if feasible:
-                        status = 'success'
-                        message = f'Transfer feasible: {quantity_available} units available'
-                    else:
-                        status = 'warning'
-                        message = f'Insufficient stock: Only {quantity_available} units available'
-                    
-                    response_data = {
-                        'medication': medication.name,
-                        'medication_id': medication.id,
-                        'dispensary': dispensary.name,
-                        'dispensary_id': dispensary.id,
-                        'available': quantity_available,
-                        'required': required_quantity,
-                        'feasible': feasible,
-                        'status': status,
-                        'message': message
-                    }
-                    
-                except MedicationInventory.DoesNotExist:
-                    response_data = {
-                        'error': f'No inventory record found for {medication.name} in {dispensary.name}'
-                    }
-                
+                required_quantity = quantity
+                feasible = quantity_available >= required_quantity
+
+                if feasible:
+                    status = 'success'
+                    message = f'Transfer feasible: {quantity_available} units available'
+                else:
+                    status = 'warning'
+                    message = f'Insufficient stock: Only {quantity_available} units available'
+
+                response_data = {
+                    'medication': medication.name,
+                    'medication_id': medication.id,
+                    'dispensary': dispensary.name,
+                    'dispensary_id': dispensary.id,
+                    'available': quantity_available,
+                    'required': required_quantity,
+                    'feasible': feasible,
+                    'status': status,
+                    'message': message
+                }
+
             except Medication.DoesNotExist:
                 response_data = {'error': 'Medication not found'}
             except Dispensary.DoesNotExist:
@@ -120,15 +116,11 @@ def search_medication_inventory(request):
             try:
                 dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
                 
-                # Get inventory items from both ActiveStoreInventory and MedicationInventory
+                # Get inventory items from the dispensary's active store
                 active_store_items = ActiveStoreInventory.objects.filter(
                     active_store__dispensary=dispensary
                 ).select_related('medication', 'active_store')
-                
-                legacy_items = MedicationInventory.objects.filter(
-                    dispensary=dispensary
-                ).select_related('medication', 'dispensary')
-                
+
                 # Normalize items into common structure
                 inventory_items = []
                 for item in active_store_items:
@@ -141,18 +133,7 @@ def search_medication_inventory(request):
                         'source': 'active_store',
                         'object': item,
                     })
-                
-                for item in legacy_items:
-                    inventory_items.append({
-                        'id': item.id,
-                        'medication': item.medication,
-                        'stock_quantity': item.stock_quantity,
-                        'reorder_level': getattr(item, 'reorder_level', None),
-                        'last_restock_date': item.last_restock_date,
-                        'source': 'legacy',
-                        'object': item,
-                    })
-                
+
                 print(f"Found {len(inventory_items)} total inventory items before filtering")
                 
                 # Filter items based on search query

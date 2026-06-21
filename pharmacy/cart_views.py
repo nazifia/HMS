@@ -17,7 +17,7 @@ import json
 
 from .cart_models import PrescriptionCart, PrescriptionCartItem
 from .models import Prescription, PrescriptionItem, Dispensary, DispensingLog
-from .models import ActiveStoreInventory, MedicationInventory
+from .models import ActiveStoreInventory
 from billing.models import Invoice as PharmacyInvoice
 from pharmacy.billing_utils import create_pharmacy_invoice
 from core.audit_utils import log_audit_action
@@ -937,89 +937,6 @@ def complete_dispensing_from_cart(request, cart_id):
 
                         logger = logging.getLogger(__name__)
                         logger.warning(f"Error updating active store inventory: {e}")
-
-                # Try legacy inventory if not updated
-                if not inventory_updated:
-                    try:
-                        legacy_inv = MedicationInventory.objects.filter(
-                            medication=medication,
-                            dispensary=dispensary,
-                            stock_quantity__gt=0,  # Get any item with stock
-                        ).first()
-
-                        if legacy_inv:
-                            # Check if this inventory has enough stock
-                            if legacy_inv.stock_quantity >= quantity_to_dispense:
-                                legacy_inv.stock_quantity -= quantity_to_dispense
-                                legacy_inv.save()
-                            else:
-                                # Not enough stock in this single item - try to find another with enough
-                                exact_match = MedicationInventory.objects.filter(
-                                    medication=medication,
-                                    dispensary=dispensary,
-                                    stock_quantity=quantity_to_dispense,
-                                ).first()
-
-                                if exact_match:
-                                    exact_match.stock_quantity -= (
-                                        quantity_to_dispense  # This will make it 0
-                                    )
-                                    exact_match.save()
-                                else:
-                                    # Find any items with sufficient stock using aggregation
-                                    from django.db.models import Sum, Count
-
-                                    inventory_summary = (
-                                        MedicationInventory.objects.filter(
-                                            medication=medication,
-                                            dispensary=dispensary,
-                                            stock_quantity__gt=0,
-                                        ).aggregate(
-                                            total_stock=Sum("stock_quantity"),
-                                            count=Count("id"),
-                                        )
-                                    )
-
-                                    if (
-                                        inventory_summary["total_stock"]
-                                        >= quantity_to_dispense
-                                    ):
-                                        # We have enough stock across multiple items
-                                        # Deduct from inventory items in FIFO order (oldest batch first)
-                                        remaining_to_deduct = quantity_to_dispense
-                                        items_to_update = (
-                                            MedicationInventory.objects.filter(
-                                                medication=medication,
-                                                dispensary=dispensary,
-                                                stock_quantity__gt=0,
-                                            ).order_by("id")
-                                        )  # FIFO - oldest first
-
-                                        for inv_item in items_to_update:
-                                            if remaining_to_deduct <= 0:
-                                                break
-
-                                            if (
-                                                inv_item.stock_quantity
-                                                >= remaining_to_deduct
-                                            ):
-                                                inv_item.stock_quantity -= (
-                                                    remaining_to_deduct
-                                                )
-                                                inv_item.save()
-                                                break
-                                            else:
-                                                # Deduct full amount and continue to next item
-                                                remaining_to_deduct -= (
-                                                    inv_item.stock_quantity
-                                                )
-                                                inv_item.stock_quantity = 0
-                                                inv_item.save()
-                    except Exception as e:
-                        import logging
-
-                        logger = logging.getLogger(__name__)
-                        logger.warning(f"Error updating legacy inventory: {e}")
 
                 # Update prescription item
                 p_item.quantity_dispensed_so_far += quantity_to_dispense

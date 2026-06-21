@@ -35,7 +35,6 @@ from .models import (
     Dispensary,
     ActiveStore,
     ActiveStoreInventory,
-    MedicationInventory,
     BulkStore,
     BulkStoreInventory,
     MedicationTransfer,
@@ -57,7 +56,6 @@ from .forms import (
     PrescriptionForm,
     PrescriptionItemForm,
     DispensaryForm,
-    MedicationInventoryForm,
     ActiveStoreInventoryForm,
     PrescriptionSearchForm,
     MedicationSearchForm,
@@ -5970,19 +5968,6 @@ def dispense_prescription(request, prescription_id):
                                         except Exception as e:
                                             pass  # Continue to legacy inventory check
 
-                                        # If not found in active store, try legacy MedicationInventory (backward compatibility)
-                                        if med_inventory is None:
-                                            try:
-                                                med_inventory = (
-                                                    MedicationInventory.objects.filter(
-                                                        medication=medication,
-                                                        dispensary=dispensary,
-                                                        stock_quantity__gte=qty,
-                                                    ).first()
-                                                )
-                                            except Exception as e:
-                                                pass  # med_inventory remains None
-
                                         # If no inventory found with sufficient stock, show error
                                         if med_inventory is None:
                                             messages.error(
@@ -6004,21 +5989,13 @@ def dispense_prescription(request, prescription_id):
                                                 dispensary=dispensary,
                                             )
 
-                                            # Update inventory (update the correct inventory model)
+                                            # Deduct from the active store inventory
                                             if (
                                                 hasattr(med_inventory, "stock_quantity")
                                                 and med_inventory.stock_quantity >= qty
                                             ):
-                                                if isinstance(
-                                                    med_inventory, ActiveStoreInventory
-                                                ):
-                                                    # Update active store inventory
-                                                    med_inventory.stock_quantity -= qty
-                                                    med_inventory.save()
-                                                else:
-                                                    # Update legacy medication inventory
-                                                    med_inventory.stock_quantity -= qty
-                                                    med_inventory.save()
+                                                med_inventory.stock_quantity -= qty
+                                                med_inventory.save()
                                             else:
                                                 messages.error(
                                                     request,
@@ -6318,28 +6295,24 @@ def debug_dispense_prescription(request, prescription_id):
         dispensary_info = {"dispensary": dispensary, "medications": []}
 
         # Check inventory for each medication in the prescription
+        active_store = getattr(dispensary, "active_store", None)
         for item in prescription.items.all():
-            try:
-                inventory = MedicationInventory.objects.get(
-                    medication=item.medication, dispensary=dispensary
+            stock = 0
+            if active_store:
+                stock = (
+                    ActiveStoreInventory.objects.filter(
+                        medication=item.medication, active_store=active_store
+                    ).aggregate(total=models.Sum("stock_quantity"))["total"]
+                    or 0
                 )
-                dispensary_info["medications"].append(
-                    {
-                        "medication": item.medication,
-                        "in_inventory": True,
-                        "stock_quantity": inventory.stock_quantity,
-                        "reorder_level": inventory.reorder_level,
-                    }
-                )
-            except MedicationInventory.DoesNotExist:
-                dispensary_info["medications"].append(
-                    {
-                        "medication": item.medication,
-                        "in_inventory": False,
-                        "stock_quantity": 0,
-                        "reorder_level": 0,
-                    }
-                )
+            dispensary_info["medications"].append(
+                {
+                    "medication": item.medication,
+                    "in_inventory": stock > 0,
+                    "stock_quantity": stock,
+                    "reorder_level": 0,
+                }
+            )
 
         inventory_info.append(dispensary_info)
 
@@ -7143,16 +7116,6 @@ def check_medication_availability(request):
                     Decimal(str(inv.stock_quantity)) for inv in inventory_items
                 )
 
-            # Check legacy inventory
-            try:
-                legacy_inv = MedicationInventory.objects.filter(
-                    medication=medication, dispensary=dispensary, stock_quantity__gt=0
-                ).first()
-                if legacy_inv:
-                    available_quantity += Decimal(str(legacy_inv.stock_quantity))
-            except:
-                pass
-
             # Calculate price
             unit_price = (
                 medication.selling_price
@@ -7361,16 +7324,6 @@ def pharmacist_generate_invoice(request, prescription_id):
                     stock_quantity__gt=0,
                 )
                 available_quantity = sum(inv.stock_quantity for inv in inventory_items)
-
-            # Also check legacy inventory
-            try:
-                legacy_inv = MedicationInventory.objects.filter(
-                    medication=medication, dispensary=dispensary, stock_quantity__gt=0
-                ).first()
-                if legacy_inv:
-                    available_quantity += legacy_inv.stock_quantity
-            except:
-                pass
 
             dispensary_stock.append(
                 {
@@ -7952,17 +7905,12 @@ def dispensary_inventory(request, dispensary_id):
 
     can_edit_inventory = user_has_inventory_edit_permission(request.user, dispensary)
 
-    # Get inventory items from ActiveStoreInventory (new) and MedicationInventory (legacy)
+    # Get inventory items from ActiveStoreInventory
     active_store_items = ActiveStoreInventory.objects.filter(
         active_store__dispensary=dispensary
     ).select_related("medication", "active_store")
 
-    legacy_items = MedicationInventory.objects.filter(
-        dispensary=dispensary
-    ).select_related("medication", "dispensary")
-
-    # Merge duplicate medications from both sources
-    # Create a dictionary keyed by medication_id to merge quantities
+    # Merge duplicate medication rows into one entry per medication
     medication_inventory = {}
 
     # Process active store items
@@ -7984,44 +7932,6 @@ def dispensary_inventory(request, dispensary_id):
             # Merge quantities
             medication_inventory[med_id]["stock_quantity"] += item.stock_quantity
             medication_inventory[med_id]["sources"].append("active_store")
-            medication_inventory[med_id]["ids"].append(item.id)
-            medication_inventory[med_id]["objects"].append(item)
-            # Use the most recent restock date
-            if (
-                item.last_restock_date
-                and medication_inventory[med_id]["last_restock_date"]
-            ):
-                if (
-                    item.last_restock_date
-                    > medication_inventory[med_id]["last_restock_date"]
-                ):
-                    medication_inventory[med_id]["last_restock_date"] = (
-                        item.last_restock_date
-                    )
-            elif item.last_restock_date:
-                medication_inventory[med_id]["last_restock_date"] = (
-                    item.last_restock_date
-                )
-
-    # Process legacy items
-    for item in legacy_items:
-        med_id = item.medication.id
-        if med_id not in medication_inventory:
-            medication_inventory[med_id] = {
-                "medication": item.medication,
-                "stock_quantity": item.stock_quantity,
-                "reorder_level": getattr(item, "reorder_level", None),
-                "last_restock_date": item.last_restock_date,
-                "sources": ["legacy"],
-                "ids": [item.id],
-                "objects": [item],
-                "batch_number": getattr(item, "batch_number", None),
-                "expiry_date": getattr(item, "expiry_date", None),
-            }
-        else:
-            # Merge quantities
-            medication_inventory[med_id]["stock_quantity"] += item.stock_quantity
-            medication_inventory[med_id]["sources"].append("legacy")
             medication_inventory[med_id]["ids"].append(item.id)
             medication_inventory[med_id]["objects"].append(item)
             # Use the most recent restock date
@@ -8103,37 +8013,28 @@ def add_dispensary_inventory_item(request, dispensary_id):
         )
         return redirect("pharmacy:dispensary_inventory", dispensary_id=dispensary.id)
 
-    # Prefer creating an ActiveStoreInventory tied to the dispensary's active store if present
+    # Inventory is held in the dispensary's active store.
     active_store = getattr(dispensary, "active_store", None)
-    if request.method == "POST":
-        if active_store:
-            form = ActiveStoreInventoryForm(request.POST)
-        else:
-            form = MedicationInventoryForm(request.POST)
+    if not active_store:
+        messages.error(
+            request,
+            f"{dispensary.name} has no active store; cannot add inventory items.",
+        )
+        return redirect("pharmacy:dispensary_inventory", dispensary_id=dispensary.id)
 
+    if request.method == "POST":
+        form = ActiveStoreInventoryForm(request.POST)
         if form.is_valid():
             new_item = form.save(commit=False)
-            # If using legacy MedicationInventory form and dispensary provided, ensure association
-            if isinstance(new_item, MedicationInventory) or not active_store:
-                # Ensure dispensary set for legacy model
-                if hasattr(new_item, "dispensary"):
-                    new_item.dispensary = dispensary
-            else:
-                # For ActiveStoreInventory, set active_store if not provided
-                if hasattr(new_item, "active_store") and not new_item.active_store:
-                    new_item.active_store = active_store
-
+            if hasattr(new_item, "active_store") and not new_item.active_store:
+                new_item.active_store = active_store
             new_item.save()
             messages.success(request, "Inventory item added successfully.")
             return redirect(
                 "pharmacy:dispensary_inventory", dispensary_id=dispensary.id
             )
     else:
-        # Prepopulate forms
-        if active_store:
-            form = ActiveStoreInventoryForm(initial={"active_store": active_store.id})
-        else:
-            form = MedicationInventoryForm(initial={"dispensary": dispensary.id})
+        form = ActiveStoreInventoryForm(initial={"active_store": active_store.id})
 
     context = {
         "form": form,
@@ -8161,28 +8062,13 @@ def edit_dispensary_inventory_item(request, dispensary_id, inventory_item_id):
         )
         return redirect("pharmacy:dispensary_inventory", dispensary_id=dispensary.id)
 
-    # Support both ActiveStoreInventory (new) and MedicationInventory (legacy)
-    inventory_item = None
-    source = None
-    try:
-        inventory_item = ActiveStoreInventory.objects.get(id=inventory_item_id)
-        source = "active_store"
-    except ActiveStoreInventory.DoesNotExist:
-        try:
-            inventory_item = MedicationInventory.objects.get(id=inventory_item_id)
-            source = "legacy"
-        except MedicationInventory.DoesNotExist:
-            messages.error(request, "Inventory item not found.")
-            return redirect(
-                "pharmacy:dispensary_inventory", dispensary_id=dispensary.id
-            )
+    inventory_item = ActiveStoreInventory.objects.filter(id=inventory_item_id).first()
+    if not inventory_item:
+        messages.error(request, "Inventory item not found.")
+        return redirect("pharmacy:dispensary_inventory", dispensary_id=dispensary.id)
 
-    if source == "active_store":
-        form_class = ActiveStoreInventoryForm
-        instance = inventory_item
-    else:
-        form_class = MedicationInventoryForm
-        instance = inventory_item
+    form_class = ActiveStoreInventoryForm
+    instance = inventory_item
 
     if request.method == "POST":
         form = form_class(request.POST, instance=instance)
@@ -8222,21 +8108,11 @@ def delete_dispensary_inventory_item(request, dispensary_id, inventory_item_id):
         )
         return redirect("pharmacy:dispensary_inventory", dispensary_id=dispensary.id)
 
-    # Support both ActiveStoreInventory (new) and MedicationInventory (legacy)
-    inventory_item = None
-    source = None
-    try:
-        inventory_item = ActiveStoreInventory.objects.get(id=inventory_item_id)
-        source = "active_store"
-    except ActiveStoreInventory.DoesNotExist:
-        try:
-            inventory_item = MedicationInventory.objects.get(id=inventory_item_id)
-            source = "legacy"
-        except MedicationInventory.DoesNotExist:
-            messages.error(request, "Inventory item not found.")
-            return redirect(
-                "pharmacy:dispensary_inventory", dispensary_id=dispensary.id
-            )
+    inventory_item = ActiveStoreInventory.objects.filter(id=inventory_item_id).first()
+    if not inventory_item:
+        messages.error(request, "Inventory item not found.")
+        return redirect("pharmacy:dispensary_inventory", dispensary_id=dispensary.id)
+    source = "active_store"
 
     if request.method == "POST":
         inventory_item.delete()
@@ -8294,37 +8170,26 @@ def quick_add_stock(request):
                 status=403,
             )
 
-        try:
-            inventory = MedicationInventory.objects.get(
-                medication=medication, dispensary=dispensary
-            )
-            inventory.stock_quantity += quantity_to_add
-            inventory.last_restock_date = timezone.now()
-            inventory.save()
-
+        active_store = getattr(dispensary, "active_store", None)
+        if not active_store:
             return JsonResponse(
-                {
-                    "success": True,
-                    "new_stock_quantity": inventory.stock_quantity,
-                    "message": f"Successfully added {quantity_to_add} units to {medication.name}",
-                }
+                {"success": False, "error": f"{dispensary.name} has no active store."}
             )
 
-        except MedicationInventory.DoesNotExist:
-            inventory = MedicationInventory.objects.create(
-                medication=medication,
-                dispensary=dispensary,
-                stock_quantity=quantity_to_add,
-                last_restock_date=timezone.now(),
-            )
+        inventory, _created = ActiveStoreInventory.objects.get_or_create(
+            medication=medication, active_store=active_store
+        )
+        inventory.stock_quantity += quantity_to_add
+        inventory.last_restock_date = timezone.now()
+        inventory.save()
 
-            return JsonResponse(
-                {
-                    "success": True,
-                    "new_stock_quantity": inventory.stock_quantity,
-                    "message": f"Successfully added {quantity_to_add} units to {medication.name}",
-                }
-            )
+        return JsonResponse(
+            {
+                "success": True,
+                "new_stock_quantity": inventory.stock_quantity,
+                "message": f"Successfully added {quantity_to_add} units to {medication.name}",
+            }
+        )
 
     except json.JSONDecodeError:
         return JsonResponse({"success": False, "error": "Invalid JSON data"})
@@ -8379,26 +8244,16 @@ def get_stock_quantities(request, prescription_id):
     # Build stock info for each prescription item
     stock_quantities = []
     for p_item in prescription.items.select_related("medication"):
-        # Check both inventory models
+        # Sum available stock in the dispensary's active store
         stock_qty = 0
-        try:
-            # First try MedicationInventory (legacy)
-            med_inv = MedicationInventory.objects.get(
-                medication=p_item.medication, dispensary=dispensary
+        active_store = getattr(dispensary, "active_store", None)
+        if active_store:
+            stock_qty = (
+                ActiveStoreInventory.objects.filter(
+                    medication=p_item.medication, active_store=active_store
+                ).aggregate(total=models.Sum("stock_quantity"))["total"]
+                or 0
             )
-            stock_qty = med_inv.stock_quantity
-        except MedicationInventory.DoesNotExist:
-            # If not found, try ActiveStoreInventory (new)
-            try:
-                active_store = getattr(dispensary, "active_store", None)
-                if active_store:
-                    # Handle multiple inventory records by summing all available stock
-                    inventories = ActiveStoreInventory.objects.filter(
-                        medication=p_item.medication, active_store=active_store
-                    )
-                    stock_qty = sum(inv.stock_quantity for inv in inventories)
-            except Exception:
-                stock_qty = 0
 
         stock_quantities.append(
             {
