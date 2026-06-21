@@ -1,4 +1,5 @@
 from django.db import models
+from saas.models import TenantModel
 from core.clinical_notes import NigerianClerkingNote
 from django.utils import timezone
 from patients.models import Patient
@@ -6,7 +7,7 @@ from django.conf import settings
 from typing import Any
 from decimal import Decimal
 
-class NeurologyService(models.Model):
+class NeurologyService(TenantModel):
     """Model for neurology services/procedures"""
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
@@ -23,7 +24,7 @@ class NeurologyService(models.Model):
         verbose_name_plural = "Neurology Services"
 
 
-class NeurologyRecord(models.Model):
+class NeurologyRecord(TenantModel):
     """Enhanced neurology record model with comprehensive fields"""
     
     CONDITION_TYPE_CHOICES = [
@@ -125,7 +126,7 @@ class NeurologyRecord(models.Model):
         verbose_name_plural = "Neurology Records"
 
 
-class NeurologyPrescription(models.Model):
+class NeurologyPrescription(TenantModel):
     """Model for neurology prescriptions"""
     neurology_record = models.ForeignKey(NeurologyRecord, on_delete=models.CASCADE, related_name='prescriptions')
     medication = models.CharField(max_length=200)
@@ -146,7 +147,7 @@ class NeurologyPrescription(models.Model):
         verbose_name_plural = "Neurology Prescriptions"
 
 
-class NeurologyTest(models.Model):
+class NeurologyTest(TenantModel):
     """Model for neurology diagnostic tests"""
     TEST_TYPE_CHOICES = [
         ('eeg', 'EEG (Electroencephalogram)'),
@@ -175,7 +176,7 @@ class NeurologyTest(models.Model):
         verbose_name_plural = "Neurology Tests"
 
 
-class NeurologyClinicalNote(NigerianClerkingNote):
+class NeurologyClinicalNote(NigerianClerkingNote, TenantModel):
     """Nigerian clerking proforma clinical notes for neurology records"""
     neurology_record = models.ForeignKey(NeurologyRecord, on_delete=models.CASCADE, related_name='clinical_notes')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='neurology_clinical_notes_created')

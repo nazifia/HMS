@@ -13,13 +13,14 @@ from django.dispatch import receiver
 from django.db.models.signals import post_save, pre_delete, m2m_changed
 from django.contrib.auth.models import Permission
 from django.utils.translation import gettext_lazy as _
+from saas.models import TenantModel
 import json
 import logging
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
-class ActivityLog(models.Model):
+class ActivityLog(TenantModel):
     """
     Comprehensive activity logging model that tracks all user actions in the system
     """

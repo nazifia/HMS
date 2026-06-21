@@ -1,4 +1,5 @@
 from django.db import models
+from saas.models import TenantModel
 from core.clinical_notes import NigerianClerkingNote
 from django.conf import settings
 from patients.models import Patient
@@ -6,7 +7,7 @@ from doctors.models import Doctor
 from django.utils import timezone
 
 
-class Family_planningRecord(models.Model):
+class Family_planningRecord(TenantModel):
     patient = models.ForeignKey(
         Patient, on_delete=models.CASCADE, related_name="family_planning_records"
     )
@@ -59,7 +60,7 @@ class Family_planningRecord(models.Model):
         ]
 
 
-class FamilyPlanningClinicalNote(NigerianClerkingNote):
+class FamilyPlanningClinicalNote(NigerianClerkingNote, TenantModel):
     """Nigerian clerking proforma clinical notes for family_planning records"""
 
     family_planning_record = models.ForeignKey(

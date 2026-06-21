@@ -1,6 +1,7 @@
 import logging
 
 from django.db import models, transaction
+from saas.models import TenantModel
 from nhia.utils import NHIA_PATIENT_RATE, NHIA_COVERED_RATE
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -11,7 +12,7 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
-class MedicationCategory(models.Model):
+class MedicationCategory(TenantModel):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -23,7 +24,7 @@ class MedicationCategory(models.Model):
         verbose_name_plural = "Medication Categories"
 
 
-class Medication(models.Model):
+class Medication(TenantModel):
     name = models.CharField(max_length=100)
     generic_name = models.CharField(max_length=100, blank=True, null=True)
     category = models.ForeignKey(
@@ -58,7 +59,7 @@ class Medication(models.Model):
         ordering = ["name"]
 
 
-class Supplier(models.Model):
+class Supplier(TenantModel):
     name = models.CharField(max_length=100)
     contact_person = models.CharField(max_length=100, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
@@ -81,7 +82,7 @@ class Supplier(models.Model):
         ordering = ["name"]
 
 
-class Purchase(models.Model):
+class Purchase(TenantModel):
     supplier = models.ForeignKey(
         Supplier, on_delete=models.CASCADE, related_name="purchases"
     )
@@ -267,7 +268,7 @@ class Purchase(models.Model):
         ]
 
 
-class PurchaseApproval(models.Model):
+class PurchaseApproval(TenantModel):
     purchase = models.ForeignKey(
         Purchase, on_delete=models.CASCADE, related_name="approvals"
     )
@@ -294,7 +295,7 @@ class PurchaseApproval(models.Model):
         return f"{self.purchase.invoice_number} - Step {self.step_order} - {self.approver.get_full_name()} ({self.status})"
 
 
-class PurchasePayment(models.Model):
+class PurchasePayment(TenantModel):
     """Payment records for purchase orders"""
 
     PAYMENT_METHOD_CHOICES = [
@@ -329,7 +330,7 @@ class PurchasePayment(models.Model):
         return f"Payment of ₦{self.amount} for Purchase #{self.purchase.invoice_number}"
 
 
-class PurchaseItem(models.Model):
+class PurchaseItem(TenantModel):
     purchase = models.ForeignKey(
         Purchase, on_delete=models.CASCADE, related_name="items"
     )
@@ -409,7 +410,7 @@ class PurchaseItem(models.Model):
             bulk_inventory.save()
 
 
-class PharmacistDispensaryAssignment(models.Model):
+class PharmacistDispensaryAssignment(TenantModel):
     """Model to track which pharmacists are assigned to which dispensary"""
 
     pharmacist = models.ForeignKey(
@@ -466,7 +467,7 @@ class PharmacistDispensaryAssignment(models.Model):
 
 
 # Inventory Models
-class Dispensary(models.Model):
+class Dispensary(TenantModel):
     """Model representing a pharmacy dispensary location"""
 
     name = models.CharField(max_length=100, unique=True)
@@ -541,7 +542,7 @@ class Dispensary(models.Model):
         return False, "Could not find active assignment"
 
 
-class BulkStore(models.Model):
+class BulkStore(TenantModel):
     """Model representing the central bulk storage facility"""
 
     name = models.CharField(max_length=100, unique=True)
@@ -578,7 +579,7 @@ class BulkStore(models.Model):
         ordering = ["name"]
 
 
-class ActiveStore(models.Model):
+class ActiveStore(TenantModel):
     """Model representing the active storage area within a dispensary"""
 
     dispensary = models.OneToOneField(
@@ -610,7 +611,7 @@ class ActiveStore(models.Model):
         ordering = ["name"]
 
 
-class BulkStoreInventory(models.Model):
+class BulkStoreInventory(TenantModel):
     """Model for tracking medication inventory in the bulk store"""
 
     medication = models.ForeignKey(
@@ -672,7 +673,7 @@ class BulkStoreInventory(models.Model):
         super().save(*args, **kwargs)
 
 
-class ActiveStoreInventory(models.Model):
+class ActiveStoreInventory(TenantModel):
     """Model for tracking medication inventory in active stores (consolidated view)"""
 
     medication = models.ForeignKey(
@@ -752,7 +753,7 @@ class ActiveStoreInventory(models.Model):
         self.save()
 
 
-class ActiveStoreBatch(models.Model):
+class ActiveStoreBatch(TenantModel):
     """Model for tracking individual batches within active stores (FIFO)"""
 
     active_inventory = models.ForeignKey(
@@ -780,7 +781,7 @@ class ActiveStoreBatch(models.Model):
         return self.expiry_date < timezone.now().date()
 
 
-class MedicationTransfer(models.Model):
+class MedicationTransfer(TenantModel):
     """Model to track transfers of medications from bulk store to active store"""
 
     TRANSFER_STATUS_CHOICES = [
@@ -959,7 +960,7 @@ class MedicationTransfer(models.Model):
                 pass
 
 
-class DispensingLog(models.Model):
+class DispensingLog(TenantModel):
     """Model to track when medications are dispensed to patients"""
 
     prescription_item = models.ForeignKey(
@@ -993,7 +994,7 @@ class DispensingLog(models.Model):
         verbose_name_plural = "Dispensing Logs"
 
 
-class Prescription(models.Model):
+class Prescription(TenantModel):
     STATUS_CHOICES = (
         ("pending", "Pending"),
         ("approved", "Approved"),
@@ -1502,7 +1503,7 @@ class Prescription(models.Model):
         ordering = ["-prescription_date", "-created_at"]
 
 
-class PrescriptionItem(models.Model):
+class PrescriptionItem(TenantModel):
     prescription = models.ForeignKey(
         Prescription, on_delete=models.CASCADE, related_name="items"
     )
@@ -1550,7 +1551,7 @@ class PrescriptionItem(models.Model):
         return max(0, self.quantity - self.quantity_dispensed_so_far)
 
 
-class Pack(models.Model):
+class Pack(TenantModel):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     medications = models.ManyToManyField(Medication, through="PackItem")
@@ -1562,7 +1563,7 @@ class Pack(models.Model):
         return self.name
 
 
-class PackItem(models.Model):
+class PackItem(TenantModel):
     ITEM_TYPE_CHOICES = [
         ("medication", "Medication"),
         ("supply", "Medical Supply"),
@@ -1603,7 +1604,7 @@ class PackItem(models.Model):
             raise ValidationError("Item cannot be both critical and optional.")
 
 
-class DispensaryTransfer(models.Model):
+class DispensaryTransfer(TenantModel):
     """Model to track transfers of medications from active store to dispensary"""
 
     TRANSFER_STATUS_CHOICES = [
@@ -1790,7 +1791,7 @@ class DispensaryTransfer(models.Model):
         return transfer
 
 
-class PackOrder(models.Model):
+class PackOrder(TenantModel):
     ORDER_STATUS_CHOICES = [
         ("pending", "Pending"),
         ("ready", "Ready"),
@@ -2127,7 +2128,7 @@ class PackOrder(models.Model):
         return prescription
 
 
-class MedicalPack(models.Model):
+class MedicalPack(TenantModel):
     """Model representing a predefined pack of medications and supplies for specific medical procedures"""
 
     PACK_TYPE_CHOICES = [
@@ -2284,7 +2285,7 @@ class MedicalPack(models.Model):
         return True, "Pack is available for ordering"
 
 
-class MedicalPackItem(models.Model):
+class MedicalPackItem(TenantModel):
     """Model representing items in a medical pack"""
 
     ITEM_TYPE_CHOICES = [
@@ -2343,7 +2344,7 @@ class MedicalPackItem(models.Model):
             raise ValidationError("Item cannot be both critical and optional.")
 
 
-class InterDispensaryTransfer(models.Model):
+class InterDispensaryTransfer(TenantModel):
     """Model to track transfers of medications between dispensaries"""
 
     TRANSFER_STATUS_CHOICES = [
@@ -2646,7 +2647,7 @@ class InterDispensaryTransfer(models.Model):
         return True, "Transfer is feasible"
 
 
-class PharmacyExpense(models.Model):
+class PharmacyExpense(TenantModel):
     """Model for tracking pharmacy expenses beyond purchases"""
 
     EXPENSE_TYPE_CHOICES = [

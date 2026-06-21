@@ -213,7 +213,7 @@ class VitalsViewTest(TestCase):
 
     def test_vitals_view_get(self):
         """Test GET request to vitals view"""
-        self.client.login(phone_number='1234567890', password='testpass123')
+        self.client.login(username='1234567890', password='testpass123')
         url = reverse('patients:vitals', args=[self.patient.id])
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -221,7 +221,7 @@ class VitalsViewTest(TestCase):
 
     def test_vitals_view_post_valid_data(self):
         """Test POST request with valid vitals data"""
-        self.client.login(phone_number='1234567890', password='testpass123')
+        self.client.login(username='1234567890', password='testpass123')
         url = reverse('patients:vitals', args=[self.patient.id])
         
         form_data = {
@@ -245,7 +245,7 @@ class VitalsViewTest(TestCase):
 
     def test_vitals_view_auto_populate_recorded_by(self):
         """Test that recorded_by is auto-populated when not provided"""
-        self.client.login(phone_number='1234567890', password='testpass123')
+        self.client.login(username='1234567890', password='testpass123')
         url = reverse('patients:vitals', args=[self.patient.id])
         
         form_data = {

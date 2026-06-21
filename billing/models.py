@@ -1,6 +1,7 @@
 import logging
 
 from django.db import models
+from saas.models import TenantModel
 from django.utils import timezone
 from django.conf import settings
 from django.db import transaction  # Added for atomic transactions
@@ -13,7 +14,7 @@ from radiology.models import RadiologyOrder
 logger = logging.getLogger(__name__)
 
 
-class ServiceCategory(models.Model):
+class ServiceCategory(TenantModel):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -25,7 +26,7 @@ class ServiceCategory(models.Model):
         verbose_name_plural = "Service Categories"
 
 
-class Service(models.Model):
+class Service(TenantModel):
     name = models.CharField(max_length=100)
     category = models.ForeignKey(
         ServiceCategory, on_delete=models.SET_NULL, null=True, related_name="services"
@@ -45,7 +46,7 @@ class Service(models.Model):
         return self.price + tax_amount
 
 
-class Invoice(models.Model):
+class Invoice(TenantModel):
     STATUS_CHOICES = (
         ("draft", "Draft"),
         ("pending", "Pending"),
@@ -300,7 +301,7 @@ class Invoice(models.Model):
         ]
 
 
-class InvoiceItem(models.Model):
+class InvoiceItem(TenantModel):
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="items")
     service = models.ForeignKey(
         Service, on_delete=models.CASCADE, null=True, blank=True
@@ -336,7 +337,7 @@ class InvoiceItem(models.Model):
         super().save(*args, **kwargs)
 
 
-class Payment(models.Model):
+class Payment(TenantModel):
     invoice = models.ForeignKey(
         Invoice, on_delete=models.CASCADE, related_name="payments"
     )

@@ -1,8 +1,9 @@
 from django.db import models
+from saas.models import TenantModel
 from accounts.models import CustomUser as User, Department
 
 
-class Specialization(models.Model):
+class Specialization(TenantModel):
     """Model for medical specializations"""
 
     name = models.CharField(max_length=100)
@@ -17,7 +18,7 @@ class Specialization(models.Model):
         ordering = ["name"]
 
 
-class Doctor(models.Model):
+class Doctor(TenantModel):
     """Extended model for doctors with medical-specific fields"""
 
     EXPERIENCE_CHOICES = (
@@ -71,7 +72,7 @@ class Doctor(models.Model):
         ordering = ["user__first_name", "user__last_name"]
 
 
-class DoctorAvailability(models.Model):
+class DoctorAvailability(TenantModel):
     """Model for doctor availability schedule"""
 
     WEEKDAY_CHOICES = (
@@ -103,7 +104,7 @@ class DoctorAvailability(models.Model):
         ordering = ["weekday", "start_time"]
 
 
-class DoctorLeave(models.Model):
+class DoctorLeave(TenantModel):
     """Model for doctor leave/time off"""
 
     STATUS_CHOICES = (
@@ -138,7 +139,7 @@ class DoctorLeave(models.Model):
         ordering = ["-start_date"]
 
 
-class DoctorEducation(models.Model):
+class DoctorEducation(TenantModel):
     """Model for doctor's educational background"""
 
     doctor = models.ForeignKey(
@@ -156,7 +157,7 @@ class DoctorEducation(models.Model):
         ordering = ["-year_of_completion"]
 
 
-class DoctorExperience(models.Model):
+class DoctorExperience(TenantModel):
     """Model for doctor's work experience"""
 
     doctor = models.ForeignKey(
@@ -177,7 +178,7 @@ class DoctorExperience(models.Model):
         ordering = ["-start_date"]
 
 
-class DoctorReview(models.Model):
+class DoctorReview(TenantModel):
     """Model for patient reviews of doctors"""
 
     RATING_CHOICES = (

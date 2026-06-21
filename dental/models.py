@@ -1,4 +1,5 @@
 from django.db import models
+from saas.models import TenantModel
 from core.clinical_notes import NigerianClerkingNote
 from django.utils import timezone
 from patients.models import Patient
@@ -6,7 +7,7 @@ from django.conf import settings
 from typing import Any
 from decimal import Decimal
 
-class DentalService(models.Model):
+class DentalService(TenantModel):
     """Model for dental services/procedures"""
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
@@ -23,7 +24,7 @@ class DentalService(models.Model):
         verbose_name_plural = "Dental Services"
 
 
-class DentalRecord(models.Model):
+class DentalRecord(TenantModel):
     """Enhanced dental record model with comprehensive fields"""
     
     TEETH_CHOICES = [
@@ -151,7 +152,7 @@ class DentalRecord(models.Model):
         verbose_name_plural = "Dental Records"
 
 
-class DentalPrescription(models.Model):
+class DentalPrescription(TenantModel):
     """Model for dental prescriptions"""
     dental_record = models.ForeignKey(DentalRecord, on_delete=models.CASCADE, related_name='prescriptions')
     medication = models.CharField(max_length=200)
@@ -172,7 +173,7 @@ class DentalPrescription(models.Model):
         verbose_name_plural = "Dental Prescriptions"
 
 
-class DentalXRay(models.Model):
+class DentalXRay(TenantModel):
     """Model for dental X-rays"""
     XRAY_TYPE_CHOICES = [
         ('bitewing', 'Bitewing'),
@@ -199,7 +200,7 @@ class DentalXRay(models.Model):
         verbose_name_plural = "Dental X-Rays"
 
 
-class DentalClinicalNote(NigerianClerkingNote):
+class DentalClinicalNote(NigerianClerkingNote, TenantModel):
     """Nigerian clerking proforma clinical notes for dental records"""
     dental_record = models.ForeignKey(DentalRecord, on_delete=models.CASCADE, related_name='clinical_notes')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='dental_clinical_notes_created')

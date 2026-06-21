@@ -142,6 +142,9 @@ ENCRYPTION_KEY = os.environ.get(
 
 AUTH_USER_MODEL = "accounts.CustomUser"
 
+# SaaS / Paystack — secret used to verify webhook signatures (money path).
+PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY", "")
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -160,6 +163,7 @@ INSTALLED_APPS = [
     "django_extensions",  # SSL support for runserver
     # 'django_celery_beat',  # Temporarily disabled due to Python 3.13 timezone compatibility issue
     # HMS Apps
+    "saas",  # multi-tenant engine — must load before tenant-scoped apps
     "accounts",
     "core",
     "patients",
@@ -208,6 +212,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Resolve tenant from subdomain + gate on subscription (before access control)
+    "saas.middleware.TenantMiddleware",
     # STRICT ACCESS CONTROL - Must be right after AuthenticationMiddleware
     # This enforces that users only access what they're explicitly permitted to
     "accounts.middleware.StrictAccessControlMiddleware",

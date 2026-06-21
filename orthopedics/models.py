@@ -1,4 +1,5 @@
 from django.db import models
+from saas.models import TenantModel
 from core.clinical_notes import NigerianClerkingNote
 from django.conf import settings
 from patients.models import Patient
@@ -6,7 +7,7 @@ from doctors.models import Doctor
 from django.utils import timezone
 
 
-class OrthopedicsRecord(models.Model):
+class OrthopedicsRecord(TenantModel):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='orthopedics_records')
     doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True)
     visit_date = models.DateTimeField(default=timezone.now)
@@ -48,7 +49,7 @@ class OrthopedicsRecord(models.Model):
         verbose_name_plural = 'Orthopedics Records'
 
 
-class OrthopedicsClinicalNote(NigerianClerkingNote):
+class OrthopedicsClinicalNote(NigerianClerkingNote, TenantModel):
     """Nigerian clerking proforma clinical notes for orthopedics records"""
     orthopedics_record = models.ForeignKey(OrthopedicsRecord, on_delete=models.CASCADE, related_name='clinical_notes')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='orthopedics_clinical_notes_created')

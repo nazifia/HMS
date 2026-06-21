@@ -1,4 +1,5 @@
 from django.db import models
+from saas.models import TenantModel
 from core.clinical_notes import NigerianClerkingNote
 from django.conf import settings
 from patients.models import Patient
@@ -6,7 +7,7 @@ from doctors.models import Doctor
 from django.utils import timezone
 
 
-class IcuRecord(models.Model):
+class IcuRecord(TenantModel):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='icu_records')
     doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True)
     visit_date = models.DateTimeField(default=timezone.now)
@@ -50,7 +51,7 @@ class IcuRecord(models.Model):
         verbose_name_plural = 'Icu Records'
 
 
-class IcuClinicalNote(NigerianClerkingNote):
+class IcuClinicalNote(NigerianClerkingNote, TenantModel):
     """Nigerian clerking proforma clinical notes for icu records"""
     icu_record = models.ForeignKey(IcuRecord, on_delete=models.CASCADE, related_name='clinical_notes')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='icu_clinical_notes_created')

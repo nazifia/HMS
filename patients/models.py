@@ -3,12 +3,13 @@ from django.db.models import Sum, Count
 from django.utils import timezone
 from django.conf import settings
 from core.clinical_notes import NigerianClerkingNote
+from saas.models import TenantModel, TenantManager
 import random
 import logging
 from decimal import Decimal
 
 
-class SharedWallet(models.Model):
+class SharedWallet(TenantModel):
     """
     Model for shared wallets that can be used by multiple patients.
     This enables retainership, family, and corporate wallet functionality.
@@ -196,7 +197,7 @@ class SharedWallet(models.Model):
         ordering = ["-created_at"]
 
 
-class WalletMembership(models.Model):
+class WalletMembership(TenantModel):
     """
     Model to track which patients belong to which shared wallets.
     """
@@ -228,7 +229,10 @@ class WalletMembership(models.Model):
         self.save()
 
 
-class Patient(models.Model):
+class Patient(TenantModel):
+    # Inherits: hospital FK, tenant-scoped `objects`, unscoped `all_objects`,
+    # auto-stamp of hospital on save. This is the rollout pattern for every
+    # other tenant-owned model (see saas/README.md).
     GENDER_CHOICES = (
         ("M", "Male"),
         ("F", "Female"),
@@ -474,7 +478,7 @@ class Patient(models.Model):
         ]
 
 
-class MedicalHistory(models.Model):
+class MedicalHistory(TenantModel):
     patient = models.ForeignKey(
         Patient, on_delete=models.CASCADE, related_name="medical_histories"
     )
@@ -494,7 +498,7 @@ class MedicalHistory(models.Model):
         ordering = ["-date"]
 
 
-class Vitals(models.Model):
+class Vitals(TenantModel):
     patient = models.ForeignKey(
         Patient, on_delete=models.CASCADE, related_name="vitals"
     )
@@ -599,7 +603,7 @@ class Vitals(models.Model):
                 return []
 
 
-class PatientWallet(models.Model):
+class PatientWallet(TenantModel):
     patient = models.OneToOneField(
         Patient, on_delete=models.CASCADE, related_name="wallet"
     )
@@ -1409,7 +1413,7 @@ class PatientWallet(models.Model):
         ]
 
 
-class WalletTransaction(models.Model):
+class WalletTransaction(TenantModel):
     TRANSACTION_TYPES = (
         ("credit", "Credit"),
         ("debit", "Debit"),
@@ -1630,7 +1634,7 @@ class WalletTransaction(models.Model):
         ]
 
 
-class NHIAPatientManager(models.Manager):
+class NHIAPatientManager(TenantManager):
     def get_queryset(self):
         return super().get_queryset().filter(patient_type="nhia")
 
@@ -1648,7 +1652,7 @@ class NHIAPatient(Patient):
         super().save(*args, **kwargs)
 
 
-class ClinicalNote(NigerianClerkingNote):
+class ClinicalNote(NigerianClerkingNote, TenantModel):
     """Patient clinical note in the Nigerian clerking proforma format"""
 
     patient = models.ForeignKey(
@@ -1675,7 +1679,7 @@ class ClinicalNote(NigerianClerkingNote):
         return f"Clinical Note for {self.patient.get_full_name()} on {self.date.strftime('%Y-%m-%d')}"
 
 
-class PhysiotherapyRequest(models.Model):
+class PhysiotherapyRequest(TenantModel):
     """Model for physiotherapy requests for patients"""
 
     STATUS_CHOICES = (
@@ -1766,5 +1770,5 @@ class PhysiotherapyRequest(models.Model):
         self.save()
 
 
-class VaccinationRecord(models.Model):
+class VaccinationRecord(TenantModel):
     """Model to track patient vaccinations"""

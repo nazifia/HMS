@@ -1,4 +1,5 @@
 from django.db import models
+from saas.models import TenantModel
 from core.clinical_notes import NigerianClerkingNote
 from django.conf import settings
 from patients.models import Patient
@@ -6,7 +7,7 @@ from doctors.models import Doctor
 from django.utils import timezone
 
 
-class EmergencyRecord(models.Model):
+class EmergencyRecord(TenantModel):
     TRIAGE_LEVELS = (
         ('resuscitation', 'Resuscitation (Immediate)'),
         ('emergency', 'Emergency (Within 10 min)'),
@@ -100,7 +101,7 @@ class EmergencyRecord(models.Model):
         verbose_name_plural = 'Emergency Records'
 
 
-class EmergencyClinicalNote(NigerianClerkingNote):
+class EmergencyClinicalNote(NigerianClerkingNote, TenantModel):
     """Nigerian clerking proforma clinical notes for emergency records"""
     emergency_record = models.ForeignKey(EmergencyRecord, on_delete=models.CASCADE, related_name='clinical_notes')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='emergency_clinical_notes_created')

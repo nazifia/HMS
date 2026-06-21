@@ -1,9 +1,10 @@
 import uuid
 from django.db import models
+from saas.models import TenantModel
 from patients.models import Patient
 from typing import TYPE_CHECKING
 
-class AuthorizationCode(models.Model):
+class AuthorizationCode(TenantModel):
     STATUS_CHOICES = (
         ('pending', 'Pending'),
         ('used', 'Used'),

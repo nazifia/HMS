@@ -1,4 +1,5 @@
 from django.db import models
+from saas.models import TenantModel
 from core.clinical_notes import NigerianClerkingNote
 from django.utils import timezone
 from patients.models import Patient
@@ -6,7 +7,7 @@ from django.conf import settings
 from typing import Any
 from decimal import Decimal
 
-class DermatologyService(models.Model):
+class DermatologyService(TenantModel):
     """Model for dermatology services/procedures"""
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
@@ -23,7 +24,7 @@ class DermatologyService(models.Model):
         verbose_name_plural = "Dermatology Services"
 
 
-class DermatologyRecord(models.Model):
+class DermatologyRecord(TenantModel):
     """Enhanced dermatology record model with comprehensive fields"""
     
     CONDITION_TYPE_CHOICES = [
@@ -126,7 +127,7 @@ class DermatologyRecord(models.Model):
         verbose_name_plural = "Dermatology Records"
 
 
-class DermatologyPrescription(models.Model):
+class DermatologyPrescription(TenantModel):
     """Model for dermatology prescriptions"""
     dermatology_record = models.ForeignKey(DermatologyRecord, on_delete=models.CASCADE, related_name='prescriptions')
     medication = models.CharField(max_length=200)
@@ -147,7 +148,7 @@ class DermatologyPrescription(models.Model):
         verbose_name_plural = "Dermatology Prescriptions"
 
 
-class DermatologyTest(models.Model):
+class DermatologyTest(TenantModel):
     """Model for dermatology diagnostic tests"""
     TEST_TYPE_CHOICES = [
         ('biopsy', 'Skin Biopsy'),
@@ -176,7 +177,7 @@ class DermatologyTest(models.Model):
         verbose_name_plural = "Dermatology Tests"
 
 
-class DermatologyClinicalNote(NigerianClerkingNote):
+class DermatologyClinicalNote(NigerianClerkingNote, TenantModel):
     """Nigerian clerking proforma clinical notes for dermatology records"""
     dermatology_record = models.ForeignKey(DermatologyRecord, on_delete=models.CASCADE, related_name='clinical_notes')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='dermatology_clinical_notes_created')

@@ -11,6 +11,8 @@ from django.contrib.auth.base_user import BaseUserManager  # explicit import for
 from django.urls import reverse  # For redirects
 from django.http import HttpResponseForbidden, HttpResponse  # For error responses
 
+from saas.models import TenantModel
+
 
 class Role(models.Model):
     name = models.CharField(max_length=150, unique=True)
@@ -150,6 +152,19 @@ class CustomUser(AbstractUser):
     # username is inherited from AbstractUser, but we redefine it here to ensure it's present
     # (though AbstractUser already has it). If we want different constraints, this is the place.
     username = models.CharField(max_length=150, unique=True)
+
+    # Tenant ownership. NOT a TenantModel: auth lookups run before/around tenant
+    # resolution, so auto-scoping would break login. Enforced manually via the
+    # login gate in PhoneNumberBackend + filtered staff views.
+    # null = platform-level user (superuser/ops) that can log in on any subdomain.
+    hospital = models.ForeignKey(
+        "saas.Hospital",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="staff",
+        help_text="Hospital this staff belongs to. Null = platform-level user.",
+    )
 
     USERNAME_FIELD = "phone_number"
     REQUIRED_FIELDS = [
@@ -436,7 +451,7 @@ class CustomUserProfile(models.Model):
 # now handles both creation and ensuring the profile is saved on user update.
 
 
-class AuditLog(models.Model):
+class AuditLog(TenantModel):
     ACTION_CHOICES = (
         ("create", "Create"),
         ("update", "Update"),
@@ -561,8 +576,9 @@ class EncryptedTextField(EncryptedField, models.TextField):
             self.max_length = original_max_length
 
 
-class Department(models.Model):
-    name = models.CharField(max_length=100, unique=True)  # Make name unique
+class Department(TenantModel):
+    # name unique per-hospital, not globally (see Meta.unique_together)
+    name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     head = models.ForeignKey(
         CustomUser,
@@ -574,12 +590,15 @@ class Department(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        unique_together = (("hospital", "name"),)
+
     def __str__(self):
         return self.name
 
 
 # User Activity Monitoring Models
-class UserActivity(models.Model):
+class UserActivity(TenantModel):
     """Tracks all user activities in the system"""
 
     ACTION_TYPES = [
@@ -646,7 +665,7 @@ class UserActivity(models.Model):
         return f"{user_str} - {self.get_action_type_display()} - {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}"
 
 
-class ActivityAlert(models.Model):
+class ActivityAlert(TenantModel):
     """Alerts for suspicious activity patterns"""
 
     SEVERITY_LEVELS = [
@@ -704,7 +723,7 @@ class ActivityAlert(models.Model):
         return f"{self.get_alert_type_display()} - {self.get_severity_display()} - {self.user}"
 
 
-class UserSession(models.Model):
+class UserSession(TenantModel):
     """Track user sessions for monitoring"""
 
     user = models.ForeignKey(

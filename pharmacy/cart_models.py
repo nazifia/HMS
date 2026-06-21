@@ -7,6 +7,7 @@ generate invoices, and complete dispensing after payment.
 """
 
 from django.db import models
+from saas.models import TenantModel
 from nhia.utils import NHIA_PATIENT_RATE, NHIA_COVERED_RATE
 from django.db.models import Sum
 from django.conf import settings
@@ -15,7 +16,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 
 
-class PrescriptionCart(models.Model):
+class PrescriptionCart(TenantModel):
     """
     Shopping cart for prescription items.
     Allows pharmacist to prepare billing before creating invoice and dispensing.
@@ -225,7 +226,7 @@ class PrescriptionCart(models.Model):
         self.save()
 
 
-class PrescriptionCartItem(models.Model):
+class PrescriptionCartItem(TenantModel):
     """
     Individual item in prescription cart.
     Represents a medication with quantity to be dispensed.

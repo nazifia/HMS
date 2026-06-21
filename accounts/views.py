@@ -416,6 +416,9 @@ def edit_profile(request):
 def staff_list(request):
     """View for listing all staff members (admin only)"""
     staff = CustomUserProfile.objects.all().order_by("role", "user__phone_number")
+    hospital = getattr(request, "hospital", None)
+    if hospital is not None:
+        staff = staff.filter(user__hospital=hospital)
     context = {"staff": staff}
     return render(request, "accounts/staff_list.html", context)
 
@@ -454,6 +457,9 @@ def add_staff(request):
         form = StaffCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
+            if getattr(request, "hospital", None) is not None:
+                user.hospital = request.hospital
+                user.save(update_fields=["hospital"])
             send_staff_onboarding_task_to_mcp(user)
             messages.success(request, f"Account created for {user.username}!")
             return redirect("accounts:staff_list")
@@ -613,6 +619,9 @@ def register(request):
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
             user = form.save()
+            if getattr(request, "hospital", None) is not None:
+                user.hospital = request.hospital
+                user.save(update_fields=["hospital"])
             # Optionally create CustomUserProfile and set phone_number here
             profile = user.get_profile
             profile.phone_number = form.cleaned_data["phone_number"]

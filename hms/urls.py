@@ -34,6 +34,7 @@ urlpatterns = [
     path('sw.js', empty_sw, name='service_worker'),
     path('admin/', admin.site.urls),
     path('', home_view, name='home'),
+    path('saas/', include('saas.urls')),
     path('accounts/', include('accounts.urls')),
     path('api/accounts/', include('accounts.api.urls')),  # User management API
     path('dashboard/', include('dashboard.urls')),

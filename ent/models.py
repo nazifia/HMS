@@ -1,4 +1,5 @@
 from django.db import models
+from saas.models import TenantModel
 from core.clinical_notes import NigerianClerkingNote
 from django.conf import settings
 from patients.models import Patient
@@ -6,7 +7,7 @@ from doctors.models import Doctor
 from django.utils import timezone
 
 
-class EntRecord(models.Model):
+class EntRecord(TenantModel):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='ent_records')
     doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True)
     visit_date = models.DateTimeField(default=timezone.now)
@@ -96,7 +97,7 @@ class EntRecord(models.Model):
         verbose_name_plural = 'Ent Records'
 
 
-class EntClinicalNote(NigerianClerkingNote):
+class EntClinicalNote(NigerianClerkingNote, TenantModel):
     """Nigerian clerking proforma clinical notes for ent records"""
     ent_record = models.ForeignKey(EntRecord, on_delete=models.CASCADE, related_name='clinical_notes')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='ent_clinical_notes_created')

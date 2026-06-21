@@ -1,10 +1,11 @@
 from django.db import models
+from saas.models import TenantModel
 from django.utils import timezone
 from patients.models import Patient
 from django.conf import settings
 
 
-class Appointment(models.Model):
+class Appointment(TenantModel):
     STATUS_CHOICES = (
         ("scheduled", "Scheduled"),
         ("confirmed", "Confirmed"),
@@ -75,7 +76,7 @@ class Appointment(models.Model):
         ]
 
 
-class AppointmentFollowUp(models.Model):
+class AppointmentFollowUp(TenantModel):
     appointment = models.ForeignKey(
         Appointment, on_delete=models.CASCADE, related_name="follow_ups"
     )
@@ -93,7 +94,7 @@ class AppointmentFollowUp(models.Model):
         ordering = ["follow_up_date"]
 
 
-class DoctorSchedule(models.Model):
+class DoctorSchedule(TenantModel):
     WEEKDAY_CHOICES = (
         (0, "Monday"),
         (1, "Tuesday"),
@@ -122,7 +123,7 @@ class DoctorSchedule(models.Model):
         ordering = ["weekday", "start_time"]
 
 
-class DoctorLeave(models.Model):
+class DoctorLeave(TenantModel):
     doctor = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="doctor_leaves"
     )

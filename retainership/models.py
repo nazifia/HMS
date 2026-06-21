@@ -1,8 +1,9 @@
 from django.db import models
+from saas.models import TenantModel
 from patients.models import Patient
 from django.core.validators import MinValueValidator, MaxValueValidator
 
-class RetainershipPatient(models.Model):
+class RetainershipPatient(TenantModel):
     patient = models.OneToOneField(Patient, on_delete=models.CASCADE, related_name='retainership_info')
     retainership_reg_number = models.BigIntegerField(
         unique=True, 

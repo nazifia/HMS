@@ -1,10 +1,11 @@
 from django.db import models
+from saas.models import TenantModel
 from django.utils import timezone
 from django.conf import settings
 from accounts.models import Department
 
 
-class Designation(models.Model):
+class Designation(TenantModel):
     name = models.CharField(max_length=100)
     department = models.ForeignKey(
         Department, on_delete=models.CASCADE, related_name="designations"
@@ -16,7 +17,7 @@ class Designation(models.Model):
         return f"{self.name} ({self.department.name})"
 
 
-class Shift(models.Model):
+class Shift(TenantModel):
     SHIFT_TYPE_CHOICES = (
         ("morning", "Morning Shift"),
         ("afternoon", "Afternoon Shift"),
@@ -36,7 +37,7 @@ class Shift(models.Model):
         return f"{self.name} ({self.start_time.strftime('%H:%M')} - {self.end_time.strftime('%H:%M')})"
 
 
-class StaffSchedule(models.Model):
+class StaffSchedule(TenantModel):
     WEEKDAY_CHOICES = (
         (0, "Monday"),
         (1, "Tuesday"),
@@ -65,7 +66,7 @@ class StaffSchedule(models.Model):
         unique_together = ("staff", "weekday")
 
 
-class Leave(models.Model):
+class Leave(TenantModel):
     LEAVE_TYPE_CHOICES = (
         ("casual", "Casual Leave"),
         ("sick", "Sick Leave"),
@@ -146,7 +147,7 @@ class Leave(models.Model):
         return leave_counts
 
 
-class Attendance(models.Model):
+class Attendance(TenantModel):
     staff = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="attendance"
     )
@@ -192,7 +193,7 @@ class Attendance(models.Model):
         unique_together = ("staff", "date")
 
 
-class Payroll(models.Model):
+class Payroll(TenantModel):
     staff = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="payrolls"
     )
@@ -242,7 +243,7 @@ class Payroll(models.Model):
         super().save(*args, **kwargs)
 
 
-class StaffProfile(models.Model):
+class StaffProfile(TenantModel):
     staff = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="staff_profile"
     )

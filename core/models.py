@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from core.clinical_notes import NigerianClerkingNote
+from saas.models import TenantModel
 import logging
 
 # Avoid circular imports by using string references for foreign keys
@@ -27,7 +28,7 @@ def send_notification_sms(phone_number, message):
     logging.info(f"SMS to {phone_number}: {message}")
     return True
 
-class AuditLog(models.Model):
+class AuditLog(TenantModel):
     """Model to track user actions and system events"""
     user = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True, blank=True)
     action = models.CharField(max_length=100)
@@ -48,7 +49,7 @@ class AuditLog(models.Model):
             models.Index(fields=['timestamp']),
         ]
 
-class InternalNotification(models.Model):
+class InternalNotification(TenantModel):
     """Model for internal system notifications"""
     NOTIFICATION_TYPES = [
         ('info', 'Information'),
@@ -83,7 +84,7 @@ class InternalNotification(models.Model):
             models.Index(fields=['created_at']),
         ]
 
-class SOAPNote(NigerianClerkingNote):
+class SOAPNote(NigerianClerkingNote, TenantModel):
     """Clinical note in the Nigerian clerking proforma format (class name kept for compatibility)."""
     consultation = models.ForeignKey('consultations.Consultation', on_delete=models.CASCADE, related_name='core_soap_notes')
     created_by = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True)
@@ -309,7 +310,7 @@ class PermissionGroup(models.Model):
         db_table = 'core_permissiongroup'
 
 
-class ServicePoint(models.Model):
+class ServicePoint(TenantModel):
     """
     A physical/logical desk where patients are received, registered, and routed
     to a physician (e.g. reception, health-records, triage, billing desk).

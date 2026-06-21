@@ -31,6 +31,13 @@ class PhoneNumberBackend(BaseBackend):
             return None
 
         if user.check_password(password) and user.is_active:
+            # Tenant gate: a hospital staff may only authenticate on their own
+            # hospital's subdomain. Platform users (hospital is None) log in
+            # anywhere. request.hospital is set by saas.TenantMiddleware.
+            if user.hospital_id is not None:
+                req_hospital = getattr(request, "hospital", None)
+                if req_hospital is None or req_hospital.id != user.hospital_id:
+                    return None
             return user
         return None
 

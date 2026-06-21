@@ -307,7 +307,7 @@ def inventory_list(request):
     # Get all medications with optimized query (prefetch inventories + dispensary
     # to avoid N+1 in the template stock-status column)
     medications = Medication.objects.select_related("category").prefetch_related(
-        "inventories__dispensary"
+        "active_inventories__active_store__dispensary"
     )
 
     # Initialize the search form
@@ -350,7 +350,7 @@ def inventory_list(request):
     low_stock_count = (
         Medication.objects.filter(
             is_active=True,
-            inventories__stock_quantity__lte=F("inventories__reorder_level"),
+            active_inventories__stock_quantity__lte=F("reorder_level"),
         )
         .distinct()
         .count()

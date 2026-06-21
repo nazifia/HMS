@@ -1,4 +1,5 @@
 from django.db import models
+from saas.models import TenantModel
 from django.utils import timezone
 from django.conf import settings
 from core.clinical_notes import NigerianClerkingNote
@@ -7,7 +8,7 @@ from patients.models import Patient, Vitals
 from appointments.models import Appointment
 
 
-class ConsultingRoom(models.Model):
+class ConsultingRoom(TenantModel):
     """Model for hospital consulting rooms"""
     room_number = models.CharField(max_length=20, unique=True)
     floor = models.CharField(max_length=20)
@@ -24,7 +25,7 @@ class ConsultingRoom(models.Model):
         ordering = ['room_number']
 
 
-class WaitingList(models.Model):
+class WaitingList(TenantModel):
     """Model for patient waiting list"""
     STATUS_CHOICES = (
         ('waiting', 'Waiting'),
@@ -58,7 +59,7 @@ class WaitingList(models.Model):
         verbose_name_plural = "Waiting List Entries"
 
 
-class Consultation(models.Model):
+class Consultation(TenantModel):
     """Model for doctor consultations"""
     STATUS_CHOICES = (
         ('pending', 'Pending'),
@@ -149,7 +150,7 @@ class Consultation(models.Model):
         ordering = ['-consultation_date']
 
 
-class ConsultationNote(models.Model):
+class ConsultationNote(TenantModel):
     """Model for additional consultation notes"""
     consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name='notes')
     note = models.TextField()
@@ -163,7 +164,7 @@ class ConsultationNote(models.Model):
         ordering = ['-created_at']
 
 
-class Referral(models.Model):
+class Referral(TenantModel):
     """Model for patient referrals to departments/units/specialists"""
     STATUS_CHOICES = (
         ('pending', 'Pending'),
@@ -500,7 +501,7 @@ class Referral(models.Model):
         ordering = ['-referral_date']
 
 
-class SOAPNote(NigerianClerkingNote):
+class SOAPNote(NigerianClerkingNote, TenantModel):
     """Clinical note in the Nigerian clerking proforma format (class name kept for compatibility)."""
     consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name='soap_notes', db_index=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_soap_notes')
@@ -518,7 +519,7 @@ class SOAPNote(NigerianClerkingNote):
         return f"SOAP Note for {self.consultation} by {self.created_by.get_full_name() if self.created_by else 'Unknown'} on {self.created_at.strftime('%Y-%m-%d')}"
 
 
-class ConsultationOrder(models.Model):
+class ConsultationOrder(TenantModel):
     """Model for linking consultations with lab tests, radiology orders, and prescriptions"""
     
     ORDER_TYPE_CHOICES = (

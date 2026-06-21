@@ -1,8 +1,9 @@
 from django.db import models
+from saas.models import TenantModel
 from django.utils import timezone
 from django.conf import settings
 
-class Report(models.Model):
+class Report(TenantModel):
     CATEGORY_CHOICES = (
         ('financial', 'Financial'),
         ('clinical', 'Clinical'),
@@ -33,7 +34,7 @@ class Report(models.Model):
             ('view_revenuereport', 'Can view revenue reports'),
         ]
 
-class ReportExecution(models.Model):
+class ReportExecution(TenantModel):
     report = models.ForeignKey(Report, on_delete=models.CASCADE, related_name='executions')
     parameters = models.TextField(blank=True, null=True)  # JSON string of parameters used
     result_count = models.IntegerField(default=0)  # Number of records returned
@@ -46,7 +47,7 @@ class ReportExecution(models.Model):
     class Meta:
         ordering = ['-executed_at']
 
-class Dashboard(models.Model):
+class Dashboard(TenantModel):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     is_default = models.BooleanField(default=False)
@@ -61,7 +62,7 @@ class Dashboard(models.Model):
     class Meta:
         ordering = ['-created_at']
 
-class DashboardWidget(models.Model):
+class DashboardWidget(TenantModel):
     WIDGET_TYPE_CHOICES = (
         ('table', 'Table'),
         ('bar', 'Bar Chart'),

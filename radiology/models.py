@@ -1,11 +1,12 @@
 from django.db import models
+from saas.models import TenantModel
 from django.utils import timezone
 from django.contrib.auth.models import User
 from patients.models import Patient
 from django.conf import settings
 
 
-class RadiologyCategory(models.Model):
+class RadiologyCategory(TenantModel):
     """Model for radiology test categories"""
 
     name = models.CharField(max_length=100)
@@ -28,7 +29,7 @@ class RadiologyCategory(models.Model):
         ordering = ["name"]
 
 
-class RadiologyTest(models.Model):
+class RadiologyTest(TenantModel):
     """Model for radiology tests"""
 
     name = models.CharField(max_length=100)
@@ -60,7 +61,7 @@ class RadiologyTest(models.Model):
 # from billing.models import Invoice # This line caused a circular import
 
 
-class RadiologyOrder(models.Model):
+class RadiologyOrder(TenantModel):
     """Model for radiology orders"""
 
     STATUS_CHOICES = (
@@ -255,7 +256,7 @@ class RadiologyOrder(models.Model):
         ordering = ["-order_date"]
 
 
-class RadiologyResult(models.Model):
+class RadiologyResult(TenantModel):
     """Enhanced model for radiology test results"""
 
     # Status choices for result workflow

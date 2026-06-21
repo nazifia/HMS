@@ -1,10 +1,11 @@
 from django.db import models
+from saas.models import TenantModel
 from django.utils import timezone
 from django.conf import settings
 from patients.models import Patient
 
 
-class TestCategory(models.Model):
+class TestCategory(TenantModel):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -16,7 +17,7 @@ class TestCategory(models.Model):
         verbose_name_plural = "Test Categories"
 
 
-class Test(models.Model):
+class Test(TenantModel):
     name = models.CharField(max_length=100)
     category = models.ForeignKey(
         TestCategory, on_delete=models.SET_NULL, null=True, related_name="tests"
@@ -38,7 +39,7 @@ class Test(models.Model):
         return self.name
 
 
-class TestParameter(models.Model):
+class TestParameter(TenantModel):
     test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="parameters")
     name = models.CharField(max_length=100)
     normal_range = models.CharField(max_length=100, blank=True, null=True)
@@ -52,7 +53,7 @@ class TestParameter(models.Model):
         ordering = ["order"]
 
 
-class TestRequest(models.Model):
+class TestRequest(TenantModel):
     STATUS_CHOICES = (
         ("pending", "Pending"),
         ("awaiting_payment", "Awaiting Payment"),  # New status
@@ -223,7 +224,7 @@ class TestRequest(models.Model):
         ordering = ["-request_date", "-created_at"]
 
 
-class TestResult(models.Model):
+class TestResult(TenantModel):
     test_request = models.ForeignKey(
         TestRequest, on_delete=models.CASCADE, related_name="results"
     )
@@ -270,7 +271,7 @@ class TestResult(models.Model):
         ]
 
 
-class TestResultParameter(models.Model):
+class TestResultParameter(TenantModel):
     test_result = models.ForeignKey(
         TestResult, on_delete=models.CASCADE, related_name="parameters"
     )

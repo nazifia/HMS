@@ -212,7 +212,13 @@
       "PowerShell(python -m pip show django-browser-reload)",
       "Bash(cp db.sqlite3 /tmp/test.sqlite3)",
       "Read(//c/tmp/**)",
-      "Bash(export DJANGO_SETTINGS_MODULE=hms.settings)"
+      "Bash(export DJANGO_SETTINGS_MODULE=hms.settings)",
+      "PowerShell($env:DJANGO_SETTINGS_MODULE=\"hms.settings\"; python -c \"import django; django.setup\\(\\); from django.core.management import call_command; call_command\\('makemigrations', 'saas', 'patients', verbosity=2\\); call_command\\('check'\\)\")",
+      "PowerShell($env:DJANGO_SETTINGS_MODULE=\"hms.settings\"; python -c \"import django; django.setup\\(\\); from django.core.management import call_command; call_command\\('test', 'saas', verbosity=2\\)\")",
+      "Bash(grep -E \"/models\\\\.py$|/models/\")",
+      "Bash(grep -qE \"^OK$|FAILED|^Ran |Error\" \"C:\\\\Users\\\\Dell\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Dell-Desktop-MY-PRODUCTS-HMS\\\\3629bd1c-30e4-4dd4-9c07-977fa92b4da1\\\\tasks\\\\bsmsrv3gi.output\")",
+      "Bash(grep -qE \"^OK$|FAILED|^Ran \" \"C:\\\\Users\\\\Dell\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Dell-Desktop-MY-PRODUCTS-HMS\\\\3629bd1c-30e4-4dd4-9c07-977fa92b4da1\\\\tasks\\\\bsmsrv3gi.output\")",
+      "Bash(grep -E \"^OK$|FAILED|^Ran |Error|^ERROR\" \"C:\\\\Users\\\\Dell\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Dell-Desktop-MY-PRODUCTS-HMS\\\\3629bd1c-30e4-4dd4-9c07-977fa92b4da1\\\\tasks\\\\bsmsrv3gi.output\")"
     ]
   }
 }

@@ -1,4 +1,5 @@
 from django.db import models
+from saas.models import TenantModel
 from django.conf import settings
 from patients.models import Patient
 from accounts.models import CustomUser
@@ -7,7 +8,7 @@ from accounts.models import CustomUser
 app_label = "theatre"
 
 
-class OperationTheatre(models.Model):
+class OperationTheatre(TenantModel):
     """Model representing an operation theatre in the hospital."""
 
     name = models.CharField(max_length=100)
@@ -29,7 +30,7 @@ class OperationTheatre(models.Model):
         ordering = ["theatre_number"]
 
 
-class SurgeryType(models.Model):
+class SurgeryType(TenantModel):
     """Model representing different types of surgeries."""
 
     RISK_LEVELS = (
@@ -75,7 +76,7 @@ class SurgeryType(models.Model):
         ordering = ["name"]
 
 
-class Surgery(models.Model):
+class Surgery(TenantModel):
     """Model representing a scheduled or completed surgery."""
 
     STATUS_CHOICES = (
@@ -240,7 +241,7 @@ class Surgery(models.Model):
         ordering = ["-scheduled_date"]
 
 
-class SurgicalTeam(models.Model):
+class SurgicalTeam(TenantModel):
     """Model representing staff members assigned to a surgery."""
 
     ROLE_CHOICES = (
@@ -281,7 +282,7 @@ class SurgicalTeam(models.Model):
         unique_together = ("surgery", "staff", "role")
 
 
-class SurgicalEquipment(models.Model):
+class SurgicalEquipment(TenantModel):
     """Model representing equipment used in surgeries."""
 
     EQUIPMENT_TYPES = (
@@ -325,7 +326,7 @@ class SurgicalEquipment(models.Model):
         ordering = ["name"]
 
 
-class EquipmentUsage(models.Model):
+class EquipmentUsage(TenantModel):
     """Model representing equipment used in a specific surgery."""
 
     surgery = models.ForeignKey(
@@ -345,7 +346,7 @@ class EquipmentUsage(models.Model):
         verbose_name_plural = "Equipment Usage Records"
 
 
-class SurgerySchedule(models.Model):
+class SurgerySchedule(TenantModel):
     """Model representing the detailed schedule of a surgery."""
 
     STATUS_CHOICES = (
@@ -377,7 +378,7 @@ class SurgerySchedule(models.Model):
         ordering = ["start_time"]
 
 
-class PostOperativeNote(models.Model):
+class PostOperativeNote(TenantModel):
     """Model representing post-operative notes for a surgery."""
 
     surgery = models.ForeignKey(
@@ -404,7 +405,7 @@ class PostOperativeNote(models.Model):
         ordering = ["-created_at"]
 
 
-class PreOperativeChecklist(models.Model):
+class PreOperativeChecklist(TenantModel):
     surgery = models.OneToOneField(
         Surgery, on_delete=models.CASCADE, related_name="pre_op_checklist"
     )
@@ -431,7 +432,7 @@ class PreOperativeChecklist(models.Model):
         verbose_name_plural = "Pre-Operative Checklists"
 
 
-class SurgeryTypeEquipment(models.Model):
+class SurgeryTypeEquipment(TenantModel):
     """Model representing equipment required for a specific surgery type."""
 
     surgery_type = models.ForeignKey(
@@ -465,7 +466,7 @@ class SurgeryTypeEquipment(models.Model):
         ordering = ["surgery_type", "equipment__name"]
 
 
-class SurgeryLog(models.Model):
+class SurgeryLog(TenantModel):
     surgery = models.ForeignKey(Surgery, on_delete=models.CASCADE, related_name="logs")
     timestamp = models.DateTimeField(auto_now_add=True)
     event_type = models.CharField(
@@ -485,7 +486,7 @@ class SurgeryLog(models.Model):
         ordering = ["timestamp"]
 
 
-class EquipmentMaintenanceLog(models.Model):
+class EquipmentMaintenanceLog(TenantModel):
     """Model for tracking equipment maintenance and calibration history."""
 
     MAINTENANCE_TYPE_CHOICES = [

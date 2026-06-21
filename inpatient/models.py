@@ -1,11 +1,12 @@
 from django.db import models
+from saas.models import TenantModel
 from django.db.models import Q
 from django.utils import timezone
 from django.conf import settings
 from patients.models import Patient, PatientWallet
 from decimal import Decimal
 
-class Ward(models.Model):
+class Ward(TenantModel):
     WARD_TYPE_CHOICES = (
         ('general', 'General Ward'),
         ('private', 'Private Ward'),
@@ -57,7 +58,7 @@ class Ward(models.Model):
     def get_occupied_beds_count(self):
         return self.beds.filter(is_occupied=True, is_active=True).count()
 
-class Bed(models.Model):
+class Bed(TenantModel):
     ward = models.ForeignKey(Ward, on_delete=models.CASCADE, related_name='beds')
     bed_number = models.CharField(max_length=20)
     description = models.TextField(blank=True, null=True)
@@ -73,7 +74,7 @@ class Bed(models.Model):
     class Meta:
         unique_together = ('ward', 'bed_number')
 
-class Admission(models.Model):
+class Admission(TenantModel):
     STATUS_CHOICES = (
         ('admitted', 'Admitted'),
         ('discharged', 'Discharged'),
@@ -268,7 +269,7 @@ class Admission(models.Model):
 
         # No redirect from model save method
 
-class DailyRound(models.Model):
+class DailyRound(TenantModel):
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='daily_rounds')
     date_time = models.DateTimeField(default=timezone.now)
     doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='doctor_rounds')
@@ -284,7 +285,7 @@ class DailyRound(models.Model):
     class Meta:
         ordering = ['-date_time']
 
-class NursingNote(models.Model):
+class NursingNote(TenantModel):
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='nursing_notes')
     date_time = models.DateTimeField(default=timezone.now)
     nurse = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='nurse_notes')
@@ -299,7 +300,7 @@ class NursingNote(models.Model):
     class Meta:
         ordering = ['-date_time']
 
-class BedTransfer(models.Model):
+class BedTransfer(TenantModel):
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='bed_transfers')
     from_bed = models.ForeignKey(Bed, on_delete=models.CASCADE, related_name='transfers_from')
     to_bed = models.ForeignKey(Bed, on_delete=models.CASCADE, related_name='transfers_to')
@@ -309,7 +310,7 @@ class BedTransfer(models.Model):
     def __str__(self):
         return f"Transfer for {self.admission.patient.get_full_name()} from {self.from_bed} to {self.to_bed}"
 
-class WardTransfer(models.Model):
+class WardTransfer(TenantModel):
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='ward_transfers')
     from_ward = models.ForeignKey(Ward, on_delete=models.CASCADE, related_name='transfers_from')
     to_ward = models.ForeignKey(Ward, on_delete=models.CASCADE, related_name='transfers_to')
@@ -319,7 +320,7 @@ class WardTransfer(models.Model):
     def __str__(self):
         return f"Transfer for {self.admission.patient.get_full_name()} from {self.from_ward} to {self.to_ward}"
 
-class ClinicalRecord(models.Model):
+class ClinicalRecord(TenantModel):
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='clinical_records')
     recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     record_type = models.CharField(max_length=50, choices=(
@@ -357,7 +358,7 @@ class ClinicalRecord(models.Model):
         ordering = ['-date_time']
 
 
-class InpatientMedication(models.Model):
+class InpatientMedication(TenantModel):
     """Model to link prescriptions to admissions for inpatient medication management"""
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='medications')
     prescription = models.ForeignKey('pharmacy.Prescription', on_delete=models.CASCADE, related_name='inpatient_medications')
