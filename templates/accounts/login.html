@@ -3,88 +3,203 @@
 
 {% block title %}Login - Hospital Management System{% endblock %}
 
+{% block extra_css %}
+<style>
+    .auth-wrap {
+        min-height: calc(100vh - 180px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem 0;
+    }
+    .auth-card {
+        width: 100%;
+        max-width: 920px;
+        border: 0;
+        border-radius: 1.25rem;
+        overflow: hidden;
+        box-shadow: 0 1.5rem 3rem rgba(31, 45, 61, .18);
+    }
+    .auth-card .row { --bs-gutter-x: 0; }
+    .auth-hero {
+        background: linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%);
+        color: #fff;
+        padding: 3rem 2.5rem;
+        position: relative;
+    }
+    .auth-hero::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 80% 20%, rgba(255,255,255,.12), transparent 45%);
+        pointer-events: none;
+    }
+    .auth-hero .brand-icon {
+        width: 64px; height: 64px;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(255,255,255,.15);
+        border-radius: 1rem;
+        font-size: 1.75rem;
+        margin-bottom: 1.5rem;
+    }
+    .auth-hero h1 { font-weight: 700; font-size: 1.6rem; }
+    .auth-hero .feature-list { list-style: none; padding: 0; margin: 2rem 0 0; }
+    .auth-hero .feature-list li { display: flex; align-items: center; margin-bottom: .85rem; opacity: .92; }
+    .auth-hero .feature-list i { width: 1.5rem; }
+    .auth-body { padding: 3rem 2.5rem; background: #fff; }
+    .auth-body h2 { font-weight: 700; color: #1f2d3d; }
+    .auth-body .form-control {
+        padding: .7rem .9rem .7rem 2.6rem;
+        border-radius: .6rem;
+        border: 1px solid #dfe3e8;
+    }
+    .auth-body .form-control:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 .2rem rgba(37,99,235,.15);
+    }
+    .input-icon { position: relative; }
+    .input-icon > i {
+        position: absolute;
+        top: 50%; left: .95rem;
+        transform: translateY(-50%);
+        color: #98a2b3;
+        pointer-events: none;
+    }
+    .btn-auth {
+        background: linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%);
+        border: 0;
+        padding: .7rem;
+        font-weight: 600;
+        border-radius: .6rem;
+    }
+    .btn-auth:hover { filter: brightness(1.05); }
+    .auth-links a { color: #2563eb; text-decoration: none; font-size: .9rem; }
+    .auth-links a:hover { text-decoration: underline; }
+    @media (max-width: 767.98px) {
+        .auth-hero { display: none; }
+        .auth-body { padding: 2.25rem 1.5rem; }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <!-- Session Expired Alert -->
-        {% if show_session_expired_alert %}
-        <div class="alert alert-warning alert-dismissible fade show" role="alert">
-            <div class="d-flex align-items-center">
-                <i class="fas fa-clock fa-2x me-3 text-warning"></i>
-                <div>
-                    <h6 class="alert-heading mb-1">Session Expired</h6>
-                    <p class="mb-0">Your session has expired due to inactivity. Please log in again to continue using the system.</p>
-                </div>
+<div class="auth-wrap">
+    <div class="auth-card card">
+        <div class="row">
+            <!-- Hero / brand panel -->
+            <div class="col-md-5 auth-hero d-none d-md-block">
+                <div class="brand-icon"><i class="fas fa-hospital"></i></div>
+                <h1>Hospital Management System</h1>
+                <p class="mt-2 mb-0" style="opacity:.85;">Secure access to patient care, pharmacy, billing and more.</p>
+                <ul class="feature-list">
+                    <li><i class="fas fa-user-shield"></i> Role-based secure access</li>
+                    <li><i class="fas fa-notes-medical"></i> Unified patient records</li>
+                    <li><i class="fas fa-shield-alt"></i> Audited &amp; encrypted</li>
+                </ul>
             </div>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        {% endif %}
 
-        <!-- Auto Logout Information -->
-        {% if auto_logout and logout_reason %}
-        <div class="alert alert-info alert-dismissible fade show" role="alert">
-            <div class="d-flex align-items-center">
-                <i class="fas fa-info-circle fa-2x me-3 text-info"></i>
-                <div>
-                    <h6 class="alert-heading mb-1">Automatic Logout</h6>
-                    <p class="mb-0">
-                        {% if logout_reason == 'inactivity' %}
-                            You were automatically logged out due to inactivity for security purposes.
-                        {% elif logout_reason == 'security' %}
-                            You were logged out for security reasons.
-                        {% elif logout_reason == 'concurrent' %}
-                            You were logged out because your account was accessed from another location.
-                        {% else %}
-                            Your session has ended automatically.
-                        {% endif %}
-                    </p>
+            <!-- Form panel -->
+            <div class="col-md-7 auth-body">
+                <!-- Session Expired Alert -->
+                {% if show_session_expired_alert %}
+                <div class="alert alert-warning alert-dismissible fade show d-flex align-items-center" role="alert">
+                    <i class="fas fa-clock fa-lg me-3 text-warning"></i>
+                    <div>
+                        <h6 class="alert-heading mb-1">Session Expired</h6>
+                        <p class="mb-0 small">Your session expired due to inactivity. Please log in again.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
-            </div>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        {% endif %}
+                {% endif %}
 
-        <div class="card auth-form">
-            <div class="card-body">
-                <h2 class="card-title text-center mb-4">
-                    {% if auto_logout %}
-                        <i class="fas fa-sign-in-alt me-2"></i>Login Again
-                    {% else %}
-                        Login
-                    {% endif %}
+                <!-- Auto Logout Information -->
+                {% if auto_logout and logout_reason %}
+                <div class="alert alert-info alert-dismissible fade show d-flex align-items-center" role="alert">
+                    <i class="fas fa-info-circle fa-lg me-3 text-info"></i>
+                    <div>
+                        <h6 class="alert-heading mb-1">Automatic Logout</h6>
+                        <p class="mb-0 small">
+                            {% if logout_reason == 'inactivity' %}
+                                You were automatically logged out due to inactivity for security purposes.
+                            {% elif logout_reason == 'security' %}
+                                You were logged out for security reasons.
+                            {% elif logout_reason == 'concurrent' %}
+                                You were logged out because your account was accessed from another location.
+                            {% else %}
+                                Your session has ended automatically.
+                            {% endif %}
+                        </p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endif %}
+
+                <h2 class="mb-1">
+                    {% if auto_logout %}Welcome back{% else %}Welcome back{% endif %}
                 </h2>
+                <p class="text-muted mb-4">Sign in to continue to your dashboard.</p>
 
                 <form method="post">
                     {% csrf_token %}
 
                     <div class="mb-3">
-                        <label for="id_username" class="form-label">Phone Number</label>
-                        <input type="text" name="username" id="id_username" class="form-control" placeholder="Enter your phone number" required>
-                        <small class="form-text text-muted">Enter your phone number without spaces or special characters. Username is also supported as a fallback.</small>
+                        <label for="id_username" class="form-label fw-semibold">Phone Number</label>
+                        <div class="input-icon">
+                            <i class="fas fa-phone"></i>
+                            <input type="text" name="username" id="id_username" class="form-control"
+                                   placeholder="Enter your phone number" autofocus required>
+                        </div>
+                        <small class="form-text text-muted">No spaces or special characters. Username also supported.</small>
                     </div>
 
                     <div class="mb-3">
-                        <label for="id_password" class="form-label">Password</label>
-                        <input type="password" name="password" id="id_password" class="form-control" required>
+                        <label for="id_password" class="form-label fw-semibold">Password</label>
+                        <div class="input-icon">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" name="password" id="id_password" class="form-control"
+                                   placeholder="Enter your password" required>
+                            <i class="fas fa-eye position-absolute" id="togglePassword"
+                               style="top:50%;right:.95rem;left:auto;transform:translateY(-50%);cursor:pointer;color:#98a2b3;"></i>
+                        </div>
                     </div>
 
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="remember-me">
-                        <label class="form-check-label" for="remember-me">Remember me</label>
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div class="form-check mb-0">
+                            <input type="checkbox" class="form-check-input" id="remember-me" name="remember-me">
+                            <label class="form-check-label small" for="remember-me">Remember me</label>
+                        </div>
+                        <a href="{% url 'accounts:password_reset' %}" class="auth-links">Forgot password?</a>
                     </div>
 
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary">Login</button>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-auth text-white">
+                            <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                        </button>
                     </div>
 
-                    <div class="text-center mt-3">
-                        <a href="{% url 'accounts:password_reset' %}">Forgot Password?</a>
-                        <span class="mx-2">|</span>
-                        <a href="{% url 'accounts:phone_auth_guide' %}">Phone Authentication Guide</a>
+                    <div class="text-center mt-4 auth-links">
+                        <a href="{% url 'accounts:phone_auth_guide' %}">
+                            <i class="fas fa-circle-question me-1"></i>Phone Authentication Guide
+                        </a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        var toggle = document.getElementById('togglePassword');
+        var pwd = document.getElementById('id_password');
+        if (toggle && pwd) {
+            toggle.addEventListener('click', function () {
+                var hidden = pwd.type === 'password';
+                pwd.type = hidden ? 'text' : 'password';
+                toggle.classList.toggle('fa-eye', !hidden);
+                toggle.classList.toggle('fa-eye-slash', hidden);
+            });
+        }
+    })();
+</script>
 {% endblock %}
