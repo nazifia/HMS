@@ -35,6 +35,8 @@ venv/
 # Backup & temp files
 *.backup
 *.bak
+*.bak-*
+*.sqlite3.bak*
 
 # Test artifacts
 test_videos/
