@@ -844,16 +844,15 @@ class SurgeryUpdateView(LoginRequiredMixin, UpdateView):
             equipment_formset.instance = self.object
             equipment_formset.save()
 
-            # An NHIA surgery cannot be advanced to an active status without an
-            # authorization code; force it back to "pending". Cancelled/postponed
-            # and already-authorized surgeries keep the status chosen on the form.
-            if (
-                patient.patient_type == "nhia"
-                and not auth_code
-                and self.object.status in ("scheduled", "in_progress")
-            ):
-                self.object.status = "pending"
-                self.object.save(update_fields=["status"])
+            # An NHIA surgery cannot be advanced to an active/completed status
+            # without a valid authorization code; force it back to "pending".
+            # Cancelled/postponed and authorized surgeries keep the chosen status.
+            if self.object.status in ("scheduled", "in_progress", "completed"):
+                can_perform, perform_msg = self.object.can_be_performed()
+                if not can_perform:
+                    self.object.status = "pending"
+                    self.object.save(update_fields=["status"])
+                    messages.warning(self.request, perform_msg)
 
             # Consume a newly attached authorization code.
             if auth_code and auth_code.id != previous_auth_id:

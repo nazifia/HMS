@@ -209,7 +209,10 @@
       "PowerShell(python -c \"import django; django.setup\\(\\); from django.core.management import call_command; call_command\\('makemigrations'\\)\")",
       "PowerShell($env:DJANGO_SETTINGS_MODULE='hms.settings'; python -c \"import django; django.setup\\(\\); from django.core.management import call_command; call_command\\('makemigrations'\\)\")",
       "PowerShell(python -c \"import sys; print\\(sys.executable\\)\"; python -m pip --version)",
-      "PowerShell(python -m pip show django-browser-reload)"
+      "PowerShell(python -m pip show django-browser-reload)",
+      "Bash(cp db.sqlite3 /tmp/test.sqlite3)",
+      "Read(//c/tmp/**)",
+      "Bash(export DJANGO_SETTINGS_MODULE=hms.settings)"
     ]
   }
 }

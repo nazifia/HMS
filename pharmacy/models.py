@@ -1281,6 +1281,26 @@ class Prescription(models.Model):
 
         return True, "Prescription is ready for dispensing"
 
+    def check_nhia_authorization(self):
+        """Auth-only gate (no payment check) for NHIA patients.
+
+        Used at points before payment (e.g. cart invoice generation) where
+        can_be_dispensed() would wrongly fail on the payment requirement.
+        Returns (ok: bool, message: str).
+        """
+        if self.requires_authorization:
+            if not self.authorization_code:
+                return (
+                    False,
+                    "Authorization code required for NHIA patient. Please obtain authorization code before proceeding.",
+                )
+            if not self.authorization_code.is_valid():
+                return (
+                    False,
+                    f"Authorization code is {self.authorization_code.status}. Please obtain a valid authorization code.",
+                )
+        return True, "Authorization satisfied"
+
     def get_payment_status_display_info(self):
         """Get detailed payment status information for display"""
         if self.payment_status == "paid":

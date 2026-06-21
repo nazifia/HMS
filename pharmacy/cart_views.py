@@ -559,6 +559,12 @@ def generate_invoice_from_cart(request, cart_id):
         messages.error(request, f"Cannot generate invoice: {message}")
         return redirect("pharmacy:view_cart", cart_id=cart.id)
 
+    # Enforce NHIA authorization before billing
+    auth_ok, auth_message = cart.prescription.check_nhia_authorization()
+    if not auth_ok:
+        messages.error(request, f"Cannot generate invoice: {auth_message}")
+        return redirect("pharmacy:view_cart", cart_id=cart.id)
+
     # Validate that user selected items (sent via POST)
     # Note: For now, we'll generate invoice for all available items
     # but log which items were checked in the UI for reference
@@ -651,6 +657,11 @@ def pay_cart_from_wallet(request, cart_id):
                 can_checkout, message = cart.can_generate_invoice()
                 if not can_checkout:
                     messages.error(request, f"Cannot process payment: {message}")
+                    return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+                auth_ok, auth_message = cart.prescription.check_nhia_authorization()
+                if not auth_ok:
+                    messages.error(request, f"Cannot process payment: {auth_message}")
                     return redirect("pharmacy:view_cart", cart_id=cart.id)
 
                 invoice = create_pharmacy_invoice(
@@ -766,6 +777,12 @@ def complete_dispensing_from_cart(request, cart_id):
     can_complete, message = cart.can_complete_dispensing()
     if not can_complete:
         messages.error(request, f"Cannot complete dispensing: {message}")
+        return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+    # Enforce NHIA authorization before dispensing
+    auth_ok, auth_message = cart.prescription.check_nhia_authorization()
+    if not auth_ok:
+        messages.error(request, f"Cannot complete dispensing: {auth_message}")
         return redirect("pharmacy:view_cart", cart_id=cart.id)
 
     try:
