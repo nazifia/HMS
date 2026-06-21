@@ -213,3 +213,27 @@ class PackOrderTransferTest(TestCase):
 
         # Check that prescription items were created
         self.assertEqual(prescription.items.count(), 2)
+
+    def test_pack_order_process_is_idempotent(self):
+        """Re-processing a pack order must not duplicate prescription items."""
+        future_date = timezone.now().date() + timedelta(days=365)
+        for med, cost in ((self.medication1, 8.00), (self.medication2, 12.00)):
+            inv = ActiveStoreInventory.objects.create(
+                medication=med, active_store=self.active_store,
+                batch_number='B', stock_quantity=10,
+                expiry_date=future_date, unit_cost=cost,
+            )
+            ActiveStoreBatch.objects.create(
+                active_inventory=inv, batch_number='B', quantity=10,
+                expiry_date=future_date, unit_cost=cost,
+            )
+
+        prescription = self.pack_order.process_order(self.user)
+        self.assertEqual(prescription.items.count(), 2)
+
+        # Force a re-run as if the first attempt had crashed before flipping
+        # status; get_or_create must not stack duplicate lines.
+        self.pack_order.status = 'pending'
+        self.pack_order.save(update_fields=['status'])
+        prescription = self.pack_order.process_order(self.user)
+        self.assertEqual(prescription.items.count(), 2)

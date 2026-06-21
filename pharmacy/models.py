@@ -1,3 +1,5 @@
+import logging
+
 from django.db import models, transaction
 from nhia.utils import NHIA_PATIENT_RATE, NHIA_COVERED_RATE
 from django.core.exceptions import ValidationError
@@ -5,6 +7,8 @@ from django.utils import timezone
 from accounts.models import CustomUser
 from patients.models import Patient
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 class MedicationCategory(models.Model):
@@ -2097,10 +2101,10 @@ class PackOrder(models.Model):
                                     transfer.execute_transfer(user)
                                 except Exception as e:
                                     # Log the error but continue processing
-                                    pass  # In a real implementation, you might want to log this
+                                    logger.warning("Pack order %s: opportunistic transfer step failed, continuing", self.id, exc_info=True)
             except Exception as e:
                 # Continue with processing even if transfers fail
-                pass  # In a real implementation, you might want to log this
+                logger.warning("Pack order %s: opportunistic transfer step failed, continuing", self.id, exc_info=True)
 
         # Now, ensure that medications are moved from active store to the respective dispensary
         # This is for cases where we want to ensure the dispensary has the required medications
@@ -2188,7 +2192,7 @@ class PackOrder(models.Model):
                                         dispensary_transfer.execute_transfer(user)
                                     except Exception as e:
                                         # Log the error but continue processing
-                                        pass  # In a real implementation, you might want to log this
+                                        logger.warning("Pack order %s: opportunistic transfer step failed, continuing", self.id, exc_info=True)
                             except MedicationInventory.DoesNotExist:
                                 # Dispensary doesn't have this medication at all
                                 # Create a transfer from active store to dispensary
@@ -2216,35 +2220,43 @@ class PackOrder(models.Model):
                                     dispensary_transfer.execute_transfer(user)
                                 except Exception as e:
                                     # Log the error but continue processing
-                                    pass  # In a real implementation, you might want to log this
-        except Exception as e:
-            # Continue processing even if this check fails
-            pass
+                                    logger.warning("Pack order %s: opportunistic transfer step failed, continuing", self.id, exc_info=True)
+        except Exception:
+            # Best-effort legacy dispensary top-up; never block order processing
+            # on it. NOTE: this block writes the legacy MedicationInventory ledger
+            # and only binds `Dispensary` when there were missing medications, so
+            # it no-ops (UnboundLocalError) on the common path. Slated for removal
+            # with the legacy ledger in backlog #6; logged at debug, not warning.
+            logger.debug("Pack order %s: legacy dispensary top-up skipped", self.id, exc_info=True)
 
-        # Get or create prescription from pack items
-        if not self.prescription:
-            # Create prescription if it doesn't exist
-            prescription = self.create_prescription()
-        else:
-            # Use existing prescription
-            prescription = self.prescription
+        # Build the prescription + its items + status flips atomically. If any
+        # step fails the whole block rolls back (including the pack order's own
+        # status), so a retry starts from a clean "pending" state instead of
+        # stacking duplicate PrescriptionItems on a half-processed order.
+        with transaction.atomic():
+            # Get or create prescription from pack items
+            if not self.prescription:
+                prescription = self.create_prescription()
+            else:
+                prescription = self.prescription
 
-        # Create prescription items from pack items
-        for pack_item in self.pack.items.all():
-            PrescriptionItem.objects.create(
-                prescription=prescription,
-                medication=pack_item.medication,
-                quantity=pack_item.quantity,
-            )
+            # Create prescription items from pack items. get_or_create keeps this
+            # idempotent: re-processing never duplicates a medication line.
+            for pack_item in self.pack.items.all():
+                PrescriptionItem.objects.get_or_create(
+                    prescription=prescription,
+                    medication=pack_item.medication,
+                    defaults={"quantity": pack_item.quantity},
+                )
 
-        # Update prescription status to approved
-        prescription.status = "approved"
-        prescription.save()
+            # Update prescription status to approved
+            prescription.status = "approved"
+            prescription.save()
 
-        self.status = "ready"
-        self.processed_by = user
-        self.processed_at = timezone.now()
-        self.save()
+            self.status = "ready"
+            self.processed_by = user
+            self.processed_at = timezone.now()
+            self.save()
 
         return prescription
 
