@@ -218,7 +218,9 @@
       "Bash(grep -E \"/models\\\\.py$|/models/\")",
       "Bash(grep -qE \"^OK$|FAILED|^Ran |Error\" \"C:\\\\Users\\\\Dell\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Dell-Desktop-MY-PRODUCTS-HMS\\\\3629bd1c-30e4-4dd4-9c07-977fa92b4da1\\\\tasks\\\\bsmsrv3gi.output\")",
       "Bash(grep -qE \"^OK$|FAILED|^Ran \" \"C:\\\\Users\\\\Dell\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Dell-Desktop-MY-PRODUCTS-HMS\\\\3629bd1c-30e4-4dd4-9c07-977fa92b4da1\\\\tasks\\\\bsmsrv3gi.output\")",
-      "Bash(grep -E \"^OK$|FAILED|^Ran |Error|^ERROR\" \"C:\\\\Users\\\\Dell\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Dell-Desktop-MY-PRODUCTS-HMS\\\\3629bd1c-30e4-4dd4-9c07-977fa92b4da1\\\\tasks\\\\bsmsrv3gi.output\")"
+      "Bash(grep -E \"^OK$|FAILED|^Ran |Error|^ERROR\" \"C:\\\\Users\\\\Dell\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Dell-Desktop-MY-PRODUCTS-HMS\\\\3629bd1c-30e4-4dd4-9c07-977fa92b4da1\\\\tasks\\\\bsmsrv3gi.output\")",
+      "Bash(venv/Scripts/python.exe *)",
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings venv/Scripts/python.exe *)"
     ]
   }
 }

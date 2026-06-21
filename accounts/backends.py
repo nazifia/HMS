@@ -5,6 +5,7 @@ MINIMAL VERSION - No logging to prevent Windows OSError.
 
 from django.contrib.auth.backends import BaseBackend, ModelBackend
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from accounts.models import CustomUser, Role
 
 User = get_user_model()
@@ -34,9 +35,12 @@ class PhoneNumberBackend(BaseBackend):
             # Tenant gate: a hospital staff may only authenticate on their own
             # hospital's subdomain. Platform users (hospital is None) log in
             # anywhere. request.hospital is set by saas.TenantMiddleware.
+            # When a tenant IS resolved (subdomain), staff may only auth on their
+            # own hospital. When no tenant is resolved (localhost / bare domain),
+            # there is nothing to gate against, so allow the login.
             if user.hospital_id is not None:
                 req_hospital = getattr(request, "hospital", None)
-                if req_hospital is None or req_hospital.id != user.hospital_id:
+                if req_hospital is not None and req_hospital.id != user.hospital_id:
                     return None
             return user
         return None
@@ -60,10 +64,15 @@ class AdminBackend(ModelBackend):
         is_admin_request = bool(request and '/admin' in request.path)
 
         try:
-            # Authenticate using the username field only (not phone number).
-            user = CustomUser.objects.get(username=username)
+            # Accept either username or phone number for admin login.
+            user = CustomUser.objects.get(
+                Q(username=username) | Q(phone_number=username)
+            )
         except CustomUser.DoesNotExist:
             return None
+        except CustomUser.MultipleObjectsReturned:
+            # Same string is one user's username and another's phone: prefer username.
+            user = CustomUser.objects.get(username=username)
 
         if not user.check_password(password) or not user.is_active:
             return None
