@@ -927,8 +927,14 @@
 </div>
 
 <script>
+// ponytail: per-item debounce timers so server save fires ~150ms after typing stops
+// instead of waiting for blur. Object map, not a class.
+const _saveTimers = {};
+
 // Real-time update function (fires as user types)
 function updateQuantityLive(itemId, quantity) {
+    // No server call while typing: in-flight responses overwriting totals mid-type
+    // caused the lag. onchange (blur/Enter) persists. Visual stays instant below.
     const input = document.querySelector(`input[data-item-id="${itemId}"]`);
     const maxStock = parseInt(input.dataset.maxStock);
     const quantityInt = parseInt(quantity) || 0;

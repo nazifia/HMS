@@ -251,6 +251,15 @@ def view_cart(request, cart_id):
                 )
                 return redirect("pharmacy:cart_list")
 
+    # Heal dangling invoice FK: if the linked Invoice row was deleted outside
+    # Django (raw SQL/admin bulk delete), invoice_id stays set and any access
+    # raises Invoice.DoesNotExist. Null it once so the rest of the view is safe.
+    try:
+        cart.invoice
+    except PharmacyInvoice.DoesNotExist:
+        cart.invoice = None
+        cart.save(update_fields=["invoice"])
+
     # Auto-update cart status if invoice is paid (handles billing office payments)
     if (
         cart.invoice

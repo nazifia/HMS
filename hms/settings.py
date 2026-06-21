@@ -225,6 +225,13 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# Dev-only browser auto-reload: reloads open tabs when a template/static file changes.
+if DEBUG:
+    INSTALLED_APPS += ["django_browser_reload"]
+    MIDDLEWARE += ["django_browser_reload.middleware.BrowserReloadMiddleware"]
+    # Required for {% if debug %} (context_processors.debug) to resolve True.
+    INTERNAL_IPS = ["127.0.0.1"]
+
 ROOT_URLCONF = "hms.urls"
 
 _BASE_TEMPLATE_LOADERS = [

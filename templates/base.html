@@ -1500,5 +1500,6 @@
         document.addEventListener('htmx:responseError', function() { NProgress.done(); });
     </script>
 
+    {% if debug %}{% load django_browser_reload %}{% django_browser_reload_script %}{% endif %}
 </body>
 </html>

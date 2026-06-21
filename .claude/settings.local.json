@@ -195,7 +195,16 @@
       "Bash(awk NR>=9040 && NR<=9110 *)",
       "Bash(awk NR>=918 && NR<=1000 *)",
       "Bash(awk 'NR>=195 && NR<=225' pharmacy/management/commands/create_test_revenue_data.py)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(grep -n \"keyup\\\\|keydown\\\\|\\\\.on\\(\\\\|addEventListener\\\\|\\\\$.post\\\\|\\\\$.ajax\\\\|setInterval\" templates/pharmacy/cart/view_cart.html)",
+      "Bash(venv/Scripts/python.exe -c \"import django_browser_reload; print\\('ok'\\)\")",
+      "Bash(cp -r C:/Users/Dell/AppData/Local/Programs/Python/Python312/Lib/site-packages/django_browser_reload venv/Lib/site-packages/)",
+      "Bash(cp -r C:/Users/Dell/AppData/Local/Programs/Python/Python312/Lib/site-packages/django_browser_reload-*.dist-info venv/Lib/site-packages/)",
+      "Bash(venv/Scripts/python.exe -c \"import django_browser_reload; print\\('ok', django_browser_reload.__version__ if hasattr\\(django_browser_reload,'__version__'\\) else 'imported'\\)\")",
+      "Bash(venv/Scripts/python.exe manage.py check)",
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings venv/Scripts/python.exe -c \"import django; django.setup\\(\\); from django.core.management import call_command; call_command\\('check'\\)\")",
+      "Bash(venv/Scripts/python.exe manage.py runserver 127.0.0.1:8011 --noreload)",
+      "Bash(kill %1)"
     ]
   }
 }

@@ -639,12 +639,17 @@
                                 <td class="quantity-cell">
                                     {% if cart.status == 'active' %}
                                     <div class="cart-qty">
-                                        <input type="number" 
-                                               class="quantity-input" 
-                                               id="qty_{{ item.id }}" 
-                                               value="{{ item.quantity }}" 
-                                               min="1" 
+                                        <input type="number"
+                                               class="quantity-input cart-quantity-input"
+                                               id="qty_{{ item.id }}"
+                                               value="{{ item.quantity }}"
+                                               min="1"
                                                max="{{ item.available_stock }}"
+                                               data-item-id="{{ item.id }}"
+                                               data-unit-price="{{ item.unit_price }}"
+                                               data-is-nhia="{{ is_nhia_patient|yesno:'true,false' }}"
+                                               data-max-stock="{{ item.available_stock }}"
+                                               oninput="updateQuantityLive({{ item.id }}, this.value)"
                                                onchange="updateQuantity({{ item.id }}, this.value)">
                                     </div>
                                     {% else %}
@@ -812,7 +817,7 @@
 
                 {% if can_pay_with_wallet %}
                     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#walletPayModal">
-                        <i class="fas fa-wallet"></i> Pay from Wallet ({{ cart_payable_now|currency }})
+                        <i class="fas fa-wallet"></i> Pay from Wallet (<span id="wallet-pay-amount">{{ cart_payable_now|currency }}</span>)
                     </button>
                 {% endif %}
 
@@ -853,17 +858,17 @@
                 {% if is_nhia_patient %}
                 <div class="summary-item">
                     <span>Subtotal:</span>
-                    <span>{{ subtotal|currency }}</span>
+                    <span id="summary-subtotal">{{ subtotal|currency }}</span>
                 </div>
-                
+
                 <div class="summary-item">
                     <span>NHIA Coverage (90%):</span>
-                    <span style="color: #4caf50;">-{{ nhia_coverage|currency }}</span>
+                    <span style="color: #4caf50;">-<span id="summary-nhia-coverage">{{ nhia_coverage|currency }}</span></span>
                 </div>
                 {% endif %}
 
                 <div class="summary-total">
-                    Patient Pays: {{ patient_payable|currency }}
+                    Patient Pays: <span id="summary-patient-payable">{{ patient_payable|currency }}</span>
                 </div>
 
                 {% if cart.invoice %}
@@ -1058,24 +1063,129 @@
 
 {% block extra_js %}
 <script>
+// ponytail: per-item debounce timers so server save fires ~150ms after typing stops
+const _saveTimers = {};
+
+function fmtNaira(n) { return `₦${n.toFixed(2)}`; }
+
+// ponytail: coalesce rapid keystrokes into one paint; raw recalc below.
+let _recalcQueued = false;
+function recalcSummary() {
+    if (_recalcQueued) return;
+    _recalcQueued = true;
+    requestAnimationFrame(() => { _recalcQueued = false; _recalcSummaryNow(); });
+}
+function _recalcSummaryNow() {
+    let subtotal = 0, patientPayable = 0, nhiaCoverage = 0;
+    document.querySelectorAll('.cart-quantity-input').forEach(inp => {
+        const qty = parseInt(inp.value) || 0;
+        const price = parseFloat(inp.dataset.unitPrice);
+        const nhia = inp.dataset.isNhia === 'true';
+        const sub = qty * price;
+        subtotal += sub;
+        patientPayable += nhia ? sub * 0.1 : sub;
+        nhiaCoverage += nhia ? sub * 0.9 : 0;
+    });
+    const s = document.getElementById('summary-subtotal');
+    const p = document.getElementById('summary-patient-payable');
+    const n = document.getElementById('summary-nhia-coverage');
+    if (s) s.textContent = fmtNaira(subtotal);
+    if (p) p.textContent = fmtNaira(patientPayable);
+    if (n) n.textContent = fmtNaira(nhiaCoverage);
+    const w = document.getElementById('wallet-pay-amount');
+    if (w) w.textContent = fmtNaira(patientPayable);
+}
+
+// Live client-side update as user types; debounced server save for valid values.
+function updateQuantityLive(itemId, quantity) {
+    const input = document.getElementById(`qty_${itemId}`);
+    const maxStock = parseInt(input.dataset.maxStock);
+    const qty = parseInt(quantity) || 0;
+
+    if (qty > maxStock) {
+        input.classList.add('is-invalid');
+    } else {
+        input.classList.remove('is-invalid');
+    }
+
+    if (qty > 0) {
+        const unitPrice = parseFloat(input.dataset.unitPrice);
+        const isNhia = input.dataset.isNhia === 'true';
+        const sub = qty * unitPrice;
+        const row = document.getElementById(`cart_item_row_${itemId}`);
+        if (row) {
+            const pays = row.querySelector('.patient-pays');
+            const nhia = row.querySelector('.nhia-covers');
+            if (pays) pays.textContent = fmtNaira(isNhia ? sub * 0.1 : sub);
+            if (nhia) nhia.textContent = fmtNaira(isNhia ? sub * 0.9 : 0);
+            // Repaint stock badge "need N" live; mirrors get_stock_status() server logic.
+            const badge = row.querySelector('.stock-badge');
+            if (badge) {
+                if (maxStock >= qty) {
+                    badge.textContent = `${maxStock} available (need ${qty})`;
+                    badge.className = 'stock-badge stock-available';
+                } else {
+                    badge.textContent = `Only ${maxStock} available (need ${qty})`;
+                    badge.className = 'stock-badge stock-partial';
+                }
+            }
+        }
+        recalcSummary();
+
+        // Debounced server save: commits ~400ms after typing stops, no blur needed.
+        // Single trailing request avoids the per-keystroke flood that caused lag.
+        if (qty <= maxStock) {
+            clearTimeout(_saveTimers[itemId]);
+            _saveTimers[itemId] = setTimeout(() => updateQuantity(itemId, input.value), 400);
+        }
+    }
+}
+
 function updateQuantity(itemId, quantity) {
-    if (quantity <= 0) {
+    clearTimeout(_saveTimers[itemId]);
+    const input = document.getElementById(`qty_${itemId}`);
+    const maxStock = parseInt(input.dataset.maxStock);
+    const qty = parseInt(quantity);
+
+    if (qty <= 0) {
         alert('Quantity must be greater than zero');
+        input.value = input.min || 1;
         return;
     }
-    
+    if (qty > maxStock) {
+        alert(`Cannot exceed available stock! Max: ${maxStock}`);
+        input.value = maxStock;
+        updateQuantityLive(itemId, maxStock);
+        return;
+    }
+
     fetch(`/pharmacy/cart/item/${itemId}/update-quantity/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': '{{ csrf_token }}'
         },
-        body: JSON.stringify({ quantity: parseInt(quantity) })
+        body: JSON.stringify({ quantity: qty })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            location.reload(); // Simple reload for now
+            const row = document.getElementById(`cart_item_row_${itemId}`);
+            if (row) {
+                const pays = row.querySelector('.patient-pays');
+                const nhia = row.querySelector('.nhia-covers');
+                if (pays) pays.textContent = fmtNaira(data.item_patient_pays);
+                if (nhia) nhia.textContent = fmtNaira(data.item_nhia_covers);
+            }
+            const s = document.getElementById('summary-subtotal');
+            const p = document.getElementById('summary-patient-payable');
+            const n = document.getElementById('summary-nhia-coverage');
+            if (s) s.textContent = fmtNaira(data.cart_subtotal);
+            if (p) p.textContent = fmtNaira(data.cart_patient_payable);
+            if (n) n.textContent = fmtNaira(data.cart_nhia_coverage);
+            const w = document.getElementById('wallet-pay-amount');
+            if (w) w.textContent = fmtNaira(data.cart_patient_payable);
+            input.classList.remove('is-invalid');
         } else {
             alert('Error: ' + data.error);
             location.reload();
