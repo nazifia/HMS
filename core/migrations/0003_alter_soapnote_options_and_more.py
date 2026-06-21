@@ -31,11 +31,19 @@ _ADDED_INDEXES = [
 
 
 def ensure_schema(apps, schema_editor):
-    """Add any missing columns/indexes only if absent. Vendor-neutral."""
+    """Add any missing columns/indexes only if absent. Vendor-neutral.
+
+    Uses the *live* app registry, not the historical `apps`: inside
+    SeparateDatabaseAndState.database_operations the historical state predates
+    this migration's field additions, so it lacks ip_address/title/etc. The
+    live models carry the target schema we want to reconcile the DB to.
+    """
+    from django.apps import apps as live_apps
+
     conn = schema_editor.connection
 
     for model_name, field_name in _ADDED_FIELDS:
-        model = apps.get_model('core', model_name)
+        model = live_apps.get_model('core', model_name)
         with conn.cursor() as cur:
             existing = {c.name for c in conn.introspection.get_table_description(cur, model._meta.db_table)}
         field = model._meta.get_field(field_name)
@@ -43,7 +51,7 @@ def ensure_schema(apps, schema_editor):
             schema_editor.add_field(model, field)
 
     for model_name, index_name in _ADDED_INDEXES:
-        model = apps.get_model('core', model_name)
+        model = live_apps.get_model('core', model_name)
         with conn.cursor() as cur:
             existing = set(conn.introspection.get_constraints(cur, model._meta.db_table))
         if index_name in existing:
