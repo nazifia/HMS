@@ -8,3 +8,4 @@ class CoreConfig(AppConfig):
     def ready(self):
         """Import signal handlers when the app is ready."""
         import core.signals  # noqa
+        import core.activity_log  # noqa: F401  register ActivityLog model with the app registry
