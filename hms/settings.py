@@ -226,7 +226,11 @@ MIDDLEWARE = [
 ]
 
 # Dev-only browser auto-reload: reloads open tabs when a template/static file changes.
-if DEBUG:
+# ponytail: guard on install too — prod servers run DEBUG but may not have the package.
+import importlib.util as _ilu
+
+BROWSER_RELOAD = DEBUG and _ilu.find_spec("django_browser_reload") is not None
+if BROWSER_RELOAD:
     INSTALLED_APPS += ["django_browser_reload"]
     MIDDLEWARE += ["django_browser_reload.middleware.BrowserReloadMiddleware"]
     # Required for {% if debug %} (context_processors.debug) to resolve True.
@@ -260,6 +264,7 @@ TEMPLATES = [
                 "pharmacy.context_processors.pharmacy_context",
                 "patients.context_processors.all_patients",
                 "patients.context_processors.current_patient_context",
+                "core.context_processors.browser_reload",
                 "core.context_processors.hms_permissions",
                 "core.context_processors.hms_user_roles",
                 "accounts.context_processors.user_permissions",

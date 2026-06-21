@@ -2,7 +2,14 @@
 Context processors for HMS permissions
 """
 
+from django.conf import settings
+
 from accounts.permissions import user_permissions_context
+
+
+def browser_reload(request):
+    """Expose whether django_browser_reload is active (dev + installed)."""
+    return {"BROWSER_RELOAD": getattr(settings, "BROWSER_RELOAD", False)}
 
 
 def hms_permissions(request):
