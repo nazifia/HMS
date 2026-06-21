@@ -7,6 +7,7 @@ generate invoices, and complete dispensing after payment.
 """
 
 from django.db import models
+from nhia.utils import NHIA_PATIENT_RATE, NHIA_COVERED_RATE
 from django.db.models import Sum
 from django.conf import settings
 from django.utils import timezone
@@ -91,7 +92,7 @@ class PrescriptionCart(models.Model):
 
         if self.prescription.patient.is_nhia_patient():
             # Patient pays 10%, NHIA covers 90%
-            return subtotal * Decimal("0.10")
+            return subtotal * NHIA_PATIENT_RATE
         else:
             # Patient pays 100%
             return subtotal
@@ -102,7 +103,7 @@ class PrescriptionCart(models.Model):
 
         if self.prescription.patient.is_nhia_patient():
             # NHIA covers 90%
-            return subtotal * Decimal("0.90")
+            return subtotal * NHIA_COVERED_RATE
         else:
             return Decimal("0.00")
 
@@ -396,7 +397,7 @@ class PrescriptionCartItem(models.Model):
         subtotal = self.get_subtotal()
 
         if self.cart.prescription.patient.is_nhia_patient():
-            return subtotal * Decimal("0.10")
+            return subtotal * NHIA_PATIENT_RATE
         else:
             return subtotal
 
@@ -405,7 +406,7 @@ class PrescriptionCartItem(models.Model):
         subtotal = self.get_subtotal()
 
         if self.cart.prescription.patient.is_nhia_patient():
-            return subtotal * Decimal("0.90")
+            return subtotal * NHIA_COVERED_RATE
         else:
             return Decimal("0.00")
 

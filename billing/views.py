@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from nhia.utils import NHIA_PATIENT_RATE, NHIA_COVERED_RATE
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Sum, F, Count
@@ -713,7 +714,7 @@ def surgery_billing(request, surgery_id):
 
         # Apply 10% payment for NHIA patients
         if is_nhia_patient:
-            pack_cost = original_cost * Decimal("0.10")  # NHIA patients pay 10%
+            pack_cost = original_cost * NHIA_PATIENT_RATE  # NHIA patients pay 10%
         else:
             pack_cost = original_cost
 
@@ -886,7 +887,7 @@ def create_invoice_for_prescription(request, prescription_id):
 
         # Apply NHIA discount if applicable
         if pricing_breakdown["is_nhia_patient"]:
-            item_patient_pays = item_total_cost * Decimal("0.10")  # 10% for NHIA
+            item_patient_pays = item_total_cost * NHIA_PATIENT_RATE  # 10% for NHIA
         else:
             item_patient_pays = item_total_cost  # 100% for non-NHIA
 
@@ -903,7 +904,7 @@ def create_invoice_for_prescription(request, prescription_id):
             quantity=item.quantity,
             unit_price=item.medication.price
             if not pricing_breakdown["is_nhia_patient"]
-            else item.medication.price * Decimal("0.10"),
+            else item.medication.price * NHIA_PATIENT_RATE,
             tax_percentage=service.tax_percentage,
             tax_amount=item_tax,
             total_amount=item_total,
@@ -989,8 +990,8 @@ def prescription_billing_detail(request, prescription_id):
     for item in prescription_items:
         item_total = item.medication.price * item.quantity
         if pricing_breakdown["is_nhia_patient"]:
-            patient_pays = item_total * Decimal("0.10")
-            nhia_covers = item_total * Decimal("0.90")
+            patient_pays = item_total * NHIA_PATIENT_RATE
+            nhia_covers = item_total * NHIA_COVERED_RATE
         else:
             patient_pays = item_total
             nhia_covers = Decimal("0.00")

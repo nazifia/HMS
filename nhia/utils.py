@@ -1,3 +1,16 @@
+from decimal import Decimal
+
+# Single source of truth for the NHIA cost split: the patient pays 10% and NHIA
+# covers the remaining 90%. Import these instead of hardcoding the literals.
+NHIA_PATIENT_RATE = Decimal("0.10")
+NHIA_COVERED_RATE = Decimal("0.90")
+
+
+def nhia_split(amount):
+    """Return (patient_pays, nhia_covers) for an NHIA-covered amount."""
+    return amount * NHIA_PATIENT_RATE, amount * NHIA_COVERED_RATE
+
+
 def generate_nhia_reg_number():
     """Generate a unique NHIA registration number."""
     return get_next_serial()

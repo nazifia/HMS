@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from nhia.utils import NHIA_PATIENT_RATE, NHIA_COVERED_RATE
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
 from accounts.permissions import permission_required
@@ -5602,8 +5603,8 @@ def prescription_detail(request, prescription_id):
         total_medication_cost += item_total_cost
 
         if pricing_breakdown["is_nhia_patient"]:
-            item_patient_pays = item_total_cost * Decimal("0.10")  # 10% patient portion
-            item_nhia_covers = item_total_cost * Decimal("0.90")  # 90% NHIA portion
+            item_patient_pays = item_total_cost * NHIA_PATIENT_RATE  # 10% patient portion
+            item_nhia_covers = item_total_cost * NHIA_COVERED_RATE  # 90% NHIA portion
         else:
             item_patient_pays = item_total_cost  # 100% patient pays
             item_nhia_covers = Decimal("0.00")  # NHIA covers nothing
@@ -5796,8 +5797,8 @@ def dispense_prescription(request, prescription_id):
             total_medication_cost += item_total_cost
 
             if pricing_breakdown["is_nhia_patient"]:
-                item_patient_pays = item_total_cost * Decimal("0.10")
-                item_nhia_covers = item_total_cost * Decimal("0.90")
+                item_patient_pays = item_total_cost * NHIA_PATIENT_RATE
+                item_nhia_covers = item_total_cost * NHIA_COVERED_RATE
             else:
                 item_patient_pays = item_total_cost
                 item_nhia_covers = Decimal("0.00")
@@ -5863,8 +5864,8 @@ def dispense_prescription(request, prescription_id):
                 total_medication_cost += item_total_cost
 
                 if pricing_breakdown["is_nhia_patient"]:
-                    item_patient_pays = item_total_cost * Decimal("0.10")
-                    item_nhia_covers = item_total_cost * Decimal("0.90")
+                    item_patient_pays = item_total_cost * NHIA_PATIENT_RATE
+                    item_nhia_covers = item_total_cost * NHIA_COVERED_RATE
                 else:
                     item_patient_pays = item_total_cost
                     item_nhia_covers = Decimal("0.00")
@@ -6110,7 +6111,7 @@ def dispense_prescription(request, prescription_id):
                     # Apply NHIA discount if applicable
                     if prescription.patient.is_nhia_patient():
                         # Patient pays 10%, NHIA covers 90%
-                        patient_payable = dispensed_total * Decimal("0.10")
+                        patient_payable = dispensed_total * NHIA_PATIENT_RATE
                     else:
                         # Patient pays 100%
                         patient_payable = dispensed_total
@@ -6186,8 +6187,8 @@ def dispense_prescription(request, prescription_id):
                 total_medication_cost += item_total_cost
 
                 if pricing_breakdown["is_nhia_patient"]:
-                    item_patient_pays = item_total_cost * Decimal("0.10")
-                    item_nhia_covers = item_total_cost * Decimal("0.90")
+                    item_patient_pays = item_total_cost * NHIA_PATIENT_RATE
+                    item_nhia_covers = item_total_cost * NHIA_COVERED_RATE
                 else:
                     item_patient_pays = item_total_cost
                     item_nhia_covers = Decimal("0.00")
@@ -6258,8 +6259,8 @@ def dispense_prescription(request, prescription_id):
         total_medication_cost += item_total_cost
 
         if pricing_breakdown["is_nhia_patient"]:
-            item_patient_pays = item_total_cost * Decimal("0.10")  # 10% patient portion
-            item_nhia_covers = item_total_cost * Decimal("0.90")  # 90% NHIA portion
+            item_patient_pays = item_total_cost * NHIA_PATIENT_RATE  # 10% patient portion
+            item_nhia_covers = item_total_cost * NHIA_COVERED_RATE  # 90% NHIA portion
         else:
             item_patient_pays = item_total_cost  # 100% patient pays
             item_nhia_covers = Decimal("0.00")  # NHIA covers nothing
@@ -7032,8 +7033,8 @@ def billing_office_medication_payment(request, prescription_id):
     for item in prescription_items:
         item_total = item.medication.price * item.quantity
         if pricing_breakdown["is_nhia_patient"]:
-            patient_pays = item_total * Decimal("0.10")
-            nhia_covers = item_total * Decimal("0.90")
+            patient_pays = item_total * NHIA_PATIENT_RATE
+            nhia_covers = item_total * NHIA_COVERED_RATE
         else:
             patient_pays = item_total
             nhia_covers = Decimal("0.00")
@@ -7280,7 +7281,7 @@ def pharmacist_generate_invoice(request, prescription_id):
 
                         if prescription.patient.is_nhia_patient():
                             # NHIA patients pay 10%
-                            total_available_amount += item_cost * Decimal("0.10")
+                            total_available_amount += item_cost * NHIA_PATIENT_RATE
                         else:
                             total_available_amount += item_cost
                     else:
@@ -9070,7 +9071,7 @@ def pharmacy_payment_receipt(request, payment_id):
             # Calculate based on NHIA status
             if prescription.patient.is_nhia_patient():
                 # NHIA patients pay 10%
-                unit_price = unit_price * Decimal("0.10")
+                unit_price = unit_price * NHIA_PATIENT_RATE
 
             items.append(
                 {

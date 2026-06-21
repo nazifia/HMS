@@ -1,4 +1,5 @@
 from django.db import models, transaction
+from nhia.utils import NHIA_PATIENT_RATE, NHIA_COVERED_RATE
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from accounts.models import CustomUser
@@ -1186,7 +1187,7 @@ class Prescription(models.Model):
 
         # NHIA patients pay 10%, others pay 100%
         if self.patient.patient_type == "nhia":
-            return total_price * Decimal("0.10")
+            return total_price * NHIA_PATIENT_RATE
         else:
             return total_price
 
@@ -1198,8 +1199,8 @@ class Prescription(models.Model):
         is_nhia = self.patient.patient_type == "nhia"
 
         if is_nhia:
-            patient_portion = total_price * Decimal("0.10")
-            nhia_portion = total_price * Decimal("0.90")
+            patient_portion = total_price * NHIA_PATIENT_RATE
+            nhia_portion = total_price * NHIA_COVERED_RATE
         else:
             patient_portion = total_price
             nhia_portion = Decimal("0.00")

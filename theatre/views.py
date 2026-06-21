@@ -1,4 +1,5 @@
 from functools import wraps
+from nhia.utils import NHIA_PATIENT_RATE, NHIA_COVERED_RATE
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import (
     ListView,
@@ -2096,7 +2097,7 @@ def _add_pack_to_surgery_invoice(surgery, pack_order):
 
     # Apply 10% payment for NHIA patients (they pay 10%, NHIA covers 90%)
     if surgery.patient.patient_type == "nhia":
-        pack_cost = pack_cost * Decimal("0.10")  # NHIA patients pay 10%
+        pack_cost = pack_cost * NHIA_PATIENT_RATE  # NHIA patients pay 10%
 
     # Add invoice item for the pack
     invoice_item = InvoiceItem.objects.create(

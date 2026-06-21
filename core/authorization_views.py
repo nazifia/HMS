@@ -4,6 +4,7 @@ Handles authorization requests from any module
 """
 
 from django.shortcuts import render, redirect, get_object_or_404
+from nhia.utils import NHIA_PATIENT_RATE, NHIA_COVERED_RATE
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponseBadRequest
@@ -141,7 +142,7 @@ def calculate_prescription_authorization_amount(prescription):
             total_dispensed_price += Decimal(str(item.medication.price)) * qty
 
         if prescription.patient.patient_type == "nhia":
-            return float(total_dispensed_price * Decimal("0.90"))
+            return float(total_dispensed_price * NHIA_COVERED_RATE)
         else:
             return 0.00
     except Exception:
@@ -151,7 +152,7 @@ def calculate_prescription_authorization_amount(prescription):
             total_dispensed_price += float(item.medication.price * qty)
 
         if prescription.patient.patient_type == "nhia":
-            return float(total_dispensed_price * 0.90)
+            return float(total_dispensed_price * NHIA_COVERED_RATE)
         else:
             return 0.00
 
@@ -355,7 +356,7 @@ def generate_authorization(request, model_type, object_id):
 
                 # Calculate patient portion (10% for NHIA, 100% for non-NHIA)
                 patient_portion = (
-                    total_dispensed_price * Decimal("0.10")
+                    total_dispensed_price * NHIA_PATIENT_RATE
                     if obj.patient.patient_type == "nhia"
                     else total_dispensed_price
                 )
