@@ -148,7 +148,7 @@ urlpatterns = [
         views.create_procurement_request,
         name="create_procurement_request",
     ),
-    path("api/suppliers/", views.api_suppliers, name="api_suppliers"),
+    path("api/suppliers-legacy/", views.api_suppliers, name="api_suppliers"),
     # Bulk Store Management
     path("bulk-store/", views.bulk_store_dashboard, name="bulk_store_dashboard"),
     path("bulk-stores/", views.bulk_store_list, name="bulk_store_list"),
@@ -385,7 +385,7 @@ urlpatterns = [
         name="admission_payment_receipt",
     ),
     # API Endpoints
-    path("api/medications/", views.medication_api, name="medication_api"),
+    path("api/medications-legacy/", views.medication_api, name="medication_api"),
     path("api/", include(api_urls)),
     # Dispensed Items Tracking
     path(

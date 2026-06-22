@@ -2,7 +2,7 @@
 API views for inventory management
 """
 from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
 from django.db.models import Q, Sum
 from django.template.loader import render_to_string
@@ -10,7 +10,8 @@ from ..models import Medication, Dispensary, ActiveStoreInventory
 from ..views import user_has_inventory_edit_permission
 
 
-@method_decorator(csrf_exempt, name='dispatch')
+@login_required
+@csrf_exempt
 def check_medication_inventory(request):
     """
     API endpoint to check medication inventory availability for transfer
@@ -83,6 +84,7 @@ def check_medication_inventory(request):
     return JsonResponse({'error': 'Method not allowed'})
 
 
+@login_required
 def search_medication_inventory(request):
     """
     API endpoint to search medications in a specific dispensary inventory
