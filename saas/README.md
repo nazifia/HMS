@@ -64,10 +64,29 @@ then tighten to `null=False` if desired.
 
 Plans (`Starter`/`Clinic`/`Hospital`) are seeded by migration `0002_seed_plans`.
 
+## Manual activation fallback (free tier / no Paystack)
+
+Hosts like PythonAnywhere free tier block outbound to `api.paystack.co`, so the
+Paystack checkout call fails. When `PAYSTACK_SECRET_KEY` is unset the billing
+page swaps the "Pay with Paystack" button for **Request activation**:
+
+1. New signup → subscription `pending` → superuser approves in admin (no payment).
+2. Lapsed tenant → billing → `Request activation` (`/saas/request-activation/`)
+   flips the sub back to `pending` → superuser approves/activates.
+
+Approval is the existing `SubscriptionAdmin` actions (superuser-only):
+`Approve → start trial`, `Approve → activate (skip trial)`, `Reject`. No
+outbound calls anywhere in this path. Set `PAYSTACK_SECRET_KEY` to switch the
+button back to live Paystack checkout automatically.
+
+`/saas/request-activation/` is in the middleware's lapsed-allowed list so a
+lapsed tenant can reach it without being bounced to billing.
+
 ## Config
 
 Set `PAYSTACK_SECRET_KEY` in `.env` for webhook verification AND checkout init.
-Point Paystack webhooks at `https://<base>/saas/webhook/paystack/`.
+Point Paystack webhooks at `https://<base>/saas/webhook/paystack/`. Leave it
+unset to use the manual activation fallback above.
 
 ## Not built yet (add when needed)
 
