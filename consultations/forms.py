@@ -58,7 +58,7 @@ class WaitingListForm(forms.ModelForm):
         self.fields['service_point'].empty_label = "Select Service Point (Optional)"
         self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
         self.fields['consulting_room'].queryset = ConsultingRoom.objects.filter(is_active=True).order_by('room_number')
-        self.fields['doctor'].queryset = CustomUser.objects.filter(is_active=True, profile__role='doctor').order_by('first_name', 'last_name')
+        self.fields['doctor'].queryset = CustomUser.tenant_objects.filter(is_active=True, profile__role='doctor').order_by('first_name', 'last_name')
         self.fields['appointment'].queryset = Appointment.objects.filter(
             status__in=['scheduled', 'confirmed']
         ).order_by('appointment_date', 'appointment_time')
@@ -124,7 +124,7 @@ class ReferralForm(forms.ModelForm):
         from django.db.models import Q
 
         # Try different role systems
-        doctors_queryset = CustomUser.objects.filter(
+        doctors_queryset = CustomUser.tenant_objects.filter(
             Q(is_active=True) & (
                 Q(roles__name__iexact='doctor') |  # Many-to-many roles
                 Q(profile__role__iexact='doctor') |  # Profile role
@@ -135,7 +135,7 @@ class ReferralForm(forms.ModelForm):
 
         # If no doctors found with role filtering, fall back to all active users
         if not doctors_queryset.exists():
-            doctors_queryset = CustomUser.objects.filter(is_active=True).order_by('first_name', 'last_name')
+            doctors_queryset = CustomUser.tenant_objects.filter(is_active=True).order_by('first_name', 'last_name')
 
         self.fields['referred_to_doctor'].queryset = doctors_queryset
 
@@ -368,7 +368,7 @@ class ConsultationForm(forms.ModelForm):
         self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
         
         # Build doctor queryset - include current user even if not in standard doctor filter
-        base_qs = CustomUser.objects.filter(is_active=True)
+        base_qs = CustomUser.tenant_objects.filter(is_active=True)
         doctor_qs = base_qs.filter(
             Q(profile__role='doctor') |
             Q(profile__specialization__isnull=False)

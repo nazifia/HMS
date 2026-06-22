@@ -1694,7 +1694,7 @@ def theatre_statistics_report(request):
     # Get filter options
     surgery_types = SurgeryType.objects.all().order_by("name")
     theatres = OperationTheatre.objects.filter(is_available=True).order_by("name")
-    surgeons = CustomUser.objects.filter(
+    surgeons = CustomUser.tenant_objects.filter(
         profile__specialization__icontains="surgeon"
     ).order_by("first_name", "last_name")
 

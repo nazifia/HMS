@@ -304,8 +304,8 @@ def system_overview(request):
 
     # HR App (Human Resources)
     context['hr_departments'] = HRDepartment.objects.count()
-    context['total_employees'] = CustomUser.objects.filter(is_staff=True).count()
-    context['active_employees'] = CustomUser.objects.filter(is_staff=True, is_active=True).count()
+    context['total_employees'] = CustomUser.tenant_objects.filter(is_staff=True).count()
+    context['active_employees'] = CustomUser.tenant_objects.filter(is_staff=True, is_active=True).count()
 
     # Inpatient App
     context['total_wards'] = Ward.objects.count()

@@ -31,7 +31,7 @@ class WardForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         from django.db.models import Q
         # Only physicians may admit/accept patients into a ward.
-        physicians = User.objects.filter(
+        physicians = User.tenant_objects.filter(
             Q(profile__role='doctor') | Q(profile__specialization__isnull=False),
             is_active=True
         ).distinct().order_by('first_name', 'last_name')
@@ -116,7 +116,7 @@ class AdmissionForm(forms.ModelForm):
         
         # Filter doctors by role or specialization
         from django.db.models import Q
-        self.fields['attending_doctor'].queryset = User.objects.filter(
+        self.fields['attending_doctor'].queryset = User.tenant_objects.filter(
             Q(profile__role='doctor') | Q(profile__specialization__isnull=False),
             is_active=True
         ).distinct()
@@ -222,7 +222,7 @@ class DailyRoundForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from django.db.models import Q
-        self.fields['doctor'].queryset = User.objects.filter(
+        self.fields['doctor'].queryset = User.tenant_objects.filter(
             Q(profile__role='doctor') | Q(profile__specialization__isnull=False),
             is_active=True
         ).distinct()
@@ -248,7 +248,7 @@ class NursingNoteForm(forms.ModelForm):
         # Filter nurses (users with nurse role)
         try:
             nursing_department = Department.objects.get(name='Nursing')
-            self.fields['nurse'].queryset = User.objects.filter(profile__department=nursing_department)
+            self.fields['nurse'].queryset = User.tenant_objects.filter(profile__department=nursing_department)
         except Department.DoesNotExist:
             self.fields['nurse'].queryset = User.objects.none()
             print("Warning: 'Nursing' department not found. No nurses will be available.")
@@ -280,7 +280,7 @@ class AdmissionSearchForm(forms.Form):
     
     doctor = forms.ModelChoiceField(
         required=False,
-        queryset=User.objects.filter(profile__specialization__isnull=False),
+        queryset=User.tenant_objects.filter(profile__specialization__isnull=False),
         widget=forms.Select(attrs={'class': 'form-select select2'})
     )
     

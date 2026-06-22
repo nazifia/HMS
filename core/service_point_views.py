@@ -30,7 +30,7 @@ class ServicePointForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['staff'].queryset = CustomUser.objects.filter(is_active=True).order_by('username')
+        self.fields['staff'].queryset = CustomUser.tenant_objects.filter(is_active=True).order_by('username')
         self.fields['staff'].required = False
 
 

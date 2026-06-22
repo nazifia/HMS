@@ -60,6 +60,8 @@ class ActivityFilterForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
+        # Scope user picker to the current hospital (per-request).
+        self.fields['user'].queryset = User.tenant_objects.filter(is_active=True).order_by('username')
         # Set initial values to empty to show placeholder
         self.fields['user'].empty_label = 'All Users'
         self.fields['action_type'].empty_label = 'All Actions'
@@ -103,6 +105,7 @@ class AlertFilterForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
+        self.fields['user'].queryset = User.tenant_objects.filter(is_active=True).order_by('username')
         self.fields['user'].empty_label = 'All Users'
         self.fields['alert_type'].empty_label = 'All Alert Types'
         self.fields['severity'].empty_label = 'All Severities'
@@ -131,6 +134,7 @@ class SessionFilterForm(forms.Form):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['user'].queryset = User.tenant_objects.filter(is_active=True).order_by('username')
         self.fields['user'].empty_label = 'All Users'
 
 
@@ -206,6 +210,11 @@ class ActivityReportForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Scope user multi-select to the current hospital (per-request).
+        self.fields['users'].queryset = User.tenant_objects.filter(is_active=True).order_by('username')
+
     def clean(self):
         cleaned_data = super().clean()
         time_range = cleaned_data.get('time_range')

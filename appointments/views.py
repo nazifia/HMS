@@ -150,7 +150,7 @@ def create_appointment(request):
         form.fields['patient'].queryset = Patient.objects.all()
 
     # Get all doctors for the template
-    doctors = CustomUser.objects.filter(
+    doctors = CustomUser.tenant_objects.filter(
         is_active=True,
         profile__role='doctor',
         profile__specialization__isnull=False
@@ -252,7 +252,7 @@ def appointment_calendar(request):
     year = int(request.GET.get('year', timezone.now().year))
 
     # Get all doctors
-    doctors = CustomUser.objects.filter(is_active=True, profile__role='doctor')
+    doctors = CustomUser.tenant_objects.filter(is_active=True, profile__role='doctor')
     selected_doctor_id = request.GET.get('doctor')
 
     # Filter appointments by doctor if selected
@@ -429,7 +429,7 @@ def manage_doctor_schedule(request, doctor_id=None):
             form = DoctorScheduleForm(initial=initial_data)
 
     # Get all doctors for the dropdown
-    doctors = CustomUser.objects.filter(is_active=True, profile__role='doctor').order_by('last_name')
+    doctors = CustomUser.tenant_objects.filter(is_active=True, profile__role='doctor').order_by('last_name')
 
     context = {
         'form': form,

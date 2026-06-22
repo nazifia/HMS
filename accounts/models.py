@@ -11,7 +11,7 @@ from django.contrib.auth.base_user import BaseUserManager  # explicit import for
 from django.urls import reverse  # For redirects
 from django.http import HttpResponseForbidden, HttpResponse  # For error responses
 
-from saas.models import TenantModel
+from saas.models import TenantModel, TenantManager
 
 
 class Role(models.Model):
@@ -172,6 +172,12 @@ class CustomUser(AbstractUser):
     ]  # Fields prompted for when creating a superuser, besides password and USERNAME_FIELD.
 
     objects = CustomUserManager()
+    # Tenant-scoped manager for user *selection* (dropdowns, staff lists). Filters
+    # to the current request's hospital; returns all rows when no tenant is active
+    # (shell, mgmt commands, base-domain superuser). NEVER used for auth — login
+    # lookups must run unscoped, so the auth backends keep using `objects`.
+    # Platform users (hospital=None) are excluded from a tenant's pickers by design.
+    tenant_objects = TenantManager()
 
     roles = models.ManyToManyField(
         Role,

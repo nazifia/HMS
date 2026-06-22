@@ -229,7 +229,13 @@
       "PowerShell($env:DJANGO_SETTINGS_MODULE=\"hms.settings\"; python -c \"import django; django.setup\\(\\); from saas.models import Plan; [print\\(p.name, p.annual_savings_pct\\) for p in Plan.all_objects.filter\\(interval='yearly'\\)]\")",
       "PowerShell($env:DJANGO_SETTINGS_MODULE=\"hms.settings\"; python -c \"import django; django.setup\\(\\); from saas.models import Plan; [print\\(p.name, p.annual_savings_pct\\) for p in Plan.objects.filter\\(interval='yearly'\\)]\")",
       "PowerShell($env:DJANGO_SETTINGS_MODULE=\"hms.settings\"; python -c \"import django; django.setup\\(\\); from decimal import Decimal; from saas.models import Plan; Plan.objects.filter\\(name='Clinic Annual'\\).update\\(price=Decimal\\('240000'\\)\\); Plan.objects.filter\\(name='Hospital Annual'\\).update\\(price=Decimal\\('720000'\\)\\); [print\\(p.name, p.price, p.annual_savings_pct\\) for p in Plan.objects.filter\\(interval='yearly'\\)]\")",
-      "Bash(grep -iE '\\\\.\\(pyc|log|tmp|bak\\)$|backup|~$')"
+      "Bash(grep -iE '\\\\.\\(pyc|log|tmp|bak\\)$|backup|~$')",
+      "PowerShell(python manage.py check 2>&1 | Select-Object -Last 15; python manage.py test saas 2>&1 | Select-Object -Last 20)",
+      "PowerShell($env:DJANGO_SETTINGS_MODULE=\"hms.settings\"; python -c \"import django; django.setup\\(\\); from django.core.management import call_command; call_command\\('check'\\)\")",
+      "PowerShell(python -c \"import django,sys; django.setup\\(\\); from django.test.utils import get_runner; from django.conf import settings; r=get_runner\\(settings\\)\\(verbosity=1\\); sys.exit\\(bool\\(r.run_tests\\(['saas']\\)\\)\\)\" 2>$null; if \\($?\\) { 'TESTS PASS' } else { 'TESTS FAIL' })",
+      "PowerShell(python -c \"import django,sys; django.setup\\(\\); from django.test.utils import get_runner; from django.conf import settings; f=open\\(r'C:\\\\tmp\\\\t.txt','w'\\); sys.stderr=f; r=get_runner\\(settings\\)\\(verbosity=2\\); n=r.run_tests\\(['saas']\\); f.close\\(\\); open\\(r'C:\\\\tmp\\\\n.txt','w'\\).write\\(str\\(n\\)\\)\"; Get-Content C:\\\\tmp\\\\t.txt -Tail 25)",
+      "PowerShell($env:DJANGO_SETTINGS_MODULE=\"hms.settings\"; python -c \"import django,sys; django.setup\\(\\); from django.test.utils import get_runner; from django.conf import settings; f=open\\(r'C:\\\\tmp\\\\t.txt','w'\\); sys.stderr=f; r=get_runner\\(settings\\)\\(verbosity=2\\); n=r.run_tests\\(['saas']\\); f.close\\(\\)\"; Get-Content C:\\\\tmp\\\\t.txt -Tail 25)",
+      "PowerShell($env:DJANGO_SETTINGS_MODULE=\"hms.settings\"; python -c \"import django; django.setup\\(\\); from django.core.management import call_command; call_command\\('check'\\)\"; python -c \"import django,sys; django.setup\\(\\); from django.test.utils import get_runner; from django.conf import settings; f=open\\(r'C:\\\\tmp\\\\t2.txt','w'\\); sys.stderr=f; r=get_runner\\(settings\\)\\(verbosity=2\\); r.run_tests\\(['saas']\\); f.close\\(\\)\")"
     ]
   }
 }

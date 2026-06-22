@@ -134,7 +134,7 @@ class UserPermissionAssignmentForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Only show active permissions
         self.fields['permission'].queryset = HMSPermission.objects.filter(is_active=True).order_by('display_name')
-        self.fields['user'].queryset = CustomUser.objects.all().order_by('username')
+        self.fields['user'].queryset = CustomUser.tenant_objects.all().order_by('username')
     
     def clean(self):
         cleaned_data = super().clean()

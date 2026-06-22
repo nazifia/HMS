@@ -70,6 +70,11 @@ class ActivityFilterForm(forms.Form):
         })
     )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Scope user picker to the current hospital (per-request).
+        self.fields['user'].queryset = User.tenant_objects.filter(is_active=True).order_by('username')
+
 class AlertFilterForm(forms.Form):
     """Form for filtering activity alerts"""
     
@@ -103,6 +108,11 @@ class AlertFilterForm(forms.Form):
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Scope user picker to the current hospital (per-request).
+        self.fields['user'].queryset = User.tenant_objects.filter(is_active=True).order_by('username')
 
 
 @login_required

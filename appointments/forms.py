@@ -93,7 +93,11 @@ class AppointmentForm(forms.ModelForm):
             # Keep patient field visible but pre-selected for user convenience
         # Ensure all patients are available for selection
         self.fields['patient'].queryset = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
-        
+        # Scope doctor picker to the current hospital (per-request, not import-time).
+        self.fields['doctor'].queryset = User.tenant_objects.filter(
+            is_active=True, profile__specialization__isnull=False
+        )
+
         # If editing an existing record, populate the search field
         if self.instance and self.instance.pk and self.instance.patient:
             patient = self.instance.patient
@@ -309,6 +313,13 @@ class AppointmentSearchForm(forms.Form):
     )
     date_from = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
     date_to = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Scope doctor filter to the current hospital (per-request).
+        self.fields['doctor'].queryset = User.tenant_objects.filter(
+            is_active=True, profile__specialization__isnull=False
+        )
 
 
 class AppointmentsPatientSearchForm(PatientSearchForm):

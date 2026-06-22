@@ -77,7 +77,7 @@ class DentalRecordForm(forms.ModelForm):
         from django.contrib.auth import get_user_model
         User = get_user_model()
         dentist_field: forms.ModelChoiceField = self.fields['dentist']  # type: ignore
-        dentist_field.queryset = User.objects.filter(
+        dentist_field.queryset = User.tenant_objects.filter(
             profile__specialization__icontains='dentist'
         ).order_by('first_name', 'last_name')
         dentist_field.empty_label = "Select a dentist..."

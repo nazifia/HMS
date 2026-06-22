@@ -1024,7 +1024,7 @@ def referral_tracking(request):
     referrals = paginator.get_page(page_number)
 
     # Get doctors for filter dropdown
-    doctors = CustomUser.objects.filter(
+    doctors = CustomUser.tenant_objects.filter(
         is_active=True,
         profile__specialization__isnull=False
     ).order_by('first_name', 'last_name')
@@ -1632,7 +1632,7 @@ def waiting_list(request):
         )
 
     # Get all doctors and consulting rooms for filters
-    doctors = CustomUser.objects.filter(is_active=True, profile__role='doctor')
+    doctors = CustomUser.tenant_objects.filter(is_active=True, profile__role='doctor')
     consulting_rooms = ConsultingRoom.objects.filter(is_active=True)
 
     context = {

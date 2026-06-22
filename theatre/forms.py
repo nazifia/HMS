@@ -210,7 +210,7 @@ class SurgeryForm(forms.ModelForm):
                 selected_surgeon_id = self.instance.primary_surgeon_id
 
             # Build base queryset - include ALL active users, not just filtered
-            base_qs = CustomUser.objects.filter(is_active=True)
+            base_qs = CustomUser.tenant_objects.filter(is_active=True)
             surgeon_qs = base_qs.filter(
                 models.Q(profile__specialization__icontains="surgeon")
                 | models.Q(profile__specialization__icontains="doctor")
@@ -260,7 +260,7 @@ class SurgeryForm(forms.ModelForm):
                 selected_anesthetist_id = self.instance.anesthetist_id
 
             # Build base queryset - include ALL active users, not just filtered
-            base_qs = CustomUser.objects.filter(is_active=True)
+            base_qs = CustomUser.tenant_objects.filter(is_active=True)
             anesthetist_qs = base_qs.filter(
                 models.Q(profile__specialization__icontains="anesthetist")
                 | models.Q(profile__specialization__icontains="anesthesia")
@@ -420,7 +420,7 @@ class SurgicalTeamForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if "staff" in self.fields:
-            base_qs = CustomUser.objects.filter(is_active=True).order_by(
+            base_qs = CustomUser.tenant_objects.filter(is_active=True).order_by(
                 "first_name", "last_name"
             )
             # Resolve selected staff ID from POST data or existing instance
@@ -478,6 +478,10 @@ class SurgicalTeamMultipleForm(forms.Form):
     def __init__(self, *args, **kwargs):
         surgery_id = kwargs.pop("surgery_id", None)
         super().__init__(*args, **kwargs)
+        # Scope staff picker to the current hospital (per-request).
+        self.fields["staff"].queryset = CustomUser.tenant_objects.filter(
+            is_active=True
+        ).order_by("first_name", "last_name")
         if surgery_id:
             self.fields["surgery"].initial = surgery_id
             self.fields["surgery"].queryset = Surgery.objects.filter(pk=surgery_id)
@@ -653,6 +657,15 @@ class SurgeryFilterForm(forms.Form):
         queryset=SurgeryType.objects.all(), required=False, label="Surgery Type"
     )
     patient_name = forms.CharField(required=False, label="Patient Name")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Scope surgeon filter to the current hospital (per-request).
+        self.fields["surgeon"].queryset = CustomUser.tenant_objects.filter(
+            models.Q(profile__role="doctor")
+            | models.Q(profile__specialization__icontains="surgeon")
+            | models.Q(profile__specialization__icontains="doctor")
+        ).distinct().order_by("first_name", "last_name")
 
 
 class EquipmentMaintenanceLogForm(forms.ModelForm):

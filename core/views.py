@@ -294,7 +294,7 @@ def request_nhia_authorization_form(request, model_type, object_id):
         # Send authorization request
         from django.db.models import Q
 
-        desk_office_users = CustomUser.objects.filter(
+        desk_office_users = CustomUser.tenant_objects.filter(
             Q(is_superuser=True)
             | Q(is_staff=True)
             | Q(profile__role="admin")
@@ -390,7 +390,7 @@ def request_nhia_authorization(request):
             )
 
         # Get all admin users and superusers (desk office staff)
-        desk_office_users = CustomUser.objects.filter(
+        desk_office_users = CustomUser.tenant_objects.filter(
             Q(is_superuser=True)
             | Q(is_staff=True)
             | Q(profile__role="admin")
