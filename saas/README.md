@@ -9,16 +9,26 @@ tenant-owned row carries a `hospital` FK and is auto-filtered per request.
 |------|------|
 | `models.py` | `Hospital`, `Plan`, `Subscription`; `TenantModel` mixin, `TenantManager`, `enforce_limit()` |
 | `current.py` | thread-local current hospital |
-| `middleware.py` | subdomain → hospital, sets current, gates lapsed subs to `/saas/billing` |
+| `middleware.py` | `/t/<sub>/` path → hospital, sets current, gates lapsed subs to `/saas/billing` |
 | `views.py` | `signup`, `billing`, Paystack `webhook` (HMAC-verified) |
 
 ## Routing
 
-`hospitalname.yourapp.com` → tenant `hospitalname`. Base/`www`/`app` domains
-have no tenant (marketing + `/saas/signup/`). Needs wildcard DNS in prod and
-`*.yourdomain` in `ALLOWED_HOSTS`. Local: edit hosts file or use
-`h1.localhost:8000` (note: 2-part hosts resolve to no tenant — use a real
-3-part host like `h1.lvh.me`).
+**Path-based**: `yourapp.com/t/<sub>/...` → tenant `<sub>`. Bare host (no `/t/`
+prefix) has no tenant — that's marketing + `/saas/signup/` + the app shell.
+
+The middleware strips `/t/<sub>` from `request.path_info` before URL resolving,
+then pushes it onto Django's script prefix, so `reverse()` and `{% url %}` keep
+emitting tenant-scoped links (`/t/<sub>/...`) with zero changes to `urls.py`.
+
+One host, one cert — works on free PythonAnywhere and any plain host. No
+wildcard DNS, no `*.yourdomain` in `ALLOWED_HOSTS`, no hosts-file edits locally.
+
+**Why not subdomains** (`sub.yourapp.com`): PythonAnywhere serves no valid TLS
+cert for nested subdomains (`sub.user.pythonanywhere.com`), and HSTS
+`includeSubdomains` hard-blocks the certless host. Subdomain tenancy needs a
+custom domain with wildcard TLS — switch back only then (and re-enable
+`SECURE_HSTS_INCLUDE_SUBDOMAINS`).
 
 ## Making a model tenant-scoped (rollout pattern)
 
@@ -62,7 +72,7 @@ Point Paystack webhooks at `https://<base>/saas/webhook/paystack/`.
 ## Not built yet (add when needed)
 
 - Per-tenant unique constraints (e.g. `patient_id` is still globally unique).
-- Tenant-aware login routing (which subdomain a user lands on).
+- Tenant-aware login routing (which `/t/<sub>/` a user lands on; session cookie is shared across all tenants on one host).
 - Recurring Paystack subscriptions (checkout does a one-off charge; webhook also
   handles `subscription.*` events if you create plans with `paystack_plan_code`).
 - Async/ASGI support (swap `current.py` thread-local for `contextvars`).
