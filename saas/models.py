@@ -19,12 +19,37 @@ class Plan(models.Model):
     # 0 = unlimited
     max_users = models.PositiveIntegerField(default=0)
     max_patients = models.PositiveIntegerField(default=0)
-    trial_days = models.PositiveIntegerField(default=14)
+    trial_days = models.PositiveIntegerField(default=60)
     paystack_plan_code = models.CharField(max_length=100, blank=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.name} (₦{self.price}/{self.interval})"
+
+    @property
+    def annual_savings_pct(self):
+        """% saved vs paying the matching monthly plan for 12 months.
+
+        Matches a monthly plan by identical caps. None for non-yearly plans
+        or when no monthly counterpart / it isn't actually cheaper.
+        """
+        if self.interval != "yearly" or not self.price:
+            return None
+        monthly = (
+            Plan.objects.filter(
+                interval="monthly",
+                max_users=self.max_users,
+                max_patients=self.max_patients,
+            )
+            .exclude(price=0)
+            .first()
+        )
+        if not monthly:
+            return None
+        full = monthly.price * 12
+        if self.price >= full:
+            return None
+        return int(round((1 - self.price / full) * 100))
 
 
 class Hospital(models.Model):

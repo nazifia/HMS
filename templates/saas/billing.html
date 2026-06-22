@@ -30,7 +30,7 @@
         {% if subscription %}
         <hr>
         <div class="row">
-          <div class="col-sm-6"><div class="text-muted small">Plan</div>{{ subscription.plan.name }} — ₦{{ subscription.plan.price }}/{{ subscription.plan.interval }}</div>
+          <div class="col-sm-6"><div class="text-muted small">Plan</div>{{ subscription.plan.name }} — ₦{{ subscription.plan.price }}/{{ subscription.plan.interval }}{% if subscription.plan.annual_savings_pct %} <span class="badge bg-success">Save {{ subscription.plan.annual_savings_pct }}%</span>{% endif %}</div>
           <div class="col-sm-6"><div class="text-muted small">Renews / expires</div>{{ subscription.current_period_end|date:"d M Y, H:i" }}</div>
         </div>
         {% if not subscription.is_current %}
