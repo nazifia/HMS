@@ -53,12 +53,25 @@
     </div>
 
     {% if subscription and subscription.status != 'pending' and subscription.status != 'rejected' %}
-    <form method="post" action="{% url 'saas:checkout' %}">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-primary btn-lg w-100">
-        Pay ₦{{ subscription.plan.price }} with Paystack
-      </button>
-    </form>
+      {% if paystack_enabled %}
+      <form method="post" action="{% url 'saas:checkout' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary btn-lg w-100">
+          Pay ₦{{ subscription.plan.price }} with Paystack
+        </button>
+      </form>
+      {% else %}
+      {# Online payment unavailable (e.g. free-tier outbound block) → manual activation. #}
+      <form method="post" action="{% url 'saas:request_activation' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary btn-lg w-100">
+          Request activation
+        </button>
+        <p class="small text-muted text-center mt-2 mb-0">
+          Online payment is currently unavailable. Submit a request and our team will activate your account.
+        </p>
+      </form>
+      {% endif %}
     {% endif %}
   {% endif %}
 </div>

@@ -2,7 +2,7 @@
 from datetime import date, timedelta
 
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.utils import timezone
 
 from patients.models import Patient
@@ -45,3 +45,24 @@ class TenantEngineTests(TestCase):
         _make_patient()
         with self.assertRaises(ValidationError):       # 1 used, cap 1 -> blocked
             enforce_limit(self.h1, Patient, "max_patients")
+
+
+class ManualActivationTests(TestCase):
+    """Free-tier fallback: lapsed tenant requests activation -> back to pending."""
+
+    def setUp(self):
+        self.h = Hospital.objects.create(name="H", subdomain="h")
+        self.plan = Plan.objects.create(name="P", price=0)
+        self.sub = Subscription.objects.create(
+            hospital=self.h, plan=self.plan, status="active",
+            current_period_end=timezone.now() - timedelta(days=1),  # lapsed
+        )
+        self.addCleanup(clear_current_hospital)
+
+    def test_lapsed_request_routes_to_pending(self):
+        # Path-based tenant URL; lapsed sub must still reach the activation view
+        # (not get bounced to billing by the gate), then flip to pending.
+        resp = Client().post("/t/h/saas/request-activation/")
+        self.assertEqual(resp.status_code, 302)
+        self.sub.refresh_from_db()
+        self.assertEqual(self.sub.status, "pending")

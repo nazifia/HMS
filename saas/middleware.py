@@ -19,7 +19,13 @@ from .models import Hospital
 _TENANT_PATH = re.compile(r"^/t/([\w-]+)(/.*)?$")
 
 # Path prefixes (post-strip) a tenant may hit even with a lapsed subscription.
-_ALLOWED_WHEN_LAPSED = ("/saas/billing", "/accounts/logout", "/static", "/media")
+_ALLOWED_WHEN_LAPSED = (
+    "/saas/billing",
+    "/saas/request-activation",
+    "/accounts/logout",
+    "/static",
+    "/media",
+)
 
 # Paths an unregistered tenant may hit (so signup itself doesn't loop).
 _ALLOWED_WHEN_UNREGISTERED = ("/saas/signup", "/static", "/media")

@@ -83,8 +83,38 @@ def billing(request):
     return render(
         request,
         "saas/billing.html",
-        {"hospital": hospital, "subscription": sub, "plans": Plan.objects.filter(is_active=True)},
+        {
+            "hospital": hospital,
+            "subscription": sub,
+            "plans": Plan.objects.filter(is_active=True),
+            # No Paystack key (e.g. PythonAnywhere free tier blocks outbound to
+            # api.paystack.co) → fall back to manual superuser activation.
+            "paystack_enabled": bool(getattr(settings, "PAYSTACK_SECRET_KEY", "")),
+        },
     )
+
+
+@require_POST
+def request_activation(request):
+    """Free-tier fallback: tenant asks a platform superuser to activate/renew.
+
+    Puts a lapsed (or never-approved) subscription back into 'pending' so it
+    surfaces in the admin approval queue. Superuser then approves/activates via
+    the existing SubscriptionAdmin actions. No Paystack call.
+    """
+    hospital = getattr(request, "hospital", None)
+    sub = getattr(hospital, "subscription", None) if hospital else None
+    if sub is None:
+        messages.error(request, "No subscription to activate. Contact support.")
+    elif sub.status == "pending":
+        messages.info(request, "Already awaiting approval. We'll review it shortly.")
+    elif sub.is_current():
+        messages.info(request, "Your subscription is already active.")
+    else:
+        sub.status = "pending"
+        sub.save(update_fields=["status"])
+        messages.success(request, "Request sent. Our team will review and activate your account.")
+    return redirect(reverse("saas:billing"))
 
 
 @require_POST
