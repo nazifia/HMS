@@ -11,6 +11,9 @@ RESERVED_SUBDOMAINS = {"www", "app", "admin", "api", "localhost", "127", "testse
 # Path prefixes a tenant may hit even with a lapsed subscription.
 _ALLOWED_WHEN_LAPSED = ("/saas/billing", "/accounts/logout", "/static", "/media")
 
+# Paths an unregistered subdomain may hit (so signup itself doesn't loop).
+_ALLOWED_WHEN_UNREGISTERED = ("/saas/signup", "/static", "/media")
+
 
 class TenantMiddleware:
     def __init__(self, get_response):
@@ -34,11 +37,19 @@ class TenantMiddleware:
         sub = parts[0].lower()
         if sub in RESERVED_SUBDOMAINS:
             return None
+        # Tenant-shaped host: a non-reserved subdomain. If no hospital exists for
+        # it, it's an unregistered tenant — send them to signup, not login.
+        request.is_tenant_host = True
         return Hospital.objects.filter(subdomain=sub, is_active=True).first()
 
     def _gate(self, request):
         hospital = request.hospital
         if hospital is None:
+            # Unregistered tenant subdomain → registration page first.
+            if getattr(request, "is_tenant_host", False) and not request.path.startswith(
+                _ALLOWED_WHEN_UNREGISTERED
+            ):
+                return redirect(reverse("saas:signup"))
             return None
         if request.path.startswith(_ALLOWED_WHEN_LAPSED):
             return None

@@ -224,7 +224,12 @@
       "Bash(rtk grep *)",
       "Bash(./venv/Scripts/python.exe manage.py migrate saas)",
       "Bash(./venv/Scripts/python.exe manage.py check)",
-      "Bash(DJANGO_SETTINGS_MODULE=hms.settings ./venv/Scripts/python.exe -c \"import django; django.setup\\(\\); from django.core.management import call_command; call_command\\('migrate','saas'\\); print\\('---CHECK---'\\); call_command\\('check'\\)\")"
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings ./venv/Scripts/python.exe -c \"import django; django.setup\\(\\); from django.core.management import call_command; call_command\\('migrate','saas'\\); print\\('---CHECK---'\\); call_command\\('check'\\)\")",
+      "PowerShell($env:DJANGO_SETTINGS_MODULE=\"hms.settings\"; python -c \"import django; django.setup\\(\\); from django.core.management import call_command; call_command\\('makemigrations','saas'\\); call_command\\('migrate','saas'\\)\")",
+      "PowerShell($env:DJANGO_SETTINGS_MODULE=\"hms.settings\"; python -c \"import django; django.setup\\(\\); from saas.models import Plan; [print\\(p.name, p.annual_savings_pct\\) for p in Plan.all_objects.filter\\(interval='yearly'\\)]\")",
+      "PowerShell($env:DJANGO_SETTINGS_MODULE=\"hms.settings\"; python -c \"import django; django.setup\\(\\); from saas.models import Plan; [print\\(p.name, p.annual_savings_pct\\) for p in Plan.objects.filter\\(interval='yearly'\\)]\")",
+      "PowerShell($env:DJANGO_SETTINGS_MODULE=\"hms.settings\"; python -c \"import django; django.setup\\(\\); from decimal import Decimal; from saas.models import Plan; Plan.objects.filter\\(name='Clinic Annual'\\).update\\(price=Decimal\\('240000'\\)\\); Plan.objects.filter\\(name='Hospital Annual'\\).update\\(price=Decimal\\('720000'\\)\\); [print\\(p.name, p.price, p.annual_savings_pct\\) for p in Plan.objects.filter\\(interval='yearly'\\)]\")",
+      "Bash(grep -iE '\\\\.\\(pyc|log|tmp|bak\\)$|backup|~$')"
     ]
   }
 }
