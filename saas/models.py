@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -26,12 +27,13 @@ class Plan(models.Model):
     def __str__(self):
         return f"{self.name} (₦{self.price}/{self.interval})"
 
-    @property
-    def annual_savings_pct(self):
-        """% saved vs paying the matching monthly plan for 12 months.
+    ANNUAL_DISCOUNT = Decimal("0.20")  # 20% off 12 months of the matching monthly
 
-        Matches a monthly plan by identical caps. None for non-yearly plans
-        or when no monthly counterpart / it isn't actually cheaper.
+    def _full_year_cost(self):
+        """12× the matching monthly plan (same caps), or None if N/A.
+
+        Returns None for non-yearly plans, free plans, no monthly counterpart,
+        or when this plan isn't actually cheaper than paying monthly.
         """
         if self.interval != "yearly" or not self.price:
             return None
@@ -47,9 +49,19 @@ class Plan(models.Model):
         if not monthly:
             return None
         full = monthly.price * 12
-        if self.price >= full:
-            return None
-        return int(round((1 - self.price / full) * 100))
+        return full if self.price < full else None
+
+    @property
+    def annual_savings(self):
+        """Naira saved vs paying the matching monthly plan for 12 months."""
+        full = self._full_year_cost()
+        return None if full is None else full - self.price
+
+    @property
+    def annual_savings_pct(self):
+        """% saved vs paying the matching monthly plan for 12 months."""
+        full = self._full_year_cost()
+        return None if full is None else int(round((1 - self.price / full) * 100))
 
 
 class Hospital(models.Model):
@@ -78,17 +90,28 @@ class Hospital(models.Model):
 
 class Subscription(models.Model):
     STATUS_CHOICES = (
+        ("pending", "Pending Approval"),
         ("trialing", "Trialing"),
         ("active", "Active"),
         ("past_due", "Past Due"),
         ("canceled", "Canceled"),
+        ("rejected", "Rejected"),
     )
 
     hospital = models.OneToOneField(
         Hospital, on_delete=models.CASCADE, related_name="subscription"
     )
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name="subscriptions")
-    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="trialing")
+    # New signups land in 'pending' until a platform superuser approves.
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="pending")
+    approved_at = models.DateTimeField(null=True, blank=True)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_subscriptions",
+    )
     current_period_end = models.DateTimeField()
     paystack_subscription_code = models.CharField(max_length=100, blank=True)
     paystack_customer_code = models.CharField(max_length=100, blank=True)
@@ -101,6 +124,25 @@ class Subscription(models.Model):
             self.status in ("trialing", "active")
             and self.current_period_end >= timezone.now()
         )
+
+    def approve(self, by=None, activate=False):
+        """Superuser approval: release from 'pending' into a trial (or active).
+
+        activate=True skips the trial and marks the sub active for one period.
+        """
+        self.status = "active" if activate else "trialing"
+        days = 30 if activate else self.plan.trial_days
+        self.current_period_end = timezone.now() + timedelta(days=days)
+        self.approved_at = timezone.now()
+        self.approved_by = by
+        self.save(
+            update_fields=["status", "current_period_end", "approved_at", "approved_by"]
+        )
+
+    def reject(self, by=None):
+        self.status = "rejected"
+        self.approved_by = by
+        self.save(update_fields=["status", "approved_by"])
 
 
 # --- Tenant scoping engine -------------------------------------------------

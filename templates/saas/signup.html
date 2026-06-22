@@ -50,7 +50,7 @@
               <span class="form-check-label fw-bold">{{ plan.name }}</span>
             </div>
             {% if plan.annual_savings_pct %}
-            <span class="badge bg-success mt-2">Save {{ plan.annual_savings_pct }}%</span>
+            <span class="badge bg-success mt-2">Save {{ plan.annual_savings_pct }}% — ₦{{ plan.annual_savings|floatformat:0 }}/yr</span>
             {% endif %}
             <div class="h4 mt-2 mb-0">₦{{ plan.price }}<small class="text-muted fs-6">/{{ plan.interval }}</small></div>
             <ul class="list-unstyled small text-muted mt-2 mb-0">

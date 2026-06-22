@@ -2,7 +2,6 @@ import hashlib
 import hmac
 import json
 import urllib.request
-from datetime import timedelta
 
 from django.conf import settings
 from django.contrib import messages
@@ -62,11 +61,13 @@ def signup(request):
     if profile is not None:
         profile.role = "admin"
         profile.save(update_fields=["role"])
+    # Pending until a platform superuser approves. Trial clock starts on
+    # approval (see Subscription.approve), so seed the period end at now.
     Subscription.objects.create(
         hospital=hospital,
         plan=plan,
-        status="trialing",
-        current_period_end=timezone.now() + timedelta(days=plan.trial_days),
+        status="pending",
+        current_period_end=timezone.now(),
     )
     # Each tenant gets its own department set.
     from accounts.department_seed import seed_departments_for
