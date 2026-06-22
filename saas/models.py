@@ -27,6 +27,21 @@ class Plan(models.Model):
     def __str__(self):
         return f"{self.name} (₦{self.price}/{self.interval})"
 
+    # ponytail: static blurbs keyed by base name (annual variants share the base).
+    # Add a DB `description` field if non-technical staff need to edit these.
+    _DESCRIPTIONS = {
+        "Starter": "Free. Try the system with a small team.",
+        "Solo": "For a solo doctor or small practice.",
+        "Clinic": "For a busy clinic with a full team.",
+        "Hospital": "Unlimited users and patients for a full hospital.",
+        "Enterprise": "Multi-branch hospitals with priority support.",
+    }
+
+    @property
+    def description(self):
+        base = self.name.replace(" Annual", "")
+        return self._DESCRIPTIONS.get(base, "")
+
     ANNUAL_DISCOUNT = Decimal("0.20")  # 20% off 12 months of the matching monthly
 
     def _full_year_cost(self):

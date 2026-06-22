@@ -1,73 +1,130 @@
 {% extends 'base.html' %}
 {% block title %}Start your hospital — Sign up{% endblock %}
 
+{% block extra_css %}
+<style>
+  .signup-wrap { min-height: calc(100vh - 60px); }
+  .signup-hero {
+    background: linear-gradient(160deg, #0d6efd 0%, #0a58ca 60%, #084298 100%);
+    color: #fff;
+  }
+  .signup-hero ul { list-style: none; padding: 0; }
+  .signup-hero li { display: flex; align-items: flex-start; gap: .65rem; margin-bottom: 1rem; }
+  .signup-hero li i { margin-top: .2rem; }
+  .plan-card {
+    cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s;
+    border: 2px solid #e6e8ec;
+  }
+  .plan-card:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.08); }
+  .plan-card.selected { border-color: #0d6efd; box-shadow: 0 0 0 .15rem rgba(13,110,253,.15); }
+  .plan-card input { position: absolute; opacity: 0; pointer-events: none; }
+  .field-icon { position: relative; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-5" style="max-width: 760px;">
-  <div class="text-center mb-4">
-    <h1 class="h3 fw-bold">Create your hospital workspace</h1>
-    <p class="text-muted">Start a {{ plans.0.trial_days|default:14 }}-day free trial. No card required.</p>
-  </div>
+<div class="container-fluid px-0 signup-wrap">
+  <div class="row g-0 h-100">
 
-  <form method="post" class="card shadow-sm border-0">
-    {% csrf_token %}
-    <div class="card-body p-4">
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label">Hospital name</label>
-          <input type="text" name="hospital_name" class="form-control" required>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Subdomain</label>
-          <div class="input-group">
-            <input type="text" name="subdomain" class="form-control" placeholder="myhospital">
-            <span class="input-group-text">.yourapp.com</span>
-          </div>
-          <small class="text-muted">Leave blank to auto-generate from the name.</small>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Admin username</label>
-          <input type="text" name="username" class="form-control" required>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Admin phone number</label>
-          <input type="text" name="phone_number" class="form-control" required>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Password</label>
-          <input type="password" name="password" class="form-control" required>
-        </div>
-      </div>
+    <!-- Left: marketing -->
+    <div class="col-lg-5 signup-hero d-none d-lg-flex flex-column justify-content-center p-5">
+      <h1 class="display-6 fw-bold mb-3">Run your whole hospital in one place.</h1>
+      <p class="lead opacity-75 mb-5">Patients, pharmacy, lab, billing, wards and NHIA — set up in minutes.</p>
+      <ul class="fs-5">
+        <li><i class="fas fa-check-circle"></i><span>{{ plans.0.trial_days|default:14 }}-day free trial, no card required</span></li>
+        <li><i class="fas fa-check-circle"></i><span>Your own private subdomain</span></li>
+        <li><i class="fas fa-check-circle"></i><span>Role-based access for your whole team</span></li>
+        <li><i class="fas fa-check-circle"></i><span>Built-in NHIA 10%/90% cost splitting</span></li>
+      </ul>
+    </div>
 
-      <hr class="my-4">
-      <label class="form-label fw-semibold">Choose a plan</label>
-      <div class="row g-3">
-        {% for plan in plans %}
-        <div class="col-md-4">
-          <label class="card h-100 w-100 p-3 border {% if forloop.first %}border-primary{% endif %}" style="cursor:pointer;">
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="plan_id" value="{{ plan.id }}"
-                     {% if forloop.first %}checked{% endif %} required>
-              <span class="form-check-label fw-bold">{{ plan.name }}</span>
+    <!-- Right: form -->
+    <div class="col-lg-7 d-flex flex-column justify-content-center bg-light">
+      <div class="mx-auto w-100 p-4 p-md-5" style="max-width: 640px;">
+        <div class="mb-4">
+          <h2 class="h3 fw-bold mb-1">Create your hospital workspace</h2>
+          <p class="text-muted mb-0">Start a {{ plans.0.trial_days|default:14 }}-day free trial. No card required.</p>
+        </div>
+
+        <form method="post">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Hospital name</label>
+              <input type="text" name="hospital_name" class="form-control form-control-lg" required>
             </div>
-            {% if plan.annual_savings_pct %}
-            <span class="badge bg-success mt-2">Save {{ plan.annual_savings_pct }}% — ₦{{ plan.annual_savings|floatformat:0 }}/yr</span>
-            {% endif %}
-            <div class="h4 mt-2 mb-0">₦{{ plan.price }}<small class="text-muted fs-6">/{{ plan.interval }}</small></div>
-            <ul class="list-unstyled small text-muted mt-2 mb-0">
-              <li>{% if plan.max_users %}{{ plan.max_users }} users{% else %}Unlimited users{% endif %}</li>
-              <li>{% if plan.max_patients %}{{ plan.max_patients }} patients{% else %}Unlimited patients{% endif %}</li>
-              <li>{{ plan.trial_days }}-day trial</li>
-            </ul>
-          </label>
-        </div>
-        {% empty %}
-        <p class="text-danger">No plans available. Contact support.</p>
-        {% endfor %}
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Subdomain</label>
+              <div class="input-group input-group-lg">
+                <input type="text" name="subdomain" class="form-control" placeholder="myhospital">
+                <span class="input-group-text">.yourapp.com</span>
+              </div>
+              <small class="text-muted">Leave blank to auto-generate from the name.</small>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Admin username</label>
+              <input type="text" name="username" class="form-control form-control-lg" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Admin phone number</label>
+              <input type="tel" name="phone_number" class="form-control form-control-lg" required>
+            </div>
+            <div class="col-md-12">
+              <label class="form-label fw-semibold">Password</label>
+              <input type="password" name="password" class="form-control form-control-lg" required>
+            </div>
+          </div>
+
+          <hr class="my-4">
+          <label class="form-label fw-semibold mb-3">Choose a plan</label>
+          <div class="row g-3">
+            {% for plan in plans %}
+            <div class="col-md-4">
+              <label class="card plan-card h-100 w-100 p-3 mb-0 {% if forloop.first %}selected{% endif %}">
+                <input type="radio" name="plan_id" value="{{ plan.id }}"
+                       {% if forloop.first %}checked{% endif %} required>
+                <div class="d-flex justify-content-between align-items-start">
+                  <span class="fw-bold">{{ plan.name }}</span>
+                  <i class="fas fa-check-circle text-primary plan-tick" {% if not forloop.first %}style="visibility:hidden;"{% endif %}></i>
+                </div>
+                {% if plan.description %}<p class="text-muted small mt-1 mb-0">{{ plan.description }}</p>{% endif %}
+                {% if plan.annual_savings_pct %}
+                <span class="badge bg-success-subtle text-success-emphasis mt-2 align-self-start">Save {{ plan.annual_savings_pct }}% — ₦{{ plan.annual_savings|floatformat:0 }}/yr</span>
+                {% endif %}
+                <div class="h4 mt-2 mb-0">₦{{ plan.price }}<small class="text-muted fs-6">/{{ plan.interval }}</small></div>
+                <ul class="list-unstyled small text-muted mt-2 mb-0">
+                  <li><i class="fas fa-user me-1"></i>{% if plan.max_users %}{{ plan.max_users }} users{% else %}Unlimited users{% endif %}</li>
+                  <li><i class="fas fa-bed me-1"></i>{% if plan.max_patients %}{{ plan.max_patients }} patients{% else %}Unlimited patients{% endif %}</li>
+                  <li><i class="fas fa-clock me-1"></i>{{ plan.trial_days }}-day trial</li>
+                </ul>
+              </label>
+            </div>
+            {% empty %}
+            <p class="text-danger">No plans available. Contact support.</p>
+            {% endfor %}
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg w-100 mt-4">Create workspace</button>
+          <p class="text-center text-muted small mt-3 mb-0">
+            Already have a workspace? <a href="/accounts/login/">Sign in</a>
+          </p>
+        </form>
       </div>
     </div>
-    <div class="card-footer bg-white border-0 p-4 pt-0">
-      <button type="submit" class="btn btn-primary w-100">Create workspace</button>
-    </div>
-  </form>
+
+  </div>
 </div>
+
+<script>
+  document.querySelectorAll('.plan-card').forEach(function (card) {
+    card.querySelector('input').addEventListener('change', function () {
+      document.querySelectorAll('.plan-card').forEach(function (c) {
+        var on = c.querySelector('input').checked;
+        c.classList.toggle('selected', on);
+        var tick = c.querySelector('.plan-tick');
+        if (tick) tick.style.visibility = on ? 'visible' : 'hidden';
+      });
+    });
+  });
+</script>
 {% endblock %}
