@@ -1,17 +1,27 @@
-"""Resolve tenant from subdomain, set it for the request, gate on subscription."""
+"""Resolve tenant from a /t/<sub>/ path prefix, set it, gate on subscription.
+
+Path-based (not subdomain-based) tenancy: PythonAnywhere serves no valid TLS
+cert for nested subdomains (testhospital.nazhms.pythonanywhere.com), so every
+tenant lives under one cert, e.g. nazhms.pythonanywhere.com/t/testhospital/.
+
+ponytail: re-add the stripped prefix via Django's script-prefix so reverse()
+keeps emitting /t/<sub>/... links with zero changes to urls.py. Move to real
+subdomains only if you get wildcard TLS (custom domain + paid host).
+"""
+import re
+
 from django.shortcuts import redirect
-from django.urls import reverse
+from django.urls import get_script_prefix, reverse, set_script_prefix
 
 from .current import clear_current_hospital, set_current_hospital
 from .models import Hospital
 
-# Hosts/subdomains that are NOT tenants (marketing, signup, app shell).
-RESERVED_SUBDOMAINS = {"www", "app", "admin", "api", "localhost", "127", "testserver"}
+_TENANT_PATH = re.compile(r"^/t/([\w-]+)(/.*)?$")
 
-# Path prefixes a tenant may hit even with a lapsed subscription.
+# Path prefixes (post-strip) a tenant may hit even with a lapsed subscription.
 _ALLOWED_WHEN_LAPSED = ("/saas/billing", "/accounts/logout", "/static", "/media")
 
-# Paths an unregistered subdomain may hit (so signup itself doesn't loop).
+# Paths an unregistered tenant may hit (so signup itself doesn't loop).
 _ALLOWED_WHEN_UNREGISTERED = ("/saas/signup", "/static", "/media")
 
 
@@ -20,7 +30,10 @@ class TenantMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        request.hospital = self._resolve(request)
+        request.hospital = None
+        request.tenant_sub = None
+        request.is_tenant_host = False
+        self._resolve(request)
         set_current_hospital(request.hospital)
         try:
             gate = self._gate(request)
@@ -29,29 +42,37 @@ class TenantMiddleware:
             clear_current_hospital()
 
     def _resolve(self, request):
-        host = request.get_host().split(":")[0]
-        parts = host.split(".")
-        # Need at least sub.domain.tld (3 parts) for a tenant subdomain.
-        if len(parts) < 3:
-            return None
-        sub = parts[0].lower()
-        if sub in RESERVED_SUBDOMAINS:
-            return None
-        # Tenant-shaped host: a non-reserved subdomain. If no hospital exists for
-        # it, it's an unregistered tenant — send them to signup, not login.
+        m = _TENANT_PATH.match(request.path_info)
+        if not m:
+            return  # bare host = marketing / signup / app shell, no tenant
+        sub = m.group(1).lower()
+        request.tenant_sub = sub
         request.is_tenant_host = True
-        return Hospital.objects.filter(subdomain=sub, is_active=True).first()
+
+        # Strip /t/<sub> from the path the URL resolver sees, then push it onto
+        # the script prefix so reverse() prepends it back into generated links.
+        prefix = "/t/" + sub
+        request.path_info = m.group(2) or "/"
+        request.path = request.path_info
+        set_script_prefix(get_script_prefix().rstrip("/") + prefix + "/")
+
+        request.hospital = Hospital.objects.filter(
+            subdomain=sub, is_active=True
+        ).first()
 
     def _gate(self, request):
+        if not request.is_tenant_host:
+            return None
+        path = request.path_info  # already stripped of /t/<sub>
         hospital = request.hospital
         if hospital is None:
-            # Unregistered tenant subdomain → registration page first.
-            if getattr(request, "is_tenant_host", False) and not request.path.startswith(
-                _ALLOWED_WHEN_UNREGISTERED
-            ):
-                return redirect(reverse("saas:signup"))
+            # Unregistered tenant → global signup, which lives on the bare host
+            # (not under /t/<sub>/), so use a literal path: reverse() would wrongly
+            # prepend the active tenant prefix here.
+            if not path.startswith(_ALLOWED_WHEN_UNREGISTERED):
+                return redirect("/saas/signup/")
             return None
-        if request.path.startswith(_ALLOWED_WHEN_LAPSED):
+        if path.startswith(_ALLOWED_WHEN_LAPSED):
             return None
         sub = getattr(hospital, "subscription", None)
         if sub is None or not sub.is_current():

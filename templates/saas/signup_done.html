@@ -9,12 +9,12 @@
       <h1 class="h4 fw-bold mt-3">{{ hospital.name }} is ready</h1>
       <p class="text-muted">Your free trial has started. Log in at your workspace address:</p>
       <div class="alert alert-light border d-inline-block">
-        <code>{{ hospital.subdomain }}.{{ request.get_host }}</code>
+        <code>{{ request.scheme }}://{{ request.get_host }}/t/{{ hospital.subdomain }}/</code>
       </div>
       <p class="small text-muted">
-        In production this is <code>{{ hospital.subdomain }}.yourapp.com</code>.
-        Sign in with the admin username/phone and password you just set.
+        Bookmark this address. Sign in with the admin username/phone and password you just set.
       </p>
+      <a href="/t/{{ hospital.subdomain }}/" class="btn btn-primary mt-2">Go to your workspace</a>
     </div>
   </div>
 </div>

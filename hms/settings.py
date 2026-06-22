@@ -92,10 +92,14 @@ if DEBUG:
 else:
     # Production: Enable HSTS with 1 year duration (31536000 seconds)
     SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "31536000"))
+    # Path-based tenancy: no tenant subdomains, and PythonAnywhere serves no valid
+    # cert for nested subdomains. includeSubdomains/preload would force-HTTPS those
+    # certless hosts and hard-block them, so both default off. Only turn on with a
+    # custom domain that has wildcard TLS.
     SECURE_HSTS_INCLUDE_SUBDOMAINS = (
-        os.environ.get("SECURE_HSTS_INCLUDE_SUBDOMAINS", "True") == "True"
+        os.environ.get("SECURE_HSTS_INCLUDE_SUBDOMAINS", "False") == "True"
     )
-    SECURE_HSTS_PRELOAD = os.environ.get("SECURE_HSTS_PRELOAD", "True") == "True"
+    SECURE_HSTS_PRELOAD = os.environ.get("SECURE_HSTS_PRELOAD", "False") == "True"
 
 # Silence security warnings that are expected in development
 if DEBUG:
