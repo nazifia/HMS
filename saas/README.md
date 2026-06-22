@@ -44,16 +44,27 @@ unscoped `all_objects`, auto-stamp on save.
 hospital to legacy rows, e.g. `Thing.all_objects.filter(hospital__isnull=True).update(hospital=h)`,
 then tighten to `null=False` if desired.
 
+## Billing flow
+
+1. Signup (`/saas/signup/`) → hospital + trial subscription + admin owner.
+2. Trial lapses → middleware redirects tenant to `/saas/billing/`.
+3. `Pay with Paystack` (`/saas/checkout/`) → server-side `transaction/initialize`
+   (stdlib `urllib`, no `requests` dep) → redirect to Paystack hosted page.
+4. Paystack fires webhook → `paystack_webhook` flips subscription to `active`.
+
+Plans (`Starter`/`Clinic`/`Hospital`) are seeded by migration `0002_seed_plans`.
+
 ## Config
 
-Set `PAYSTACK_SECRET_KEY` in `.env` for webhook verification. Point Paystack
-webhooks at `https://<base>/saas/webhook/paystack/`.
+Set `PAYSTACK_SECRET_KEY` in `.env` for webhook verification AND checkout init.
+Point Paystack webhooks at `https://<base>/saas/webhook/paystack/`.
 
 ## Not built yet (add when needed)
 
 - Per-tenant unique constraints (e.g. `patient_id` is still globally unique).
 - Tenant-aware login routing (which subdomain a user lands on).
-- Paystack checkout initiation UI (only the webhook + trial signup exist).
+- Recurring Paystack subscriptions (checkout does a one-off charge; webhook also
+  handles `subscription.*` events if you create plans with `paystack_plan_code`).
 - Async/ASGI support (swap `current.py` thread-local for `contextvars`).
 - Retrofitting the other ~35 apps' models (mechanical; follow the pattern above).
 ```

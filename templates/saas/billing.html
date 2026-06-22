@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Billing & Subscription{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width: 720px;">
+  <h1 class="h4 fw-bold mb-4">Billing & Subscription</h1>
+
+  {% if messages %}
+    {% for m in messages %}
+      <div class="alert alert-{{ m.tags|default:'info' }}">{{ m }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% if not hospital %}
+    <div class="alert alert-warning">No tenant in context. Open this page from your hospital subdomain.</div>
+  {% else %}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small">Hospital</div>
+            <div class="h5 mb-0">{{ hospital.name }}</div>
+          </div>
+          {% if subscription %}
+          <span class="badge bg-{% if subscription.is_current %}success{% else %}danger{% endif %} align-self-center">
+            {{ subscription.get_status_display }}
+          </span>
+          {% endif %}
+        </div>
+        {% if subscription %}
+        <hr>
+        <div class="row">
+          <div class="col-sm-6"><div class="text-muted small">Plan</div>{{ subscription.plan.name }} — ₦{{ subscription.plan.price }}/{{ subscription.plan.interval }}</div>
+          <div class="col-sm-6"><div class="text-muted small">Renews / expires</div>{{ subscription.current_period_end|date:"d M Y, H:i" }}</div>
+        </div>
+        {% if not subscription.is_current %}
+        <div class="alert alert-danger mt-3 mb-0">
+          Your subscription has lapsed. Renew to restore access.
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="alert alert-warning mt-3 mb-0">No active subscription found.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if subscription %}
+    <form method="post" action="{% url 'saas:checkout' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary btn-lg w-100">
+        Pay ₦{{ subscription.plan.price }} with Paystack
+      </button>
+    </form>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

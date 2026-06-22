@@ -220,7 +220,11 @@
       "Bash(grep -qE \"^OK$|FAILED|^Ran \" \"C:\\\\Users\\\\Dell\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Dell-Desktop-MY-PRODUCTS-HMS\\\\3629bd1c-30e4-4dd4-9c07-977fa92b4da1\\\\tasks\\\\bsmsrv3gi.output\")",
       "Bash(grep -E \"^OK$|FAILED|^Ran |Error|^ERROR\" \"C:\\\\Users\\\\Dell\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Dell-Desktop-MY-PRODUCTS-HMS\\\\3629bd1c-30e4-4dd4-9c07-977fa92b4da1\\\\tasks\\\\bsmsrv3gi.output\")",
       "Bash(venv/Scripts/python.exe *)",
-      "Bash(DJANGO_SETTINGS_MODULE=hms.settings venv/Scripts/python.exe *)"
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings venv/Scripts/python.exe *)",
+      "Bash(rtk grep *)",
+      "Bash(./venv/Scripts/python.exe manage.py migrate saas)",
+      "Bash(./venv/Scripts/python.exe manage.py check)",
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings ./venv/Scripts/python.exe -c \"import django; django.setup\\(\\); from django.core.management import call_command; call_command\\('migrate','saas'\\); print\\('---CHECK---'\\); call_command\\('check'\\)\")"
     ]
   }
 }

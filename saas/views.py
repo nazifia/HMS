@@ -1,13 +1,16 @@
 import hashlib
 import hmac
 import json
+import urllib.request
 from datetime import timedelta
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
@@ -27,10 +30,11 @@ def signup(request):
 
     name = request.POST.get("hospital_name", "").strip()
     username = request.POST.get("username", "").strip()
+    phone_number = request.POST.get("phone_number", "").strip()
     password = request.POST.get("password", "")
     plan_id = request.POST.get("plan_id")
 
-    if not (name and username and password and plan_id):
+    if not (name and username and phone_number and password and plan_id):
         return HttpResponseBadRequest("Missing required fields.")
 
     subdomain = slugify(request.POST.get("subdomain") or name)[:63]
@@ -38,15 +42,26 @@ def signup(request):
         return HttpResponseBadRequest("Subdomain unavailable.")
     if User.objects.filter(username=username).exists():
         return HttpResponseBadRequest("Username taken.")
+    if User.objects.filter(phone_number=phone_number).exists():
+        return HttpResponseBadRequest("Phone number already registered.")
 
     plan = Plan.objects.filter(pk=plan_id, is_active=True).first()
     if not plan:
         return HttpResponseBadRequest("Invalid plan.")
 
-    owner = User.objects.create_user(username=username, password=password)
+    # Owner is the tenant admin: staff + 'admin' profile role, scoped to the
+    # hospital (NOT a superuser — superusers are platform-level/cross-tenant).
+    owner = User.objects.create_user(
+        phone_number=phone_number, username=username, password=password, is_staff=True
+    )
     hospital = Hospital.objects.create(name=name, subdomain=subdomain, owner=owner)
     owner.hospital = hospital
     owner.save(update_fields=["hospital"])
+    # Profile is auto-created by signal; mark it admin so the owner can manage.
+    profile = getattr(owner, "profile", None)
+    if profile is not None:
+        profile.role = "admin"
+        profile.save(update_fields=["role"])
     Subscription.objects.create(
         hospital=hospital,
         plan=plan,
@@ -62,7 +77,53 @@ def signup(request):
 
 def billing(request):
     """Shown when a tenant's subscription is lapsed or to manage the plan."""
-    return render(request, "saas/billing.html", {"hospital": getattr(request, "hospital", None)})
+    hospital = getattr(request, "hospital", None)
+    sub = getattr(hospital, "subscription", None) if hospital else None
+    return render(
+        request,
+        "saas/billing.html",
+        {"hospital": hospital, "subscription": sub, "plans": Plan.objects.filter(is_active=True)},
+    )
+
+
+@require_POST
+def checkout(request):
+    """Kick off a Paystack payment for the current tenant's plan.
+
+    Initializes a transaction server-side and redirects to Paystack's hosted
+    page. The webhook (paystack_webhook) flips the subscription to active once
+    payment lands. ponytail: stdlib urllib, no requests dependency.
+    """
+    hospital = getattr(request, "hospital", None)
+    sub = getattr(hospital, "subscription", None) if hospital else None
+    secret = getattr(settings, "PAYSTACK_SECRET_KEY", "")
+    if not (hospital and sub and secret):
+        messages.error(request, "Online payment is not configured. Contact support.")
+        return redirect(reverse("saas:billing"))
+
+    owner = hospital.owner
+    email = (getattr(owner, "email", "") or f"{hospital.subdomain}@example.com")
+    payload = json.dumps({
+        "email": email,
+        "amount": int(sub.plan.price * 100),  # kobo
+        "callback_url": request.build_absolute_uri(reverse("saas:billing")),
+        "metadata": {"hospital_id": hospital.id, "subdomain": hospital.subdomain},
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.paystack.co/transaction/initialize",
+        data=payload,
+        headers={"Authorization": f"Bearer {secret}", "Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            body = json.loads(resp.read())
+        url = body.get("data", {}).get("authorization_url")
+    except Exception:
+        url = None
+    if not url:
+        messages.error(request, "Could not start payment. Try again later.")
+        return redirect(reverse("saas:billing"))
+    return redirect(url)
 
 
 @csrf_exempt
