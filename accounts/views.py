@@ -83,7 +83,7 @@ def is_admin(user):
 
 
 # def user_dashboard(request):
-#     users = User.objects.all()  # Now using the correct model
+#     users = User.tenant_objects.all()  # Now using the correct model
 #     return render(request, 'accounts/user_dashboard.html', {'users': users})
 
 
@@ -307,7 +307,7 @@ def profile(request):
 
         try:
             # Fetch the user whose profile is being viewed
-            target_user_for_view = User.objects.select_related("profile").get(
+            target_user_for_view = User.tenant_objects.select_related("profile").get(
                 pk=user_id_param
             )
         except User.DoesNotExist:
@@ -317,7 +317,7 @@ def profile(request):
         # Viewing own profile, ensure request.user is fully loaded with profile relation
         # Note: request.user is a SimpleLazyObject. Accessing its attributes resolves it.
         # We fetch it again with select_related to ensure profile is efficiently loaded.
-        target_user_for_view = User.objects.select_related("profile").get(
+        target_user_for_view = User.tenant_objects.select_related("profile").get(
             pk=request.user.pk
         )
 
@@ -365,7 +365,7 @@ def edit_profile(request):
 
         try:
             # Fetch the CustomUser instance directly
-            target_user = User.objects.get(pk=user_id_to_edit)
+            target_user = User.tenant_objects.get(pk=user_id_to_edit)
         except User.DoesNotExist:
             messages.error(request, "User to edit not found.")
             return redirect(
@@ -581,7 +581,7 @@ def api_users(request):
     """API view for getting user information"""
     role = request.GET.get("role", None)
 
-    users_query = User.objects.filter(is_active=True)
+    users_query = User.tenant_objects.filter(is_active=True)
 
     if role:
         # Support both many-to-many roles and profile role
@@ -756,7 +756,7 @@ def delete_role(request, role_id):
 @permission_required("users.view")
 def user_dashboard(request):
     """Admin user management dashboard: filter, search, bulk actions, CSV export."""
-    users = User.objects.all().select_related("profile")
+    users = User.tenant_objects.all().select_related("profile")
     # Filters
     search = request.GET.get("search", "")
     role = request.GET.get("role", "")
@@ -780,7 +780,7 @@ def user_dashboard(request):
         action = request.POST.get("bulk_action")
         selected_ids = request.POST.getlist("selected_users")
         if selected_ids:
-            qs = User.objects.filter(id__in=selected_ids)
+            qs = User.tenant_objects.filter(id__in=selected_ids)
 
             # Prevent deletion of superusers and self in bulk operations
             if action == "delete":
@@ -840,7 +840,7 @@ def user_dashboard(request):
                 deletion_result = deletable_users.delete()
 
                 # Verify complete deletion
-                remaining_users = User.objects.filter(id__in=deleted_ids).count()
+                remaining_users = User.tenant_objects.filter(id__in=deleted_ids).count()
                 if remaining_users > 0:
                     raise Exception(
                         f"{remaining_users} users still exist in database after bulk deletion attempt"
@@ -873,7 +873,7 @@ def user_dashboard(request):
                 )
 
                 # Notify superusers about bulk deletion
-                superusers = User.objects.filter(is_superuser=True)
+                superusers = User.tenant_objects.filter(is_superuser=True)
                 for superuser in superusers:
                     InternalNotification.objects.create(
                         user=superuser,
@@ -908,7 +908,7 @@ def user_dashboard(request):
             )
             # Optional: send notification to superusers
             # Get all superusers to notify them about bulk actions
-            superusers = User.objects.filter(is_superuser=True)
+            superusers = User.tenant_objects.filter(is_superuser=True)
             for superuser in superusers:
                 InternalNotification.objects.create(
                     user=superuser,
@@ -959,7 +959,7 @@ def delete_user(request, user_id):
         return redirect("accounts:user_dashboard")
 
     try:
-        user_to_delete = User.objects.get(id=user_id)
+        user_to_delete = User.tenant_objects.get(id=user_id)
 
         # Prevent deletion of superusers except by themselves
         if user_to_delete.is_superuser and user_to_delete != request.user:
@@ -1012,7 +1012,7 @@ def delete_user(request, user_id):
         deletion_result = user_to_delete.delete()
 
         # Verify complete deletion
-        if User.objects.filter(id=user_id_stored).exists():
+        if User.tenant_objects.filter(id=user_id_stored).exists():
             raise Exception("User still exists in database after deletion attempt")
 
         # Log the complete deletion with details
@@ -1072,7 +1072,7 @@ def delete_user(request, user_id):
 # @user_passes_test(lambda u: u.is_superuser or u.is_staff)
 # def user_dashboard(request):
 #     """Admin user management dashboard: filter, search, bulk actions, CSV export."""
-#     users = User.objects.all().select_related('profile')
+#     users = User.tenant_objects.all().select_related('profile')
 #     # Filters
 #     search = request.GET.get('search', '')
 #     role = request.GET.get('role', '')
@@ -1096,7 +1096,7 @@ def delete_user(request, user_id):
 #         action = request.POST.get('bulk_action')
 #         selected_ids = request.POST.getlist('selected_users')
 #         if selected_ids:
-#             qs = CustomUser.objects.filter(id__in=selected_ids)
+#             qs = CustomUser.tenant_objects.filter(id__in=selected_ids)
 #             if action == 'activate':
 #                 qs.update(is_active=True)
 #             elif action == 'deactivate':
@@ -1150,9 +1150,9 @@ def delete_user(request, user_id):
 #     roles = Profile._meta.get_field('role').choices if hasattr(Profile, '_meta') else []
 
 #     # Role-based analytics
-#     role_counts = User.objects.values('profile__role').annotate(count=Count('id'))
-#     active_count = User.objects.filter(is_active=True).count()
-#     inactive_count = User.objects.filter(is_active=False).count()
+#     role_counts = User.tenant_objects.values('profile__role').annotate(count=Count('id'))
+#     active_count = User.tenant_objects.filter(is_active=True).count()
+#     inactive_count = User.tenant_objects.filter(is_active=False).count()
 
 #     # Audit log for user actions (view, bulk action)
 #     if request.method == 'GET' and request.user.is_authenticated:
@@ -1240,7 +1240,7 @@ def user_dashboard(request):
     can_edit_users = user_has_permission(request.user, "users.edit")
     can_delete_users = user_has_permission(request.user, "users.delete")
 
-    users_query = User.objects.all().prefetch_related("roles", "profile")
+    users_query = User.tenant_objects.all().prefetch_related("roles", "profile")
 
     search_query = request.GET.get("search", "")
     role_filter = request.GET.get("role", "")
@@ -1268,7 +1268,7 @@ def user_dashboard(request):
         action = request.POST.get("bulk_action")
         selected_ids = request.POST.getlist("selected_users")
         if selected_ids:
-            qs = User.objects.filter(id__in=selected_ids)
+            qs = User.tenant_objects.filter(id__in=selected_ids)
             if action == "activate" and user_has_permission(request.user, "users.edit"):
                 qs.update(is_active=True)
             elif action == "deactivate" and user_has_permission(
@@ -1294,7 +1294,7 @@ def user_dashboard(request):
                     deletion_result = deletable_users.delete()
 
                     # Verify complete deletion
-                    remaining_users = User.objects.filter(id__in=deleted_ids).count()
+                    remaining_users = User.tenant_objects.filter(id__in=deleted_ids).count()
                     if remaining_users > 0:
                         raise Exception(
                             f"{remaining_users} users still exist in database after bulk deletion attempt"
@@ -1325,7 +1325,7 @@ def user_dashboard(request):
                     )
 
                     # Notify superusers about bulk deletion
-                    superusers = User.objects.filter(is_superuser=True)
+                    superusers = User.tenant_objects.filter(is_superuser=True)
                     for superuser_obj in superusers:
                         InternalNotification.objects.create(
                             user=superuser_obj,
@@ -1415,10 +1415,10 @@ def user_dashboard(request):
     role_counts_data = Role.objects.annotate(count=Count("customuser_role")).values(
         "name", "count"
     )
-    active_count = User.objects.filter(
+    active_count = User.tenant_objects.filter(
         is_active=True
     ).count()  # Consider filtering this by current query too if makes sense
-    inactive_count = User.objects.filter(is_active=False).count()  # Same as above
+    inactive_count = User.tenant_objects.filter(is_active=False).count()  # Same as above
 
     if request.method == "GET":  # Log only on initial load/filter, not POST actions
         # Convert is_active_filter to a boolean or None for better logging
@@ -1675,7 +1675,7 @@ def edit_role(request, role_id):
 
             # Clear permission cache for all users with this role
             User = get_user_model()
-            users_with_role = User.objects.filter(roles=role)
+            users_with_role = User.tenant_objects.filter(roles=role)
             cache_cleared_count = 0
             for user in users_with_role:
                 user.clear_permission_cache()
@@ -2006,7 +2006,7 @@ def bulk_user_actions(request):
 
                 for user_id, changes in user_changes.items():
                     try:
-                        user = User.objects.get(id=user_id)
+                        user = User.tenant_objects.get(id=user_id)
 
                         # Add roles
                         if changes.get("add"):
@@ -2067,7 +2067,7 @@ def bulk_user_actions(request):
             action = form.cleaned_data["action"]
             role = form.cleaned_data.get("role")
 
-            users = User.objects.filter(id__in=selected_users)
+            users = User.tenant_objects.filter(id__in=selected_users)
             affected_count = users.count()
 
             if action == "activate":
@@ -2233,7 +2233,7 @@ def audit_logs(request):
     context = {
         "page_obj": page_obj,
         "action_choices": AuditLog.ACTION_CHOICES,
-        "users": User.objects.filter(is_active=True).order_by("username"),
+        "users": User.tenant_objects.filter(is_active=True).order_by("username"),
         "page_title": "Audit Logs",
         "active_nav": "audit_logs",
     }
@@ -2253,13 +2253,13 @@ def role_demo(request):
     users_by_role = {}
     for role in roles:
         users_by_role[role.name] = (
-            User.objects.filter(roles=role).select_related("profile").all()
+            User.tenant_objects.filter(roles=role).select_related("profile").all()
         )
 
     # Get role statistics
     total_roles = roles.count()
-    total_users = User.objects.count()
-    users_with_roles = User.objects.filter(roles__isnull=False).distinct().count()
+    total_users = User.tenant_objects.count()
+    users_with_roles = User.tenant_objects.filter(roles__isnull=False).distinct().count()
     users_without_roles = total_users - users_with_roles
 
     # Get permission statistics
@@ -2303,7 +2303,7 @@ def superuser_required(view_func):
 @superuser_required
 def superuser_user_profiles(request):
     """View for superusers to edit any user profile"""
-    users = User.objects.select_related("profile").order_by("username")
+    users = User.tenant_objects.select_related("profile").order_by("username")
 
     # Search functionality
     query = request.GET.get("q", "")
@@ -2342,7 +2342,7 @@ def toggle_user_active_status(request, user_id):
         return redirect("accounts:superuser_user_profiles")
 
     try:
-        user = User.objects.get(id=user_id)
+        user = User.tenant_objects.get(id=user_id)
 
         # Prevent superusers from deactivating themselves
         if user.id == request.user.id:
@@ -2403,13 +2403,13 @@ def superuser_dashboard(request):
     from datetime import timedelta
 
     # Get system statistics
-    total_users = User.objects.count()
-    active_users = User.objects.filter(is_active=True).count()
-    staff_users = User.objects.filter(is_staff=True).count()
-    superusers = User.objects.filter(is_superuser=True).count()
+    total_users = User.tenant_objects.count()
+    active_users = User.tenant_objects.filter(is_active=True).count()
+    staff_users = User.tenant_objects.filter(is_staff=True).count()
+    superusers = User.tenant_objects.filter(is_superuser=True).count()
 
     # Recent activity
-    recent_users = User.objects.order_by("-date_joined")[:5]
+    recent_users = User.tenant_objects.order_by("-date_joined")[:5]
     recent_logs = AuditLog.objects.select_related("user").order_by("-timestamp")[:10]
 
     # User status breakdown
@@ -2520,7 +2520,7 @@ def superuser_password_reset(request):
         else:
             messages.error(request, "Please provide user ID and new password.")
 
-    users = User.objects.order_by("username")
+    users = User.tenant_objects.order_by("username")
     return render(
         request,
         "accounts/superuser/password_reset.html",
@@ -2577,7 +2577,7 @@ def superuser_bulk_operations(request):
         user_ids = request.POST.getlist("user_ids")
 
         if operation and user_ids:
-            users = User.objects.filter(id__in=user_ids)
+            users = User.tenant_objects.filter(id__in=user_ids)
 
             if operation == "activate":
                 users.update(is_active=True)
@@ -2601,7 +2601,7 @@ def superuser_bulk_operations(request):
                             profile.save()
                     messages.success(request, f"Assigned role to {len(users)} users.")
 
-    users = User.objects.select_related("profile").order_by("username")
+    users = User.tenant_objects.select_related("profile").order_by("username")
     roles = Role.objects.all()
 
     return render(
@@ -2620,7 +2620,7 @@ def superuser_bulk_operations(request):
 @permission_required("users.view")
 def superuser_user_permissions(request):
     """Manage user permissions - accessible to users with users.view permission"""
-    users = User.objects.select_related("profile").order_by("username")
+    users = User.tenant_objects.select_related("profile").order_by("username")
     permissions = Permission.objects.select_related("content_type").order_by(
         "content_type__model", "name"
     )
@@ -3283,7 +3283,7 @@ def superuser_mass_email(request):
         user_ids = request.POST.getlist("user_ids")
 
         if subject and message and user_ids:
-            users = User.objects.filter(id__in=user_ids)
+            users = User.tenant_objects.filter(id__in=user_ids)
             email_count = 0
             failed_count = 0
 
@@ -3318,7 +3318,7 @@ def superuser_mass_email(request):
                 "Please provide subject, message, and select at least one user.",
             )
 
-    users = User.objects.order_by("username")
+    users = User.tenant_objects.order_by("username")
     return render(
         request,
         "accounts/superuser/mass_email.html",
@@ -3529,15 +3529,15 @@ def rbac_dashboard(request):
 
     # Get statistics
     total_roles = Role.objects.count()
-    total_users = User.objects.count()
+    total_users = User.tenant_objects.count()
     total_permissions = Permission.objects.count()
 
     # Users without roles (security concern)
-    users_without_roles = User.objects.filter(roles__isnull=True).count()
+    users_without_roles = User.tenant_objects.filter(roles__isnull=True).count()
 
     # Users with multiple roles
     users_with_multiple_roles = (
-        User.objects.annotate(role_count=Count("roles"))
+        User.tenant_objects.annotate(role_count=Count("roles"))
         .filter(role_count__gt=1)
         .count()
     )
@@ -3557,7 +3557,7 @@ def rbac_dashboard(request):
 
     # Users with their roles (for quick assignment view)
     users_with_roles = (
-        User.objects.prefetch_related("roles")
+        User.tenant_objects.prefetch_related("roles")
         .annotate(role_count=Count("roles"))
         .order_by("-role_count", "username")[:20]
     )
@@ -3799,7 +3799,7 @@ def rbac_user_matrix(request):
     View showing a matrix of users and their roles for bulk assignment
     """
     users = (
-        User.objects.prefetch_related("roles")
+        User.tenant_objects.prefetch_related("roles")
         .annotate(role_count=Count("roles"))
         .order_by("username")
     )
@@ -3876,7 +3876,7 @@ def rbac_audit_trail(request):
     page_obj = paginator.get_page(page_number)
 
     # Get all users for filter dropdown
-    all_users = User.objects.filter(is_active=True).order_by("username")
+    all_users = User.tenant_objects.filter(is_active=True).order_by("username")
 
     # Get statistics
     total_logs = logs.count()
