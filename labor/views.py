@@ -57,36 +57,35 @@ def labor_dashboard(request):
     today = timezone.now().date()
     week_end = today + timedelta(days=7)
 
-    # Deliveries today
-    deliveries_today = LaborRecord.objects.filter(
-        visit_date__gte=timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    ).count()
-
-    # Follow-ups due this week
-    followups_due = LaborRecord.objects.filter(
-        follow_up_required=True,
-        follow_up_date__gte=today,
-        follow_up_date__lte=week_end
-    ).count()
-
-    # Mode of delivery distribution
-    svd_count = LaborRecord.objects.filter(mode_of_delivery__icontains='SVD').count()
-    csection_count = LaborRecord.objects.filter(mode_of_delivery__icontains='C-Section').count()
-    assisted_count = LaborRecord.objects.filter(mode_of_delivery__icontains='Assisted').count()
-    vbac_count = LaborRecord.objects.filter(mode_of_delivery__icontains='VBAC').count()
-
-    # Cervical dilation tracking (patients in active labor, dilation < 10cm)
-    active_labor = LaborRecord.objects.filter(
-        cervical_dilation__lt=10,
-        cervical_dilation__gte=4,
-        visit_date__gte=today - timedelta(days=1)
-    ).count()
-
-    # Ruptured membranes count (today)
-    ruptured_membranes = LaborRecord.objects.filter(
-        rupture_of_membranes=True,
-        visit_date__gte=timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    ).count()
+    # Single pass: all scalar counts via conditional aggregation.
+    midnight = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    stats = LaborRecord.objects.aggregate(
+        deliveries_today=Count('id', filter=Q(visit_date__gte=midnight)),
+        followups_due=Count('id', filter=Q(
+            follow_up_required=True,
+            follow_up_date__gte=today,
+            follow_up_date__lte=week_end,
+        )),
+        svd_count=Count('id', filter=Q(mode_of_delivery__icontains='SVD')),
+        csection_count=Count('id', filter=Q(mode_of_delivery__icontains='C-Section')),
+        assisted_count=Count('id', filter=Q(mode_of_delivery__icontains='Assisted')),
+        vbac_count=Count('id', filter=Q(mode_of_delivery__icontains='VBAC')),
+        active_labor=Count('id', filter=Q(
+            cervical_dilation__lt=10,
+            cervical_dilation__gte=4,
+            visit_date__gte=today - timedelta(days=1),
+        )),
+        ruptured_membranes=Count('id', filter=Q(
+            rupture_of_membranes=True, visit_date__gte=midnight)),
+    )
+    deliveries_today = stats['deliveries_today']
+    followups_due = stats['followups_due']
+    svd_count = stats['svd_count']
+    csection_count = stats['csection_count']
+    assisted_count = stats['assisted_count']
+    vbac_count = stats['vbac_count']
+    active_labor = stats['active_labor']
+    ruptured_membranes = stats['ruptured_membranes']
 
     # Common diagnoses (top 5)
     diagnosis_data = LaborRecord.objects.filter(

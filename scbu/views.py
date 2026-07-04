@@ -54,54 +54,34 @@ def scbu_dashboard(request):
     today = timezone.now().date()
     week_end = today + timedelta(days=7)
 
-    # Total admissions
-    total_admissions = ScbuRecord.objects.count()
-
-    # Current admissions (all records since no discharge status field exists)
-    current_admissions = ScbuRecord.objects.count()
-
-    # Admissions today
-    admissions_today = ScbuRecord.objects.filter(
-        visit_date__date=today
-    ).count()
-
-    # Follow-ups due this week
-    followups_due = ScbuRecord.objects.filter(
-        follow_up_required=True,
-        follow_up_date__gte=today,
-        follow_up_date__lte=week_end
-    ).count()
-
-    # Average birth weight
-    avg_birth_weight = ScbuRecord.objects.aggregate(avg=Avg('birth_weight'))['avg']
-    avg_birth_weight = round(avg_birth_weight, 2) if avg_birth_weight else 0
-
-    # Premature babies (gestational age < 37 weeks)
-    premature_babies = ScbuRecord.objects.filter(
-        gestational_age__lt=37
-    ).count()
-
-    # Low birth weight babies (<2.5kg)
-    low_birth_weight = ScbuRecord.objects.filter(
-        birth_weight__lt=2.5
-    ).count()
-
-    # Babies on respiratory support
-    respiratory_support_count = ScbuRecord.objects.filter(
-        respiratory_support=True
-    ).count()
-
-    # Babies with infection
-    infection_count = ScbuRecord.objects.filter(
-        infection_status=True
-    ).count()
-
-    # Average APGAR scores
-    avg_apgar_1min = ScbuRecord.objects.aggregate(avg=Avg('apgar_score_1min'))['avg']
-    avg_apgar_1min = round(avg_apgar_1min, 1) if avg_apgar_1min else 0
-
-    avg_apgar_5min = ScbuRecord.objects.aggregate(avg=Avg('apgar_score_5min'))['avg']
-    avg_apgar_5min = round(avg_apgar_5min, 1) if avg_apgar_5min else 0
+    # Single pass: all scalar counts/averages via conditional aggregation.
+    stats = ScbuRecord.objects.aggregate(
+        total_admissions=Count('id'),
+        admissions_today=Count('id', filter=Q(visit_date__date=today)),
+        followups_due=Count('id', filter=Q(
+            follow_up_required=True,
+            follow_up_date__gte=today,
+            follow_up_date__lte=week_end,
+        )),
+        premature_babies=Count('id', filter=Q(gestational_age__lt=37)),
+        low_birth_weight=Count('id', filter=Q(birth_weight__lt=2.5)),
+        respiratory_support_count=Count('id', filter=Q(respiratory_support=True)),
+        infection_count=Count('id', filter=Q(infection_status=True)),
+        avg_birth_weight=Avg('birth_weight'),
+        avg_apgar_1min=Avg('apgar_score_1min'),
+        avg_apgar_5min=Avg('apgar_score_5min'),
+    )
+    # Current == total: no discharge status field exists to distinguish them.
+    total_admissions = current_admissions = stats['total_admissions']
+    admissions_today = stats['admissions_today']
+    followups_due = stats['followups_due']
+    premature_babies = stats['premature_babies']
+    low_birth_weight = stats['low_birth_weight']
+    respiratory_support_count = stats['respiratory_support_count']
+    infection_count = stats['infection_count']
+    avg_birth_weight = round(stats['avg_birth_weight'], 2) if stats['avg_birth_weight'] else 0
+    avg_apgar_1min = round(stats['avg_apgar_1min'], 1) if stats['avg_apgar_1min'] else 0
+    avg_apgar_5min = round(stats['avg_apgar_5min'], 1) if stats['avg_apgar_5min'] else 0
 
     # Common diagnoses (top 5)
     diagnosis_data = ScbuRecord.objects.filter(

@@ -54,11 +54,31 @@ def oncology_dashboard(request):
     today = timezone.now().date()
     six_months_ago = today - timedelta(days=180)
 
-    # Active patients (currently under treatment)
-    # Count patients with recent visits (last 6 months) or with follow-ups required
-    active_patients = OncologyRecord.objects.filter(
-        Q(visit_date__gte=six_months_ago) | Q(follow_up_required=True)
-    ).values('patient').distinct().count()
+    # Single pass: all scalar counts/averages via conditional aggregation.
+    month_start = today.replace(day=1)
+    stats = OncologyRecord.objects.aggregate(
+        active_patients=Count('patient', distinct=True, filter=(
+            Q(visit_date__gte=six_months_ago) | Q(follow_up_required=True))),
+        stage_1=Count('id', filter=Q(stage='Stage I')),
+        stage_2=Count('id', filter=Q(stage='Stage II')),
+        stage_3=Count('id', filter=Q(stage='Stage III')),
+        stage_4=Count('id', filter=Q(stage='Stage IV')),
+        chemo_sessions_month=Count('id', filter=Q(
+            visit_date__date__gte=month_start, chemotherapy_cycle__isnull=False)),
+        radiation_treatments_month=Count('id', filter=Q(
+            visit_date__date__gte=month_start, radiation_dose__isnull=False)),
+        metastasis_patients=Count('patient', distinct=True, filter=Q(metastasis=True)),
+        avg_tumor_size=Avg('tumor_size'),  # Avg already skips nulls
+    )
+    active_patients = stats['active_patients']
+    stage_1 = stats['stage_1']
+    stage_2 = stats['stage_2']
+    stage_3 = stats['stage_3']
+    stage_4 = stats['stage_4']
+    chemo_sessions_month = stats['chemo_sessions_month']
+    radiation_treatments_month = stats['radiation_treatments_month']
+    metastasis_patients = stats['metastasis_patients']
+    avg_tumor_size = round(stats['avg_tumor_size'], 1) if stats['avg_tumor_size'] else 0
 
     # Patients by cancer type (top 5)
     cancer_type_data = OncologyRecord.objects.filter(
@@ -67,40 +87,10 @@ def oncology_dashboard(request):
     cancer_type_labels = [item['cancer_type'] for item in cancer_type_data]
     cancer_type_counts = [item['count'] for item in cancer_type_data]
 
-    # Patients by stage
-    stage_1 = OncologyRecord.objects.filter(stage='Stage I').count()
-    stage_2 = OncologyRecord.objects.filter(stage='Stage II').count()
-    stage_3 = OncologyRecord.objects.filter(stage='Stage III').count()
-    stage_4 = OncologyRecord.objects.filter(stage='Stage IV').count()
-
     # Stage distribution for chart
     stage_labels = ['Stage I', 'Stage II', 'Stage III', 'Stage IV']
     stage_counts = [stage_1, stage_2, stage_3, stage_4]
     stage_colors = ['#28a745', '#ffc107', '#fd7e14', '#dc3545']
-
-    # Chemotherapy sessions this month
-    month_start = today.replace(day=1)
-    chemo_sessions_month = OncologyRecord.objects.filter(
-        visit_date__date__gte=month_start,
-        chemotherapy_cycle__isnull=False
-    ).count()
-
-    # Radiation treatments this month
-    radiation_treatments_month = OncologyRecord.objects.filter(
-        visit_date__date__gte=month_start,
-        radiation_dose__isnull=False
-    ).count()
-
-    # Patients with metastasis
-    metastasis_patients = OncologyRecord.objects.filter(
-        metastasis=True
-    ).values('patient').distinct().count()
-
-    # Average tumor size
-    avg_tumor_size = OncologyRecord.objects.filter(
-        tumor_size__isnull=False
-    ).aggregate(avg=Avg('tumor_size'))['avg']
-    avg_tumor_size = round(avg_tumor_size, 1) if avg_tumor_size else 0
 
     # Get recent records with patient info
     recent_records = OncologyRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]

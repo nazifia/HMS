@@ -54,10 +54,25 @@ def family_planning_dashboard(request):
     today = timezone.now().date()
     week_end = today + timedelta(days=7)
 
-    # Visits today
-    visits_today = Family_planningRecord.objects.filter(
-        visit_date__date=today
-    ).count()
+    # Single pass: all scalar counts via conditional aggregation.
+    month_start = today.replace(day=1)
+    six_months_ago = today - timedelta(days=180)
+    stats = Family_planningRecord.objects.aggregate(
+        visits_today=Count('id', filter=Q(visit_date__date=today)),
+        education_sessions_month=Count('id', filter=Q(
+            visit_date__date__gte=month_start, education_provided=True)),
+        new_clients_month=Count('patient', distinct=True, filter=Q(
+            visit_date__date__gte=month_start)),
+        followups_due=Count('id', filter=Q(
+            follow_up_date__gte=today, follow_up_date__lte=week_end)),
+        active_clients=Count('patient', distinct=True, filter=(
+            Q(visit_date__date__gte=six_months_ago) | Q(follow_up_required=True))),
+    )
+    visits_today = stats['visits_today']
+    education_sessions_month = stats['education_sessions_month']
+    new_clients_month = stats['new_clients_month']
+    followups_due = stats['followups_due']
+    active_clients = stats['active_clients']
 
     # Contraceptive method distribution (top 5)
     method_data = Family_planningRecord.objects.filter(
@@ -65,31 +80,6 @@ def family_planning_dashboard(request):
     ).exclude(method_used='').values('method_used').annotate(count=Count('id')).order_by('-count')[:5]
     method_labels = [item['method_used'] for item in method_data]
     method_counts = [item['count'] for item in method_data]
-
-    # Education sessions this month
-    month_start = today.replace(day=1)
-    education_sessions_month = Family_planningRecord.objects.filter(
-        visit_date__date__gte=month_start,
-        education_provided=True
-    ).count()
-
-    # New clients this month (based on first visit date)
-    new_clients_month = Family_planningRecord.objects.filter(
-        visit_date__date__gte=month_start
-    ).values('patient').distinct().count()
-
-    # Follow-up visits due this week
-    followups_due = Family_planningRecord.objects.filter(
-        follow_up_date__gte=today,
-        follow_up_date__lte=week_end
-    ).count()
-
-    # Active clients (on contraceptives)
-    # Count patients with recent visits (last 6 months) or with follow-ups required
-    six_months_ago = today - timedelta(days=180)
-    active_clients = Family_planningRecord.objects.filter(
-        Q(visit_date__date__gte=six_months_ago) | Q(follow_up_required=True)
-    ).values('patient').distinct().count()
 
     # Get recent records with patient info
     recent_records = Family_planningRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]

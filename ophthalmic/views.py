@@ -54,17 +54,34 @@ def ophthalmic_dashboard(request):
     today = timezone.now().date()
     week_end = today + timedelta(days=7)
 
-    # Visits today
-    visits_today = OphthalmicRecord.objects.filter(
-        visit_date__gte=timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    ).count()
-
-    # Follow-ups due this week
-    followups_due = OphthalmicRecord.objects.filter(
-        follow_up_required=True,
-        follow_up_date__gte=today,
-        follow_up_date__lte=week_end
-    ).count()
+    # Single pass: all scalar counts via conditional aggregation.
+    midnight = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    stats = OphthalmicRecord.objects.aggregate(
+        visits_today=Count('id', filter=Q(visit_date__gte=midnight)),
+        followups_due=Count('id', filter=Q(
+            follow_up_required=True,
+            follow_up_date__gte=today,
+            follow_up_date__lte=week_end,
+        )),
+        poor_vision_right=Count('id', filter=(
+            Q(visual_acuity_right__icontains='6/60') |
+            Q(visual_acuity_right__icontains='CF') |
+            Q(visual_acuity_right__icontains='HM'))),
+        poor_vision_left=Count('id', filter=(
+            Q(visual_acuity_left__icontains='6/60') |
+            Q(visual_acuity_left__icontains='CF') |
+            Q(visual_acuity_left__icontains='HM'))),
+        surgery_required=Count('id', filter=Q(treatment_plan__icontains='surgery')),
+        high_iop_patients=Count('id', filter=(
+            Q(intraocular_pressure_right__gte=21) |
+            Q(intraocular_pressure_left__gte=21))),
+    )
+    visits_today = stats['visits_today']
+    followups_due = stats['followups_due']
+    poor_vision_right = stats['poor_vision_right']
+    poor_vision_left = stats['poor_vision_left']
+    surgery_required = stats['surgery_required']
+    high_iop_patients = stats['high_iop_patients']
 
     # Common diagnoses (top 5)
     diagnosis_data = OphthalmicRecord.objects.filter(
@@ -72,30 +89,6 @@ def ophthalmic_dashboard(request):
     ).exclude(diagnosis='').values('diagnosis').annotate(count=Count('id')).order_by('-count')[:5]
     diagnosis_labels = [item['diagnosis'][:30] for item in diagnosis_data]  # Truncate long diagnoses
     diagnosis_counts = [item['count'] for item in diagnosis_data]
-
-    # Visual acuity statistics (patients with poor vision)
-    poor_vision_right = OphthalmicRecord.objects.filter(
-        Q(visual_acuity_right__icontains='6/60') |
-        Q(visual_acuity_right__icontains='CF') |
-        Q(visual_acuity_right__icontains='HM')
-    ).count()
-
-    poor_vision_left = OphthalmicRecord.objects.filter(
-        Q(visual_acuity_left__icontains='6/60') |
-        Q(visual_acuity_left__icontains='CF') |
-        Q(visual_acuity_left__icontains='HM')
-    ).count()
-
-    # Patients requiring surgery
-    surgery_required = OphthalmicRecord.objects.filter(
-        treatment_plan__icontains='surgery'
-    ).count()
-
-    # Patients with glaucoma (high IOP)
-    high_iop_patients = OphthalmicRecord.objects.filter(
-        Q(intraocular_pressure_right__gte=21) |
-        Q(intraocular_pressure_left__gte=21)
-    ).count()
 
     # Get recent records with patient info
     recent_records = OphthalmicRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]

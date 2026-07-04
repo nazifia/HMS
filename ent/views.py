@@ -53,18 +53,34 @@ def ent_dashboard(request):
     # ENT-specific statistics
     today = timezone.now().date()
     week_end = today + timedelta(days=7)
+    month_start = today.replace(day=1)
+    week_start = today - timedelta(days=today.weekday())
 
-    # Visits today
-    visits_today = EntRecord.objects.filter(
-        visit_date__date=today
-    ).count()
-
-    # Follow-ups due this week
-    followups_due = EntRecord.objects.filter(
-        follow_up_required=True,
-        follow_up_date__gte=today,
-        follow_up_date__lte=week_end
-    ).count()
+    # Single pass: all scalar counts via conditional aggregation.
+    # emergency split preserves original double-count (record matching both
+    # 'emergency' and 'acute' counts twice, same as the old two-query sum).
+    stats = EntRecord.objects.aggregate(
+        visits_today=Count('id', filter=Q(visit_date__date=today)),
+        followups_due=Count('id', filter=Q(
+            follow_up_required=True,
+            follow_up_date__gte=today,
+            follow_up_date__lte=week_end,
+        )),
+        procedures_month=Count('id', filter=Q(
+            visit_date__date__gte=month_start,
+            treatment_plan__isnull=False,
+        ) & ~Q(treatment_plan='')),
+        surgery_required=Count('id', filter=Q(treatment_plan__icontains='surgery')),
+        emergency_emergency=Count('id', filter=Q(
+            visit_date__date__gte=week_start, chief_complaint__icontains='emergency')),
+        emergency_acute=Count('id', filter=Q(
+            visit_date__date__gte=week_start, chief_complaint__icontains='acute')),
+    )
+    visits_today = stats['visits_today']
+    followups_due = stats['followups_due']
+    procedures_month = stats['procedures_month']
+    surgery_required = stats['surgery_required']
+    emergency_cases = stats['emergency_emergency'] + stats['emergency_acute']
 
     # Common diagnoses (top 5)
     diagnosis_data = EntRecord.objects.filter(
@@ -72,28 +88,6 @@ def ent_dashboard(request):
     ).exclude(diagnosis='').values('diagnosis').annotate(count=Count('id')).order_by('-count')[:5]
     diagnosis_labels = [item['diagnosis'][:30] for item in diagnosis_data]
     diagnosis_counts = [item['count'] for item in diagnosis_data]
-
-    # Procedures performed this month
-    month_start = today.replace(day=1)
-    procedures_month = EntRecord.objects.filter(
-        visit_date__date__gte=month_start,
-        treatment_plan__isnull=False
-    ).exclude(treatment_plan='').count()
-
-    # Patients requiring surgery
-    surgery_required = EntRecord.objects.filter(
-        treatment_plan__icontains='surgery'
-    ).count()
-
-    # Emergency cases this week
-    week_start = today - timedelta(days=today.weekday())
-    emergency_cases = EntRecord.objects.filter(
-        visit_date__date__gte=week_start,
-        chief_complaint__icontains='emergency'
-    ).count() + EntRecord.objects.filter(
-        visit_date__date__gte=week_start,
-        chief_complaint__icontains='acute'
-    ).count()
 
     # Get recent records with patient info
     recent_records = EntRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]

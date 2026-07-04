@@ -55,40 +55,27 @@ def icu_dashboard(request):
     # ICU-specific statistics
     today = timezone.now().date()
 
-    # Current admissions (active patients) - last 7 days
+    # Single pass: all scalar counts/averages via conditional aggregation.
     week_ago = today - timedelta(days=7)
-    current_admissions = IcuRecord.objects.filter(
-        visit_date__date__gte=week_ago
-    ).count()
-
-    # Critical patients (GCS score < 8 indicates severe impairment)
-    critical_patients = IcuRecord.objects.filter(
-        gcs_score__lt=8,
-        visit_date__date__gte=week_ago
-    ).count()
-
-    # Patients on ventilator
-    on_ventilator = IcuRecord.objects.filter(
-        mechanical_ventilation=True,
-        visit_date__date__gte=week_ago
-    ).count()
-
-    # Patients on dialysis
-    on_dialysis = IcuRecord.objects.filter(
-        dialysis_required=True,
-        visit_date__date__gte=week_ago
-    ).count()
-
-    # Average GCS score for recent patients
-    avg_gcs = IcuRecord.objects.filter(
-        visit_date__date__gte=week_ago
-    ).aggregate(avg=Avg('gcs_score'))['avg']
-    avg_gcs_score = round(avg_gcs, 1) if avg_gcs else 0
-
-    # Admissions today (using visit_date as ICURecord doesn't have admission_date)
-    admissions_today = IcuRecord.objects.filter(
-        visit_date__date=today
-    ).count()
+    recent = Q(visit_date__date__gte=week_ago)  # "last 7 days" predicate, reused below
+    stats = IcuRecord.objects.aggregate(
+        current_admissions=Count('id', filter=recent),
+        critical_patients=Count('id', filter=recent & Q(gcs_score__lt=8)),
+        on_ventilator=Count('id', filter=recent & Q(mechanical_ventilation=True)),
+        on_dialysis=Count('id', filter=recent & Q(dialysis_required=True)),
+        avg_gcs=Avg('gcs_score', filter=recent),
+        admissions_today=Count('id', filter=Q(visit_date__date=today)),
+        gcs_severe=Count('id', filter=recent & Q(gcs_score__gte=3, gcs_score__lte=8)),
+        gcs_moderate=Count('id', filter=recent & Q(gcs_score__gte=9, gcs_score__lte=12)),
+        gcs_mild=Count('id', filter=recent & Q(gcs_score__gte=13, gcs_score__lte=15)),
+        vasopressor=Count('id', filter=recent & Q(vasopressor_use=True)),
+    )
+    current_admissions = stats['current_admissions']
+    critical_patients = stats['critical_patients']
+    on_ventilator = stats['on_ventilator']
+    on_dialysis = stats['on_dialysis']
+    avg_gcs_score = round(stats['avg_gcs'], 1) if stats['avg_gcs'] else 0
+    admissions_today = stats['admissions_today']
 
     # Note: ICURecord doesn't have discharge_date field, so we can't track discharges
     discharges_today = 0
@@ -98,22 +85,12 @@ def icu_dashboard(request):
     occupancy_rate = (current_admissions / total_beds * 100) if total_beds > 0 else 0
 
     # GCS distribution for chart (recent patients only - last 7 days)
-    gcs_ranges = [
-        ('Severe (3-8)', IcuRecord.objects.filter(gcs_score__gte=3, gcs_score__lte=8, visit_date__date__gte=week_ago).count()),
-        ('Moderate (9-12)', IcuRecord.objects.filter(gcs_score__gte=9, gcs_score__lte=12, visit_date__date__gte=week_ago).count()),
-        ('Mild (13-15)', IcuRecord.objects.filter(gcs_score__gte=13, gcs_score__lte=15, visit_date__date__gte=week_ago).count()),
-    ]
-    gcs_labels = [item[0] for item in gcs_ranges]
-    gcs_counts = [item[1] for item in gcs_ranges]
+    gcs_labels = ['Severe (3-8)', 'Moderate (9-12)', 'Mild (13-15)']
+    gcs_counts = [stats['gcs_severe'], stats['gcs_moderate'], stats['gcs_mild']]
 
     # Equipment usage (recent patients only - last 7 days)
-    equipment_data = [
-        ('Ventilator', on_ventilator),
-        ('Dialysis', on_dialysis),
-        ('Vasopressor', IcuRecord.objects.filter(vasopressor_use=True, visit_date__date__gte=week_ago).count()),
-    ]
-    equipment_labels = [item[0] for item in equipment_data]
-    equipment_counts = [item[1] for item in equipment_data]
+    equipment_labels = ['Ventilator', 'Dialysis', 'Vasopressor']
+    equipment_counts = [on_ventilator, on_dialysis, stats['vasopressor']]
 
     # Get recent records with patient info
     recent_records = IcuRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]

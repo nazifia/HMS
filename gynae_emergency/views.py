@@ -53,19 +53,17 @@ def gynae_emergency_dashboard(request):
     # Gynae Emergency-specific statistics
     today = timezone.now().date()
 
-    # Emergency cases today
-    emergencies_today = Gynae_emergencyRecord.objects.filter(
-        visit_date__gte=timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    ).count()
-
-    # Total emergency cases
-    total_emergencies = Gynae_emergencyRecord.objects.count()
-
-    # Emergency cases this week
+    # Single pass: all scalar counts via conditional aggregation.
+    midnight = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today - timedelta(days=today.weekday())
-    emergencies_this_week = Gynae_emergencyRecord.objects.filter(
-        visit_date__gte=week_start
-    ).count()
+    stats = Gynae_emergencyRecord.objects.aggregate(
+        emergencies_today=Count('id', filter=Q(visit_date__gte=midnight)),
+        total_emergencies=Count('id'),
+        emergencies_this_week=Count('id', filter=Q(visit_date__gte=week_start)),
+    )
+    emergencies_today = stats['emergencies_today']
+    total_emergencies = stats['total_emergencies']
+    emergencies_this_week = stats['emergencies_this_week']
 
     # Common emergency types (top 5)
     emergency_type_data = Gynae_emergencyRecord.objects.filter(

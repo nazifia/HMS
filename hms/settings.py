@@ -272,6 +272,10 @@ if BROWSER_RELOAD:
     # Required for {% if debug %} (context_processors.debug) to resolve True.
     INTERNAL_IPS = ["127.0.0.1"]
 
+if DEBUG:
+    # N+1 hunter: logs heavy requests to the runserver console. See core/query_count_middleware.py.
+    MIDDLEWARE += ["core.query_count_middleware.QueryCountMiddleware"]
+
 ROOT_URLCONF = "hms.urls"
 
 _BASE_TEMPLATE_LOADERS = [

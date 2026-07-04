@@ -55,22 +55,10 @@ def anc_dashboard(request):
     today = timezone.now().date()
     week_end = today + timedelta(days=7)
 
-    # Appointments today
-    appointments_today = AncRecord.objects.filter(
-        visit_date__date=today
-    ).count()
-
-    # Follow-ups due this week
-    followups_due = AncRecord.objects.filter(
-        follow_up_required=True,
-        follow_up_date__gte=today,
-        follow_up_date__lte=week_end
-    ).count()
-
-    # High risk pregnancies (high blood pressure or protein in urine)
-    # Note: blood_pressure is stored as string like "120/80", so we can't easily filter numerically
-    # This is a simplified approach - in production, consider storing systolic/diastolic separately
-    high_risk_pregnancies = AncRecord.objects.filter(
+    # Single pass: all scalar counts/averages via conditional aggregation.
+    # blood_pressure stored as string "120/80" so high-risk uses icontains match.
+    four_weeks_later = today + timedelta(days=28)
+    high_risk_q = (
         Q(blood_pressure__icontains='140/') |
         Q(blood_pressure__icontains='/90') |
         Q(blood_pressure__icontains='150/') |
@@ -78,14 +66,26 @@ def anc_dashboard(request):
         Q(blood_pressure__icontains='160/') |
         Q(blood_pressure__icontains='/110') |
         Q(urine_protein__in=['+++', '++++', 'positive'])
-    ).values('patient').distinct().count()
-
-    # Due dates within next 4 weeks
-    four_weeks_later = today + timedelta(days=28)
-    due_soon = AncRecord.objects.filter(
-        edd__gte=today,
-        edd__lte=four_weeks_later
-    ).values('patient').distinct().count()
+    )
+    stats = AncRecord.objects.aggregate(
+        appointments_today=Count('id', filter=Q(visit_date__date=today)),
+        followups_due=Count('id', filter=Q(
+            follow_up_required=True,
+            follow_up_date__gte=today,
+            follow_up_date__lte=week_end,
+        )),
+        high_risk_pregnancies=Count('patient', distinct=True, filter=high_risk_q),
+        due_soon=Count('patient', distinct=True, filter=Q(
+            edd__gte=today, edd__lte=four_weeks_later)),
+        total_patients=Count('patient', distinct=True),
+        avg_gravida=Avg('gravida'),
+    )
+    appointments_today = stats['appointments_today']
+    followups_due = stats['followups_due']
+    high_risk_pregnancies = stats['high_risk_pregnancies']
+    due_soon = stats['due_soon']
+    total_patients = stats['total_patients']
+    avg_gravida = stats['avg_gravida'] or 0
 
     # Common diagnoses (top 5)
     diagnosis_data = AncRecord.objects.filter(
@@ -93,12 +93,6 @@ def anc_dashboard(request):
     ).exclude(diagnosis='').values('diagnosis').annotate(count=Count('id')).order_by('-count')[:5]
     diagnosis_labels = [item['diagnosis'][:30] for item in diagnosis_data]
     diagnosis_counts = [item['count'] for item in diagnosis_data]
-
-    # Total unique patients
-    total_patients = AncRecord.objects.values('patient').distinct().count()
-
-    # Average gravida (number of pregnancies)
-    avg_gravida = AncRecord.objects.aggregate(Avg('gravida'))['gravida__avg'] or 0
 
     # Get recent records with patient info
     recent_records = AncRecord.objects.select_related('patient', 'doctor').order_by('-created_at')[:10]
