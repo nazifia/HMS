@@ -84,6 +84,22 @@ SECURE_SSL_REDIRECT = (
     os.environ.get("SECURE_SSL_REDIRECT", "False" if DEBUG else "True") == "True"
 )
 
+# PythonAnywhere terminates TLS at its proxy and forwards to Django as plain
+# HTTP. Without trusting the forwarded scheme, request.is_secure() is False,
+# which (a) makes SECURE_SSL_REDIRECT loop and (b) makes CSRF compute an http://
+# origin that never matches the browser's https:// Origin header -> login POSTs
+# fail and the user bounces back to the login page.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Django 4+ checks the POST Origin header against trusted origins. Behind the
+# proxy the browser's Origin is https://<host>, so every real host needs an
+# https entry here or CSRF rejects the login.
+CSRF_TRUSTED_ORIGINS = [
+    f"https://{h.strip()}"
+    for h in ALLOWED_HOSTS
+    if h.strip() and h.strip() not in ("localhost", "127.0.0.1", "testserver", "*")
+]
+
 # HSTS settings - Set to 0 in development (warning suppressed), 1 year in production
 if DEBUG:
     SECURE_HSTS_SECONDS = 0
@@ -431,10 +447,6 @@ ADMIN_INDEX_TITLE = "Welcome to HMS Administration"
 # Media files
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-
-# Login URLs
-LOGIN_REDIRECT_URL = "home"
-LOGOUT_REDIRECT_URL = "accounts:login"
 
 # Crispy Forms settings (temporarily disabled)
 # Use default crispy forms template pack
