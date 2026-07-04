@@ -1657,7 +1657,7 @@ def add_to_waiting_list(request, patient_id=None):
         initial_data['patient'] = patient
 
     if request.method == 'POST':
-        form = WaitingListForm(request.POST, initial=initial_data)
+        form = WaitingListForm(request.POST, initial=initial_data, user=request.user)
         # Ensure all patients are available for selection
         form.fields['patient'].queryset = Patient.objects.all()
         if form.is_valid():
@@ -1697,7 +1697,7 @@ def add_to_waiting_list(request, patient_id=None):
                 messages.success(request, f"{waiting_entry.patient.get_full_name()} added to waiting list in Room {waiting_entry.consulting_room.room_number} (No specific doctor assigned).")
             return redirect('consultations:waiting_list')
     else:
-        form = WaitingListForm(initial=initial_data)
+        form = WaitingListForm(initial=initial_data, user=request.user)
         # Ensure all patients are available for selection
         form.fields['patient'].queryset = Patient.objects.all()
 

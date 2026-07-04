@@ -50,6 +50,7 @@ class WaitingListForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         # Set querysets for dropdowns
         from core.models import ServicePoint
@@ -57,8 +58,23 @@ class WaitingListForm(forms.ModelForm):
         self.fields['service_point'].required = False
         self.fields['service_point'].empty_label = "Select Service Point (Optional)"
         self.fields['patient'].queryset = Patient.objects.all().select_related('nhia_info', 'retainership_info').order_by('first_name', 'last_name')
-        self.fields['consulting_room'].queryset = ConsultingRoom.objects.filter(is_active=True).order_by('room_number')
-        self.fields['doctor'].queryset = CustomUser.tenant_objects.filter(is_active=True, profile__role='doctor').order_by('first_name', 'last_name')
+
+        rooms = ConsultingRoom.objects.filter(is_active=True)
+        doctors = CustomUser.tenant_objects.filter(is_active=True, profile__role='doctor')
+
+        # Scope rooms/doctors to the routing staff's department(s) so a
+        # receptionist / health record officer only routes within their unit.
+        dept_ids = self._routing_department_ids(user)
+        if dept_ids is not None:
+            rooms = rooms.filter(department_id__in=dept_ids)
+            doctors = doctors.filter(
+                Q(profile__department_id__in=dept_ids)
+                | Q(profile__departments__id__in=dept_ids)
+                | Q(doctor_profile__department_id__in=dept_ids)
+            ).distinct()
+
+        self.fields['consulting_room'].queryset = rooms.order_by('room_number')
+        self.fields['doctor'].queryset = doctors.order_by('first_name', 'last_name')
         self.fields['appointment'].queryset = Appointment.objects.filter(
             status__in=['scheduled', 'confirmed']
         ).order_by('appointment_date', 'appointment_time')
@@ -66,6 +82,26 @@ class WaitingListForm(forms.ModelForm):
         # Set empty labels
         self.fields['doctor'].empty_label = "Select Doctor (Optional)"
         self.fields['appointment'].empty_label = "Select Appointment (Optional)"
+
+    @staticmethod
+    def _routing_department_ids(user):
+        """Departments a routing user is restricted to.
+
+        Returns a list of department ids for receptionist / health record
+        officer staff (so they only route within their own unit), or None for
+        everyone else (superusers, admins, doctors, etc.) meaning no scoping.
+        """
+        if user is None or user.is_superuser:
+            return None
+        profile = getattr(user, 'profile', None)
+        if profile is None or profile.role not in ('receptionist', 'health_record_officer'):
+            return None
+        ids = set(profile.departments.values_list('id', flat=True))
+        if profile.department_id:
+            ids.add(profile.department_id)
+        # ponytail: no departments assigned = no scoping (see everything),
+        # avoids locking staff out entirely on incomplete profiles.
+        return list(ids) or None
 
 
 class ReferralForm(forms.ModelForm):
