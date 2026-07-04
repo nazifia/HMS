@@ -1,476 +1,217 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
-{% block title %}Manage Privileges: {{ target_user.get_full_name }} - Hospital Management System{% endblock %}
-
-{% block extra_css %}
-<style>
-    .user-info-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-    .role-card {
-        transition: transform 0.2s;
-        border-left: 4px solid #28a745;
-    }
-    .role-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    .permission-preview {
-        max-height: 150px;
-        overflow-y: auto;
-    }
-    .form-check-input:checked {
-        background-color: #28a745;
-        border-color: #28a745;
-    }
-    .permissions-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 1rem;
-    }
-    .permission-group {
-        background: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 0.375rem;
-        padding: 1rem;
-    }
-    .permission-group h6 {
-        color: #495057;
-        font-size: 0.8rem;
-        font-weight: 600;
-        margin-bottom: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    .permission-item label {
-        display: flex;
-        align-items: center;
-        cursor: pointer;
-        font-size: 0.8rem;
-    }
-    .permission-item input[type="checkbox"] {
-        margin-right: 0.5rem;
-    }
-    .stats-card {
-        background: white;
-        border: 1px solid #dee2e6;
-        border-radius: 0.375rem;
-        padding: 0.75rem;
-        margin-bottom: 0.5rem;
-    }
-    .stats-card h6 {
-        font-size: 0.75rem;
-        color: #6c757d;
-        margin-bottom: 0.25rem;
-    }
-    .stats-card .count {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: #495057;
-    }
-    .nav-pills .nav-link.active {
-        background-color: #667eea;
-    }
-    .nav-pills .nav-link {
-        color: #495057;
-    }
-</style>
-{% endblock %}
+{% block title %}Manage Access: {{ target_user.get_full_name|default:target_user.username }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2><i class="fas fa-user-cog me-2"></i>Manage User Privileges</h2>
-                <a href="{% url 'accounts:user_dashboard' %}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Users
-                </a>
+    {# Both grant flows (user_dashboard + superuser user list) render this template. #}
+    {% if active_nav == 'user_permissions' %}
+        {% url 'accounts:superuser_user_permissions' as back_url %}
+    {% else %}
+        {% url 'accounts:user_dashboard' as back_url %}
+    {% endif %}
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-user-cog me-2"></i>Manage Access</h2>
+        <a href="{{ back_url }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
+        {% endfor %}
+    {% endif %}
 
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-
-            <!-- User Information Card -->
-            <div class="card user-info-card mb-4">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h4>{{ target_user.get_full_name|default:target_user.username }}</h4>
-                            <p class="mb-1">
-                                <i class="fas fa-envelope me-2"></i>
-                                {{ target_user.email|default:"No email" }}
-                            </p>
-                            <p class="mb-0">
-                                <i class="fas fa-user-tag me-2"></i>
-                                {% if user_roles %}
-                                    {% for role in user_roles %}
-                                        <span class="badge bg-primary me-1">{{ role.name|title }}</span>
-                                    {% endfor %}
-                                {% else %}
-                                    <span class="text-white-50">No role assigned</span>
-                                {% endif %}
-                                {% if target_user.is_superuser %}
-                                    <span class="badge bg-warning ms-2">Superuser</span>
-                                {% endif %}
-                                {% if target_user.is_staff %}
-                                    <span class="badge bg-info ms-2">Staff</span>
-                                {% endif %}
-                            </p>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="row">
-                                <div class="col-6">
-                                    <div class="stats-card text-center">
-                                        <h6>Roles</h6>
-                                        <div class="count text-primary">{{ user_roles|length }}</div>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="stats-card text-center">
-                                        <h6>Direct Perms</h6>
-                                        <div class="count text-success">{{ user_permissions|length }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    <!-- User summary -->
+    <div class="card mb-4">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-1">{{ target_user.get_full_name|default:target_user.username }}</h5>
+                <div class="text-muted small">
+                    <i class="fas fa-envelope me-1"></i>{{ target_user.email|default:"No email" }}
+                </div>
+                <div class="mt-2">
+                    {% for role in user_roles %}
+                        <span class="badge bg-primary me-1">{{ role.name|title }}</span>
+                    {% empty %}
+                        <span class="text-muted">No role assigned</span>
+                    {% endfor %}
+                    {% if target_user.is_superuser %}<span class="badge bg-warning text-dark ms-1">Superuser</span>{% endif %}
+                    {% if target_user.is_staff %}<span class="badge bg-info ms-1">Staff</span>{% endif %}
                 </div>
             </div>
-
-            {% if request.user.is_superuser and not target_user.is_superuser and target_user != request.user %}
-            <!-- Admin Privilege Card -->
-            <div class="card mb-4 border-{% if target_user.is_staff %}warning{% else %}secondary{% endif %}">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="fas fa-shield-alt me-2 text-{% if target_user.is_staff %}warning{% else %}secondary{% endif %}"></i>
-                        Admin Privilege
-                    </h5>
-                    {% if target_user.is_staff %}
-                        <span class="badge bg-warning text-dark fs-6"><i class="fas fa-check-circle me-1"></i>Admin Granted</span>
-                    {% else %}
-                        <span class="badge bg-secondary fs-6"><i class="fas fa-times-circle me-1"></i>Not an Admin</span>
-                    {% endif %}
-                </div>
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <p class="mb-1 text-muted small">
-                                Granting <strong>Admin Privilege</strong> assigns the <em>admin</em> role (full HMS permissions)
-                                and enables Django staff access. This is separate from superuser status.
-                            </p>
-                            <ul class="list-unstyled mb-0 small text-muted">
-                                <li><i class="fas fa-circle-check text-success me-1"></i><strong>is_staff:</strong>
-                                    {% if target_user.is_staff %}<span class="text-success">Yes</span>{% else %}<span class="text-danger">No</span>{% endif %}
-                                </li>
-                                <li><i class="fas fa-circle-check text-success me-1"></i><strong>Admin role assigned:</strong>
-                                    {% with admin_role_assigned=target_user.roles.all %}
-                                        {% for r in admin_role_assigned %}{% if r.name == "admin" %}<span class="text-success">Yes</span>{% endif %}{% empty %}<span class="text-danger">No</span>{% endfor %}
-                                    {% endwith %}
-                                </li>
-                            </ul>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            {% if target_user.is_staff %}
-                                <button type="button" class="btn btn-outline-danger"
-                                        onclick="toggleAdminPrivilege('revoke')">
-                                    <i class="fas fa-user-minus me-1"></i>Revoke Admin
-                                </button>
-                            {% else %}
-                                <button type="button" class="btn btn-warning"
-                                        onclick="toggleAdminPrivilege('grant')">
-                                    <i class="fas fa-user-shield me-1"></i>Grant Admin
-                                </button>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
+            <div class="text-end">
+                <span class="badge bg-light text-dark">{{ user_roles|length }} roles</span>
+                <span class="badge bg-light text-dark">{{ user_permissions|length }} direct perms</span>
             </div>
-
-            <!-- Hidden form for admin privilege toggle -->
-            <form id="adminPrivilegeForm" method="post"
-                  action="{% url 'accounts:toggle_admin_privilege' target_user.id %}">
-                {% csrf_token %}
-                <input type="hidden" name="action" id="adminPrivilegeAction" value="">
-            </form>
-            {% endif %}
-
-            <!-- Tab Navigation -->
-            <ul class="nav nav-pills mb-4" id="privilegeTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="roles-tab" data-bs-toggle="pill" data-bs-target="#roles-panel" type="button">
-                        <i class="fas fa-user-shield me-1"></i> Role Assignment
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="permissions-tab" data-bs-toggle="pill" data-bs-target="#permissions-panel" type="button">
-                        <i class="fas fa-key me-1"></i> Direct Permissions
-                    </button>
-                </li>
-            </ul>
-
-            <form method="post">
-                {% csrf_token %}
-                
-                <!-- Tab Content -->
-                <div class="tab-content" id="privilegeTabsContent">
-                    
-                    <!-- Role Assignment Tab -->
-                    <div class="tab-pane fade show active" id="roles-panel" role="tabpanel">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5><i class="fas fa-user-tag me-2"></i>Assign Roles</h5>
-                                <small class="text-muted">Select roles to assign to this user. Each role comes with its own set of permissions.</small>
-                            </div>
-                            <div class="card-body">
-                                {% if all_roles %}
-                                    <div class="row">
-                                        {% for role in all_roles %}
-                                        <div class="col-md-6 mb-3">
-                                            <div class="card role-card h-100">
-                                                <div class="card-body">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input role-checkbox"
-                                                               type="checkbox" 
-                                                               name="roles" 
-                                                               value="{{ role.id }}" 
-                                                               id="role_{{ role.id }}"
-                                                               {% if role.id in user_role_ids %}checked{% endif %}
-                                                               data-role-name="{{ role.name }}"
-                                                               onchange="updateRoleInfo()">
-                                                        <label class="form-check-label w-100" for="role_{{ role.id }}">
-                                                            <h6 class="mb-2">{{ role.name|title }}</h6>
-                                                            {% if role.description %}
-                                                                <p class="text-muted small mb-2">{{ role.description|truncatechars:80 }}</p>
-                                                            {% endif %}
-                                                            
-                                                            <div class="d-flex justify-content-between align-items-center">
-                                                                <small class="text-info">
-                                                                    <i class="fas fa-key me-1"></i>{{ role.permissions.count }} permissions
-                                                                </small>
-                                                                {% if role.parent %}
-                                                                    <small class="text-warning">
-                                                                        <i class="fas fa-arrow-up me-1"></i>{{ role.parent.name }}
-                                                                    </small>
-                                                                {% endif %}
-                                                            </div>
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                {% else %}
-                                    <div class="alert alert-info">
-                                        <i class="fas fa-info-circle me-2"></i>
-                                        No roles available. <a href="{% url 'accounts:create_role' %}">Create a role first</a>.
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Direct Permissions Tab -->
-                    <div class="tab-pane fade" id="permissions-panel" role="tabpanel">
-                        <div class="card mb-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h5><i class="fas fa-key me-2"></i>Direct Permission Assignment</h5>
-                                    <small class="text-muted">Assign individual permissions directly to this user (bypassing roles)</small>
-                                </div>
-                                <div class="btn-group btn-group-sm">
-                                    <button type="button" class="btn btn-outline-primary" onclick="selectAllPerms()">
-                                        <i class="fas fa-check-square me-1"></i>Select All
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary" onclick="clearAllPerms()">
-                                        <i class="fas fa-square me-1"></i>Clear All
-                                    </button>
-                                    <button type="button" class="btn btn-outline-info" onclick="resetPerms()">
-                                        <i class="fas fa-undo me-1"></i>Reset
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <input type="text" class="form-control mb-3" id="permSearch" placeholder="Search permissions...">
-                                
-                                {% if custom_permissions %}
-                                <div class="mb-4">
-                                    <h6 class="text-primary border-bottom pb-2 mb-3">
-                                        <i class="fas fa-star me-2"></i>HMS Custom Permissions
-                                    </h6>
-                                    {% for category, perms_dict in app_permissions.items %}
-                                        <div class="permission-group mb-3" data-app="{{ category }}">
-                                            <h6><i class="fas fa-folder me-1"></i>{{ category|title }}</h6>
-                                            {% for codename, description in perms_dict.items %}
-                                                {% for permission in custom_permissions %}
-                                                    {% if permission.codename == codename %}
-                                                        <div class="permission-item mb-1" data-perm="{{ permission.name|lower }}">
-                                                            <label>
-                                                                <input type="checkbox"
-                                                                       name="permissions"
-                                                                       value="{{ permission.id }}"
-                                                                       data-codename="{{ permission.codename }}"
-                                                                       {% if permission in user_permissions %}checked{% endif %}>
-                                                                <strong>{{ permission.name }}</strong>
-                                                                <small class="text-muted ms-1">({{ permission.codename }})</small>
-                                                            </label>
-                                                        </div>
-                                                    {% endif %}
-                                                {% endfor %}
-                                            {% endfor %}
-                                        </div>
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
-
-                                {% if model_permissions %}
-                                <div>
-                                    <h6 class="text-secondary border-bottom pb-2 mb-3">
-                                        <i class="fas fa-database me-2"></i>Django Model Permissions
-                                    </h6>
-                                    {% regroup model_permissions by content_type.model as perm_groups %}
-                                    <div class="permissions-grid">
-                                        {% for group in perm_groups %}
-                                            <div class="permission-group" data-app="{{ group.grouper }}">
-                                                <h6><i class="fas fa-cube me-1"></i>{{ group.grouper|title }}</h6>
-                                                {% for permission in group.list %}
-                                                    <div class="permission-item mb-1" data-perm="{{ permission.name|lower }}">
-                                                        <label>
-                                                            <input type="checkbox"
-                                                                   name="permissions"
-                                                                   value="{{ permission.id }}"
-                                                                   data-codename="{{ permission.codename }}"
-                                                                   {% if permission in user_permissions %}checked{% endif %}>
-                                                            {{ permission.name|title }}
-                                                            <small class="text-muted">({{ permission.codename }})</small>
-                                                        </label>
-                                                    </div>
-                                                {% endfor %}
-                                            </div>
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Form Actions -->
-                <div class="d-flex justify-content-between mb-4">
-                    <a href="{% url 'accounts:user_dashboard' %}" class="btn btn-secondary">
-                        <i class="fas fa-times me-2"></i>Cancel
-                    </a>
-                    <button type="submit" class="btn btn-primary btn-lg">
-                        <i class="fas fa-save me-2"></i>Save Roles & Permissions
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
+
+    {% if request.user.is_superuser and not target_user.is_superuser and target_user != request.user %}
+    <!-- Admin privilege toggle -->
+    <div class="card mb-4">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center">
+            <div>
+                <h6 class="mb-1"><i class="fas fa-shield-alt me-2"></i>Admin Privilege</h6>
+                <small class="text-muted">Assigns the <em>admin</em> role (full permissions) + Django staff access. Separate from superuser.</small>
+            </div>
+            {% if target_user.is_staff %}
+                <button type="button" class="btn btn-outline-danger" onclick="toggleAdminPrivilege('revoke')">
+                    <i class="fas fa-user-minus me-1"></i>Revoke Admin
+                </button>
+            {% else %}
+                <button type="button" class="btn btn-warning" onclick="toggleAdminPrivilege('grant')">
+                    <i class="fas fa-user-shield me-1"></i>Grant Admin
+                </button>
+            {% endif %}
+        </div>
+    </div>
+    <form id="adminPrivilegeForm" method="post" action="{% url 'accounts:toggle_admin_privilege' target_user.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" id="adminPrivilegeAction" value="">
+    </form>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        <!-- Roles -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-user-tag me-2"></i>Roles</h5>
+                <small class="text-muted">Each role grants its own set of permissions.</small>
+            </div>
+            <div class="card-body">
+                {% if all_roles %}
+                    <div class="row">
+                        {% for role in all_roles %}
+                        <div class="col-md-6 col-lg-4 mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="roles"
+                                       value="{{ role.id }}" id="role_{{ role.id }}"
+                                       {% if role.id in user_role_ids %}checked{% endif %}>
+                                <label class="form-check-label" for="role_{{ role.id }}">
+                                    <strong>{{ role.name|title }}</strong>
+                                    <span class="text-muted small">· {{ role.permissions.count }} perms</span>
+                                    {% if role.description %}<br><small class="text-muted">{{ role.description|truncatechars:70 }}</small>{% endif %}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info mb-0">
+                        No roles available. <a href="{% url 'accounts:create_role' %}">Create one</a>.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Direct permissions -->
+        <div class="card mb-4">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0"><i class="fas fa-key me-2"></i>Direct Permissions</h5>
+                    <small class="text-muted">Granted directly to this user, on top of role permissions.</small>
+                </div>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-primary" onclick="setPerms(true)">Select All</button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="setPerms(false)">Clear</button>
+                    <button type="button" class="btn btn-outline-info" onclick="resetPerms()">Reset</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <input type="text" class="form-control mb-3" id="permSearch" placeholder="Search permissions...">
+
+                {% if custom_permissions %}
+                <h6 class="text-primary border-bottom pb-2"><i class="fas fa-star me-2"></i>HMS Permissions</h6>
+                <div class="row mb-3">
+                    {% for category, perms_dict in app_permissions.items %}
+                        <div class="col-md-6 col-lg-4 mb-3 perm-group">
+                            <div class="fw-bold small text-uppercase text-muted mb-2">{{ category|title }}</div>
+                            {% for codename, description in perms_dict.items %}
+                                {% for permission in custom_permissions %}
+                                    {% if permission.codename == codename %}
+                                        <div class="form-check perm-item">
+                                            <input class="form-check-input" type="checkbox" name="permissions"
+                                                   value="{{ permission.id }}" id="perm_{{ permission.id }}"
+                                                   {% if permission in user_permissions %}checked{% endif %}>
+                                            <label class="form-check-label small" for="perm_{{ permission.id }}">
+                                                {{ permission.name }} <span class="text-muted">({{ permission.codename }})</span>
+                                            </label>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if model_permissions %}
+                <h6 class="text-secondary border-bottom pb-2"><i class="fas fa-database me-2"></i>Model Permissions</h6>
+                {% regroup model_permissions by content_type.model as perm_groups %}
+                <div class="row">
+                    {% for group in perm_groups %}
+                        <div class="col-md-6 col-lg-4 mb-3 perm-group">
+                            <div class="fw-bold small text-uppercase text-muted mb-2">{{ group.grouper|title }}</div>
+                            {% for permission in group.list %}
+                                <div class="form-check perm-item">
+                                    <input class="form-check-input" type="checkbox" name="permissions"
+                                           value="{{ permission.id }}" id="perm_{{ permission.id }}"
+                                           {% if permission in user_permissions %}checked{% endif %}>
+                                    <label class="form-check-label small" for="perm_{{ permission.id }}">
+                                        {{ permission.name|title }} <span class="text-muted">({{ permission.codename }})</span>
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between mb-4">
+            <a href="{{ back_url }}" class="btn btn-secondary"><i class="fas fa-times me-2"></i>Cancel</a>
+            <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save me-2"></i>Save Access</button>
+        </div>
+    </form>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-const rolePermissions = {{ role_permissions_json|safe }};
+// Snapshot checked perms at load for Reset.
+const savedPerms = Array.from(document.querySelectorAll('input[name="permissions"]:checked')).map(c => c.value);
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Store current permissions for reset
-    window.currentPerms = [];
-    document.querySelectorAll('input[name="permissions"]:checked').forEach(function(cb) {
-        window.currentPerms.push(cb.value);
-    });
+function setPerms(checked) {
+    document.querySelectorAll('input[name="permissions"]').forEach(c => c.checked = checked);
+}
+function resetPerms() {
+    document.querySelectorAll('input[name="permissions"]').forEach(c => c.checked = savedPerms.includes(c.value));
+}
 
-    // Store current roles for reset
-    window.currentRoles = [];
-    document.querySelectorAll('input[name="roles"]:checked').forEach(function(cb) {
-        window.currentRoles.push(cb.value);
-    });
-
-    // Role visual feedback
-    document.querySelectorAll('.role-checkbox').forEach(function(checkbox) {
-        checkbox.addEventListener('change', function() {
-            const card = this.closest('.role-card');
-            if (this.checked) {
-                card.style.borderLeftColor = '#28a745';
-                card.style.backgroundColor = '#f8fff9';
-            } else {
-                card.style.borderLeftColor = '#dee2e6';
-                card.style.backgroundColor = '';
-            }
+document.getElementById('permSearch').addEventListener('input', function() {
+    const term = this.value.toLowerCase();
+    document.querySelectorAll('.perm-group').forEach(function(group) {
+        let hit = false;
+        group.querySelectorAll('.perm-item').forEach(function(item) {
+            const show = item.textContent.toLowerCase().includes(term);
+            item.style.display = show ? '' : 'none';
+            if (show) hit = true;
         });
-        if (checkbox.checked) {
-            const card = checkbox.closest('.role-card');
-            card.style.borderLeftColor = '#28a745';
-            card.style.backgroundColor = '#f8fff9';
-        }
+        group.style.display = hit ? '' : 'none';
     });
-
-    // Permission search
-    const searchInput = document.getElementById('permSearch');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            const term = this.value.toLowerCase();
-            document.querySelectorAll('.permission-group').forEach(function(group) {
-                const title = group.querySelector('h6').textContent.toLowerCase();
-                let hasMatch = false;
-                group.querySelectorAll('.permission-item').forEach(function(item) {
-                    const text = item.textContent.toLowerCase();
-                    if (text.includes(term) || title.includes(term)) {
-                        item.style.display = '';
-                        hasMatch = true;
-                    } else {
-                        item.style.display = 'none';
-                    }
-                });
-                group.style.display = hasMatch ? '' : 'none';
-            });
-        });
-    }
 });
 
-function selectAllPerms() {
-    document.querySelectorAll('input[name="permissions"]').forEach(function(cb) { cb.checked = true; });
-}
-
-function clearAllPerms() {
-    document.querySelectorAll('input[name="permissions"]').forEach(function(cb) { cb.checked = false; });
-}
-
-function resetPerms() {
-    document.querySelectorAll('input[name="permissions"]').forEach(function(cb) {
-        cb.checked = window.currentPerms.includes(cb.value);
-    });
-    document.querySelectorAll('input[name="roles"]').forEach(function(cb) {
-        cb.checked = window.currentRoles.includes(cb.value);
-    });
-}
-
-function updateRoleInfo() {
-    // Visual feedback for roles
-    document.querySelectorAll('.role-checkbox').forEach(function(checkbox) {
-        const card = checkbox.closest('.role-card');
-        if (checkbox.checked) {
-            card.style.borderLeftColor = '#28a745';
-            card.style.backgroundColor = '#f8fff9';
-        } else {
-            card.style.borderLeftColor = '#dee2e6';
-            card.style.backgroundColor = '';
-        }
-    });
-}
-
 function toggleAdminPrivilege(action) {
-    const label = action === 'grant' ? 'grant admin privilege' : 'revoke admin privilege';
-    if (!confirm('Are you sure you want to ' + label + ' for this user?')) return;
+    if (!confirm('Are you sure you want to ' + action + ' admin privilege for this user?')) return;
     document.getElementById('adminPrivilegeAction').value = action;
     document.getElementById('adminPrivilegeForm').submit();
 }

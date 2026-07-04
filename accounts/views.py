@@ -719,28 +719,6 @@ def bulk_user_actions(request):
 
 
 @login_required
-@permission_required("users.edit")
-def user_privileges(request, user_id):
-    user = get_object_or_404(User, id=user_id)
-    if request.method == "POST":
-        form = UserRoleAssignmentForm(request.POST, instance=user)
-        if form.is_valid():
-            form.save()
-            messages.success(
-                request, f"Roles for {user.username} updated successfully."
-            )
-            return redirect("accounts:user_dashboard")
-    else:
-        form = UserRoleAssignmentForm(instance=user)
-    context = {
-        "form": form,
-        "user": user,
-        "page_title": f"Manage Roles for {user.username}",
-    }
-    return render(request, "accounts/user_privileges.html", context)
-
-
-@login_required
 @permission_required("roles.edit")
 def delete_role(request, role_id):
     role = get_object_or_404(Role, id=role_id)
@@ -1895,7 +1873,6 @@ def delete_role(request, role_id):
 def user_privileges(request, user_id):
     """View for managing user privileges (role and permission assignments)"""
     from core.permissions import APP_PERMISSIONS
-    from accounts.permissions import ROLE_PERMISSIONS
 
     target_user = get_object_or_404(User, id=user_id)
     user_permissions = target_user.user_permissions.all()
@@ -1982,7 +1959,6 @@ def user_privileges(request, user_id):
         "all_roles": all_roles,
         "user_roles": user_roles,
         "user_role_ids": user_role_ids,
-        "role_permissions_json": json.dumps(ROLE_PERMISSIONS),
         "page_title": f"Manage Privileges: {target_user.get_full_name()}",
         "active_nav": "user_dashboard",
     }
@@ -2643,7 +2619,6 @@ def superuser_manage_user_permissions(request, user_id):
     """Manage permissions for a specific user - accessible to users with users.edit permission"""
     from core.permissions import APP_PERMISSIONS
     from accounts.models import Role
-    from accounts.permissions import ROLE_PERMISSIONS
 
     user = get_object_or_404(User, id=user_id)
     user_permissions = user.user_permissions.all()
@@ -2710,7 +2685,7 @@ def superuser_manage_user_permissions(request, user_id):
 
     return render(
         request,
-        "accounts/superuser/manage_user_permissions.html",
+        "accounts/user_privileges.html",
         {
             "target_user": user,
             "user_permissions": user_permissions,
@@ -2721,8 +2696,7 @@ def superuser_manage_user_permissions(request, user_id):
             "all_roles": all_roles,
             "user_roles": user_roles,
             "user_role_ids": user_role_ids,
-            "role_permissions_json": json.dumps(ROLE_PERMISSIONS),
-            "page_title": f"Manage Permissions: {user.username}",
+                "page_title": f"Manage Permissions: {user.username}",
             "active_nav": "user_permissions",
         },
     )
