@@ -72,77 +72,14 @@
     <div class="col-md-12 mb-4">
         <div class="card">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h4 class="mb-0">Prescription Details</h4>
+                <h4 class="mb-0">Prescription Details #{{ prescription.id }}</h4>
                 <div>
-                    <!-- CREATE CART BUTTON - PROMINENT -->
-                    <a href="{% url 'pharmacy:create_cart_from_prescription' prescription.id %}" class="btn btn-sm me-2" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; font-weight: 600;" onclick="return selectAllAndSubmit(event)">
-                        <i class="fas fa-shopping-cart"></i> Create Billing Cart
+                    <a href="{% url 'pharmacy:print_prescription' prescription.id %}" class="btn btn-light btn-sm me-2" target="_blank">
+                        <i class="fas fa-print"></i> Print
                     </a>
-
-                    <a href="{% url 'pharmacy:print_prescription' prescription.id %}" class="btn btn-info me-2" target="_blank">
-                        <i class="fas fa-print"></i> Print Prescription
-                    </a>
-                    <a href="{% url 'pharmacy:prescription_dispensing_history' prescription.id %}" class="btn btn-warning btn-sm me-2">
+                    <a href="{% url 'pharmacy:prescription_dispensing_history' prescription.id %}" class="btn btn-light btn-sm" >
                         <i class="fas fa-history"></i> Dispensing History
                     </a>
-                    {% if prescription.status != 'completed' and prescription.status != 'cancelled' %}
-                        {% if active_cart %}
-                            {# Use cart-based workflow #}
-                            {% if active_cart.status == 'paid' or active_cart.invoice and active_cart.invoice.status == 'paid' %}
-                                <a href="{% url 'pharmacy:view_cart' active_cart.id %}" class="btn btn-success me-2">
-                                    <i class="fas fa-prescription-bottle-alt"></i> Dispense Medications
-                                </a>
-                            {% else %}
-                                <button type="button" class="btn btn-success me-2" disabled title="Payment required before dispensing">
-                                    <i class="fas fa-lock"></i> Dispense Medications (Payment Required)
-                                </button>
-                                {# Show payment options for cart invoice #}
-                                <div class="btn-group me-2" role="group">
-                                    {% if active_cart.invoice %}
-                                        <a href="{% url 'pharmacy:prescription_payment' prescription.id %}" class="btn btn-warning">
-                                            <i class="fas fa-credit-card"></i> Pay Now
-                                        </a>
-                                        <a href="{% url 'billing:detail' active_cart.invoice.id %}" class="btn btn-outline-warning">
-                                            <i class="fas fa-file-invoice"></i> View Invoice
-                                        </a>
-                                    {% else %}
-                                        <a href="{% url 'pharmacy:create_cart_from_prescription' prescription.id %}" class="btn btn-primary">
-                                            <i class="fas fa-shopping-cart"></i> Create Cart
-                                        </a>
-                                    {% endif %}
-                                </div>
-                            {% endif %}
-                        {% elif prescription.is_payment_verified %}
-                            <a href="{% url 'pharmacy:dispense_prescription' prescription.id %}" class="btn btn-success me-2">
-                                <i class="fas fa-prescription-bottle-alt"></i> Dispense Medications
-                            </a>
-                        {% else %}
-                            <button type="button" class="btn btn-success me-2" disabled title="Payment required before dispensing">
-                                <i class="fas fa-lock"></i> Dispense Medications (Payment Required)
-                            </button>
-
-                            <!-- Payment Options -->
-                            <div class="btn-group me-2" role="group">
-                                {% if prescription.invoice %}
-                                    <a href="{% url 'pharmacy:prescription_payment' prescription.id %}" class="btn btn-warning">
-                                        <i class="fas fa-credit-card"></i> Pay Now
-                                    </a>
-                                    {% if pharmacy_invoice.get_balance > 0 %}
-                                        <a href="{% url 'pharmacy:process_outstanding_wallet_payment' prescription.id %}" class="btn btn-success">
-                                            <i class="fas fa-wallet"></i> Process Outstanding from Wallet
-                                        </a>
-                                    {% endif %}
-                                    <a href="{% url 'billing:detail' prescription.invoice.id %}" class="btn btn-outline-warning">
-                                        <i class="fas fa-file-invoice"></i> View Invoice
-                                    </a>
-                                {% else %}
-                                    <a href="{% url 'pharmacy:create_prescription_invoice' prescription.id %}" class="btn btn-primary">
-                                        <i class="fas fa-file-invoice-dollar"></i> Create Invoice & Pay
-                                    </a>
-                                {% endif %}
-                            </div>
-                        {% endif %}
-                    {% endif %}
                 </div>
             </div>
             <div class="card-body">
@@ -208,6 +145,11 @@
                                     <div style="font-size: 1.1rem; font-weight: 600;">Process Payment</div>
                                     <small>{{ total_patient_pays|currency }}</small>
                                 </a>
+                                {% if pharmacy_invoice.get_balance > 0 %}
+                                <a href="{% url 'pharmacy:process_outstanding_wallet_payment' prescription.id %}" class="btn btn-outline-success btn-sm w-100 mt-2">
+                                    <i class="fas fa-wallet"></i> Pay Outstanding from Wallet
+                                </a>
+                                {% endif %}
                                 {% elif pharmacy_invoice and pharmacy_invoice.status == 'paid' %}
                                 <div class="btn btn-success btn-lg w-100" style="padding: 20px; cursor: default;">
                                     <i class="fas fa-check-circle fa-2x mb-2"></i>
@@ -232,19 +174,9 @@
                                 </a>
                             </div>
                         </div>
-                        <div class="alert alert-info mt-3 mb-0" style="background: #e8f4f8; border-left: 4px solid #17a2b8;">
-                            <i class="fas fa-info-circle"></i>
-                            <strong>New Cart System:</strong> Create a cart to review medications, check stock availability, adjust quantities based on what's available, and generate accurate invoices before payment.
-                        </div>
                     </div>
                 </div>
 
-                <!-- Info: Invoice is generated after dispensing -->
-                {% comment %} <div class="alert alert-info mb-4">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>Note:</strong> The invoice for dispensed medicines will be generated and sent to billing/Context7 MCP only after dispensing is confirmed by the pharmacist.
-                </div> {% endcomment %}
-                
                 <!-- Billing Status and Quick Link -->
                 <div class="row mb-3">
                     <div class="col-md-12 text-end">
