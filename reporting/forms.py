@@ -38,7 +38,7 @@ class BillingReportForm(forms.Form):
         super().__init__(*args, **kwargs)
         # Lazy load the Patient queryset to avoid circular imports
         from patients.models import Patient
-        self.fields['patient'].queryset = Patient.objects.all()
+        self.fields['patient'].queryset = Patient.objects.all().select_related('nhia_info', 'retainership_info')
 
 class PharmacySalesReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
@@ -49,7 +49,7 @@ class PharmacySalesReportForm(forms.Form):
         super().__init__(*args, **kwargs)
         # Lazy load the Patient queryset to avoid circular imports
         from patients.models import Patient
-        self.fields['patient'].queryset = Patient.objects.all()
+        self.fields['patient'].queryset = Patient.objects.all().select_related('nhia_info', 'retainership_info')
 
 class LaboratoryReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
@@ -69,7 +69,7 @@ class LaboratoryReportForm(forms.Form):
         super().__init__(*args, **kwargs)
         # Lazy load the Patient queryset to avoid circular imports
         from patients.models import Patient
-        self.fields['patient'].queryset = Patient.objects.all()
+        self.fields['patient'].queryset = Patient.objects.all().select_related('nhia_info', 'retainership_info')
 
 class RadiologyReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
@@ -81,7 +81,7 @@ class RadiologyReportForm(forms.Form):
         super().__init__(*args, **kwargs)
         # Lazy load the Patient queryset to avoid circular imports
         from patients.models import Patient
-        self.fields['patient'].queryset = Patient.objects.all()
+        self.fields['patient'].queryset = Patient.objects.all().select_related('nhia_info', 'retainership_info')
 
 class InpatientReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
@@ -92,7 +92,7 @@ class InpatientReportForm(forms.Form):
         super().__init__(*args, **kwargs)
         # Lazy load the Patient queryset to avoid circular imports
         from patients.models import Patient
-        self.fields['patient'].queryset = Patient.objects.all()
+        self.fields['patient'].queryset = Patient.objects.all().select_related('nhia_info', 'retainership_info')
 
 class HRReportForm(forms.Form):
     department = forms.ModelChoiceField(queryset=Department.objects.all(), required=False)

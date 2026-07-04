@@ -2195,30 +2195,31 @@ def pharmacy_dispensary_revenue(request):
     total_transactions = 0
     total_medications_dispensed = 0
 
-    for dispensary in all_dispensaries:
-        # Get dispensing logs for this dispensary in the date range
-        logs = DispensingLog.objects.filter(
-            dispensary=dispensary, dispensed_date__date__range=[start_date, end_date]
-        ).aggregate(
+    # One grouped query for every dispensary's totals, instead of 2 queries per
+    # dispensary inside the loop (was 2*N queries for N dispensaries).
+    agg_by_disp = {
+        row["dispensary"]: row
+        for row in DispensingLog.objects.filter(
+            dispensed_date__date__range=[start_date, end_date]
+        )
+        .values("dispensary")
+        .annotate(
             total_revenue=Sum("total_price_for_this_log"),
             total_logs=Count("id"),
             total_quantity=Sum("dispensed_quantity"),
+            prescriptions_count=Count(
+                "prescription_item__prescription", distinct=True
+            ),
         )
+    }
 
-        revenue = logs["total_revenue"] or Decimal("0.00")
-        transactions = logs["total_logs"] or 0
-        quantity_dispensed = logs["total_quantity"] or 0
+    for dispensary in all_dispensaries:
+        row = agg_by_disp.get(dispensary.id)
 
-        # Get unique prescriptions count
-        prescriptions_count = (
-            DispensingLog.objects.filter(
-                dispensary=dispensary,
-                dispensed_date__date__range=[start_date, end_date],
-            )
-            .values("prescription_item__prescription")
-            .distinct()
-            .count()
-        )
+        revenue = (row["total_revenue"] if row else None) or Decimal("0.00")
+        transactions = (row["total_logs"] if row else 0) or 0
+        quantity_dispensed = (row["total_quantity"] if row else 0) or 0
+        prescriptions_count = (row["prescriptions_count"] if row else 0) or 0
 
         # Only add to list if there's revenue or if no search filter
         if not search_query or search_query in dispensary.name.lower():
@@ -2299,38 +2300,45 @@ def pharmacy_dispensary_revenue(request):
             days=180
         )  # Approximately 6 months
 
+    # Build the month buckets first (pure date math, no queries).
+    month_buckets = []  # (label, first_of_month date)
     current_date = trend_start_date.replace(day=1)  # Start from first of the month
-    months_list = []
-
     while current_date <= trend_end_date:
-        # Calculate next month
+        month_buckets.append((current_date.strftime("%b %Y"), current_date))
         if current_date.month == 12:
-            next_month = current_date.replace(
+            current_date = current_date.replace(
                 year=current_date.year + 1, month=1, day=1
             )
         else:
-            next_month = current_date.replace(month=current_date.month + 1, day=1)
+            current_date = current_date.replace(month=current_date.month + 1, day=1)
+    months_list = [label for label, _ in month_buckets]
 
-        month_end = min(next_month - timedelta(days=1), trend_end_date)
-        month_label = current_date.strftime("%b %Y")
-        months_list.append(month_label)
+    # One grouped query for the whole trend range instead of one aggregate per
+    # dispensary per month (was 6*N queries). Bucket by (name, year, month).
+    rev_map = {}
+    for r in (
+        DispensingLog.objects.filter(
+            dispensed_date__date__range=[trend_start_date, trend_end_date]
+        )
+        .annotate(m=TruncMonth("dispensed_date"))
+        .values("dispensary__name", "m")
+        .annotate(total_revenue=Sum("total_price_for_this_log"))
+    ):
+        m = r["m"]
+        rev_map[(r["dispensary__name"], m.year, m.month)] = (
+            r["total_revenue"] or Decimal("0.00")
+        )
 
+    for month_label, month_start in month_buckets:
         month_total = Decimal("0.00")
-
-        # Get revenue for each dispensary in this month
         for dispensary in all_dispensaries:
-            monthly_logs = DispensingLog.objects.filter(
-                dispensary=dispensary,
-                dispensed_date__date__range=[current_date, month_end],
-            ).aggregate(total_revenue=Sum("total_price_for_this_log"))
-
-            revenue = monthly_logs["total_revenue"] or Decimal("0.00")
+            revenue = rev_map.get(
+                (dispensary.name, month_start.year, month_start.month),
+                Decimal("0.00"),
+            )
             dispensary_monthly_data[dispensary.name].append(float(revenue))
             month_total += revenue
-
         monthly_trends.append({"month": month_label, "total": float(month_total)})
-
-        current_date = next_month
 
     # Prepare chart data
     chart_data = {"months": json.dumps(months_list), "dispensaries": {}}
@@ -2521,18 +2529,22 @@ def bulk_store_list(request):
 
     bulk_stores = BulkStore.objects.all().select_related("manager")
 
-    for bulk_store in bulk_stores:
-        inventory_stats = BulkStoreInventory.objects.filter(
-            bulk_store=bulk_store
-        ).aggregate(
+    # One grouped query for all stores instead of an aggregate per store.
+    stats_by_store = {
+        r["bulk_store"]: r
+        for r in BulkStoreInventory.objects.values("bulk_store").annotate(
             total_items=Count("id"),
             total_quantity=Sum("stock_quantity"),
             total_value=Sum(models.F("stock_quantity") * models.F("unit_cost")),
         )
-        bulk_store.total_items = inventory_stats["total_items"] or 0
-        bulk_store.total_quantity = inventory_stats["total_quantity"] or 0
-        bulk_store.total_value = inventory_stats["total_value"] or 0
-        bulk_store.can_edit = user_has_dispensary_edit_permission(request.user)
+    }
+    can_edit = user_has_dispensary_edit_permission(request.user)
+    for bulk_store in bulk_stores:
+        s = stats_by_store.get(bulk_store.id)
+        bulk_store.total_items = (s["total_items"] if s else 0) or 0
+        bulk_store.total_quantity = (s["total_quantity"] if s else 0) or 0
+        bulk_store.total_value = (s["total_value"] if s else 0) or 0
+        bulk_store.can_edit = can_edit
 
     context = {
         "bulk_stores": bulk_stores,

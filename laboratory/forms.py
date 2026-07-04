@@ -178,7 +178,7 @@ class TestRequestForm(forms.ModelForm):
             )
         else:
             # Ensure all patients are available for selection when not preselected
-            self.fields['patient'].queryset = Patient.objects.filter(is_active=True)
+            self.fields['patient'].queryset = Patient.objects.filter(is_active=True).select_related('nhia_info', 'retainership_info')
 
         # Organize tests by category for better display
         self.fields['tests'].queryset = Test.objects.filter(is_active=True).select_related('category').order_by('category__name', 'name')

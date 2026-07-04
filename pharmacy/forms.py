@@ -299,7 +299,7 @@ class PrescriptionForm(forms.ModelForm):
             self.fields["patient"].empty_label = None
         else:
             # Ensure all patients are available for selection when not preselected
-            self.fields["patient"].queryset = Patient.objects.filter(is_active=True)
+            self.fields["patient"].queryset = Patient.objects.filter(is_active=True).select_related('nhia_info', 'retainership_info')
 
         # Handle doctor field - set to current user and make read-only
         if current_user:

@@ -4,6 +4,7 @@ Extends existing revenue logic to provide detailed revenue point analysis
 while maintaining backward compatibility with existing systems.
 """
 
+from functools import wraps
 from django.db.models import Sum, Count, Q, Avg
 from django.utils import timezone
 from decimal import Decimal
@@ -37,6 +38,24 @@ try:
 except ImportError:
     # Handle missing models gracefully
     pass
+
+
+def _memoize_zeroarg(method):
+    """Cache a zero-arg (self-only) method result on the instance.
+
+    The analyzer is immutable after __init__ (fixed start_date/end_date), so
+    these methods are deterministic — caching returns byte-identical results.
+    Removes the double-compute where _get_category_summary re-runs each
+    sub-breakdown that get_revenue_point_breakdown already computed.
+    """
+    @wraps(method)
+    def wrapper(self):
+        cache = self.__dict__.setdefault("_revmemo", {})
+        name = method.__name__
+        if name not in cache:
+            cache[name] = method(self)
+        return cache[name]
+    return wrapper
 
 
 class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
@@ -122,6 +141,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
         
         return point_breakdown
     
+    @_memoize_zeroarg
     def _get_clinical_services_breakdown(self):
         """
         Detailed breakdown of clinical services revenue
@@ -194,6 +214,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
             }
         }
     
+    @_memoize_zeroarg
     def _get_support_services_breakdown(self):
         """
         Detailed breakdown of support services revenue
@@ -238,6 +259,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
             }
         }
     
+    @_memoize_zeroarg
     def _get_administrative_services_breakdown(self):
         """
         Detailed breakdown of administrative services revenue
@@ -279,6 +301,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
             }
         }
     
+    @_memoize_zeroarg
     def _get_specialty_departments_breakdown(self):
         """
         Detailed breakdown of specialty department revenue

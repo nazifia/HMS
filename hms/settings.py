@@ -212,6 +212,11 @@ MIDDLEWARE = [
     # Disable SSL in development middleware (must be first to intercept HTTPS headers)
     "core.disable_ssl_in_dev.DisableSSLInDevMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # Serve /static/ with far-future cache headers + gzip/brotli so navigations
+    # reuse cached CSS/JS instead of re-fetching. Must sit right after
+    # SecurityMiddleware. No-op for non-static paths; defers to the staticfiles
+    # app under DEBUG (runserver), so it only kicks in for real deployments.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -384,6 +389,17 @@ SERVER_EMAIL = os.environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
+
+# WhiteNoise: gzip/brotli-compress collected static at collectstatic time and
+# serve with cache headers. CompressedStaticFilesStorage (NOT the *Manifest*
+# variant) deliberately does no hash-renaming, so a missing/renamed asset never
+# 500s the page — the failure mode core_tags.static_v was written to avoid.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
 
 # AUTHENTICATION_BACKENDS = [
 #     'accounts.backends.AdminBackend',  # Admin authentication (username-based)

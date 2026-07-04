@@ -160,11 +160,22 @@
     function openMobileSidebar() {
         const sidebar = $('#sidebar-container');
         const overlay = $('#sidebar-overlay');
-        
+
         sidebar.addClass('sidebar-open');
         overlay.addClass('active');
         $('body').addClass('sidebar-open');
-        
+
+        // Inline styles win over the many conflicting !important breakpoint
+        // rules, so the slide-in is guaranteed regardless of CSS cascade.
+        sidebar.css({
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            height: '100vh',
+            'z-index': '1050',
+            transform: 'translateX(0)'
+        });
+
         console.log('Mobile sidebar opened');
     }
 
@@ -172,12 +183,76 @@
     function closeMobileSidebar() {
         const sidebar = $('#sidebar-container');
         const overlay = $('#sidebar-overlay');
-        
+
         sidebar.removeClass('sidebar-open');
         overlay.removeClass('active');
         $('body').removeClass('sidebar-open');
-        
+
+        // Slide fully off-screen, then clear inline overrides so desktop
+        // layout (flex flow) is restored on resize.
+        sidebar.css('transform', 'translateX(-110%)');
+
         console.log('Mobile sidebar closed');
+    }
+
+    // Strip inline mobile overrides (used when returning to desktop width)
+    function clearMobileInlineStyles() {
+        $('#sidebar-container').css({
+            position: '',
+            top: '',
+            left: '',
+            height: '',
+            'z-index': '',
+            transform: ''
+        });
+    }
+
+    // Apply/clear the desktop fully-hidden state. Uses setProperty with the
+    // 'important' priority because the sidebar div carries an inline
+    // `width:300px !important` (template), and inline !important beats any
+    // stylesheet rule — a CSS class alone cannot override it.
+    function applyDesktopHidden(hide) {
+        const el = document.getElementById('sidebar-container');
+        if (!el) return;
+        const dims = ['width', 'min-width', 'max-width'];
+
+        if (hide) {
+            $('#sidebar-container, .sidebar').addClass('sidebar-hidden');
+            $('body').addClass('sidebar-hidden-mode');
+            dims.forEach(function(p) { el.style.setProperty(p, '0', 'important'); });
+            el.style.setProperty('overflow', 'hidden', 'important');
+            el.style.setProperty('border', 'none', 'important');
+        } else {
+            $('#sidebar-container, .sidebar').removeClass('sidebar-hidden');
+            $('body').removeClass('sidebar-hidden-mode');
+            // Drop the overrides; let the breakpoint CSS set the real width.
+            dims.concat(['overflow', 'border']).forEach(function(p) {
+                el.style.removeProperty(p);
+            });
+        }
+    }
+
+    // Function to toggle sidebar visibility from the topbar hamburger.
+    // Desktop/tablet: fully hide/show the sidebar. Mobile: slide in/out.
+    function toggleSidebarVisibility() {
+        if ($(window).width() >= 768) {
+            clearMobileInlineStyles();
+            const isHidden = $('#sidebar-container').hasClass('sidebar-hidden');
+            applyDesktopHidden(!isHidden);
+            saveSidebarHiddenState(!isHidden);
+            console.log('Desktop sidebar ' + (!isHidden ? 'hidden' : 'shown'));
+        } else {
+            toggleMobileSidebar();
+        }
+    }
+
+    // Persist full-hide state to localStorage
+    function saveSidebarHiddenState(isHidden) {
+        localStorage.setItem('sidebarHidden', isHidden);
+    }
+
+    function getSidebarHiddenState() {
+        return localStorage.getItem('sidebarHidden') === 'true';
     }
 
     // Function to toggle desktop sidebar collapse state
@@ -336,19 +411,21 @@
             toggleDesktopSidebar();
         });
 
-        // MOBILE SIDEBAR TOGGLE (hamburger button in topbar)
-        $("#sidebarToggleTop").on('click', function(e) {
+        // HAMBURGER TOGGLE (topbar) - mobile slides, desktop fully hides.
+        // .off first to guarantee a single binding even if this init runs twice.
+        $("#sidebarToggleTop").off('click.hms').on('click.hms', function(e) {
             e.preventDefault();
-            toggleMobileSidebar();
+            e.stopPropagation();
+            toggleSidebarVisibility();
         });
 
         // Close mobile sidebar when overlay is clicked
-        $('#sidebar-overlay').on('click', function() {
+        $('#sidebar-overlay').off('click.hms').on('click.hms', function() {
             closeMobileSidebar();
         });
 
         // Close mobile sidebar when close button is clicked
-        $('#mobileSidebarClose').on('click', function() {
+        $('#mobileSidebarClose').off('click.hms').on('click.hms', function() {
             closeMobileSidebar();
         });
 
@@ -447,6 +524,8 @@
                     if ($('#sidebar-container').hasClass('sidebar-open')) {
                         closeMobileSidebar();
                     }
+                    // Drop inline mobile overrides so desktop flex layout returns
+                    clearMobileInlineStyles();
                 } else {
                     // On mobile, ensure sidebar is properly closed
                     closeMobileSidebar();
@@ -509,6 +588,12 @@
             } else {
                 console.log('Desktop view: sidebar initialized as expanded');
             }
+
+            // Restore full-hidden state (topbar hamburger) if it was saved
+            if (getSidebarHiddenState()) {
+                applyDesktopHidden(true);
+                console.log('Desktop view: sidebar restored as hidden');
+            }
         }
     }
 
@@ -534,6 +619,7 @@
         openMobileSidebar: openMobileSidebar,
         closeMobileSidebar: closeMobileSidebar,
         toggleDesktopSidebar: toggleDesktopSidebar,
+        toggleSidebarVisibility: toggleSidebarVisibility,
         saveSidebarState: saveSidebarState
     };
 

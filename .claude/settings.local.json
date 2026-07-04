@@ -235,7 +235,24 @@
       "PowerShell(python -c \"import django,sys; django.setup\\(\\); from django.test.utils import get_runner; from django.conf import settings; r=get_runner\\(settings\\)\\(verbosity=1\\); sys.exit\\(bool\\(r.run_tests\\(['saas']\\)\\)\\)\" 2>$null; if \\($?\\) { 'TESTS PASS' } else { 'TESTS FAIL' })",
       "PowerShell(python -c \"import django,sys; django.setup\\(\\); from django.test.utils import get_runner; from django.conf import settings; f=open\\(r'C:\\\\tmp\\\\t.txt','w'\\); sys.stderr=f; r=get_runner\\(settings\\)\\(verbosity=2\\); n=r.run_tests\\(['saas']\\); f.close\\(\\); open\\(r'C:\\\\tmp\\\\n.txt','w'\\).write\\(str\\(n\\)\\)\"; Get-Content C:\\\\tmp\\\\t.txt -Tail 25)",
       "PowerShell($env:DJANGO_SETTINGS_MODULE=\"hms.settings\"; python -c \"import django,sys; django.setup\\(\\); from django.test.utils import get_runner; from django.conf import settings; f=open\\(r'C:\\\\tmp\\\\t.txt','w'\\); sys.stderr=f; r=get_runner\\(settings\\)\\(verbosity=2\\); n=r.run_tests\\(['saas']\\); f.close\\(\\)\"; Get-Content C:\\\\tmp\\\\t.txt -Tail 25)",
-      "PowerShell($env:DJANGO_SETTINGS_MODULE=\"hms.settings\"; python -c \"import django; django.setup\\(\\); from django.core.management import call_command; call_command\\('check'\\)\"; python -c \"import django,sys; django.setup\\(\\); from django.test.utils import get_runner; from django.conf import settings; f=open\\(r'C:\\\\tmp\\\\t2.txt','w'\\); sys.stderr=f; r=get_runner\\(settings\\)\\(verbosity=2\\); r.run_tests\\(['saas']\\); f.close\\(\\)\")"
+      "PowerShell($env:DJANGO_SETTINGS_MODULE=\"hms.settings\"; python -c \"import django; django.setup\\(\\); from django.core.management import call_command; call_command\\('check'\\)\"; python -c \"import django,sys; django.setup\\(\\); from django.test.utils import get_runner; from django.conf import settings; f=open\\(r'C:\\\\tmp\\\\t2.txt','w'\\); sys.stderr=f; r=get_runner\\(settings\\)\\(verbosity=2\\); r.run_tests\\(['saas']\\); f.close\\(\\)\")",
+      "Bash(grep -rln \"context_processors\" accounts/ core/ hms/)",
+      "Bash(grep -rln \"User.objects\\\\|CustomUser.objects\" --include=*.py accounts/templatetags core/templatetags)",
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings PYTHONPATH=\"C:/Users/Dell/Desktop/MY_PRODUCTS/HMS\" venv/Scripts/python.exe \"C:/Users/Dell/AppData/Local/Temp/claude/C--Users-Dell-Desktop-MY-PRODUCTS-HMS/526ccb36-e5c1-4d2f-b75a-88a34bc3cb73/scratchpad/smoke.py\")",
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings PYTHONPATH=\"C:/Users/Dell/Desktop/MY_PRODUCTS/HMS\" venv/Scripts/python.exe \"C:/Users/Dell/AppData/Local/Temp/claude/C--Users-Dell-Desktop-MY-PRODUCTS-HMS/526ccb36-e5c1-4d2f-b75a-88a34bc3cb73/scratchpad/probe.py\")",
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings PYTHONPATH=\"C:/Users/Dell/Desktop/MY_PRODUCTS/HMS\" venv/Scripts/python.exe \"C:/Users/Dell/AppData/Local/Temp/claude/C--Users-Dell-Desktop-MY-PRODUCTS-HMS/526ccb36-e5c1-4d2f-b75a-88a34bc3cb73/scratchpad/api.py\")",
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings DEBUG=True python -c ' *)",
+      "Bash(awk -F: '{s+=$2} END {print s}')",
+      "Bash(awk 'NR>=2100 && NR<=2400 && /^def /{print NR\": \"$0}' pharmacy/views.py)",
+      "Bash(awk 'NR>2340 && /^def /{print NR\": \"$0; exit}' pharmacy/views.py)",
+      "Bash(PYTHONPATH=\"C:/Users/Dell/Desktop/MY_PRODUCTS/HMS\" DJANGO_SETTINGS_MODULE=hms.settings python \"C:/Users/Dell/AppData/Local/Temp/claude/C--Users-Dell-Desktop-MY-PRODUCTS-HMS/4956abf8-19e0-40d3-8203-222854e08b3c/scratchpad/profile_all.py\")",
+      "Bash(grep -nA25 \"def .*create\" ent/views.py)",
+      "Bash(ls */templatetags/custom_filters.py)",
+      "Bash(grep -rl \"def get_status_badge_color\\\\|@register.filter\" */templatetags/custom_filters.py)",
+      "Bash(PYTHONPATH=C:/Users/Dell/Desktop/MY_PRODUCTS/HMS DJANGO_SETTINGS_MODULE=hms.settings python -c ' *)",
+      "Bash(xargs grep -nE \"Permission\\\\.objects|ContentType|queryset|label_from_instance|content_type\")",
+      "Bash(PYTHONPATH=C:/Users/Dell/Desktop/MY_PRODUCTS/HMS DJANGO_SETTINGS_MODULE=hms.settings python __TRACKED_VAR__/rev_capture.py before)",
+      "Bash(PYTHONPATH=C:/Users/Dell/Desktop/MY_PRODUCTS/HMS DJANGO_SETTINGS_MODULE=hms.settings python __TRACKED_VAR__/rev_capture.py after)"
     ]
   }
 }

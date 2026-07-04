@@ -121,6 +121,17 @@ def action_type_badge_class(action_type):
 
 
 @register.filter
+def get_status_badge_color(status):
+    """Bootstrap badge color for surgery status"""
+    return {
+        "scheduled": "info",
+        "in_progress": "warning",
+        "completed": "success",
+        "cancelled": "danger",
+    }.get(status, "secondary")
+
+
+@register.filter
 def activity_level_badge_class(level):
     """Get Bootstrap badge class for activity level"""
     level_classes = {

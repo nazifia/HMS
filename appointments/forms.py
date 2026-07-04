@@ -92,7 +92,7 @@ class AppointmentForm(forms.ModelForm):
             self.fields['patient'].initial = patient_id
             # Keep patient field visible but pre-selected for user convenience
         # Ensure all patients are available for selection
-        self.fields['patient'].queryset = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        self.fields['patient'].queryset = Patient.objects.filter(is_active=True).select_related('nhia_info', 'retainership_info').order_by('first_name', 'last_name')
         # Scope doctor picker to the current hospital (per-request, not import-time).
         self.fields['doctor'].queryset = User.tenant_objects.filter(
             is_active=True, profile__specialization__isnull=False

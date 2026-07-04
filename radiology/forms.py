@@ -45,7 +45,7 @@ class RadiologyOrderForm(forms.ModelForm):
                 patient_instance = None
                 
         # Order patients by name for better UX
-        self.fields['patient'].queryset = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        self.fields['patient'].queryset = Patient.objects.filter(is_active=True).select_related('nhia_info', 'retainership_info').order_by('first_name', 'last_name')
         self.fields['test'].queryset = RadiologyTest.objects.filter(is_active=True)
         # Make referring_doctor not required in the form (set in view)
         self.fields['referring_doctor'].required = False

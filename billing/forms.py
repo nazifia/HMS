@@ -50,7 +50,7 @@ class InvoiceForm(forms.ModelForm):
 
         # Customize patient field
         patient_field = self.fields["patient"]
-        patient_field.queryset = Patient.objects.all().order_by(
+        patient_field.queryset = Patient.objects.all().select_related('nhia_info', 'retainership_info').order_by(
             "first_name", "last_name"
         )
         patient_field.empty_label = "Select a patient..."

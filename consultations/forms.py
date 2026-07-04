@@ -56,7 +56,7 @@ class WaitingListForm(forms.ModelForm):
         self.fields['service_point'].queryset = ServicePoint.objects.filter(is_active=True)
         self.fields['service_point'].required = False
         self.fields['service_point'].empty_label = "Select Service Point (Optional)"
-        self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
+        self.fields['patient'].queryset = Patient.objects.all().select_related('nhia_info', 'retainership_info').order_by('first_name', 'last_name')
         self.fields['consulting_room'].queryset = ConsultingRoom.objects.filter(is_active=True).order_by('room_number')
         self.fields['doctor'].queryset = CustomUser.tenant_objects.filter(is_active=True, profile__role='doctor').order_by('first_name', 'last_name')
         self.fields['appointment'].queryset = Appointment.objects.filter(
@@ -100,7 +100,7 @@ class ReferralForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Set querysets for dropdowns
-        self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
+        self.fields['patient'].queryset = Patient.objects.all().select_related('nhia_info', 'retainership_info').order_by('first_name', 'last_name')
         self.fields['referred_to_department'].queryset = Department.objects.all().order_by('name')
 
         # Ward referral target
@@ -365,7 +365,7 @@ class ConsultationForm(forms.ModelForm):
         
         super().__init__(*args, **kwargs)
         # Set querysets for dropdowns
-        self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
+        self.fields['patient'].queryset = Patient.objects.all().select_related('nhia_info', 'retainership_info').order_by('first_name', 'last_name')
         
         # Build doctor queryset - include current user even if not in standard doctor filter
         base_qs = CustomUser.tenant_objects.filter(is_active=True)

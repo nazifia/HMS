@@ -100,6 +100,7 @@ from .forms import (
     SurgicalTeamForm,
     SurgicalTeamMultipleForm,
     SurgicalTeamInlineFormSet,
+    SurgicalTeamBulkFormSet,
     SurgicalEquipmentForm,
     EquipmentUsageInlineFormSet,
     SurgeryScheduleForm,
@@ -1232,19 +1233,18 @@ class BulkTeamCreateView(LoginRequiredMixin, ReceptionistHROAccessMixin, Templat
         context["existing_team"] = surgery.team_members.all().select_related("staff")
 
         if self.request.POST:
-            context["team_formset"] = SurgicalTeamInlineFormSet(self.request.POST)
-        else:
-            # Create formset with extra empty forms for adding multiple members
-            context["team_formset"] = SurgicalTeamInlineFormSet(
-                queryset=SurgicalTeam.objects.none(),
-                extra=5,  # Show 5 empty forms by default
+            context["team_formset"] = SurgicalTeamBulkFormSet(
+                self.request.POST, instance=surgery
             )
+        else:
+            # 5 empty forms for adding multiple members
+            context["team_formset"] = SurgicalTeamBulkFormSet(instance=surgery)
 
         return context
 
     def post(self, request, *args, **kwargs):
         surgery = get_object_or_404(Surgery, pk=self.kwargs["surgery_id"])
-        team_formset = SurgicalTeamInlineFormSet(self.request.POST)
+        team_formset = SurgicalTeamBulkFormSet(self.request.POST, instance=surgery)
 
         if team_formset.is_valid():
             # Save all team members

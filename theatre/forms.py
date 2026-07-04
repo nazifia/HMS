@@ -149,7 +149,7 @@ class SurgeryForm(forms.ModelForm):
 
         # Set patient queryset
         if "patient" in self.fields:
-            self.fields["patient"].queryset = Patient.objects.all().order_by(
+            self.fields["patient"].queryset = Patient.objects.all().select_related('nhia_info', 'retainership_info').order_by(
                 "first_name", "last_name"
             )
 
@@ -506,6 +506,16 @@ SurgicalTeamInlineFormSet = inlineformset_factory(
     form=SurgicalTeamForm,
     formset=SurgicalTeamFormSet,
     extra=1,
+    can_delete=True,
+)
+
+# Bulk add: 5 empty rows at once
+SurgicalTeamBulkFormSet = inlineformset_factory(
+    Surgery,
+    SurgicalTeam,
+    form=SurgicalTeamForm,
+    formset=SurgicalTeamFormSet,
+    extra=5,
     can_delete=True,
 )
 

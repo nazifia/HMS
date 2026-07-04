@@ -190,14 +190,25 @@ class StrictAccessControlMiddleware(MiddlewareMixin):
                 return True
         return False
 
+    def _resolve(self, request):
+        """resolve(request.path) once per request, cached on the request.
+
+        Both _get_namespace and _get_required_permission need the resolver
+        match; resolving twice walks the whole URLconf twice for every
+        authenticated page hit. Cache it (including the None miss).
+        """
+        if not hasattr(request, "_sac_resolved"):
+            try:
+                request._sac_resolved = resolve(request.path)
+            except Exception:
+                request._sac_resolved = None
+        return request._sac_resolved
+
     def _get_namespace(self, request):
         """Resolve the URL namespace (falls back to first path segment)."""
-        try:
-            resolved = resolve(request.path)
-            if resolved.namespace:
-                return resolved.namespace
-        except Exception:
-            pass
+        resolved = self._resolve(request)
+        if resolved is not None and resolved.namespace:
+            return resolved.namespace
         parts = request.path.strip("/").split("/")
         return parts[0] if parts and parts[0] else None
 
@@ -207,10 +218,8 @@ class StrictAccessControlMiddleware(MiddlewareMixin):
         Returns None if no specific permission is required.
         """
         try:
-            # Try to resolve the URL to get namespace
-            resolved = resolve(request.path)
-            namespace = resolved.namespace
-            url_name = resolved.url_name
+            resolved = self._resolve(request)
+            namespace = resolved.namespace if resolved is not None else None
 
             # Check if there's a permission for the namespace
             if namespace and namespace in self.url_permission_map:

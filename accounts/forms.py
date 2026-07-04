@@ -849,7 +849,7 @@ class RoleForm(forms.ModelForm):
     """Form for creating and editing roles"""
 
     permissions = forms.ModelMultipleChoiceField(
-        queryset=Permission.objects.all(),
+        queryset=Permission.objects.select_related("content_type"),
         widget=forms.CheckboxSelectMultiple(attrs={"class": "form-check-input"}),
         required=False,
         help_text="Select permissions for this role",

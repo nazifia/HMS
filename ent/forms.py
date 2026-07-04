@@ -59,7 +59,7 @@ class EntRecordForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Order patients by name for better UX - include all patients regardless of type
-        self.fields['patient'].queryset = Patient.objects.all().order_by('last_name', 'first_name')
+        self.fields['patient'].queryset = Patient.objects.all().select_related('nhia_info', 'retainership_info').order_by('last_name', 'first_name')
         self.fields['patient'].label_from_instance = self._format_patient_label
         
         # Set default visit date to today if creating new record

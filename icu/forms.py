@@ -56,7 +56,7 @@ class IcuRecordForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Order patients by name for better UX
         patient_field: forms.ModelChoiceField = self.fields['patient']  # type: ignore
-        patient_field.queryset = Patient.objects.all().order_by('first_name', 'last_name')
+        patient_field.queryset = Patient.objects.all().select_related('nhia_info', 'retainership_info').order_by('first_name', 'last_name')
         patient_field.empty_label = "Select a patient..."
 
         # Custom label_from_instance to show patient ID for better identification

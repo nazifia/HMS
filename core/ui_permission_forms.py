@@ -12,7 +12,7 @@ class UIPermissionForm(forms.ModelForm):
     """Form for creating and editing UI permissions"""
 
     required_permissions = forms.ModelMultipleChoiceField(
-        queryset=Permission.objects.all().order_by('content_type__app_label', 'codename'),
+        queryset=Permission.objects.select_related('content_type').order_by('content_type__app_label', 'codename'),
         required=False,
         widget=forms.SelectMultiple(attrs={
             'class': 'form-control select2',
