@@ -233,6 +233,11 @@ MIDDLEWARE = [
     # SecurityMiddleware. No-op for non-static paths; defers to the staticfiles
     # app under DEBUG (runserver), so it only kicks in for real deployments.
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    # Gzip dynamic HTML/JSON responses so navigations/reloads transfer far fewer
+    # bytes (Bootstrap pages compress ~4-5x). WhiteNoise already handles /static/
+    # and sets its own Content-Encoding, which GZip skips — no double-compress.
+    # ponytail: skips <200-byte and already-encoded responses itself.
+    "django.middleware.gzip.GZipMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
