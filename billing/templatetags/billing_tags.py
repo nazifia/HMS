@@ -45,6 +45,18 @@ def payment_status_badge(status):
     return mark_safe(f'<span class="badge {css_class}">{label}</span>')
 
 @register.filter
+def payment_status_class(status):
+    """Return just the Bootstrap bg-* class for a status (no markup)."""
+    return {
+        'paid': 'bg-success',
+        'partially_paid': 'bg-warning',
+        'pending': 'bg-info',
+        'overdue': 'bg-danger',
+        'cancelled': 'bg-secondary',
+        'draft': 'bg-light text-dark',
+    }.get(status, 'bg-secondary')
+
+@register.filter
 def percentage(value, decimal_places=1):
     """
     Format a value as percentage

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Cashier Collections - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3">{{ page_title }}</h1>
+        <a href="{% url 'billing:reports' %}" class="btn btn-outline-secondary btn-sm">Back to Reports</a>
+    </div>
+
+    <form method="get" class="row g-2 mb-4 align-items-end">
+        <div class="col-auto">
+            <label class="form-label mb-0">From</label>
+            <input type="date" name="date_from" value="{{ date_from|default:'' }}" class="form-control">
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-0">To</label>
+            <input type="date" name="date_to" value="{{ date_to|default:'' }}" class="form-control">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </div>
+    </form>
+
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Cashier / Accountant</th>
+                        <th class="text-end">Payments</th>
+                        <th class="text-end">Total Received (₦)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in collections %}
+                    <tr>
+                        <td>{{ row.received_by__username|default:"Unassigned" }}</td>
+                        <td class="text-end">{{ row.count }}</td>
+                        <td class="text-end">{{ row.total|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center text-muted">No payments found.</td></tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold">
+                        <td>Grand Total</td>
+                        <td></td>
+                        <td class="text-end">{{ grand_total|floatformat:2 }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

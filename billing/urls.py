@@ -44,6 +44,11 @@ urlpatterns = [
     ),
     path("reports/", views.billing_reports, name="reports"),
     path(
+        "reports/cashier-collections/",
+        views.cashier_collections,
+        name="cashier_collections",
+    ),
+    path(
         "surgery/<int:surgery_id>/billing/",
         views.surgery_billing,
         name="surgery_billing",

@@ -101,6 +101,9 @@
             <a href="{% url 'billing:export_report_csv' %}" class="btn btn-outline-primary">
                 <i class="fas fa-file-csv me-1"></i> Export CSV
             </a>
+            <a href="{% url 'billing:cashier_collections' %}" class="btn btn-outline-primary">
+                <i class="fas fa-cash-register me-1"></i> Cashier Collections
+            </a>
             <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
                 <i class="fas fa-print me-1"></i> Print Report
             </button>
@@ -180,7 +183,7 @@
                                 {% for row in status_counts %}
                                 <tr>
                                     <td>
-                                        <span class="badge {{ row.status|payment_status_badge|cut:'<'|cut:'>'|cut:'span' }}">
+                                        <span class="badge {{ row.status|payment_status_class }}">
                                             {{ row.status|capfirst }}
                                         </span>
                                     </td>
@@ -188,7 +191,7 @@
                                     <td>
                                         <div class="progress" style="height: 20px;">
                                             {% widthratio row.count total_invoices 100 as percentage %}
-                                            <div class="progress-bar bg-{{ row.status|payment_status_badge|cut:'<'|cut:'>'|cut:'span' }}"
+                                            <div class="progress-bar {{ row.status|payment_status_class }}"
                                                  style="width: {{ percentage }}%">
                                                 {{ percentage }}%
                                             </div>

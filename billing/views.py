@@ -606,6 +606,41 @@ def admission_invoices(request):
 
 @login_required
 @permission_required("billing.view")
+def cashier_collections(request):
+    """Total payments received grouped by cashier/accountant (received_by)."""
+    payments = Payment.objects.all()
+
+    from datetime import datetime, timedelta
+
+    date_from = request.GET.get("date_from")
+    date_to = request.GET.get("date_to")
+    if date_from:
+        start = datetime.strptime(date_from, "%Y-%m-%d")
+        payments = payments.filter(payment_date__gte=start)
+    if date_to:
+        # inclusive: everything before start of the next day
+        end = datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1)
+        payments = payments.filter(payment_date__lt=end)
+
+    collections = (
+        payments.values("received_by__id", "received_by__username")
+        .annotate(total=Sum("amount"), count=Count("id"))
+        .order_by("-total")
+    )
+    grand_total = payments.aggregate(total=Sum("amount"))["total"] or 0
+
+    context = {
+        "collections": collections,
+        "grand_total": grand_total,
+        "date_from": date_from,
+        "date_to": date_to,
+        "page_title": "Cashier Collections",
+    }
+    return render(request, "billing/cashier_collections.html", context)
+
+
+@login_required
+@permission_required("billing.view")
 def billing_reports(request):
     """View for billing summary and reporting"""
     # Revenue by month (last 12 months)
@@ -637,6 +672,7 @@ def billing_reports(request):
     )
     # Invoice count by status
     status_counts = Invoice.objects.values("status").annotate(count=Count("id"))
+    total_invoices = Invoice.objects.count()
     # Revenue by department (ServiceCategory)
     from billing.models import ServiceCategory
 
@@ -662,6 +698,7 @@ def billing_reports(request):
         "revenue_data": revenue_data,
         "outstanding": outstanding,
         "status_counts": status_counts,
+        "total_invoices": total_invoices,
         "dept_revenue": dept_revenue,
         "service_revenue": service_revenue,
         "provider_revenue": provider_revenue,

@@ -752,6 +752,8 @@
                     {% if user.is_superuser or user|has_permission:'billing.view' %}
                     <a class="collapse-item {% if request.path == '/billing/services/' %}active{% endif %}" href="{% url 'billing:services' %}">Services</a>
                     <a class="collapse-item {% if request.path == '/billing/admission-invoices/' %}active{% endif %}" href="{% url 'billing:admission_invoices' %}">Admission Invoices</a>
+                    <a class="collapse-item {% if request.path == '/billing/reports/' %}active{% endif %}" href="{% url 'billing:reports' %}">Reports</a>
+                    <a class="collapse-item {% if request.path == '/billing/reports/cashier-collections/' %}active{% endif %}" href="{% url 'billing:cashier_collections' %}">Cashier Collections</a>
                     {% endif %}
                 </div>
             </div>
