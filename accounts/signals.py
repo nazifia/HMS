@@ -37,11 +37,7 @@ def clear_user_permission_cache(users):
         # Bust context-processor caches
         pk = getattr(user, 'pk', None)
         if pk:
-            cache.delete_many([
-                f'user_perms_ctx_{pk}',
-                f'hms_perms_ctx_{pk}',
-                f'hms_roles_ctx_{pk}',
-            ])
+            cache.delete(f'page_user_ctx_{pk}')
     return cleared_count
 
 

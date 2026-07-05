@@ -50,13 +50,13 @@ def patient_list(request):
 
     search_form = EnhancedPatientSearchForm(request.GET if request.GET else None)
 
-    # Get all active patients with optimized query using select_related and prefetch_related
-    # ponytail: no prefetch — list table shows none of these relations;
-    # diagnosis filter reaches them via SQL JOIN, not the prefetch cache.
+    # ponytail: no select_related/prefetch — the list table renders none of
+    # these relations. Search/diagnosis filters reach nhia_info/retainership_info
+    # via SQL JOIN (filter()), not the select_related cache, so the JOINs here
+    # were dead weight on every page load.
     patients = (
         Patient.objects.filter(is_active=True)
         .order_by("first_name", "last_name")
-        .select_related("nhia_info", "retainership_info")
     )
 
     # Apply search filters - check if any GET parameters exist
@@ -135,7 +135,6 @@ def patient_list(request):
         patient_ids = cached_data["patient_ids"]
         patients = (
             Patient.objects.filter(id__in=patient_ids)
-            .select_related("nhia_info", "retainership_info")
             .order_by("first_name", "last_name")
         )
         total_patients = cached_data["total_patients"]

@@ -663,11 +663,6 @@ def create_role(request):
 
 
 @login_required
-def role_demo(request):
-    return render(request, "accounts/role_demo.html", {"page_title": "Role Demo"})
-
-
-@login_required
 @user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def audit_logs(request):
     logs = AuditLog.objects.all().order_by("-timestamp")
