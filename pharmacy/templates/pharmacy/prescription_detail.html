@@ -307,9 +307,11 @@
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">Prescription Items</h6>
+            {% if can_add_medication %}
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addMedicationModal">
                 <i class="fas fa-plus"></i> Add Medication
             </button>
+            {% endif %}
         </div>
         <div class="card-body">
             {% if prescription_items %}

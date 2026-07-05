@@ -5585,6 +5585,18 @@ def prescription_detail(request, prescription_id):
         .first()
     )
 
+    # Hide "Add Medication" once a cart exists or any dispensing has happened
+    has_cart = PrescriptionCart.objects.filter(prescription=prescription).exists()
+    is_dispensed = prescription.get_dispensing_status() in (
+        "partially_dispensed",
+        "fully_dispensed",
+    )
+    can_add_medication = (
+        prescription.status not in ("completed", "cancelled")
+        and not has_cart
+        and not is_dispensed
+    )
+
     # Enhanced NHIA pricing breakdown
     pricing_breakdown = prescription.get_pricing_breakdown()
 
@@ -5661,6 +5673,7 @@ def prescription_detail(request, prescription_id):
         "medications": medications,
         "pharmacy_invoice": pharmacy_invoice,
         "active_cart": active_cart,  # Add cart for quick access
+        "can_add_medication": can_add_medication,
         "page_title": f"Prescription Details - #{prescription.id}",
         "active_nav": "pharmacy",
         # Enhanced NHIA context

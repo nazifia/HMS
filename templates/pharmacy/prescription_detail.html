@@ -406,7 +406,7 @@
                     <div class="col-md-12">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="border-bottom pb-2 mb-0">Prescribed Medications</h5>
-                            {% if prescription.status != 'completed' and prescription.status != 'cancelled' %}
+                            {% if can_add_medication %}
                                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMedicationModal">
                                     <i class="fas fa-plus"></i> Add Medication
                                 </button>
