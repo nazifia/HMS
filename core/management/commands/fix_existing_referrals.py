@@ -91,8 +91,8 @@ class Command(BaseCommand):
         if referral.referred_to_unit and not referral.referred_to_department:
             dept_name = get_department_for_unit(referral.referred_to_unit)
             if dept_name:
-                try:
-                    department = Department.objects.get(name__iexact=dept_name)
+                department = Department.objects.filter(name__iexact=dept_name).first()
+                if department:
                     if not dry_run:
                         referral.referred_to_department = department
                         needs_save = True
@@ -100,7 +100,7 @@ class Command(BaseCommand):
                         f"  Referral {referral.id}: Mapping unit '{referral.referred_to_unit}' "
                         f"to department '{department.name}'"
                     )
-                except Department.DoesNotExist:
+                else:
                     self.stdout.write(
                         self.style.WARNING(
                             f"  Referral {referral.id}: Department '{dept_name}' not found "
@@ -115,8 +115,8 @@ class Command(BaseCommand):
                 preferred_unit=referral.referred_to_unit
             )
             if dept_name:
-                try:
-                    department = Department.objects.get(name__iexact=dept_name)
+                department = Department.objects.filter(name__iexact=dept_name).first()
+                if department:
                     if not dry_run:
                         referral.referred_to_department = department
                         needs_save = True
@@ -124,7 +124,7 @@ class Command(BaseCommand):
                         f"  Referral {referral.id}: Mapping specialty '{referral.referred_to_specialty}' "
                         f"to department '{department.name}'"
                     )
-                except Department.DoesNotExist:
+                else:
                     self.stdout.write(
                         self.style.WARNING(
                             f"  Referral {referral.id}: Department '{dept_name}' not found "
@@ -134,9 +134,9 @@ class Command(BaseCommand):
         
         # Case 3: Referral has department name in unit field but no department set
         elif referral.referred_to_unit and not referral.referred_to_department:
-            try:
-                # Try to find department by name (case-insensitive)
-                department = Department.objects.get(name__iexact=referral.referred_to_unit)
+            # Try to find department by name (case-insensitive)
+            department = Department.objects.filter(name__iexact=referral.referred_to_unit).first()
+            if department:
                 if not dry_run:
                     referral.referred_to_department = department
                     needs_save = True
@@ -144,14 +144,12 @@ class Command(BaseCommand):
                     f"  Referral {referral.id}: Setting department from unit name "
                     f"'{referral.referred_to_unit}' -> '{department.name}'"
                 )
-            except Department.DoesNotExist:
-                pass  # No matching department found
         
         # Case 4: Referral has department name in specialty field but no department set
         elif referral.referred_to_specialty and not referral.referred_to_department:
-            try:
-                # Try to find department by name (case-insensitive)
-                department = Department.objects.get(name__iexact=referral.referred_to_specialty)
+            # Try to find department by name (case-insensitive)
+            department = Department.objects.filter(name__iexact=referral.referred_to_specialty).first()
+            if department:
                 if not dry_run:
                     referral.referred_to_department = department
                     needs_save = True
@@ -159,8 +157,6 @@ class Command(BaseCommand):
                     f"  Referral {referral.id}: Setting department from specialty name "
                     f"'{referral.referred_to_specialty}' -> '{department.name}'"
                 )
-            except Department.DoesNotExist:
-                pass  # No matching department found
         
         # Save changes if not in dry-run mode
         if needs_save and not dry_run:

@@ -1412,18 +1412,16 @@ def create_referral(request, patient_id=None):
                 if referral.referral_type == 'unit' and referral.referred_to_unit:
                     dept_name = get_department_for_unit(referral.referred_to_unit)
                     if dept_name:
-                        try:
-                            referral.referred_to_department = Department.objects.get(name=dept_name)
-                        except Department.DoesNotExist:
-                            pass  # Department should have been caught in form validation
+                        dept = Department.objects.filter(name=dept_name).first()
+                        if dept:
+                            referral.referred_to_department = dept
                 
                 elif referral.referral_type == 'specialty' and referral.referred_to_specialty:
                     dept_name = get_department_for_specialty(referral.referred_to_specialty)
                     if dept_name:
-                        try:
-                            referral.referred_to_department = Department.objects.get(name=dept_name)
-                        except Department.DoesNotExist:
-                            pass  # Department should have been caught in form validation
+                        dept = Department.objects.filter(name=dept_name).first()
+                        if dept:
+                            referral.referred_to_department = dept
 
             # Try to link to an existing consultation from today
             consultation = Consultation.objects.filter(

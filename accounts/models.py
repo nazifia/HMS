@@ -598,6 +598,16 @@ class Department(TenantModel):
 
     class Meta:
         unique_together = (("hospital", "name"),)
+        constraints = [
+            # unique_together(hospital, name) does not guard tenant-less rows:
+            # SQL treats NULL hospital as distinct, so duplicate names could be
+            # seeded with hospital=NULL. This blocks that path.
+            models.UniqueConstraint(
+                fields=["name"],
+                condition=models.Q(hospital__isnull=True),
+                name="uniq_department_name_when_no_hospital",
+            ),
+        ]
 
     def __str__(self):
         return self.name

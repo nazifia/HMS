@@ -167,11 +167,7 @@ class Command(BaseCommand):
             updated_count = 0
             for profile, dept_name in profiles_to_update:
                 if dept_name:
-                    try:
-                        dept = Department.objects.get(name=dept_name)
-                        profile.department = dept
-                    except Department.DoesNotExist:
-                        profile.department = None
+                    profile.department = Department.objects.filter(name=dept_name).first()
                 else:
                     profile.department = None
                 

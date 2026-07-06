@@ -245,11 +245,14 @@ class NursingNoteForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filter nurses (users with nurse role)
-        try:
-            nursing_department = Department.objects.get(name='Nursing')
-            self.fields['nurse'].queryset = User.tenant_objects.filter(profile__department=nursing_department)
-        except Department.DoesNotExist:
+        # Filter nurses (users with nurse role). Tolerate duplicate
+        # 'Nursing' departments so a MultipleObjectsReturned never breaks the page.
+        nursing_departments = Department.objects.filter(name='Nursing')
+        if nursing_departments.exists():
+            self.fields['nurse'].queryset = User.tenant_objects.filter(
+                profile__department__in=nursing_departments
+            )
+        else:
             self.fields['nurse'].queryset = User.objects.none()
             print("Warning: 'Nursing' department not found. No nurses will be available.")
         

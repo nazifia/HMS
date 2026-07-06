@@ -235,11 +235,11 @@ class ReferralForm(forms.ModelForm):
                 detected_dept = get_department_for_specialty(referred_to_specialty)
                 if detected_dept:
                     from accounts.models import Department
-                    try:
-                        dept = Department.objects.get(name=detected_dept)
+                    dept = Department.objects.filter(name=detected_dept).first()
+                    if dept:
                         cleaned_data['referred_to_department'] = dept
                         detected_dept = dept
-                    except Department.DoesNotExist:
+                    else:
                         raise forms.ValidationError(
                             f"Department '{detected_dept}' detected for specialty '{referred_to_specialty}' not found. "
                             f"Please select the target department explicitly."
@@ -249,11 +249,11 @@ class ReferralForm(forms.ModelForm):
                 detected_dept = get_department_for_unit(referred_to_unit)
                 if detected_dept:
                     from accounts.models import Department
-                    try:
-                        dept = Department.objects.get(name=detected_dept)
+                    dept = Department.objects.filter(name=detected_dept).first()
+                    if dept:
                         cleaned_data['referred_to_department'] = dept
                         detected_dept = dept
-                    except Department.DoesNotExist:
+                    else:
                         raise forms.ValidationError(
                             f"Department '{detected_dept}' detected for unit '{referred_to_unit}' not found. "
                             f"Please select the target department explicitly."
@@ -281,10 +281,10 @@ class ReferralForm(forms.ModelForm):
                 auto_detected_dept = get_department_for_specialty(referred_to_specialty)
                 if auto_detected_dept:
                     from accounts.models import Department
-                    try:
-                        dept = Department.objects.get(name=auto_detected_dept)
+                    dept = Department.objects.filter(name=auto_detected_dept).first()
+                    if dept:
                         cleaned_data['referred_to_department'] = dept
-                    except Department.DoesNotExist:
+                    else:
                         raise forms.ValidationError(f"Auto-detected department '{auto_detected_dept}' not found. Please select department manually.")
                 else:
                     raise forms.ValidationError(f"Could not auto-detect department for specialty '{referred_to_specialty}'. Please select department manually.")
@@ -298,10 +298,10 @@ class ReferralForm(forms.ModelForm):
                 auto_detected_dept = get_department_for_unit(referred_to_unit)
                 if auto_detected_dept:
                     from accounts.models import Department
-                    try:
-                        dept = Department.objects.get(name=auto_detected_dept)
+                    dept = Department.objects.filter(name=auto_detected_dept).first()
+                    if dept:
                         cleaned_data['referred_to_department'] = dept
-                    except Department.DoesNotExist:
+                    else:
                         raise forms.ValidationError(f"Auto-detected department '{auto_detected_dept}' not found. Please select department manually.")
                 else:
                     raise forms.ValidationError(f"Could not auto-detect department for unit '{referred_to_unit}'. Please select department manually.")
@@ -316,10 +316,10 @@ class ReferralForm(forms.ModelForm):
             if mapped_dept and mapped_dept.lower() != referred_to_department.name.lower():
                 # Auto-correct the department instead of raising an error
                 from accounts.models import Department
-                try:
-                    correct_dept = Department.objects.get(name__iexact=mapped_dept)
+                correct_dept = Department.objects.filter(name__iexact=mapped_dept).first()
+                if correct_dept:
                     cleaned_data['referred_to_department'] = correct_dept
-                except Department.DoesNotExist:
+                else:
                     raise forms.ValidationError(
                         f"Unit '{referred_to_unit}' belongs to department '{mapped_dept}', "
                         f"but you selected '{referred_to_department.name}'. Please correct the department selection."
@@ -330,10 +330,10 @@ class ReferralForm(forms.ModelForm):
             if mapped_dept and mapped_dept.lower() != referred_to_department.name.lower():
                 # Auto-correct the department instead of raising an error
                 from accounts.models import Department
-                try:
-                    correct_dept = Department.objects.get(name__iexact=mapped_dept)
+                correct_dept = Department.objects.filter(name__iexact=mapped_dept).first()
+                if correct_dept:
                     cleaned_data['referred_to_department'] = correct_dept
-                except Department.DoesNotExist:
+                else:
                     raise forms.ValidationError(
                         f"Specialty '{referred_to_specialty}' belongs to department '{mapped_dept}', "
                         f"but you selected '{referred_to_department.name}'. Please correct the department selection."
