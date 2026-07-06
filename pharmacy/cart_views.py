@@ -787,6 +787,14 @@ def complete_dispensing_from_cart(request, cart_id):
 
     try:
         with transaction.atomic():
+            # Lock the cart row so a double-submit (or two pharmacists on the
+            # same cart) serialize: the second txn blocks here, then re-reads the
+            # updated quantity_dispensed below and skips already-dispensed items.
+            cart = (
+                PrescriptionCart.objects.select_for_update()
+                .get(id=cart.id)
+            )
+
             dispensed_count = 0
             partially_dispensed_count = 0
             skipped_count = 0
@@ -871,8 +879,10 @@ def complete_dispensing_from_cart(request, cart_id):
                 if hasattr(dispensary, "active_store"):
                     try:
                         active_store = dispensary.active_store
-                        # Find any inventory with sufficient stock (or enough to meet the request)
-                        inventory_items = ActiveStoreInventory.objects.filter(
+                        # Find any inventory with sufficient stock (or enough to meet the request).
+                        # select_for_update locks the row for the txn so a concurrent
+                        # dispense of the same stock can't oversell (lost update).
+                        inventory_items = ActiveStoreInventory.objects.select_for_update().filter(
                             medication=medication,
                             active_store=active_store,
                             stock_quantity__gt=0,  # Get any item with stock
@@ -887,7 +897,7 @@ def complete_dispensing_from_cart(request, cart_id):
                             else:
                                 # Not enough stock in this single item - try to find another with enough
                                 # First, try to find an item with exactly the required quantity
-                                exact_match = ActiveStoreInventory.objects.filter(
+                                exact_match = ActiveStoreInventory.objects.select_for_update().filter(
                                     medication=medication,
                                     active_store=active_store,
                                     stock_quantity=quantity_to_dispense,
@@ -928,11 +938,13 @@ def complete_dispensing_from_cart(request, cart_id):
                                         # Deduct from inventory items in FIFO order (oldest batch first)
                                         remaining_to_deduct = quantity_to_dispense
                                         items_to_update = (
-                                            ActiveStoreInventory.objects.filter(
+                                            ActiveStoreInventory.objects.select_for_update()
+                                            .filter(
                                                 medication=medication,
                                                 active_store=active_store,
                                                 stock_quantity__gt=0,
-                                            ).order_by("id")
+                                            )
+                                            .order_by("id")
                                         )  # FIFO - oldest first
 
                                         for inv_item in items_to_update:

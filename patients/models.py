@@ -763,6 +763,22 @@ class PatientWallet(TenantModel):
 
             return transaction
 
+    def _locked_deduct(self, wallet_obj, amount):
+        """Deduct `amount` from wallet_obj's balance under a row lock.
+
+        Avoids lost updates when concurrent payments touch the same wallet.
+        select_for_update is a no-op on sqlite but enforced on MySQL (prod).
+        Updates wallet_obj.balance in place and returns the new balance.
+        """
+        from django.db import transaction as db_transaction
+
+        with db_transaction.atomic():
+            locked = type(wallet_obj).objects.select_for_update().get(pk=wallet_obj.pk)
+            locked.balance -= amount
+            locked.save(update_fields=["balance", "last_updated"])
+            wallet_obj.balance = locked.balance
+        return locked.balance
+
     def _apply_funds_to_outstanding(self, available_funds, user=None):
         """Apply available funds to outstanding charges from admissions and invoices
 
@@ -802,13 +818,9 @@ class PatientWallet(TenantModel):
             # Calculate how much to apply to this admission
             amount_to_apply = min(funds_to_apply, outstanding_cost)
 
-            # Update wallet balance
-            if isinstance(effective_wallet, SharedWallet):
-                effective_wallet.balance -= amount_to_apply
-                effective_wallet.save(update_fields=["balance"])
-            else:
-                self.balance -= amount_to_apply
-                self.save(update_fields=["balance"])
+            # Update wallet balance (row-locked to avoid lost updates)
+            target = effective_wallet if isinstance(effective_wallet, SharedWallet) else self
+            self._locked_deduct(target, amount_to_apply)
 
             # Create a payment transaction for the admission
             WalletTransaction.objects.create(
@@ -843,13 +855,9 @@ class PatientWallet(TenantModel):
             # Calculate how much to apply to this invoice
             amount_to_apply = min(funds_to_apply, invoice_balance)
 
-            # Update wallet balance
-            if isinstance(effective_wallet, SharedWallet):
-                effective_wallet.balance -= amount_to_apply
-                effective_wallet.save(update_fields=["balance"])
-            else:
-                self.balance -= amount_to_apply
-                self.save(update_fields=["balance"])
+            # Update wallet balance (row-locked to avoid lost updates)
+            target = effective_wallet if isinstance(effective_wallet, SharedWallet) else self
+            self._locked_deduct(target, amount_to_apply)
 
             # Update the invoice
             invoice.amount_paid += amount_to_apply
@@ -982,13 +990,9 @@ class PatientWallet(TenantModel):
 
                 remaining_to_pay -= payment_amount
 
-            # Deduct the total amount paid from wallet
-            if isinstance(effective_wallet, SharedWallet):
-                effective_wallet.balance -= amount_to_pay
-                effective_wallet.save(update_fields=["balance", "last_updated"])
-            else:
-                self.balance -= amount_to_pay
-                self.save(update_fields=["balance", "last_updated"])
+            # Deduct the total amount paid from wallet (row-locked)
+            target = effective_wallet if isinstance(effective_wallet, SharedWallet) else self
+            self._locked_deduct(target, amount_to_pay)
 
             # Create wallet transaction for the payment
             WalletTransaction.objects.create(
