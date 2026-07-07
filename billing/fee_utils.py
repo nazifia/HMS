@@ -36,6 +36,7 @@ DEFAULT_CONSULTATION_FEE = Decimal("1000.00")
 CLINIC_CONSULTATION_FEES = {
     "mopd": ("MOPD Consultation Fee", Decimal("1000.00")),
     "sopd": ("SOPD Consultation Fee", Decimal("1500.00")),
+    "popd": ("POPD Consultation Fee", Decimal("1000.00")),
 }
 
 # Patient types that are exempt from a self-pay registration fee.

@@ -8,7 +8,7 @@ from django.dispatch import receiver
 
 from saas.models import Hospital
 
-CLINIC_DEPARTMENTS = ["MOPD", "SOPD"]
+CLINIC_DEPARTMENTS = ["MOPD", "SOPD", "POPD"]
 
 
 def seed_clinic_rooms_for(hospital):

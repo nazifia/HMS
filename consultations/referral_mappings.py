@@ -154,6 +154,12 @@ UNIT_TO_DEPARTMENT_MAP = {
     'Surgical Outpatient (SOPD)': 'SOPD',
     'Surgical Outpatient Department': 'SOPD',
     'Surgical OPD': 'SOPD',
+    'POPD': 'POPD',
+    'Pediatric Outpatient': 'POPD',
+    'Pediatric Outpatient (POPD)': 'POPD',
+    'Pediatric Outpatient Department': 'POPD',
+    'Paediatric Outpatient': 'POPD',
+    'Pediatric OPD': 'POPD',
 
     # Other common units
     'Outpatient': 'General Medicine',
@@ -271,6 +277,8 @@ SPECIALTY_TO_DEPARTMENT_MAP = {
     'Medical Outpatient': 'MOPD',
     'SOPD': 'SOPD',
     'Surgical Outpatient': 'SOPD',
+    'POPD': 'POPD',
+    'Pediatric Outpatient': 'POPD',
 
     # Other specialties
     'Orthopedics': 'Orthopedics',

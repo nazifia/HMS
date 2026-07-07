@@ -13,6 +13,7 @@ CLINIC_TYPE_CHOICES = (
     ('', 'N/A (General)'),
     ('mopd', 'MOPD (Medical Outpatient)'),
     ('sopd', 'SOPD (Surgical Outpatient)'),
+    ('popd', 'POPD (Pediatric Outpatient)'),
 )
 
 
@@ -45,7 +46,7 @@ class WaitingList(TenantModel):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='waiting_entries')
     service_point = models.ForeignKey('core.ServicePoint', on_delete=models.SET_NULL, null=True, blank=True, related_name='routed_waiting_entries', help_text='Reception/records point that routed this patient')
     consulting_room = models.ForeignKey(ConsultingRoom, on_delete=models.CASCADE, related_name='waiting_patients')
-    clinic_type = models.CharField(max_length=10, choices=CLINIC_TYPE_CHOICES, blank=True, default='', help_text='Outpatient clinic: Medical (MOPD) or Surgical (SOPD)')
+    clinic_type = models.CharField(max_length=10, choices=CLINIC_TYPE_CHOICES, blank=True, default='', help_text='Outpatient clinic: Medical (MOPD), Surgical (SOPD) or Pediatric (POPD)')
     doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assigned_patients', null=True, blank=True)
     appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, blank=True, related_name='waiting_entry')
     check_in_time = models.DateTimeField(default=timezone.now)
@@ -91,7 +92,7 @@ class Consultation(TenantModel):
     consulting_room = models.ForeignKey(ConsultingRoom, on_delete=models.SET_NULL, null=True, blank=True, related_name='consultations')
     waiting_list_entry = models.OneToOneField(WaitingList, on_delete=models.SET_NULL, null=True, blank=True, related_name='consultation')
     vitals = models.ForeignKey(Vitals, on_delete=models.SET_NULL, null=True, blank=True, related_name='consultations')
-    clinic_type = models.CharField(max_length=10, choices=CLINIC_TYPE_CHOICES, blank=True, default='', help_text='Outpatient clinic: Medical (MOPD) or Surgical (SOPD)')
+    clinic_type = models.CharField(max_length=10, choices=CLINIC_TYPE_CHOICES, blank=True, default='', help_text='Outpatient clinic: Medical (MOPD), Surgical (SOPD) or Pediatric (POPD)')
     consultation_date = models.DateTimeField(default=timezone.now)
     chief_complaint = models.TextField()
     symptoms = models.TextField()
