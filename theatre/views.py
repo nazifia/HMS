@@ -1087,16 +1087,20 @@ class SurgicalTeamListView(LoginRequiredMixin, ReceptionistHROAccessMixin, ListV
         context = super().get_context_data(**kwargs)
         context["search_query"] = self.request.GET.get("search", "")
 
-        # Calculate statistics from the full queryset (not paginated)
-        queryset = self.get_queryset()
-        context["total_count"] = queryset.count()
-        context["surgeons_count"] = queryset.filter(
-            Q(role="surgeon") | Q(role="assistant_surgeon")
-        ).count()
-        context["anesthetists_count"] = queryset.filter(role="anesthetist").count()
-        context["nurses_technicians_count"] = queryset.filter(
-            Q(role="nurse") | Q(role="technician")
-        ).count()
+        # Stats over the full (unpaginated) filtered queryset in a single query.
+        # self.object_list is already the filtered qs ListView built.
+        stats = self.object_list.aggregate(
+            total=Count("id"),
+            surgeons=Count(
+                "id", filter=Q(role__in=["surgeon", "assistant_surgeon"])
+            ),
+            anesthetists=Count("id", filter=Q(role="anesthetist")),
+            nurses_technicians=Count("id", filter=Q(role__in=["nurse", "technician"])),
+        )
+        context["total_count"] = stats["total"]
+        context["surgeons_count"] = stats["surgeons"]
+        context["anesthetists_count"] = stats["anesthetists"]
+        context["nurses_technicians_count"] = stats["nurses_technicians"]
 
         return context
 

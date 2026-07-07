@@ -313,18 +313,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
-    // Highlight search terms
+    // Highlight search terms. Walk TEXT NODES only so we never rewrite tag
+    // attributes (href/class) — innerHTML.replace() used to break the action
+    // links whenever the term matched a common letter.
     const searchTerm = new URLSearchParams(window.location.search).get('search');
     if (searchTerm && searchTerm.length > 0) {
-        const tableRows = document.querySelectorAll('tbody tr');
-        tableRows.forEach(row => {
-            const cells = row.querySelectorAll('td');
-            cells.forEach(cell => {
-                const text = cell.textContent;
-                if (text.toLowerCase().includes(searchTerm.toLowerCase())) {
-                    const regex = new RegExp(`(${searchTerm})`, 'gi');
-                    cell.innerHTML = cell.innerHTML.replace(regex, '<mark>$1</mark>');
-                }
+        const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${escaped})`, 'gi');
+        document.querySelectorAll('tbody td').forEach(cell => {
+            const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+            const textNodes = [];
+            while (walker.nextNode()) { textNodes.push(walker.currentNode); }
+            textNodes.forEach(node => {
+                if (!regex.test(node.nodeValue)) { return; }
+                const span = document.createElement('span');
+                span.innerHTML = node.nodeValue.replace(regex, '<mark>$1</mark>');
+                node.replaceWith(span);
             });
         });
     }
