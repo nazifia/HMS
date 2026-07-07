@@ -38,6 +38,9 @@ class DermatologyRecordForm(ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Procedure isn't done yet when a record is first planned; don't force it.
+        self.fields['treatment_procedure'].required = False
+
         # Order patients by name for better UX
         patient_field = self.fields['patient']
         patient_field.queryset = Patient.objects.all().select_related('nhia_info', 'retainership_info').order_by('first_name', 'last_name')

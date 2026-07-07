@@ -226,15 +226,11 @@ def create_dermatology_record(request):
                         )
                         return redirect('dermatology:create_dermatology_record')
 
-            # Set default values for created_at and updated_at
-            record = form.save(commit=False)
-            if not record.created_at:
-                record.created_at = timezone.now()
-            if not record.updated_at:
-                record.updated_at = timezone.now()
-            record.save()
+            record = form.save()
             messages.success(request, 'Dermatology record created successfully.')
             return redirect('dermatology:dermatology_record_detail', record_id=record.id)
+        else:
+            messages.error(request, 'Please correct the errors below.')
     else:
         form = DermatologyRecordForm()
 
