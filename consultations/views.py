@@ -1620,6 +1620,11 @@ def waiting_list(request):
     if priority:
         waiting_entries = waiting_entries.filter(priority=priority)
 
+    # Filter by outpatient clinic (MOPD/SOPD)
+    clinic_type = request.GET.get('clinic_type', '')
+    if clinic_type:
+        waiting_entries = waiting_entries.filter(clinic_type=clinic_type)
+
     # Search by patient name or ID
     search_query = request.GET.get('search', '')
     if search_query:
@@ -1640,6 +1645,7 @@ def waiting_list(request):
         'doctor': doctor,
         'consulting_room': consulting_room,
         'priority': priority,
+        'clinic_type': clinic_type,
         'search_query': search_query,
     }
 
