@@ -12,7 +12,7 @@ class OperationTheatre(TenantModel):
     """Model representing an operation theatre in the hospital."""
 
     name = models.CharField(max_length=100)
-    theatre_number = models.CharField(max_length=20, unique=True)
+    theatre_number = models.CharField(max_length=20)
     floor = models.CharField(max_length=20)
     description = models.TextField(blank=True, null=True)
     is_available = models.BooleanField(default=True)
@@ -28,6 +28,8 @@ class OperationTheatre(TenantModel):
         verbose_name = "Operation Theatre"
         verbose_name_plural = "Operation Theatres"
         ordering = ["theatre_number"]
+        # theatre_number unique per hospital, not globally (multi-tenant)
+        unique_together = ("hospital", "theatre_number")
 
 
 class SurgeryType(TenantModel):
