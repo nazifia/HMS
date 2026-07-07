@@ -10,6 +10,8 @@ from .models import Department
 # (name, description)
 DEPARTMENTS = [
     ("General Medicine", "General and internal medicine, outpatient consultations"),
+    ("MOPD", "Medical Outpatient Department"),
+    ("SOPD", "Surgical Outpatient Department"),
     ("Emergency Medicine", "Emergency, accident and trauma care"),
     ("Surgery", "General and specialist surgical services"),
     ("Pediatrics", "Child and neonatal medical care"),

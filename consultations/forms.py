@@ -38,11 +38,12 @@ class WaitingListForm(forms.ModelForm):
     
     class Meta:
         model = WaitingList
-        fields = ['patient', 'service_point', 'consulting_room', 'doctor', 'appointment', 'priority', 'notes']
+        fields = ['patient', 'service_point', 'consulting_room', 'clinic_type', 'doctor', 'appointment', 'priority', 'notes']
         widgets = {
             'patient': forms.Select(attrs={'class': 'form-select select2'}),
             'service_point': forms.Select(attrs={'class': 'form-select select2'}),
             'consulting_room': forms.Select(attrs={'class': 'form-select select2'}),
+            'clinic_type': forms.Select(attrs={'class': 'form-select'}),
             'doctor': forms.Select(attrs={'class': 'form-select select2'}),
             'appointment': forms.Select(attrs={'class': 'form-select select2'}),
             'priority': forms.Select(attrs={'class': 'form-select'}),
@@ -382,11 +383,12 @@ class ConsultationForm(forms.ModelForm):
 
     class Meta:
         model = Consultation
-        fields = ['patient', 'doctor', 'vitals', 'consultation_date', 'status', 'chief_complaint', 'symptoms', 'diagnosis', 'consultation_notes']
+        fields = ['patient', 'doctor', 'vitals', 'clinic_type', 'consultation_date', 'status', 'chief_complaint', 'symptoms', 'diagnosis', 'consultation_notes']
         widgets = {
             'patient': forms.Select(attrs={'class': 'form-select select2'}),
             'doctor': forms.Select(attrs={'class': 'form-select select2'}),
             'vitals': forms.Select(attrs={'class': 'form-select select2'}),
+            'clinic_type': forms.Select(attrs={'class': 'form-select'}),
             'consultation_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
             'status': forms.Select(attrs={'class': 'form-select'}),
             'chief_complaint': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),

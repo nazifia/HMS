@@ -2,7 +2,7 @@
 # This file defines common hospital units for the referral system
 
 DEPARTMENT_UNITS = {
-    'General': ['Emergency', 'Outpatient', 'Inpatient', 'Day Care'],
+    'General': ['Emergency', 'Outpatient', 'Medical Outpatient (MOPD)', 'Surgical Outpatient (SOPD)', 'Inpatient', 'Day Care'],
     'Specialized': [
         'Intensive Care Unit (ICU)',
         'Neonatal Intensive Care Unit (NICU)',

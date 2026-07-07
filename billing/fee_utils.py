@@ -30,6 +30,14 @@ CONSULTATION_FEE_SERVICE_NAME = "Consultation Fee"
 DEFAULT_REGISTRATION_FEE = Decimal("500.00")
 DEFAULT_CONSULTATION_FEE = Decimal("1000.00")
 
+# Per-clinic consultation fees. Falls back to the generic fee when the clinic
+# type is unset or its service is missing. Prices are seeded here via
+# get_or_create and stay editable from the billing admin afterwards.
+CLINIC_CONSULTATION_FEES = {
+    "mopd": ("MOPD Consultation Fee", Decimal("1000.00")),
+    "sopd": ("SOPD Consultation Fee", Decimal("1500.00")),
+}
+
 # Patient types that are exempt from a self-pay registration fee.
 NHIA_TYPE = "nhia"
 RETAINERSHIP_TYPE = "retainership"
@@ -55,7 +63,12 @@ def get_registration_fee_service():
     )
 
 
-def get_consultation_fee_service():
+def get_consultation_fee_service(clinic_type=None):
+    """Consultation fee service, clinic-specific (MOPD/SOPD) when given."""
+    clinic = CLINIC_CONSULTATION_FEES.get((clinic_type or "").lower())
+    if clinic:
+        name, default_price = clinic
+        return _get_or_create_service(name, "Consultation", default_price)
     return _get_or_create_service(
         CONSULTATION_FEE_SERVICE_NAME, "Consultation", DEFAULT_CONSULTATION_FEE
     )
@@ -171,12 +184,14 @@ def create_registration_fee(patient, user=None):
 
 
 @transaction.atomic
-def create_consultation_fee(patient, user=None, service_point=None):
+def create_consultation_fee(patient, user=None, service_point=None, clinic_type=None):
     """
     Create the consultation-fee invoice for a regular outpatient.
 
-    Only regular patients are billed here (NHIA goes through authorization;
-    retainership/others are out of scope per spec). Idempotent for the same day.
+    ``clinic_type`` ('mopd'/'sopd') selects the matching consultation fee, else
+    the generic fee. Only regular patients are billed here (NHIA goes through
+    authorization; retainership/others are out of scope per spec). Idempotent
+    for the same day.
     """
     if patient.patient_type != "regular":
         return None
@@ -185,7 +200,7 @@ def create_consultation_fee(patient, user=None, service_point=None):
     if _has_open_invoice(patient, "consultation", since=today_start):
         return None
 
-    service = get_consultation_fee_service()
+    service = get_consultation_fee_service(clinic_type)
     return create_service_invoice(
         patient, service, source_app="consultation", created_by=user
     )

@@ -97,6 +97,14 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="{{ form.clinic_type.id_for_label }}" class="form-label">Clinic (MOPD/SOPD)</label>
+                            {{ form.clinic_type }}
+                            {% if form.clinic_type.errors %}
+                                <div class="text-danger">{{ form.clinic_type.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
                             <label for="{{ form.chief_complaint.id_for_label }}" class="form-label">Chief Complaint</label>
                             {{ form.chief_complaint }}
                             {% if form.chief_complaint.errors %}

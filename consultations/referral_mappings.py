@@ -142,6 +142,19 @@ UNIT_TO_DEPARTMENT_MAP = {
     'Billing': 'Finance',
     'Accounts': 'Finance',
     
+    # Outpatient clinics (Medical / Surgical). Exact keys matter: the partial
+    # matcher below would otherwise catch 'ent' inside 'Outpatient'.
+    'MOPD': 'MOPD',
+    'Medical Outpatient': 'MOPD',
+    'Medical Outpatient (MOPD)': 'MOPD',
+    'Medical Outpatient Department': 'MOPD',
+    'Medical OPD': 'MOPD',
+    'SOPD': 'SOPD',
+    'Surgical Outpatient': 'SOPD',
+    'Surgical Outpatient (SOPD)': 'SOPD',
+    'Surgical Outpatient Department': 'SOPD',
+    'Surgical OPD': 'SOPD',
+
     # Other common units
     'Outpatient': 'General Medicine',
     'OPD': 'General Medicine',
@@ -253,6 +266,12 @@ SPECIALTY_TO_DEPARTMENT_MAP = {
     'Clinical Pathology': 'Laboratory',
     'Hematology': 'Laboratory',
     
+    # Outpatient clinics (Medical / Surgical)
+    'MOPD': 'MOPD',
+    'Medical Outpatient': 'MOPD',
+    'SOPD': 'SOPD',
+    'Surgical Outpatient': 'SOPD',
+
     # Other specialties
     'Orthopedics': 'Orthopedics',
     'Psychiatry': 'General Medicine',

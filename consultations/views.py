@@ -1678,7 +1678,8 @@ def add_to_waiting_list(request, patient_id=None):
             try:
                 from billing.fee_utils import create_consultation_fee
                 consult_invoice = create_consultation_fee(
-                    patient, request.user, service_point=waiting_entry.service_point
+                    patient, request.user, service_point=waiting_entry.service_point,
+                    clinic_type=waiting_entry.clinic_type,
                 )
                 if consult_invoice:
                     messages.info(

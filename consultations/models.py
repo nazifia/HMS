@@ -8,6 +8,14 @@ from patients.models import Patient, Vitals
 from appointments.models import Appointment
 
 
+# Outpatient clinic classification (Medical vs Surgical OPD). Blank = general.
+CLINIC_TYPE_CHOICES = (
+    ('', 'N/A (General)'),
+    ('mopd', 'MOPD (Medical Outpatient)'),
+    ('sopd', 'SOPD (Surgical Outpatient)'),
+)
+
+
 class ConsultingRoom(TenantModel):
     """Model for hospital consulting rooms"""
     room_number = models.CharField(max_length=20, unique=True)
@@ -37,6 +45,7 @@ class WaitingList(TenantModel):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='waiting_entries')
     service_point = models.ForeignKey('core.ServicePoint', on_delete=models.SET_NULL, null=True, blank=True, related_name='routed_waiting_entries', help_text='Reception/records point that routed this patient')
     consulting_room = models.ForeignKey(ConsultingRoom, on_delete=models.CASCADE, related_name='waiting_patients')
+    clinic_type = models.CharField(max_length=10, choices=CLINIC_TYPE_CHOICES, blank=True, default='', help_text='Outpatient clinic: Medical (MOPD) or Surgical (SOPD)')
     doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assigned_patients', null=True, blank=True)
     appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, blank=True, related_name='waiting_entry')
     check_in_time = models.DateTimeField(default=timezone.now)
@@ -82,6 +91,7 @@ class Consultation(TenantModel):
     consulting_room = models.ForeignKey(ConsultingRoom, on_delete=models.SET_NULL, null=True, blank=True, related_name='consultations')
     waiting_list_entry = models.OneToOneField(WaitingList, on_delete=models.SET_NULL, null=True, blank=True, related_name='consultation')
     vitals = models.ForeignKey(Vitals, on_delete=models.SET_NULL, null=True, blank=True, related_name='consultations')
+    clinic_type = models.CharField(max_length=10, choices=CLINIC_TYPE_CHOICES, blank=True, default='', help_text='Outpatient clinic: Medical (MOPD) or Surgical (SOPD)')
     consultation_date = models.DateTimeField(default=timezone.now)
     chief_complaint = models.TextField()
     symptoms = models.TextField()
@@ -142,6 +152,9 @@ class Consultation(TenantModel):
             return False
 
     def save(self, *args, **kwargs):
+        # Inherit clinic type (MOPD/SOPD) from the waiting-list routing if unset.
+        if not self.clinic_type and self.waiting_list_entry_id and self.waiting_list_entry.clinic_type:
+            self.clinic_type = self.waiting_list_entry.clinic_type
         # Auto-check authorization requirement on save
         self.check_authorization_requirement()
         super().save(*args, **kwargs)
