@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Reusable Surgical Teams{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Reusable Surgical Teams</h1>
+        <div>
+            <a href="{% url 'theatre:team_list' %}" class="btn btn-sm btn-outline-secondary shadow-sm">
+                <i class="fas fa-users"></i> Per-Surgery Assignments
+            </a>
+            <a href="{% url 'theatre:team_template_create' %}" class="btn btn-sm btn-primary shadow-sm">
+                <i class="fas fa-plus fa-sm text-white-50"></i> Create Team
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-people-group"></i> Saved Teams
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if templates %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Name</th>
+                            <th>Members</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in templates %}
+                        <tr>
+                            <td><strong>{{ t.name }}</strong></td>
+                            <td>
+                                {% for m in t.members.all %}
+                                <span class="badge bg-secondary">{{ m.staff.get_full_name }} &middot; {{ m.get_role_display }}</span>
+                                {% empty %}
+                                <span class="text-muted">No members</span>
+                                {% endfor %}
+                            </td>
+                            <td>{{ t.description|default:"-"|truncatechars:60 }}</td>
+                            <td>
+                                {% if t.is_active %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'theatre:team_template_apply' t.pk %}" class="btn btn-success btn-sm">
+                                    <i class="fas fa-arrow-right-to-bracket"></i> Apply
+                                </a>
+                                <a href="{% url 'theatre:team_template_update' t.pk %}" class="btn btn-warning btn-sm">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <a href="{% url 'theatre:team_template_delete' t.pk %}" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash"></i> Delete
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info text-center mb-0">
+                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                <h4>No Reusable Teams Yet</h4>
+                <p>Create a named team once, then apply its members to any surgery in one click.
+                    <a href="{% url 'theatre:team_template_create' %}">Create the first team</a>.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -84,6 +84,7 @@ from .models import (
     SurgeryType,
     Surgery,
     SurgicalTeam,
+    SurgicalTeamTemplate,
     SurgicalEquipment,
     EquipmentUsage,
     SurgerySchedule,
@@ -101,6 +102,8 @@ from .forms import (
     SurgicalTeamMultipleForm,
     SurgicalTeamInlineFormSet,
     SurgicalTeamBulkFormSet,
+    SurgicalTeamTemplateForm,
+    TeamTemplateMemberInlineFormSet,
     SurgicalEquipmentForm,
     EquipmentUsageInlineFormSet,
     SurgeryScheduleForm,
@@ -1275,6 +1278,104 @@ class BulkTeamCreateView(LoginRequiredMixin, ReceptionistHROAccessMixin, Templat
             return self.render_to_response(
                 self.get_context_data(team_formset=team_formset)
             )
+
+
+# ---------------------------------------------------------------------------
+# Reusable named surgical teams (templates)
+# Create a team once, then apply its members to any surgery.
+# ---------------------------------------------------------------------------
+
+
+@login_required
+@theatre_access_required
+def team_template_list(request):
+    templates = SurgicalTeamTemplate.objects.prefetch_related(
+        "members__staff"
+    ).order_by("name")
+    return render(
+        request,
+        "theatre/team_template_list.html",
+        {"templates": templates},
+    )
+
+
+@login_required
+@theatre_access_required
+def team_template_form(request, pk=None):
+    instance = get_object_or_404(SurgicalTeamTemplate, pk=pk) if pk else None
+    if request.method == "POST":
+        form = SurgicalTeamTemplateForm(request.POST, instance=instance)
+        formset = TeamTemplateMemberInlineFormSet(request.POST, instance=instance)
+        if form.is_valid() and formset.is_valid():
+            template = form.save()
+            formset.instance = template
+            formset.save()
+            messages.success(request, f"Team '{template.name}' saved.")
+            return redirect("theatre:team_template_list")
+        messages.error(request, "Please correct the errors below.")
+    else:
+        form = SurgicalTeamTemplateForm(instance=instance)
+        formset = TeamTemplateMemberInlineFormSet(instance=instance)
+    return render(
+        request,
+        "theatre/team_template_form.html",
+        {
+            "form": form,
+            "formset": formset,
+            "title": "Edit Team" if instance else "Create Team",
+        },
+    )
+
+
+@login_required
+@theatre_access_required
+def team_template_delete(request, pk):
+    instance = get_object_or_404(SurgicalTeamTemplate, pk=pk)
+    if request.method == "POST":
+        name = instance.name
+        instance.delete()
+        messages.success(request, f"Team '{name}' deleted.")
+        return redirect("theatre:team_template_list")
+    return render(
+        request,
+        "theatre/team_template_confirm_delete.html",
+        {"object": instance},
+    )
+
+
+@login_required
+@theatre_access_required
+def team_template_apply(request, pk):
+    """Apply a reusable team's members to a chosen surgery as SurgicalTeam rows."""
+    template = get_object_or_404(
+        SurgicalTeamTemplate.objects.prefetch_related("members"), pk=pk
+    )
+    if request.method == "POST":
+        surgery = get_object_or_404(Surgery, pk=request.POST.get("surgery"))
+        created = skipped = 0
+        for member in template.members.all():
+            _, was_created = SurgicalTeam.objects.get_or_create(
+                surgery=surgery, staff=member.staff, role=member.role
+            )
+            if was_created:
+                created += 1
+            else:
+                skipped += 1
+        messages.success(
+            request,
+            f"Applied '{template.name}': {created} added, "
+            f"{skipped} already assigned.",
+        )
+        return redirect("theatre:surgery_detail", pk=surgery.pk)
+
+    surgeries = Surgery.objects.select_related(
+        "patient", "surgery_type"
+    ).filter(status__in=["scheduled", "in_progress"]).order_by("-scheduled_date")
+    return render(
+        request,
+        "theatre/team_template_apply.html",
+        {"template": template, "surgeries": surgeries},
+    )
 
 
 class TheatreDashboardView(

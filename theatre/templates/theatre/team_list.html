@@ -45,9 +45,14 @@
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">Surgical Team Management</h1>
-        <a href="{% url 'theatre:team_create' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-            <i class="fas fa-plus fa-sm text-white-50"></i> Add Team Member
-        </a>
+        <div class="d-none d-sm-inline-block">
+            <a href="{% url 'theatre:team_template_list' %}" class="btn btn-sm btn-outline-primary shadow-sm">
+                <i class="fas fa-people-group"></i> Reusable Teams
+            </a>
+            <a href="{% url 'theatre:team_create' %}" class="btn btn-sm btn-primary shadow-sm">
+                <i class="fas fa-plus fa-sm text-white-50"></i> Add Team Member
+            </a>
+        </div>
     </div>
 
     <!-- Statistics Cards -->

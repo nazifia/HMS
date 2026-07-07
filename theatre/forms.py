@@ -6,6 +6,8 @@ from .models import (
     SurgeryType,
     Surgery,
     SurgicalTeam,
+    SurgicalTeamTemplate,
+    SurgicalTeamTemplateMember,
     SurgicalEquipment,
     EquipmentUsage,
     SurgerySchedule,
@@ -516,6 +518,70 @@ SurgicalTeamBulkFormSet = inlineformset_factory(
     form=SurgicalTeamForm,
     formset=SurgicalTeamFormSet,
     extra=5,
+    can_delete=True,
+)
+
+
+class SurgicalTeamTemplateForm(forms.ModelForm):
+    """Reusable named team (create once, apply to many surgeries)."""
+
+    class Meta:
+        model = SurgicalTeamTemplate
+        fields = ["name", "description", "is_active"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control"}),
+            "description": forms.Textarea(attrs={"rows": 2, "class": "form-control"}),
+        }
+
+
+class SurgicalTeamTemplateMemberForm(forms.ModelForm):
+    class Meta:
+        model = SurgicalTeamTemplateMember
+        fields = ["staff", "role", "order"]
+        widgets = {
+            "staff": forms.Select(attrs={"class": "form-control"}),
+            "role": forms.Select(attrs={"class": "form-control"}),
+            "order": forms.NumberInput(
+                attrs={"class": "form-control", "min": 0, "style": "width:80px;"}
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        base_qs = CustomUser.tenant_objects.filter(is_active=True).order_by(
+            "first_name", "last_name"
+        )
+        # Keep an already-selected (possibly now-inactive) member in range.
+        if self.instance and self.instance.pk and self.instance.staff_id:
+            base_qs = (
+                base_qs | CustomUser.objects.filter(pk=self.instance.staff_id)
+            ).distinct().order_by("first_name", "last_name")
+        self.fields["staff"].queryset = base_qs
+
+    def clean_order(self):
+        return self.cleaned_data.get("order") or 0
+
+
+class SurgicalTeamTemplateMemberFormSet(BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        seen = []
+        for form in self.forms:
+            if form.cleaned_data and not form.cleaned_data.get("DELETE", False):
+                key = (form.cleaned_data.get("staff"), form.cleaned_data.get("role"))
+                if key[0] and key in seen:
+                    raise forms.ValidationError(
+                        "Same staff member cannot hold the same role twice."
+                    )
+                seen.append(key)
+
+
+TeamTemplateMemberInlineFormSet = inlineformset_factory(
+    SurgicalTeamTemplate,
+    SurgicalTeamTemplateMember,
+    form=SurgicalTeamTemplateMemberForm,
+    formset=SurgicalTeamTemplateMemberFormSet,
+    extra=3,
     can_delete=True,
 )
 

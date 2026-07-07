@@ -284,6 +284,48 @@ class SurgicalTeam(TenantModel):
         unique_together = ("surgery", "staff", "role")
 
 
+class SurgicalTeamTemplate(TenantModel):
+    """A reusable named surgical team that can be applied to any surgery."""
+
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        app_label = "theatre"
+        verbose_name = "Surgical Team Template"
+        verbose_name_plural = "Surgical Team Templates"
+        ordering = ["name"]
+        # name unique per hospital, not globally (multi-tenant)
+        unique_together = ("hospital", "name")
+
+
+class SurgicalTeamTemplateMember(TenantModel):
+    """A staff member + role belonging to a reusable team template."""
+
+    template = models.ForeignKey(
+        SurgicalTeamTemplate, on_delete=models.CASCADE, related_name="members"
+    )
+    staff = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name="team_template_memberships"
+    )
+    role = models.CharField(max_length=20, choices=SurgicalTeam.ROLE_CHOICES)
+    order = models.PositiveIntegerField(
+        default=0, blank=True, help_text="Display order within the team"
+    )
+
+    def __str__(self):
+        return f"{self.staff} ({self.role})"
+
+    class Meta:
+        app_label = "theatre"
+        unique_together = ("template", "staff", "role")
+        ordering = ["order", "id"]
+
+
 class SurgicalEquipment(TenantModel):
     """Model representing equipment used in surgeries."""
 

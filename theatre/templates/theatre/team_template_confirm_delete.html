@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Team{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-danger">Delete Team</h6>
+        </div>
+        <div class="card-body">
+            <p>Delete reusable team <strong>{{ object.name }}</strong>?
+                This removes the template and its {{ object.members.count }} member(s).
+                Surgeries already assigned from it are not affected.</p>
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+                <a href="{% url 'theatre:team_template_list' %}" class="btn btn-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

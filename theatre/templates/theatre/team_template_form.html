@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'theatre:team_template_list' %}" class="btn btn-sm btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back
+        </a>
+    </div>
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Team Details</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Name</label>
+                    {{ form.name }}
+                    {{ form.name.errors }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    {{ form.description }}
+                    {{ form.description.errors }}
+                </div>
+                <div class="form-check">
+                    {{ form.is_active }}
+                    <label class="form-check-label">Active</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Members</h6>
+                <button type="button" id="add-member-row" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-plus"></i> Add Row
+                </button>
+            </div>
+            <div class="card-body">
+                {{ formset.management_form }}
+                {% if formset.non_form_errors %}
+                <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+                {% endif %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="member-table">
+                        <thead class="thead-light">
+                            <tr>
+                                <th style="width:90px;">Order</th>
+                                <th>Staff</th>
+                                <th>Role</th>
+                                <th style="width:80px;">Remove</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for f in formset %}
+                            <tr draggable="true" class="js-drag-row" style="cursor:move;">
+                                <td>
+                                    <i class="fas fa-grip-vertical text-muted mr-1"></i>
+                                    {{ f.order }}{{ f.order.errors }}
+                                </td>
+                                <td>
+                                    {{ f.id }}
+                                    {{ f.staff }}
+                                    {{ f.staff.errors }}
+                                </td>
+                                <td>{{ f.role }}{{ f.role.errors }}</td>
+                                <td class="text-center">
+                                    {% if f.instance.pk %}{{ f.DELETE }}{% else %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger js-remove-row">
+                                        <i class="fas fa-times"></i>
+                                    </button>{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> Save Team
+        </button>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tbody = document.querySelector('#member-table tbody');
+    const totalForms = document.querySelector('#id_members-TOTAL_FORMS');
+    const addBtn = document.getElementById('add-member-row');
+
+    // Rewrite each row's order input to match its current visual position.
+    function renumberOrder() {
+        tbody.querySelectorAll('tr').forEach((tr, i) => {
+            const input = tr.querySelector('input[name$="-order"]');
+            if (input) { input.value = i; }
+        });
+    }
+
+    addBtn.addEventListener('click', function () {
+        const idx = parseInt(totalForms.value, 10);
+        const last = tbody.querySelector('tr:last-child');
+        const row = last.cloneNode(true);
+        // Renumber name/id attrs from prefix "members-<n>-" to the new index.
+        row.querySelectorAll('input, select').forEach(el => {
+            ['name', 'id'].forEach(attr => {
+                if (el.getAttribute(attr)) {
+                    el.setAttribute(attr, el.getAttribute(attr).replace(/members-\d+-/, 'members-' + idx + '-'));
+                }
+            });
+            if (el.tagName === 'SELECT') { el.selectedIndex = 0; }
+            else if (el.type !== 'hidden') { el.value = ''; }
+            if (el.name && el.name.endsWith('-id')) { el.value = ''; }
+        });
+        tbody.appendChild(row);
+        totalForms.value = idx + 1;
+        renumberOrder();
+    });
+
+    tbody.addEventListener('click', function (e) {
+        const btn = e.target.closest('.js-remove-row');
+        if (btn && tbody.querySelectorAll('tr').length > 1) {
+            btn.closest('tr').remove();
+            renumberOrder();
+        }
+    });
+
+    // Native HTML5 drag-and-drop reordering.
+    let dragged = null;
+    tbody.addEventListener('dragstart', function (e) {
+        dragged = e.target.closest('tr');
+        if (dragged) { e.dataTransfer.effectAllowed = 'move'; }
+    });
+    tbody.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        const over = e.target.closest('tr');
+        if (!over || over === dragged || !dragged) { return; }
+        const rect = over.getBoundingClientRect();
+        const after = (e.clientY - rect.top) > rect.height / 2;
+        tbody.insertBefore(dragged, after ? over.nextSibling : over);
+    });
+    tbody.addEventListener('drop', function (e) {
+        e.preventDefault();
+        renumberOrder();
+        dragged = null;
+    });
+});
+</script>
+{% endblock %}

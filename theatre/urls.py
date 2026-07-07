@@ -189,6 +189,32 @@ urlpatterns = [
         views.BulkTeamCreateView.as_view(),
         name="bulk_team_create",
     ),
+    # Reusable named teams (templates)
+    path(
+        "team-templates/",
+        views.team_template_list,
+        name="team_template_list",
+    ),
+    path(
+        "team-templates/add/",
+        views.team_template_form,
+        name="team_template_create",
+    ),
+    path(
+        "team-templates/<int:pk>/edit/",
+        views.team_template_form,
+        name="team_template_update",
+    ),
+    path(
+        "team-templates/<int:pk>/delete/",
+        views.team_template_delete,
+        name="team_template_delete",
+    ),
+    path(
+        "team-templates/<int:pk>/apply/",
+        views.team_template_apply,
+        name="team_template_apply",
+    ),
     # Reports
     path(
         "reports/surgery-report/",

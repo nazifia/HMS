@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Apply Team{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Apply Team: {{ template.name }}</h1>
+        <a href="{% url 'theatre:team_template_list' %}" class="btn btn-sm btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Team Members</h6>
+        </div>
+        <div class="card-body">
+            {% for m in template.members.all %}
+            <span class="badge bg-secondary">{{ m.staff.get_full_name }} &middot; {{ m.get_role_display }}</span>
+            {% empty %}
+            <div class="alert alert-warning mb-0">This team has no members. Add some before applying.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if template.members.all %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Select Surgery</h6>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Surgery (scheduled / in progress)</label>
+                    <select name="surgery" class="form-control" required>
+                        <option value="">Select surgery...</option>
+                        {% for s in surgeries %}
+                        <option value="{{ s.pk }}">
+                            #{{ s.pk }} &mdash; {{ s.surgery_type.name }} &mdash; {{ s.patient.get_full_name }}
+                            ({{ s.scheduled_date|date:"Y-m-d H:i" }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <p class="text-muted small">
+                    Members already assigned to that surgery in the same role are skipped.
+                </p>
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-arrow-right-to-bracket"></i> Apply to Surgery
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
