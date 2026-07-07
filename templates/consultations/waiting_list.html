@@ -92,6 +92,7 @@
                                     <th>Patient</th>
                                     <th>Doctor</th>
                                     <th>Room</th>
+                                    <th>Clinic</th>
                                     <th>Check-in Time</th>
                                     <th>Wait Time</th>
                                     <th>Priority</th>
@@ -117,6 +118,13 @@
                                             {% endif %}
                                         </td>
                                         <td>{{ entry.consulting_room.room_number }}</td>
+                                        <td>
+                                            {% if entry.clinic_type %}
+                                                <span class="badge bg-info">{{ entry.get_clinic_type_display }}</span>
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
                                         <td>{{ entry.check_in_time|date:"M d, Y" }} at {{ entry.check_in_time|time:"h:i A" }}</td>
                                         <td>
                                             <span class="waiting-time" data-checkin="{{ entry.check_in_time|date:'c' }}">
@@ -173,7 +181,7 @@
                                     </tr>
                                 {% empty %}
                                     <tr>
-                                        <td colspan="8" class="text-center">No patients in the waiting list.</td>
+                                        <td colspan="9" class="text-center">No patients in the waiting list.</td>
                                     </tr>
                                 {% endfor %}
                             </tbody>
