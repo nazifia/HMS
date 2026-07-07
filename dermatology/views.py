@@ -258,7 +258,7 @@ def dermatology_record_detail(request, record_id):
     # **NHIA AUTHORIZATION CHECK**
     from core.models import InternalNotification
     
-    is_nhia_patient = record.patient.patient_type == 'nhia'
+    is_nhia_patient = record.patient.is_nhia_patient()
     requires_authorization = is_nhia_patient and not record.authorization_code
     authorization_valid = is_nhia_patient and bool(record.authorization_code)
     authorization_message = None
@@ -319,7 +319,7 @@ def edit_dermatology_record(request, record_id):
         form = DermatologyRecordForm(instance=record)
 
     # **NHIA AUTHORIZATION CHECK**
-    is_nhia_patient = record.patient.patient_type == 'nhia'
+    is_nhia_patient = record.patient.is_nhia_patient()
     requires_authorization = is_nhia_patient and not record.authorization_code
     authorization_valid = is_nhia_patient and bool(record.authorization_code)
     authorization_message = None
@@ -559,7 +559,7 @@ def generate_invoice_for_dermatology(request, record_id):
         return redirect('dermatology:dermatology_record_detail', record_id=record.pk)
 
     # **NHIA AUTHORIZATION CHECK**: Prevent invoice generation without authorization
-    if record.patient.patient_type == 'nhia':
+    if record.patient.is_nhia_patient():
         if not record.authorization_code:
             messages.error(
                 request,

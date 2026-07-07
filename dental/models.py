@@ -122,7 +122,7 @@ class DentalRecord(TenantModel):
 
     def is_nhia_patient(self) -> bool:
         """Check if the patient is an NHIA patient"""
-        return hasattr(self.patient, 'nhia_info') and self.patient.nhia_info is not None  # type: ignore
+        return self.patient.is_nhia_patient()
 
     def check_authorization_requirement(self) -> bool:
         """

@@ -207,7 +207,7 @@ def cardiology_record_detail(request, record_id):
     )
 
     # **NHIA AUTHORIZATION CHECK**
-    is_nhia_patient = record.patient.patient_type == 'nhia'
+    is_nhia_patient = record.patient.is_nhia_patient()
     requires_authorization = is_nhia_patient and not record.authorization_code
     authorization_valid = is_nhia_patient and bool(record.authorization_code)
     authorization_message = None
@@ -261,7 +261,7 @@ def edit_cardiology_record(request, record_id):
         form = CardiologyRecordForm(instance=record)
 
     # **NHIA AUTHORIZATION CHECK**
-    is_nhia_patient = record.patient.patient_type == 'nhia'
+    is_nhia_patient = record.patient.is_nhia_patient()
     requires_authorization = is_nhia_patient and not record.authorization_code
     authorization_valid = is_nhia_patient and bool(record.authorization_code)
     authorization_message = None
