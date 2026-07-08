@@ -2,6 +2,7 @@ import logging
 
 from django.db import models, transaction
 from saas.models import TenantModel
+from core.validators import NigerianPhoneField
 from nhia.utils import NHIA_PATIENT_RATE, NHIA_COVERED_RATE
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -63,7 +64,7 @@ class Supplier(TenantModel):
     name = models.CharField(max_length=100)
     contact_person = models.CharField(max_length=100, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
-    phone_number = models.CharField(max_length=15)
+    phone_number = NigerianPhoneField(max_length=15)
     address = models.TextField()
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)

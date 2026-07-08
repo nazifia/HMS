@@ -12,6 +12,7 @@ from django.urls import reverse  # For redirects
 from django.http import HttpResponseForbidden, HttpResponse  # For error responses
 
 from saas.models import TenantModel, TenantManager
+from core.validators import NigerianPhoneField
 
 
 class Role(models.Model):
@@ -148,7 +149,7 @@ class CustomUserManager(BaseUserManager):
 
 
 class CustomUser(AbstractUser):
-    phone_number = models.CharField(max_length=15, unique=True)
+    phone_number = NigerianPhoneField(max_length=15, unique=True)
     # username is inherited from AbstractUser, but we redefine it here to ensure it's present
     # (though AbstractUser already has it). If we want different constraints, this is the place.
     username = models.CharField(max_length=150, unique=True)
@@ -387,7 +388,7 @@ class CustomUserProfile(models.Model):
     # If it can be different (e.g., a contact phone vs login phone), keep it.
     # Given unique=True, it suggests it might be distinct or needs careful syncing.
     # For simplicity, if it's a duplicate of CustomUser.phone_number, consider removing it.
-    phone_number = models.CharField(
+    phone_number = NigerianPhoneField(
         max_length=15, blank=True, null=True, unique=True, db_index=True
     )
     address = models.TextField(blank=True, null=True)

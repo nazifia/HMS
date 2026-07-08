@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from ..models import Medication, MedicationCategory, Supplier, Prescription, PrescriptionItem
+from core.validators import normalize_nigerian_phone
 
 class MedicationCategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -24,6 +25,13 @@ class SupplierSerializer(serializers.ModelSerializer):
             'id', 'name', 'contact_person', 'email', 'phone_number',
             'address', 'city', 'state', 'country', 'is_active'
         ]
+
+    def to_internal_value(self, data):
+        # Normalize before field validation so max_length applies to the
+        # normalized value (e.g. '+234 806 123 4567' -> '08061234567').
+        if hasattr(data, 'get') and data.get('phone_number'):
+            data = {**data, 'phone_number': normalize_nigerian_phone(data['phone_number'])}
+        return super().to_internal_value(data)
 
 class PrescriptionItemSerializer(serializers.ModelSerializer):
     medication = MedicationSerializer(read_only=True)

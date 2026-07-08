@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import Permission, Group
 from django.contrib.contenttypes.models import ContentType
 from ..models import CustomUser, Role, AuditLog, CustomUserProfile
+from core.validators import normalize_nigerian_phone
 from django.conf import settings
 import json
 
@@ -46,6 +47,13 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'employee_id': {'required': True}
         }
 
+    def to_internal_value(self, data):
+        # Normalize before field validation so max_length applies to the
+        # normalized value (e.g. '+234 806 123 4567' -> '08061234567').
+        if hasattr(data, 'get') and data.get('phone_number'):
+            data = {**data, 'phone_number': normalize_nigerian_phone(data['phone_number'])}
+        return super().to_internal_value(data)
+
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(required=True)
     roles = RoleSerializer(many=True, read_only=True)
@@ -67,7 +75,13 @@ class UserSerializer(serializers.ModelSerializer):
             'password': {'write_only': True},
             'is_superuser': {'read_only': True}
         }
-        
+
+    def to_internal_value(self, data):
+        if hasattr(data, 'get') and data.get('phone_number'):
+            data = {**data, 'phone_number': normalize_nigerian_phone(data['phone_number'])}
+        return super().to_internal_value(data)
+
+
     def create(self, validated_data):
         profile_data = validated_data.pop('profile')
         role_ids = validated_data.pop('roles', [])

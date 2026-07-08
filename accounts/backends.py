@@ -7,6 +7,7 @@ from django.contrib.auth.backends import BaseBackend, ModelBackend
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from accounts.models import CustomUser, Role
+from core.validators import normalize_nigerian_phone
 
 User = get_user_model()
 
@@ -27,7 +28,10 @@ class PhoneNumberBackend(BaseBackend):
         try:
             # Look up by phone_number only. If no user has this phone number,
             # return None and let the next backend (AdminBackend) try username.
-            user = CustomUser.objects.get(phone_number=username)
+            # Normalize so users can log in typing +234... against stored 0... form.
+            user = CustomUser.objects.get(
+                phone_number=normalize_nigerian_phone(username)
+            )
         except CustomUser.DoesNotExist:
             return None
 

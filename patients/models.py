@@ -3,6 +3,7 @@ from django.db.models import Sum, Count
 from django.utils import timezone
 from django.conf import settings
 from core.clinical_notes import NigerianClerkingNote
+from core.validators import NigerianPhoneField
 from saas.models import TenantModel, TenantManager
 import random
 import logging
@@ -286,10 +287,10 @@ class Patient(TenantModel):
 
     # Contact Information
     email = models.EmailField(blank=True, null=True)
-    phone_number = models.CharField(max_length=15, blank=True, null=True)
+    phone_number = NigerianPhoneField(max_length=15, blank=True, null=True)
     emergency_contact_name = models.CharField(max_length=100, blank=True, null=True)
     emergency_contact_relation = models.CharField(max_length=50, blank=True, null=True)
-    emergency_contact_phone = models.CharField(max_length=20, blank=True, null=True)
+    emergency_contact_phone = NigerianPhoneField(max_length=20, blank=True, null=True)
     address = models.TextField()
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
