@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.db import transaction
-from .models import Family_planningRecord
+from .models import Family_planningRecord, FamilyPlanningClinicalNote
 from .forms import Family_planningRecordForm, FamilyPlanningRecordSearchForm, FamilyPlanningClinicalNoteForm
 from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
@@ -370,7 +370,7 @@ def create_prescription_for_family_planning(request, record_id):
 @login_required
 def add_clinical_note(request, record_id):
     """Add a clinical note (SOAP format) to a family_planning record"""
-    record = get_object_or_404(FamilyPlanningRecord, id=record_id)
+    record = get_object_or_404(Family_planningRecord, id=record_id)
 
     if request.method == 'POST':
         form = FamilyPlanningClinicalNoteForm(request.POST)

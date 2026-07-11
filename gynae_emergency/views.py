@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.db import transaction
-from .models import Gynae_emergencyRecord
+from .models import Gynae_emergencyRecord, GynaeEmergencyClinicalNote
 from .forms import Gynae_emergencyRecordForm, GynaeEmergencyRecordSearchForm, GynaeEmergencyClinicalNoteForm
 from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query, format_patient_search_results
@@ -359,7 +359,7 @@ def create_prescription_for_gynae_emergency(request, record_id):
 @login_required
 def add_clinical_note(request, record_id):
     """Add a clinical note (SOAP format) to a gynae_emergency record"""
-    record = get_object_or_404(GynaeEmergencyRecord, id=record_id)
+    record = get_object_or_404(Gynae_emergencyRecord, id=record_id)
 
     if request.method == 'POST':
         form = GynaeEmergencyClinicalNoteForm(request.POST)

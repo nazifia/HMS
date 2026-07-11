@@ -906,11 +906,13 @@ def create_invoice_for_prescription(request, prescription_id):
     invoice = Invoice.objects.create(
         patient=prescription.patient,
         status="pending",
+        due_date=timezone.now().date() + timezone.timedelta(days=7),
         total_amount=total,
         subtotal=patient_payable_amount,
         tax_amount=tax_amount,
         created_by=request.user,
         prescription=prescription,
+        source_app="pharmacy",
     )
     # Link invoice to prescription if not already linked
     prescription.invoice = invoice

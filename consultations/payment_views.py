@@ -7,9 +7,32 @@ from django.views.decorators.http import require_http_methods
 from decimal import Decimal
 
 from billing.models import Invoice, Payment
+from billing.fee_utils import create_consultation_fee
 from patients.models import PatientWallet
 from .payment_forms import ConsultationPaymentForm
 from .models import Consultation
+
+
+def _find_consultation_invoice(consultation):
+    """Find the invoice for a consultation via its appointment or the
+    patient's latest consultation-fee invoice."""
+    if consultation.appointment_id:
+        invoice = (
+            Invoice.objects.filter(appointment_id=consultation.appointment_id)
+            .order_by('-created_at')
+            .first()
+        )
+        if invoice:
+            return invoice
+    # ponytail: latest consultation invoice for patient; scope per-consultation if patients ever carry several open ones
+    return (
+        Invoice.objects.filter(
+            patient=consultation.patient,
+            source_app__in=['consultation', 'appointment'],
+        )
+        .order_by('-created_at')
+        .first()
+    )
 
 
 @login_required
@@ -17,24 +40,15 @@ from .models import Consultation
 def consultation_payment(request, consultation_id):
     """Handle consultation payment processing with dual payment methods"""
     consultation = get_object_or_404(Consultation, id=consultation_id)
-    
+
     # Get or create invoice for consultation
-    try:
-        invoice = Invoice.objects.get(
-            patient=consultation.patient,
-            source_app='appointment',  # Consultations are linked to appointments
-            object_id=consultation.id
-        )
-    except Invoice.DoesNotExist:
-        # Create invoice if it doesn't exist
-        invoice = Invoice.objects.create(
-            patient=consultation.patient,
-            source_app='appointment',
-            object_id=consultation.id,
-            total_amount=consultation.fee or Decimal('0.00'),
-            description=f"Consultation with Dr. {consultation.doctor.get_full_name()}"
-        )
-    
+    invoice = _find_consultation_invoice(consultation)
+    if invoice is None:
+        invoice = create_consultation_fee(consultation.patient, user=request.user)
+    if invoice is None:
+        messages.error(request, "No billable consultation invoice for this patient.")
+        return redirect('consultations:consultation_detail', consultation_id=consultation.id)
+
     # Get or create patient wallet
     patient_wallet, created = PatientWallet.objects.get_or_create(
         patient=consultation.patient,
@@ -112,16 +126,12 @@ def consultation_payment_history(request, consultation_id):
     """View payment history for a consultation"""
     consultation = get_object_or_404(Consultation, id=consultation_id)
     
-    try:
-        invoice = Invoice.objects.get(
-            patient=consultation.patient,
-            source_app='appointment',
-            object_id=consultation.id
-        )
-        payments = Payment.objects.filter(invoice=invoice).order_by('-created_at')
-    except Invoice.DoesNotExist:
-        invoice = None
-        payments = []
+    invoice = _find_consultation_invoice(consultation)
+    payments = (
+        Payment.objects.filter(invoice=invoice).order_by('-created_at')
+        if invoice
+        else []
+    )
     
     context = {
         'consultation': consultation,

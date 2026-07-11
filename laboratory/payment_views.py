@@ -26,14 +26,14 @@ def laboratory_payment(request, test_request_id):
             f'Patient {test_request.patient.get_full_name()} is an NHIA patient and is exempt from laboratory test payments. '
             'No payment is required.'
         )
-        return redirect('laboratory:test_request_detail', test_request_id=test_request.id)
+        return redirect('laboratory:test_request_detail', request_id=test_request.id)
 
     # Get the associated invoice
     try:
         invoice = test_request.invoice
     except AttributeError:
         messages.error(request, "No invoice found for this test request.")
-        return redirect('laboratory:test_request_detail', test_request_id=test_request.id)
+        return redirect('laboratory:test_request_detail', request_id=test_request.id)
     
     # Get or create patient wallet
     patient_wallet, created = PatientWallet.objects.get_or_create(
@@ -68,7 +68,7 @@ def laboratory_payment(request, test_request_id):
                 test_request.status = 'payment_confirmed'
                 test_request.save()
             
-            return redirect('laboratory:test_request_detail', test_request_id=test_request.id)
+            return redirect('laboratory:test_request_detail', request_id=test_request.id)
         else:
             messages.error(request, message)
     else:
@@ -129,4 +129,4 @@ def confirm_lab_payment(request, test_request_id):
     except AttributeError:
         messages.error(request, "No invoice found for this test request.")
     
-    return redirect('laboratory:test_request_detail', test_request_id=test_request.id)
+    return redirect('laboratory:test_request_detail', request_id=test_request.id)

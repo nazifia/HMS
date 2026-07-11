@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'inpatient:admission_detail' admission.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Admission
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Medications</h6>
+        </div>
+        <div class="card-body">
+            {% if medications %}
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Prescription</th>
+                            <th>Ordered By</th>
+                            <th>Order Date</th>
+                            <th>Paid</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for med in medications %}
+                        <tr>
+                            <td>Prescription #{{ med.prescription.id }}</td>
+                            <td>{{ med.ordered_by.get_full_name|default:"-" }}</td>
+                            <td>{{ med.order_date|date:"M d, Y H:i" }}</td>
+                            <td>
+                                {% if med.is_paid %}
+                                <span class="badge bg-success">Paid</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">Unpaid</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not med.is_paid %}
+                                <a href="{% url 'inpatient:inpatient_medication_payment' admission.id med.prescription.id %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-money-bill"></i> Pay
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">No medications recorded for this admission.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

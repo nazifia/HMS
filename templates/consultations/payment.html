@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Consultation Payment{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Consultation Payment - {{ consultation.patient.get_full_name }}</h1>
+        <a href="{% url 'consultations:consultation_detail' consultation.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Consultation
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Invoice Summary</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Invoice #:</strong> {{ invoice.invoice_number }}</p>
+                    <p><strong>Total:</strong> ₦{{ invoice.total_amount }}</p>
+                    <p><strong>Paid:</strong> ₦{{ invoice.amount_paid }}</p>
+                    <p><strong>Balance:</strong> ₦{{ remaining_balance }}</p>
+                    <p><strong>Wallet Balance:</strong> ₦{{ patient_wallet.balance }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Record Payment</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form.as_p }}
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-money-bill"></i> Record Payment
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if payments %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Previous Payments</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm">
+                    <thead>
+                        <tr><th>Date</th><th>Amount (₦)</th><th>Method</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments %}
+                        <tr>
+                            <td>{{ payment.payment_date|date:"M d, Y" }}</td>
+                            <td>{{ payment.amount }}</td>
+                            <td>{{ payment.get_payment_method_display }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

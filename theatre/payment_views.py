@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from decimal import Decimal
 
@@ -14,6 +15,27 @@ from core.billing_office_integration import BillingOfficePaymentProcessor
 from .views import theatre_access_required
 
 
+def _get_or_create_surgery_invoice(surgery, user=None):
+    """Return the surgery's linked invoice, creating and linking one if missing."""
+    if surgery.invoice:
+        return surgery.invoice
+    fee = surgery.surgery_type.fee if surgery.surgery_type else Decimal("0.00")
+    invoice = Invoice.objects.create(
+        patient=surgery.patient,
+        due_date=timezone.now().date() + timezone.timedelta(days=7),
+        status="pending",
+        subtotal=fee,
+        tax_amount=Decimal("0.00"),
+        discount_amount=Decimal("0.00"),
+        total_amount=fee,
+        source_app="theatre",
+        created_by=user,
+    )
+    surgery.invoice = invoice
+    surgery.save(update_fields=["invoice"])
+    return invoice
+
+
 @login_required
 @theatre_access_required
 @require_http_methods(["GET", "POST"])
@@ -22,19 +44,7 @@ def theatre_payment(request, surgery_id):
     surgery = get_object_or_404(Surgery, id=surgery_id)
 
     # Get or create invoice for surgery
-    try:
-        invoice = Invoice.objects.get(
-            patient=surgery.patient, source_app="theatre", object_id=surgery.id
-        )
-    except Invoice.DoesNotExist:
-        # Create invoice if it doesn't exist
-        invoice = Invoice.objects.create(
-            patient=surgery.patient,
-            source_app="theatre",
-            object_id=surgery.id,
-            total_amount=surgery.estimated_cost or Decimal("0.00"),
-            description=f"Theatre services for {surgery.procedure_name}",
-        )
+    invoice = _get_or_create_surgery_invoice(surgery, request.user)
 
     # Get or create patient wallet
     patient_wallet, created = PatientWallet.objects.get_or_create(
@@ -83,7 +93,7 @@ def theatre_payment(request, surgery_id):
                         f"Payment of ₦{payment.amount:.2f} recorded successfully via {payment_method_display}.",
                     )
 
-                    return redirect("theatre:surgery_detail", surgery_id=surgery.id)
+                    return redirect("theatre:surgery_detail", pk=surgery.id)
 
             except Exception as e:
                 messages.error(request, f"Payment processing failed: {str(e)}")
@@ -110,14 +120,12 @@ def theatre_payment_history(request, surgery_id):
     """View payment history for a theatre service"""
     surgery = get_object_or_404(Surgery, id=surgery_id)
 
-    try:
-        invoice = Invoice.objects.get(
-            patient=surgery.patient, source_app="theatre", object_id=surgery.id
-        )
-        payments = Payment.objects.filter(invoice=invoice).order_by("-created_at")
-    except Invoice.DoesNotExist:
-        invoice = None
-        payments = []
+    invoice = surgery.invoice
+    payments = (
+        Payment.objects.filter(invoice=invoice).order_by("-created_at")
+        if invoice
+        else []
+    )
 
     context = {
         "surgery": surgery,
@@ -134,10 +142,8 @@ def confirm_theatre_payment(request, surgery_id):
     """Confirm theatre payment and update surgery status"""
     surgery = get_object_or_404(Surgery, id=surgery_id)
 
-    try:
-        invoice = Invoice.objects.get(
-            patient=surgery.patient, source_app="theatre", object_id=surgery.id
-        )
+    invoice = surgery.invoice
+    if invoice:
         if invoice.get_balance() <= 0:
             if hasattr(surgery, "status"):
                 surgery.status = "payment_confirmed"
@@ -150,7 +156,7 @@ def confirm_theatre_payment(request, surgery_id):
                 request,
                 "Payment is not complete. Please complete payment before confirming.",
             )
-    except Invoice.DoesNotExist:
+    else:
         messages.error(request, "No invoice found for this surgery.")
 
-    return redirect("theatre:surgery_detail", surgery_id=surgery.id)
+    return redirect("theatre:surgery_detail", pk=surgery.id)

@@ -1,0 +1,104 @@
+{% extends 'enhanced_base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-stream me-2"></i>{{ page_title }}
+        </h1>
+        <a href="{% url 'core:activity_log' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Activity Log
+        </a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Activities</div>
+                    <div class="h5 mb-0 font-weight-bold">{{ total_activities }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Today</div>
+                    <div class="h5 mb-0 font-weight-bold">{{ today_activities }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">By Category</div>
+                    <div class="small">
+                        {% for cat in activity_by_category %}
+                        <span class="badge bg-secondary me-1">{{ cat.category|default:"other" }}: {{ cat.count }}</span>
+                        {% empty %}
+                        <span class="text-muted">No activity</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Timeline</h6>
+            <form method="get" class="d-flex gap-2">
+                <input type="date" name="date_from" value="{{ request.GET.date_from }}" class="form-control form-control-sm">
+                <input type="date" name="date_to" value="{{ request.GET.date_to }}" class="form-control form-control-sm">
+                <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+            </form>
+        </div>
+        <div class="card-body">
+            {% if activities %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Category</th>
+                            <th>Action</th>
+                            <th>Description</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for activity in activities %}
+                        <tr>
+                            <td>{{ activity.timestamp|date:"M d, Y H:i:s" }}</td>
+                            <td>{{ activity.category|default:"-" }}</td>
+                            <td>{{ activity.get_action_type_display|default:"-" }}</td>
+                            <td>{{ activity.description|default:"-"|truncatechars:120 }}</td>
+                            <td>{{ activity.ip_address|default:"-" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if activities.has_other_pages %}
+            <nav>
+                <ul class="pagination">
+                    {% if activities.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ activities.previous_page_number }}&date_from={{ request.GET.date_from }}&date_to={{ request.GET.date_to }}">Previous</a></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Page {{ activities.number }} of {{ activities.paginator.num_pages }}</span></li>
+                    {% if activities.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ activities.next_page_number }}&date_from={{ request.GET.date_from }}&date_to={{ request.GET.date_to }}">Next</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            {% else %}
+            <p class="text-muted mb-0">No activity recorded for this user.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -260,7 +260,10 @@
       "Bash(rtk git *)",
       "Bash(sed -e 's/neurology/dermatology/g' -e 's/Neurology/Dermatology/g' neurology/templates/neurology/neurology_services.html)",
       "Bash(sed -e 's/neurology/dermatology/g' -e 's/Neurology/Dermatology/g' neurology/templates/neurology/neurology_service_form.html)",
-      "Bash(awk '/def request_medication_transfer/,/^@login_required|^def [a-z]/' pharmacy/views.py)"
+      "Bash(awk '/def request_medication_transfer/,/^@login_required|^def [a-z]/' pharmacy/views.py)",
+      "Bash(PYTHONPATH=/c/Users/Dell/Desktop/MY_PRODUCTS/HMS python \"C:\\\\Users\\\\Dell\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Dell-Desktop-MY-PRODUCTS-HMS\\\\14efad30-5ddb-4529-86ef-07f454d17d65\\\\scratchpad\\\\param_sweep.py\")",
+      "Bash(sed -i 's/redirect\\(\"theatre:surgery_detail\", surgery_id=surgery.id\\)/redirect\\(\"theatre:surgery_detail\", pk=surgery.id\\)/g' theatre/payment_views.py)",
+      "Bash(sed -i \"s/{% url 'surgery_detail'/{% url 'theatre:surgery_detail'/\" templates/theatre/payment_history.html)"
     ]
   }
 }

@@ -55,6 +55,7 @@ def inpatient_medication_payment(request, admission_id, prescription_id):
         invoice = Invoice.objects.create(
             patient=admission.patient,
             status='pending',
+            due_date=timezone.now().date() + timezone.timedelta(days=7),
             total_amount=total_cost,
             subtotal=total_cost,
             tax_amount=0,

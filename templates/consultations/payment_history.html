@@ -14,7 +14,7 @@
                         <i class="fas fa-history"></i> Payment History - {{ consultation.patient.get_full_name }}
                     </h3>
                     <div class="card-tools">
-                        <a href="{% url 'consultation_detail' consultation.id %}" class="btn btn-secondary btn-sm">
+                        <a href="{% url 'consultations:consultation_detail' consultation.id %}" class="btn btn-secondary btn-sm">
                             <i class="fas fa-arrow-left"></i> Back to Consultation
                         </a>
                     </div>

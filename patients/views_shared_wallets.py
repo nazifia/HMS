@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Sum
 from .models import SharedWallet, WalletMembership, PatientWallet, Patient
 from .forms import SharedWalletForm, WalletMembershipForm, AddFundsToSharedWalletForm, TransferBetweenWalletsForm
 from accounts.permissions import permission_required
@@ -72,15 +72,15 @@ def shared_wallet_detail(request, wallet_id):
     # Get active members
     active_members = wallet.get_members()
     
-    # Get transaction history
+    # Get transaction history (sliced for display; stats need the full queryset)
     transactions = wallet.get_transaction_history(limit=20)
-    
-    # Get statistics
-    total_credits = transactions.filter(
+
+    all_transactions = wallet.get_transaction_history()
+    total_credits = all_transactions.filter(
         transaction_type__in=['credit', 'deposit', 'refund', 'transfer_in']
     ).aggregate(total=Sum('amount'))['total'] or 0
-    
-    total_debits = transactions.filter(
+
+    total_debits = all_transactions.filter(
         transaction_type__in=['debit', 'payment', 'withdrawal', 'transfer_out']
     ).aggregate(total=Sum('amount'))['total'] or 0
     
