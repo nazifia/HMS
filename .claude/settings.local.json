@@ -254,7 +254,13 @@
       "Bash(PYTHONPATH=C:/Users/Dell/Desktop/MY_PRODUCTS/HMS DJANGO_SETTINGS_MODULE=hms.settings python __TRACKED_VAR__/rev_capture.py before)",
       "Bash(PYTHONPATH=C:/Users/Dell/Desktop/MY_PRODUCTS/HMS DJANGO_SETTINGS_MODULE=hms.settings python __TRACKED_VAR__/rev_capture.py after)",
       "Bash(DEBUG=False SESSION_COOKIE_SECURE=True CSRF_COOKIE_SECURE=True SECURE_SSL_REDIRECT=True STRICT_ACCESS_CONTROL=True ALLOWED_HOSTS=\"testserver,localhost\" python /tmp/logintest.py)",
-      "Bash(pip list *)"
+      "Bash(pip list *)",
+      "Bash(python -c \"import requests\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://nazhms.pythonanywhere.com/theatre/teams/)",
+      "Bash(rtk git *)",
+      "Bash(sed -e 's/neurology/dermatology/g' -e 's/Neurology/Dermatology/g' neurology/templates/neurology/neurology_services.html)",
+      "Bash(sed -e 's/neurology/dermatology/g' -e 's/Neurology/Dermatology/g' neurology/templates/neurology/neurology_service_form.html)",
+      "Bash(awk '/def request_medication_transfer/,/^@login_required|^def [a-z]/' pharmacy/views.py)"
     ]
   }
 }

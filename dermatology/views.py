@@ -473,23 +473,23 @@ def dermatology_services(request):
     return render(request, 'dermatology/dermatology_services.html', context)
 
 @login_required
-def edit_dermatology_service(request, service_id):
-    """View to edit a dermatology service"""
-    service = get_object_or_404(DermatologyService, id=service_id)
-    
+def edit_dermatology_service(request, service_id=None):
+    """View to create or edit a dermatology service"""
+    service = get_object_or_404(DermatologyService, id=service_id) if service_id else None
+
     if request.method == 'POST':
         form = DermatologyServiceForm(request.POST, instance=service)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Dermatology service updated successfully.')
+            messages.success(request, 'Dermatology service saved successfully.')
             return redirect('dermatology:dermatology_services')
     else:
         form = DermatologyServiceForm(instance=service)
-    
+
     context = {
         'form': form,
         'service': service,
-        'title': 'Edit Dermatology Service'
+        'title': 'Edit Dermatology Service' if service else 'Create Dermatology Service'
     }
     return render(request, 'dermatology/dermatology_service_form.html', context)
 

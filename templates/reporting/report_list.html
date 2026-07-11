@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }} ({{ total_reports }})</h1>
+        <a href="{% url 'reporting:create_report' %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus"></i> New Report
+        </a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col"><div class="card shadow p-3 text-center"><h6>Financial</h6><h4>{{ financial_count }}</h4></div></div>
+        <div class="col"><div class="card shadow p-3 text-center"><h6>Clinical</h6><h4>{{ clinical_count }}</h4></div></div>
+        <div class="col"><div class="card shadow p-3 text-center"><h6>Operational</h6><h4>{{ operational_count }}</h4></div></div>
+        <div class="col"><div class="card shadow p-3 text-center"><h6>Administrative</h6><h4>{{ administrative_count }}</h4></div></div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr><th>Name</th><th>Category</th><th>Description</th><th>Created By</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    {% for report in page_obj %}
+                    <tr>
+                        <td><a href="{% url 'reporting:view_report' report.id %}">{{ report.name }}</a></td>
+                        <td>{{ report.get_category_display|default:report.category }}</td>
+                        <td>{{ report.description|default:"—"|truncatewords:12 }}</td>
+                        <td>{{ report.created_by|default:"—" }}</td>
+                        <td>
+                            <a href="{% url 'reporting:edit_report' report.id %}" class="btn btn-sm btn-outline-warning" title="Edit"><i class="fas fa-edit"></i></a>
+                            <a href="{% url 'reporting:delete_report' report.id %}" class="btn btn-sm btn-outline-danger" title="Delete"><i class="fas fa-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center">No reports found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% include 'reporting/pagination.html' %}
+        </div>
+    </div>
+</div>
+{% endblock %}

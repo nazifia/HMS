@@ -475,23 +475,23 @@ def dental_services(request):
     return render(request, 'dental/dental_services.html', context)
 
 @login_required
-def edit_dental_service(request, service_id):
-    """View to edit a dental service"""
-    service = get_object_or_404(DentalService, id=service_id)
-    
+def edit_dental_service(request, service_id=None):
+    """View to create or edit a dental service"""
+    service = get_object_or_404(DentalService, id=service_id) if service_id else None
+
     if request.method == 'POST':
         form = DentalServiceForm(request.POST, instance=service)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Dental service updated successfully.')
+            messages.success(request, 'Dental service saved successfully.')
             return redirect('dental:dental_services')
     else:
         form = DentalServiceForm(instance=service)
-    
+
     context = {
         'form': form,
         'service': service,
-        'title': 'Edit Dental Service'
+        'title': 'Edit Dental Service' if service else 'Create Dental Service'
     }
     return render(request, 'dental/dental_service_form.html', context)
 

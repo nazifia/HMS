@@ -477,23 +477,23 @@ def neurology_services(request):
     return render(request, 'neurology/neurology_services.html', context)
 
 @login_required
-def edit_neurology_service(request, service_id):
-    """View to edit a neurology service"""
-    service = get_object_or_404(NeurologyService, id=service_id)
-    
+def edit_neurology_service(request, service_id=None):
+    """View to create or edit a neurology service"""
+    service = get_object_or_404(NeurologyService, id=service_id) if service_id else None
+
     if request.method == 'POST':
         form = NeurologyServiceForm(request.POST, instance=service)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Neurology service updated successfully.')
+            messages.success(request, 'Neurology service saved successfully.')
             return redirect('neurology:neurology_services')
     else:
         form = NeurologyServiceForm(instance=service)
-    
+
     context = {
         'form': form,
         'service': service,
-        'title': 'Edit Neurology Service'
+        'title': 'Edit Neurology Service' if service else 'Create Neurology Service'
     }
     return render(request, 'neurology/neurology_service_form.html', context)
 
