@@ -154,7 +154,7 @@ try:
         list_display = ('id', 'medication', 'from_dispensary', 'to_dispensary', 'quantity', 'status', 'requested_by', 'requested_at')
         list_filter = ('status', 'requested_at', 'from_dispensary', 'to_dispensary', 'medication')
         search_fields = ('medication__name', 'from_dispensary__name', 'to_dispensary__name', 'notes')
-        readonly_fields = ('created_at', 'updated_at')
+        readonly_fields = ('requested_at', 'created_at', 'updated_at')
         date_hierarchy = 'requested_at'
         
         fieldsets = (

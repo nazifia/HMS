@@ -295,7 +295,7 @@ def pharmacy_dashboard(request):
 @permission_required("pharmacy.view")
 def features_showcase(request):
     """View for showcasing pharmacy features"""
-    return render(request, "pharmacy/features.html")
+    return render(request, "pharmacy/features_showcase.html")
 
 
 @never_cache
@@ -7615,9 +7615,60 @@ def delete_dispensary_inventory_item(request, dispensary_id, inventory_item_id):
 
 @login_required
 def add_medication_stock(request):
-    """View for adding medication stock"""
-    # Implementation for adding medication stock
-    pass
+    """View for adding medication stock to a dispensary's active store"""
+    from django import forms as dj_forms
+
+    class AddStockForm(dj_forms.Form):
+        medication = dj_forms.ModelChoiceField(queryset=Medication.objects.filter(is_active=True).order_by("name"))
+        dispensary = dj_forms.ModelChoiceField(queryset=Dispensary.objects.filter(is_active=True).order_by("name"))
+        stock_quantity = dj_forms.IntegerField(min_value=1)
+        reorder_level = dj_forms.IntegerField(min_value=0, initial=10)
+        unit_cost = dj_forms.DecimalField(min_value=0, decimal_places=2, initial=0)
+        expiry_date = dj_forms.DateField(required=False, widget=dj_forms.DateInput(attrs={"type": "date"}))
+        batch_number = dj_forms.CharField(required=False, max_length=50)
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            for f in self.fields.values():
+                f.widget.attrs.setdefault("class", "form-control")
+
+    if request.method == "POST":
+        form = AddStockForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            dispensary = data["dispensary"]
+            if not user_has_inventory_edit_permission(request.user, dispensary):
+                messages.error(request, "You do not have permission to add stock to this dispensary.")
+                return redirect("pharmacy:add_medication_stock")
+            active_store = getattr(dispensary, "active_store", None)
+            if not active_store:
+                messages.error(request, f"{dispensary.name} has no active store.")
+                return redirect("pharmacy:add_medication_stock")
+            inventory, _ = ActiveStoreInventory.objects.get_or_create(
+                medication=data["medication"], active_store=active_store
+            )
+            inventory.stock_quantity += data["stock_quantity"]
+            inventory.reorder_level = data["reorder_level"]
+            inventory.unit_cost = data["unit_cost"]
+            if data["expiry_date"]:
+                inventory.expiry_date = data["expiry_date"]
+            if data["batch_number"]:
+                inventory.batch_number = data["batch_number"]
+            inventory.last_restock_date = timezone.now()
+            inventory.save()
+            messages.success(
+                request,
+                f"Added {data['stock_quantity']} units of {data['medication'].name} to {dispensary.name}.",
+            )
+            return redirect("pharmacy:add_medication_stock")
+    else:
+        form = AddStockForm()
+
+    return render(
+        request,
+        "pharmacy/add_medication_stock.html",
+        {"form": form, "title": "Add Medication Stock"},
+    )
 
 
 @login_required

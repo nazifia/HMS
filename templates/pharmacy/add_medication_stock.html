@@ -9,7 +9,7 @@
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
-        <a href="{% url 'pharmacy:medication_inventory_list' %}" class="btn btn-secondary">
+        <a href="{% url 'pharmacy:inventory_list' %}" class="btn btn-secondary">
             <i class="fas fa-list"></i> View Inventory
         </a>
     </div>
@@ -96,7 +96,7 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save"></i> Add Stock
                             </button>
-                            <a href="{% url 'pharmacy:medication_inventory_list' %}" class="btn btn-secondary ml-2">
+                            <a href="{% url 'pharmacy:inventory_list' %}" class="btn btn-secondary ml-2">
                                 <i class="fas fa-times"></i> Cancel
                             </a>
                         </div>

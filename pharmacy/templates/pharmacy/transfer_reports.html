@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+    </div>
+
+    <form method="get" class="row g-2 mb-4">
+        <div class="col-auto">
+            <input type="date" name="date_from" value="{{ date_from|default:'' }}" class="form-control">
+        </div>
+        <div class="col-auto">
+            <input type="date" name="date_to" value="{{ date_to|default:'' }}" class="form-control">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </div>
+    </form>
+
+    <div class="row mb-4">
+        <div class="col"><div class="card shadow p-3 text-center"><h6>Total</h6><h4>{{ stats.total_transfers }}</h4></div></div>
+        <div class="col"><div class="card shadow p-3 text-center"><h6>Pending</h6><h4>{{ stats.pending_transfers }}</h4></div></div>
+        <div class="col"><div class="card shadow p-3 text-center"><h6>Approved</h6><h4>{{ stats.approved_transfers }}</h4></div></div>
+        <div class="col"><div class="card shadow p-3 text-center"><h6>Completed</h6><h4>{{ stats.completed_transfers }}</h4></div></div>
+        <div class="col"><div class="card shadow p-3 text-center"><h6>Rejected</h6><h4>{{ stats.rejected_transfers }}</h4></div></div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Top Medications Transferred</h6></div>
+                <div class="card-body table-responsive">
+                    <table class="table table-striped">
+                        <thead><tr><th>Medication</th><th>Total Qty</th><th>Transfers</th></tr></thead>
+                        <tbody>
+                            {% for row in transfers_by_medication %}
+                            <tr><td>{{ row.medication__name }}</td><td>{{ row.total_quantity }}</td><td>{{ row.transfer_count }}</td></tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center">No transfers found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Transfers by Dispensary</h6></div>
+                <div class="card-body table-responsive">
+                    <table class="table table-striped">
+                        <thead><tr><th>From</th><th>To</th><th>Total Qty</th><th>Transfers</th></tr></thead>
+                        <tbody>
+                            {% for row in transfers_by_dispensary %}
+                            <tr><td>{{ row.from_dispensary__name }}</td><td>{{ row.to_dispensary__name }}</td><td>{{ row.total_quantity }}</td><td>{{ row.transfer_count }}</td></tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center">No transfers found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
