@@ -142,7 +142,10 @@ class AuditLogSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'target_user', 'action', 'details', 'timestamp', 'ip_address']
         
     def get_details(self, obj):
-        try:
-            return json.loads(obj.details)
-        except json.JSONDecodeError:
-            return obj.details
+        # JSONField already returns dict/list; only parse legacy string values
+        if isinstance(obj.details, str):
+            try:
+                return json.loads(obj.details)
+            except json.JSONDecodeError:
+                return obj.details
+        return obj.details
