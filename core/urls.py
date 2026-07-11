@@ -18,6 +18,7 @@ urlpatterns = [
 
     path('notifications/', views.notifications_list, name='notifications_list'),
     path('notifications/<int:notification_id>/read/', views.mark_notification_read, name='mark_notification_read'),
+    path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark_all_read'),
 
     # NHIA Authorization Request
     path('request-authorization/<str:model_type>/<int:object_id>/', views.request_nhia_authorization_form, name='request_authorization_form'),

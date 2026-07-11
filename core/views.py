@@ -72,6 +72,13 @@ def mark_notification_read(request, notification_id):
 
 
 @login_required
+def mark_all_notifications_read(request):
+    """Mark all of the current user's notifications as read"""
+    InternalNotification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return redirect("core:notifications_list")
+
+
+@login_required
 def create_prescription_view(request, patient_id, module_name):
     """
     Create prescription for patient from any module

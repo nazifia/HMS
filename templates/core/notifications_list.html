@@ -92,7 +92,7 @@
                                         </div>
                                         <div class="ms-2">
                                             {% if not notification.is_read %}
-                                            <a href="{% url 'mark_notification_read' notification.id %}" class="btn btn-sm btn-outline-primary">
+                                            <a href="{% url 'core:mark_notification_read' notification.id %}" class="btn btn-sm btn-outline-primary">
                                                 Mark as Read
                                             </a>
                                             {% endif %}
@@ -133,7 +133,7 @@ setInterval(function() {
 // Mark all as read
 function markAllAsRead() {
     if (confirm('Mark all notifications as read?')) {
-        window.location.href = '{% url "notifications:mark_all_read" %}';
+        window.location.href = '{% url "core:mark_all_read" %}';
     }
 }
 
