@@ -1101,7 +1101,7 @@ class PatientWallet(TenantModel):
                 WalletTransaction.objects.filter(
                     shared_wallet=effective_wallet,
                     patient=self.patient,
-                    transaction_type__in=["credit", "deposit", "refund"],
+                    transaction_type__in=WalletTransaction.CREDIT_TYPES,
                 ).aggregate(total=Sum("amount"))["total"]
                 or 0
             )
@@ -1109,7 +1109,7 @@ class PatientWallet(TenantModel):
             # For individual wallets, use the original logic
             return (
                 self.transactions.filter(
-                    transaction_type__in=["credit", "deposit", "refund"]
+                    transaction_type__in=WalletTransaction.CREDIT_TYPES
                 ).aggregate(total=Sum("amount"))["total"]
                 or 0
             )
@@ -1124,15 +1124,16 @@ class PatientWallet(TenantModel):
                 WalletTransaction.objects.filter(
                     shared_wallet=effective_wallet,
                     patient=self.patient,
-                    transaction_type__in=["debit", "payment", "withdrawal"],
+                ).exclude(
+                    transaction_type__in=WalletTransaction.CREDIT_TYPES
                 ).aggregate(total=Sum("amount"))["total"]
                 or 0
             )
         else:
             # For individual wallets, use the original logic
             return (
-                self.transactions.filter(
-                    transaction_type__in=["debit", "payment", "withdrawal"]
+                self.transactions.exclude(
+                    transaction_type__in=WalletTransaction.CREDIT_TYPES
                 ).aggregate(total=Sum("amount"))["total"]
                 or 0
             )
@@ -1534,20 +1535,22 @@ class WalletTransaction(TenantModel):
         unique_id = str(uuid.uuid4())[:8].upper()
         return f"TXN{timestamp}{unique_id}"
 
+    # Transaction types that increase the wallet balance; everything else is a debit.
+    CREDIT_TYPES = (
+        "credit",
+        "deposit",
+        "refund",
+        "transfer_in",
+        "adjustment",
+        "insurance_claim",
+        "bonus",
+        "cashback",
+        "reversal",
+    )
+
     def is_credit_transaction(self):
         """Check if this transaction increases the wallet balance"""
-        credit_types = [
-            "credit",
-            "deposit",
-            "refund",
-            "transfer_in",
-            "adjustment",
-            "insurance_claim",
-            "bonus",
-            "cashback",
-            "reversal",
-        ]
-        return self.transaction_type in credit_types
+        return self.transaction_type in self.CREDIT_TYPES
 
     def is_debit_transaction(self):
         """Check if this transaction decreases the wallet balance"""

@@ -142,12 +142,14 @@
                                 <tr>
                                     <td>{{ transaction.date|date:"M d, Y H:i" }}</td>
                                     <td>
-                                        <span class="badge badge-{% if transaction.type == 'Wallet' %}primary{% else %}success{% endif %}">
+                                        <span class="badge bg-{% if transaction.type == 'Wallet' %}primary{% else %}success{% endif %}">
                                             {{ transaction.type }}
                                         </span>
                                     </td>
                                     <td>{{ transaction.description }}</td>
-                                    <td>{{ transaction.amount|currency }}</td>
+                                    <td class="{% if transaction.is_credit %}text-success{% else %}text-danger{% endif %}">
+                                        {% if not transaction.is_credit %}-{% endif %}{{ transaction.amount|currency }}
+                                    </td>
                                     <td><code>{{ transaction.reference }}</code></td>
                                 </tr>
                                 {% endfor %}
@@ -179,7 +181,7 @@
                 <div class="card-body">
                     {% if wallet %}
                     <p><strong>Status:</strong> 
-                        <span class="badge badge-{% if wallet.is_active %}success{% else %}danger{% endif %}">
+                        <span class="badge bg-{% if wallet.is_active %}success{% else %}danger{% endif %}">
                             {% if wallet.is_active %}Active{% else %}Inactive{% endif %}
                         </span>
                     </p>

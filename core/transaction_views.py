@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Q, Sum, Count
 from django.utils import timezone
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -160,10 +160,13 @@ def patient_financial_summary(request, patient_id):
         total_credits = Decimal('0.00')
         total_debits = Decimal('0.00')
 
-    # Get all invoices for the patient
-    invoices = Invoice.objects.filter(patient=patient).order_by('-created_at')
-    total_invoiced = sum(invoice.total_amount for invoice in invoices)
-    total_paid = sum(invoice.amount_paid for invoice in invoices)
+    # Invoice totals (cancelled invoices excluded so they don't inflate outstanding)
+    invoices = Invoice.objects.filter(patient=patient).exclude(status='cancelled')
+    invoice_totals = invoices.aggregate(
+        total_invoiced=Sum('total_amount'), total_paid=Sum('amount_paid'), count=Count('id')
+    )
+    total_invoiced = invoice_totals['total_invoiced'] or Decimal('0.00')
+    total_paid = invoice_totals['total_paid'] or Decimal('0.00')
     outstanding_balance = total_invoiced - total_paid
 
     # Recent transactions (last 10)
@@ -176,6 +179,7 @@ def patient_financial_summary(request, patient_id):
                 'type': 'Wallet',
                 'description': wt.description,
                 'amount': wt.amount,
+                'is_credit': wt.is_credit_transaction(),
                 'reference': wt.reference_number,
             })
 
@@ -190,6 +194,7 @@ def patient_financial_summary(request, patient_id):
             'type': 'Payment',
             'description': f"Payment for Invoice #{payment.invoice.invoice_number}",
             'amount': payment.amount,
+            'is_credit': True,
             'reference': payment.transaction_id or f"PAY-{payment.id}",
         })
 
@@ -207,7 +212,7 @@ def patient_financial_summary(request, patient_id):
         'total_paid': total_paid,
         'outstanding_balance': outstanding_balance,
         'recent_transactions': recent_transactions,
-        'invoices_count': invoices.count(),
+        'invoices_count': invoice_totals['count'],
         'title': f'Financial Summary - {patient.get_full_name()}'
     }
 
