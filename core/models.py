@@ -327,6 +327,14 @@ class ServicePoint(TenantModel):
 
     name = models.CharField(max_length=100)
     point_type = models.CharField(max_length=20, choices=POINT_TYPE_CHOICES, default='reception')
+    department = models.ForeignKey(
+        'accounts.Department',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='service_points',
+        help_text='Department this point belongs to (blank = hospital-wide)',
+    )
     location = models.CharField(max_length=100, blank=True, null=True, help_text='Physical location/desk label')
     description = models.TextField(blank=True, null=True)
     staff = models.ManyToManyField(
