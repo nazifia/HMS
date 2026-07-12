@@ -898,7 +898,11 @@ def wallet_transactions(request, patient_id):
         )
 
     # Get wallet transactions
-    transactions = wallet.transactions.all().order_by("-created_at")
+    transactions = (
+        wallet.transactions.select_related("invoice", "created_by")
+        .prefetch_related("invoice__items__service")
+        .order_by("-created_at")
+    )
 
     # Filter by admission if specified
     admission_id = request.GET.get("admission")
@@ -927,10 +931,16 @@ def wallet_transactions(request, patient_id):
     except:
         pass
 
+    from django.core.paginator import Paginator
+
+    paginator = Paginator(transactions, 25)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
     context = {
         "patient": patient,
         "wallet": wallet,
         "transactions": transactions,
+        "page_obj": page_obj,
         "current_admission": current_admission,
         "page_title": f"Wallet Transactions - {patient.get_full_name()}",
         "active_nav": "patients",

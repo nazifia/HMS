@@ -157,9 +157,18 @@
                             </td>
                             <td>{{ transaction.balance_after|currency }}</td>
                             <td>
-                                <span title="{{ transaction.description }}">
-                                    {{ transaction.description|truncatechars:50 }}
-                                </span>
+                                {% with services=transaction.get_service_details %}
+                                    {% if services %}
+                                        <span title="{{ transaction.description }}">
+                                            {{ services|truncatechars:60 }}
+                                        </span>
+                                        <div class="small text-muted">Invoice #{{ transaction.invoice.invoice_number }}</div>
+                                    {% else %}
+                                        <span title="{{ transaction.description }}">
+                                            {{ transaction.description|truncatechars:50 }}
+                                        </span>
+                                    {% endif %}
+                                {% endwith %}
                             </td>
                             <td>
                                 <small class="text-muted">{{ transaction.reference_number }}</small>

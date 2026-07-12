@@ -199,7 +199,16 @@
                                         {% endif %}
                                     </td>
                                     <td>{{ transaction.amount|currency }}</td>
-                                    <td>{{ transaction.description }}</td>
+                                    <td>
+                                        {% with services=transaction.get_service_details %}
+                                            {% if services %}
+                                                {{ services }}
+                                                <div class="small text-muted" title="{{ transaction.description }}">Invoice #{{ transaction.invoice.invoice_number }}</div>
+                                            {% else %}
+                                                {{ transaction.description }}
+                                            {% endif %}
+                                        {% endwith %}
+                                    </td>
                                     <td>
                                         {% if transaction.admission %}
                                         <a href="{% url 'inpatient:admission_detail' transaction.admission.id %}" class="btn btn-sm btn-outline-primary">
