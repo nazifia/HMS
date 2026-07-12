@@ -35,6 +35,25 @@
     /* ── Page Layout ── */
     .dash-page { background: var(--gray-50); min-height: 100vh; }
 
+    /* ── Animations ── */
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: none; }
+    }
+    .welcome-bar { animation: fadeUp .45s ease-out both; }
+    .kpi-card, .rev-card, .panel { animation: fadeUp .45s ease-out both; }
+    /* stagger cards by column position within their row */
+    .row > [class*="col"]:nth-child(1) > .kpi-card, .row > [class*="col"]:nth-child(1) > .rev-card { animation-delay: .05s; }
+    .row > [class*="col"]:nth-child(2) > .kpi-card, .row > [class*="col"]:nth-child(2) > .rev-card { animation-delay: .12s; }
+    .row > [class*="col"]:nth-child(3) > .kpi-card, .row > [class*="col"]:nth-child(3) > .rev-card { animation-delay: .19s; }
+    .row > [class*="col"]:nth-child(4) > .kpi-card, .row > [class*="col"]:nth-child(4) > .rev-card { animation-delay: .26s; }
+    .row > [class*="col"]:nth-child(5) > .kpi-card, .row > [class*="col"]:nth-child(5) > .rev-card { animation-delay: .33s; }
+    .row > [class*="col"]:nth-child(6) > .kpi-card, .row > [class*="col"]:nth-child(6) > .rev-card { animation-delay: .40s; }
+    .panel { animation-delay: .2s; }
+    @media (prefers-reduced-motion: reduce) {
+        .welcome-bar, .kpi-card, .rev-card, .panel { animation: none; }
+    }
+
     /* ── Welcome Bar ── */
     .welcome-bar {
         background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
