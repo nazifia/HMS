@@ -7,13 +7,21 @@ from decimal import Decimal
 
 from patients.models import Patient, PatientWallet, WalletTransaction
 from billing.models import Payment as BillingPayment, Invoice
-# from pharmacy_billing.models import Payment as PharmacyPayment
-from inpatient.models import Admission
-from consultations.models import Consultation
-from theatre.models import Surgery
+from core.decorators import role_required
+
+
+def _parse_date(value, default):
+    """Parse YYYY-MM-DD, falling back to default on bad/missing input."""
+    if value:
+        try:
+            return datetime.strptime(value, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+    return default
 
 
 @login_required
+@role_required(['admin', 'accountant', 'receptionist'])
 def comprehensive_transaction_history(request, patient_id=None):
     """
     Comprehensive view showing all monetary transactions for a patient or system-wide
@@ -21,53 +29,40 @@ def comprehensive_transaction_history(request, patient_id=None):
     patient = None
     if patient_id:
         patient = get_object_or_404(Patient, id=patient_id)
-    
-    # Date filtering
-    date_from = request.GET.get('date_from')
-    date_to = request.GET.get('date_to')
+
+    # Date filtering (default: last 365 days)
+    today = timezone.now().date()
+    date_from = _parse_date(request.GET.get('date_from'), today - timedelta(days=365))
+    date_to = _parse_date(request.GET.get('date_to'), today)
+    if date_from > date_to:
+        date_from, date_to = date_to, date_from
     transaction_type = request.GET.get('transaction_type', 'all')
-    
-    # Default to last 365 days if no dates provided (show full year of data)
-    if not date_from:
-        date_from = (timezone.now() - timedelta(days=365)).date()
-    else:
-        date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
-    
-    if not date_to:
-        date_to = timezone.now().date()
-    else:
-        date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
-    
+
     transactions = []
-    
+
     # 1. Wallet Transactions
     wallet_transactions = WalletTransaction.objects.filter(
         created_at__date__range=[date_from, date_to]
+    ).select_related(
+        'patient', 'patient_wallet__patient', 'created_by', 'invoice'
     )
     if patient:
+        # Shared-wallet transactions always record the acting patient directly.
         wallet_transactions = wallet_transactions.filter(
-            Q(patient=patient) | 
-            Q(patient_wallet__patient=patient) | 
-            Q(shared_wallet__patient=patient)
+            Q(patient=patient) | Q(patient_wallet__patient=patient)
         )
-    
+
     for wt in wallet_transactions:
-        # Get patient from wallet transaction
-        transaction_patient = None
-        if wt.patient:
-            transaction_patient = wt.patient
-        elif wt.patient_wallet:
+        transaction_patient = wt.patient
+        if transaction_patient is None and wt.patient_wallet:
             transaction_patient = wt.patient_wallet.patient
-        elif wt.shared_wallet:
-            # For shared wallets, patient should be in the direct patient field
-            # If not, we can't determine the patient from shared wallet alone
-            transaction_patient = wt.patient  # This will be None if not set
-            
+
         transactions.append({
             'date': wt.created_at,
             'type': 'Wallet Transaction',
             'subtype': wt.get_transaction_type_display(),
             'amount': wt.amount,
+            'is_credit': wt.is_credit_transaction(),
             'balance_after': wt.balance_after,
             'description': wt.description,
             'reference': wt.reference_number,
@@ -75,148 +70,84 @@ def comprehensive_transaction_history(request, patient_id=None):
             'created_by': wt.created_by,
             'status': wt.get_status_display(),
             'source': 'wallet',
-            'related_object': wt,
             'invoice': wt.invoice,
         })
-    
-    # 2. Billing Payments
+
+    # 2. Billing Payments (covers all invoice sources: billing, pharmacy, inpatient, ...)
     billing_payments = BillingPayment.objects.filter(
         created_at__date__range=[date_from, date_to]
     ).select_related('invoice', 'invoice__patient', 'received_by')
     if patient:
         billing_payments = billing_payments.filter(invoice__patient=patient)
-    
+
+    SOURCE_BY_APP = {'pharmacy': 'pharmacy', 'inpatient': 'admission'}
+    TYPE_BY_SOURCE = {'pharmacy': 'Pharmacy Payment', 'admission': 'Admission Payment'}
+
     for bp in billing_payments:
+        source = SOURCE_BY_APP.get(bp.invoice.source_app, 'billing')
         transactions.append({
             'date': bp.created_at,
-            'type': 'Billing Payment',
+            'type': TYPE_BY_SOURCE.get(source, 'Billing Payment'),
             'subtype': bp.get_payment_method_display(),
             'amount': bp.amount,
+            'is_credit': True,
             'balance_after': None,
             'description': f"Payment for Invoice #{bp.invoice.invoice_number}",
             'reference': bp.transaction_id or f"PAY-{bp.id}",
             'patient': bp.invoice.patient,
             'created_by': bp.received_by,
             'status': 'Completed',
-            'source': 'billing',
-            'related_object': bp,
+            'source': source,
             'invoice': bp.invoice,
         })
-    
-    # 3. Pharmacy Payments - Temporarily disabled
-    # pharmacy_payments = PharmacyPayment.objects.filter(
-    #     created_at__date__range=[date_from, date_to]
-    # ).select_related('invoice', 'invoice__patient', 'received_by')
-    # if patient:
-    #     pharmacy_payments = pharmacy_payments.filter(invoice__patient=patient)
-    # 
-    # for pp in pharmacy_payments:
-    #     transactions.append({
-    #         'date': pp.created_at,
-    #         'type': 'Pharmacy Payment',
-    #         'subtype': pp.get_payment_method_display(),
-    #         'amount': pp.amount,
-    #         'balance_after': None,
-    #         'description': f"Pharmacy payment for Invoice #{pp.invoice.id}",
-    #         'reference': pp.transaction_id or f"PHARM-{pp.id}",
-    #         'patient': pp.invoice.patient,
-    #         'created_by': pp.received_by,
-    #         'status': 'Completed',
-    #         'source': 'pharmacy',
-    #         'related_object': pp,
-    #         'invoice': pp.invoice,
-    #     })
-    
-    # 4. Admission Payments (from invoices)
-    admission_invoices = Invoice.objects.filter(
-        created_at__date__range=[date_from, date_to],
-        source_app='inpatient'
-    ).select_related('patient', 'admission')
-    if patient:
-        admission_invoices = admission_invoices.filter(patient=patient)
-    
-    for invoice in admission_invoices:
-        for payment in invoice.payments.all():
-            transactions.append({
-                'date': payment.created_at,
-                'type': 'Admission Payment',
-                'subtype': payment.get_payment_method_display(),
-                'amount': payment.amount,
-                'balance_after': None,
-                'description': f"Admission payment for {invoice.admission.patient.get_full_name() if invoice.admission else 'Unknown'}",
-                'reference': payment.transaction_id or f"ADM-{payment.id}",
-                'patient': invoice.patient,
-                'created_by': payment.received_by,
-                'status': 'Completed',
-                'source': 'admission',
-                'related_object': payment,
-                'invoice': invoice,
-            })
-    
+
     # Filter by transaction type
     if transaction_type != 'all':
         transactions = [t for t in transactions if t['source'] == transaction_type]
-    
+
     # Sort by date (newest first)
     transactions.sort(key=lambda x: x['date'], reverse=True)
-    
-    # Calculate summary statistics
+
+    # Summary statistics
     total_amount = sum(t['amount'] for t in transactions)
-    total_transactions = len(transactions)
-    
+    total_credits = sum(t['amount'] for t in transactions if t['is_credit'])
+    total_debits = total_amount - total_credits
+
     # Group by type for summary
     summary_by_type = {}
     for t in transactions:
-        # Use subtype as the primary grouping, fallback to source if no subtype
-        display_type = t['subtype'] if t['subtype'] else t['source']
-        if display_type not in summary_by_type:
-            summary_by_type[display_type] = {'count': 0, 'amount': Decimal('0.00'), 'source': t['source']}
-        summary_by_type[display_type]['count'] += 1
-        summary_by_type[display_type]['amount'] += t['amount']
-    
-    # Check if there are no transactions and add helpful debug info
-    if not transactions:
-        # Try to find any transactions without date filtering for debugging
-        all_wallet_transactions = WalletTransaction.objects.all()
-        all_billing_payments = BillingPayment.objects.all()
-        total_wallet = all_wallet_transactions.count()
-        total_billing = all_billing_payments.count()
-        
-        context = {
-            'patient': patient,
-            'transactions': transactions,
-            'total_amount': total_amount,
-            'total_transactions': total_transactions,
-            'summary_by_type': summary_by_type,
-            'date_from': date_from,
-            'date_to': date_to,
-            'transaction_type': transaction_type,
-            'title': f'Transaction History - {patient.get_full_name()}' if patient else 'System Transaction History',
-            'debug_info': f"Total wallet transactions in DB: {total_wallet}, Total billing payments in DB: {total_billing}"
-        }
-    else:
-        context = {
-            'patient': patient,
-            'transactions': transactions,
-            'total_amount': total_amount,
-            'total_transactions': total_transactions,
-            'summary_by_type': summary_by_type,
-            'date_from': date_from,
-            'date_to': date_to,
-            'transaction_type': transaction_type,
-            'title': f'Transaction History - {patient.get_full_name()}' if patient else 'System Transaction History'
-        }
-    
+        display_type = t['subtype'] or t['source']
+        entry = summary_by_type.setdefault(
+            display_type, {'count': 0, 'amount': Decimal('0.00'), 'source': t['source']}
+        )
+        entry['count'] += 1
+        entry['amount'] += t['amount']
+
+    context = {
+        'patient': patient,
+        'transactions': transactions,
+        'total_amount': total_amount,
+        'total_credits': total_credits,
+        'total_debits': total_debits,
+        'total_transactions': len(transactions),
+        'summary_by_type': summary_by_type,
+        'date_from': date_from,
+        'date_to': date_to,
+        'transaction_type': transaction_type,
+        'title': f'Transaction History - {patient.get_full_name()}' if patient else 'System Transaction History',
+    }
+
     return render(request, 'core/comprehensive_transaction_history.html', context)
 
 
 @login_required
+@role_required(['admin', 'accountant', 'receptionist'])
 def patient_financial_summary(request, patient_id):
     """
     Financial summary for a specific patient showing all monetary activities
     """
     patient = get_object_or_404(Patient, id=patient_id)
-    
+
     # Get wallet information
     try:
         wallet = PatientWallet.objects.get(patient=patient)
@@ -228,13 +159,13 @@ def patient_financial_summary(request, patient_id):
         wallet_balance = Decimal('0.00')
         total_credits = Decimal('0.00')
         total_debits = Decimal('0.00')
-    
+
     # Get all invoices for the patient
     invoices = Invoice.objects.filter(patient=patient).order_by('-created_at')
     total_invoiced = sum(invoice.total_amount for invoice in invoices)
     total_paid = sum(invoice.amount_paid for invoice in invoices)
     outstanding_balance = total_invoiced - total_paid
-    
+
     # Recent transactions (last 10)
     recent_transactions = []
     if wallet:
@@ -247,12 +178,12 @@ def patient_financial_summary(request, patient_id):
                 'amount': wt.amount,
                 'reference': wt.reference_number,
             })
-    
+
     # Recent payments
     recent_payments = BillingPayment.objects.filter(
         invoice__patient=patient
-    ).order_by('-created_at')[:5]
-    
+    ).select_related('invoice').order_by('-created_at')[:10]
+
     for payment in recent_payments:
         recent_transactions.append({
             'date': payment.created_at,
@@ -261,11 +192,11 @@ def patient_financial_summary(request, patient_id):
             'amount': payment.amount,
             'reference': payment.transaction_id or f"PAY-{payment.id}",
         })
-    
+
     # Sort recent transactions by date
     recent_transactions.sort(key=lambda x: x['date'], reverse=True)
     recent_transactions = recent_transactions[:10]  # Keep only 10 most recent
-    
+
     context = {
         'patient': patient,
         'wallet': wallet,
@@ -279,5 +210,5 @@ def patient_financial_summary(request, patient_id):
         'invoices_count': invoices.count(),
         'title': f'Financial Summary - {patient.get_full_name()}'
     }
-    
+
     return render(request, 'core/patient_financial_summary.html', context)

@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
-{% load widget_tweaks %}
 
 {% block title %}{{ title }} - Hospital Management System{% endblock %}
 
@@ -43,11 +42,27 @@
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Amount</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_amount|currency }}</div>
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Payments &amp; Credits</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_credits|currency }}</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                            <i class="fas fa-arrow-down fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Wallet Charges &amp; Debits</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_debits|currency }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-arrow-up fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -69,27 +84,10 @@
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Transaction Types</div>
-                            <div class="h6 mb-0 font-weight-bold text-gray-800">{{ summary_by_type|length }} Types</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-tags fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
-    <!-- Summary by Type -->
-    {% if summary_by_type %}
     <div class="row">
+        <!-- Summary by Type -->
         <div class="col-lg-6">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
@@ -109,7 +107,7 @@
                                 {% for type, data in summary_by_type.items %}
                                 <tr>
                                     <td>
-                                        <span class="badge badge-{% if data.source == 'wallet' %}primary{% elif data.source == 'billing' %}success{% elif data.source == 'pharmacy' %}info{% else %}secondary{% endif %}">
+                                        <span class="badge bg-{% if data.source == 'wallet' %}primary{% elif data.source == 'billing' %}success{% elif data.source == 'pharmacy' %}info{% else %}secondary{% endif %}">
                                             {{ type|title }}
                                         </span>
                                         <br><small class="text-muted">Source: {{ data.source }}</small>
@@ -124,15 +122,6 @@
                                 {% endfor %}
                             </tbody>
                         </table>
-                    </div>
-                    <!-- Debug info (can be removed in production) -->
-                    <div class="mt-2">
-                        <small class="text-muted">
-                            Debug: Found {{ summary_by_type|length }} transaction types
-                            {% if debug_info %}
-                            <br>{{ debug_info }}
-                            {% endif %}
-                        </small>
                     </div>
                 </div>
             </div>
@@ -177,7 +166,6 @@
             </div>
         </div>
     </div>
-    {% endif %}
 
     <!-- Transaction List -->
     <div class="card shadow mb-4">
@@ -203,22 +191,28 @@
                     <tbody>
                         {% for transaction in transactions %}
                         <tr>
-                            <td>{{ transaction.date|date:"M d, Y g:i A" }}</td>
+                            <td data-order="{{ transaction.date|date:'U' }}">{{ transaction.date|date:"M d, Y g:i A" }}</td>
                             <td>
-                                <span class="badge badge-{% if transaction.source == 'wallet' %}primary{% elif transaction.source == 'billing' %}success{% elif transaction.source == 'pharmacy' %}info{% else %}secondary{% endif %}">
+                                <span class="badge bg-{% if transaction.source == 'wallet' %}primary{% elif transaction.source == 'billing' %}success{% elif transaction.source == 'pharmacy' %}info{% else %}secondary{% endif %}">
                                     {{ transaction.subtype|default:transaction.type }}
                                 </span>
-                                {% if transaction.source == 'wallet' and transaction.type %}
+                                {% if transaction.source == 'wallet' %}
                                 <br><small class="text-muted">{{ transaction.type }}</small>
                                 {% endif %}
                             </td>
                             <td>
+                                {% if transaction.patient %}
                                 <strong>{{ transaction.patient.get_full_name }}</strong>
                                 <br><small class="text-muted">{{ transaction.patient.patient_id }}</small>
+                                {% else %}
+                                <em class="text-muted">Unknown</em>
+                                {% endif %}
                             </td>
                             <td>{{ transaction.description }}</td>
                             <td>
-                                <strong>{{ transaction.amount|currency }}</strong>
+                                <strong class="{% if transaction.is_credit %}text-success{% else %}text-danger{% endif %}">
+                                    {% if not transaction.is_credit %}-{% endif %}{{ transaction.amount|currency }}
+                                </strong>
                                 {% if transaction.balance_after is not None %}
                                 <br><small class="text-muted">Balance: {{ transaction.balance_after|currency }}</small>
                                 {% endif %}
@@ -227,7 +221,7 @@
                                 <code>{{ transaction.reference }}</code>
                             </td>
                             <td>
-                                <span class="badge badge-success">{{ transaction.status }}</span>
+                                <span class="badge bg-{% if transaction.status == 'Completed' %}success{% elif transaction.status == 'Pending' %}warning{% elif transaction.status == 'Failed' or transaction.status == 'Cancelled' %}danger{% else %}secondary{% endif %}">{{ transaction.status }}</span>
                             </td>
                             <td>
                                 {% if transaction.created_by %}
@@ -245,7 +239,7 @@
             <div class="text-center py-4">
                 <i class="fas fa-receipt fa-3x text-gray-300 mb-3"></i>
                 <h5 class="text-gray-600">No transactions found</h5>
-                <p class="text-muted">No transactions match your current filters.</p>
+                <p class="text-muted">No transactions match your current filters. Try widening the date range above.</p>
             </div>
             {% endif %}
         </div>
@@ -254,10 +248,9 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize DataTables
-    try {
+    if (window.jQuery && $.fn.DataTable) {
         $('#transactionTable').DataTable({
-            "order": [[ 0, "desc" ]], // Sort by date column (first column) descending
+            "order": [[ 0, "desc" ]],
             "pageLength": 25,
             "responsive": true,
             "language": {
@@ -272,11 +265,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        console.log('Transaction history DataTable initialized successfully');
-    } catch (error) {
-        console.error('Error initializing DataTable:', error);
-        // Fallback to basic table functionality if DataTables fails
-        console.log('Transaction history loaded successfully (fallback mode)');
     }
 });
 </script>
