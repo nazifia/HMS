@@ -76,7 +76,9 @@ def comprehensive_transaction_history(request, patient_id=None):
     # 2. Billing Payments (covers all invoice sources: billing, pharmacy, inpatient, ...)
     billing_payments = BillingPayment.objects.filter(
         created_at__date__range=[date_from, date_to]
-    ).select_related('invoice', 'invoice__patient', 'received_by')
+    ).select_related('invoice', 'invoice__patient', 'received_by').prefetch_related(
+        'invoice__items__service', 'invoice__prescription__items__medication'
+    )
     if patient:
         billing_payments = billing_payments.filter(invoice__patient=patient)
 
@@ -85,6 +87,10 @@ def comprehensive_transaction_history(request, patient_id=None):
 
     for bp in billing_payments:
         source = SOURCE_BY_APP.get(bp.invoice.source_app, 'billing')
+        details = bp.invoice.get_service_details()
+        description = f"Payment for Invoice #{bp.invoice.invoice_number}"
+        if details:
+            description = f"{description} — {details}"
         transactions.append({
             'date': bp.created_at,
             'type': TYPE_BY_SOURCE.get(source, 'Billing Payment'),
@@ -92,7 +98,7 @@ def comprehensive_transaction_history(request, patient_id=None):
             'amount': bp.amount,
             'is_credit': True,
             'balance_after': None,
-            'description': f"Payment for Invoice #{bp.invoice.invoice_number}",
+            'description': description,
             'reference': bp.transaction_id or f"PAY-{bp.id}",
             'patient': bp.invoice.patient,
             'created_by': bp.received_by,
@@ -186,13 +192,19 @@ def patient_financial_summary(request, patient_id):
     # Recent payments
     recent_payments = BillingPayment.objects.filter(
         invoice__patient=patient
-    ).select_related('invoice').order_by('-created_at')[:10]
+    ).select_related('invoice').prefetch_related(
+        'invoice__items__service', 'invoice__prescription__items__medication'
+    ).order_by('-created_at')[:10]
 
     for payment in recent_payments:
+        details = payment.invoice.get_service_details()
+        description = f"Payment for Invoice #{payment.invoice.invoice_number}"
+        if details:
+            description = f"{description} — {details}"
         recent_transactions.append({
             'date': payment.created_at,
             'type': 'Payment',
-            'description': f"Payment for Invoice #{payment.invoice.invoice_number}",
+            'description': description,
             'amount': payment.amount,
             'is_credit': True,
             'reference': payment.transaction_id or f"PAY-{payment.id}",
