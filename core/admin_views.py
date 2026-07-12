@@ -17,6 +17,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.http import JsonResponse, HttpResponseForbidden
 from django.urls import reverse_lazy, reverse
+from django.utils.crypto import get_random_string
 import json
 
 from core.permissions import permission_required, get_client_ip
@@ -362,6 +363,7 @@ def audit_report(request):
     today = timezone.now().date()
     this_week = today - timedelta(days=7)
     this_month = today - timedelta(days=30)
+    week_start = timezone.now() - timedelta(days=7)
     
     # Generate statistics for different periods
     report_data = {
@@ -387,18 +389,18 @@ def audit_report(request):
     
     # Top users by activity
     top_users = ActivityLog.objects.values('user__username', 'user__first_name', 'user__last_name').filter(
-        timestamp__gte=this_week,
+        timestamp__gte=week_start,
         user__isnull=False
     ).annotate(activity_count=Count('id')).order_by('-activity_count')[:10]
-    
+
     # Most active categories
     top_categories = ActivityLog.objects.filter(
-        timestamp__gte=this_week
+        timestamp__gte=week_start
     ).values('category').annotate(count=Count('id')).order_by('-count')[:10]
-    
+
     # Security events
     security_events = ActivityLog.objects.filter(
-        timestamp__gte=this_week,
+        timestamp__gte=week_start,
         category='security'
     ).count()
     
@@ -493,14 +495,12 @@ def api_admin_users(request):
     if request.method == 'GET':
         # List users
         try:
-            print(f"API called by user: {request.user}")
-            users = User.objects.select_related('profile').all()
+            users = User.objects.select_related('profile__department').prefetch_related('roles').all()
             users_data = []
-            print(f"Found {users.count()} users in database")
 
             for user in users:
                 try:
-                    user_roles = list(user.roles.values_list('name', flat=True)) if hasattr(user, 'roles') else []
+                    user_roles = [r.name for r in user.roles.all()] if hasattr(user, 'roles') else []
 
                     # Get department data properly
                     department = None
@@ -537,19 +537,13 @@ def api_admin_users(request):
                             'profile_picture': profile_picture_url,
                         }
                     })
-                    print(f"✓ Processed user: {user.username}")
-                except Exception as user_error:
-                    print(f"✗ Error processing user {user.username}: {user_error}")
+                except Exception:
                     # Continue processing other users instead of failing completely
                     continue
 
-            print(f"Successfully processed {len(users_data)} out of {users.count()} users")
             return JsonResponse(users_data, safe=False)
 
         except Exception as e:
-            print(f"API Error: {str(e)}")
-            import traceback
-            traceback.print_exc()
             return JsonResponse({'error': f'Failed to load users: {str(e)}'}, status=500)
     
     elif request.method == 'POST':
@@ -567,7 +561,7 @@ def api_admin_users(request):
                 email=data.get('email', ''),
                 first_name=data['first_name'],
                 last_name=data['last_name'],
-                password=data.get('password', User.objects.make_random_password())
+                password=data.get('password') or get_random_string(12)
             )
             
             # Update additional fields
