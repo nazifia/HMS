@@ -454,41 +454,34 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 // Chart.js configuration with error handling
 document.addEventListener('DOMContentLoaded', function() {
-    try {
-        console.log('Admin dashboard loading...');
-        
-        // Global error handler for H.match and other JS errors
-        window.addEventListener('error', function(e) {
-            console.error('JavaScript error:', e.error);
-            // Prevent H.match errors from breaking functionality
-            if (e.error && e.error.message && e.error.message.includes('H.match')) {
-                e.preventDefault();
-                console.warn('Suppressed H.match error');
-                return false;
-            }
-        });
-        
-        // Check URL parameters for modal opening
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('openUserModal') === 'true') {
-            // Prevent default redirect and show appropriate modal
-            console.log('User modal requested from URL');
-            // Since this is the admin dashboard, we can handle user management here
-            setTimeout(() => {
-                if (typeof showUserManagementModal === 'function') {
-                    showUserManagementModal();
-                } else {
-                    console.warn('showUserManagementModal function not found');
-                    // Fallback: show alert for settings
-                    alert('Settings functionality is being redirected to user profile');
-                    window.location.href = '/accounts/profile/edit/';
-                }
-            }, 500);
+    // Global error handler for H.match and other JS errors
+    window.addEventListener('error', function(e) {
+        console.error('JavaScript error:', e.error);
+        // Prevent H.match errors from breaking functionality
+        if (e.error && e.error.message && e.error.message.includes('H.match')) {
+            e.preventDefault();
+            console.warn('Suppressed H.match error');
+            return false;
         }
-    
+    });
+
+    // Check URL parameters for modal opening
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('openUserModal') === 'true') {
+        setTimeout(() => {
+            if (typeof showUserManagementModal === 'function') {
+                showUserManagementModal();
+            } else {
+                alert('Settings functionality is being redirected to user profile');
+                window.location.href = '/accounts/profile/edit/';
+            }
+        }, 500);
+    }
+
     // Check if Chart is available
     if (typeof Chart === 'undefined') {
         console.error('Chart.js is not loaded');
@@ -622,10 +615,6 @@ setInterval(() => {
     console.log('Auto-refreshing admin dashboard...');
     refreshDashboard();
 }, 300000);
-    } catch (error) {
-        console.error('Admin dashboard initialization error:', error);
-    }
-});
 
 // User Management Functions
 let userModalInstance = null;
@@ -666,12 +655,5 @@ function getCookie(name) {
     }
     return cookieValue;
 }
-
-
-
-
-
-
-});
 </script>
 {% endblock %}
