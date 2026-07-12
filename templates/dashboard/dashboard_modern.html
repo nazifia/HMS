@@ -694,7 +694,11 @@
 
     // Appointments by status — doughnut
     const apptEl = document.getElementById('appointmentChart');
-    if (apptEl) {
+    if (apptEl && data.appointment_values.every(v => !v)) {
+        apptEl.parentElement.innerHTML =
+            '<div class="panel-empty" style="padding-top:4.5rem;">' +
+            '<i class="fas fa-calendar-times"></i>No appointments yet</div>';
+    } else if (apptEl) {
         new Chart(apptEl, {
             type: 'doughnut',
             data: {
@@ -720,7 +724,11 @@
 
     // Department records — bar
     const deptEl = document.getElementById('deptChart');
-    if (deptEl) {
+    if (deptEl && data.dept_values.every(v => !v)) {
+        deptEl.parentElement.innerHTML =
+            '<div class="panel-empty" style="padding-top:4rem;">' +
+            '<i class="fas fa-folder-open"></i>No department records yet</div>';
+    } else if (deptEl) {
         new Chart(deptEl, {
             type: 'bar',
             data: {
