@@ -251,7 +251,7 @@
                             <table class="table table-bordered">
                                 <thead>
                                     <tr>
-                                        <th>Invoice Number</th>
+                                        <th>Services</th>
                                         <th>Date Issued</th>
                                         <th>Total Amount</th>
                                         <th>Amount Paid</th>
@@ -262,7 +262,16 @@
                                 <tbody>
                                     {% for invoice in outstanding_invoices %}
                                     <tr>
-                                        <td>{{ invoice.invoice_number }}</td>
+                                        <td>
+                                            {% with services=invoice.get_service_details %}
+                                                {% if services %}
+                                                    {{ services }}
+                                                    <div class="small text-muted">Invoice #{{ invoice.invoice_number }}</div>
+                                                {% else %}
+                                                    {{ invoice.invoice_number }}
+                                                {% endif %}
+                                            {% endwith %}
+                                        </td>
                                         <td>{{ invoice.invoice_date|date:"M d, Y H:i" }}</td>
                                         <td>{{ invoice.total_amount|currency }}</td>
                                         <td>{{ invoice.amount_paid|currency }}</td>

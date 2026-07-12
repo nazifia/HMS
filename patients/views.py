@@ -1448,7 +1448,7 @@ def wallet_net_impact(request, patient_id):
 
     outstanding_invoices = Invoice.objects.filter(
         patient=patient, status__in=["pending", "partially_paid"]
-    )
+    ).prefetch_related("items__service")
 
     # Calculate outstanding invoice amounts
     invoice_outstanding = sum(invoice.get_balance() for invoice in outstanding_invoices)

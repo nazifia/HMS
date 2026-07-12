@@ -1566,25 +1566,7 @@ class WalletTransaction(TenantModel):
         """Names of the services this payment covered, from the linked invoice's items."""
         if not self.invoice_id:
             return None
-        names = []
-        for item in self.invoice.items.all():
-            name = item.service.name if item.service else (item.description or "")
-            name = name.strip()
-            if name and name not in names:
-                names.append(name)
-        if names:
-            return ", ".join(names)
-        # Pharmacy invoices carry a prescription instead of invoice items
-        if self.invoice.prescription_id:
-            meds = [
-                item.medication.name
-                for item in self.invoice.prescription.items.select_related("medication")
-            ]
-            if meds:
-                return "Medications: " + ", ".join(dict.fromkeys(meds))
-        if self.invoice.source_app:
-            return f"{self.invoice.get_source_app_display()} services"
-        return None
+        return self.invoice.get_service_details()
 
     def get_transaction_category(self):
         """Get the category of transaction for better organization"""

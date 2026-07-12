@@ -147,6 +147,28 @@ class Invoice(TenantModel):
     def get_balance(self):
         return self.total_amount - self.amount_paid
 
+    def get_service_details(self):
+        """Names of the services this invoice covers, from its items."""
+        names = []
+        for item in self.items.all():
+            name = item.service.name if item.service else (item.description or "")
+            name = name.strip()
+            if name and name not in names:
+                names.append(name)
+        if names:
+            return ", ".join(names)
+        # Pharmacy invoices carry a prescription instead of invoice items
+        if self.prescription_id:
+            meds = [
+                item.medication.name
+                for item in self.prescription.items.select_related("medication")
+            ]
+            if meds:
+                return "Medications: " + ", ".join(dict.fromkeys(meds))
+        if self.source_app:
+            return f"{self.get_source_app_display()} services"
+        return None
+
     def is_paid(self):
         return self.amount_paid >= self.total_amount
 
