@@ -677,6 +677,16 @@
             Administration
         </div>
 
+        <!-- Nav Item - Service Points (health record officers + department heads; admins get it under Core Features) -->
+        {% if not user.is_superuser and not user|has_role:'admin' %}{% if user|has_role:'health_record_officer' or user|is_department_head %}
+        <li class="nav-item {% if 'service-points' in request.path %}active{% endif %}">
+            <a class="nav-link" href="{% url 'core:service_point_list' %}">
+                <i class="fas fa-fw fa-map-marker-alt text-white"></i>
+                <span class="text-white">Service Points</span>
+            </a>
+        </li>
+        {% endif %}{% endif %}
+
         <!-- Nav Item - Desk Office (Available to desk officers and admins only) -->
         {% if user.is_superuser or user|has_permission:'desk_office.view' %}
         <li class="nav-item {% if '/desk-office/' in request.path %}active{% endif %}">
@@ -797,6 +807,7 @@
 
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">Admin Tools:</h6>
+                    <a class="collapse-item {% if 'service-points' in request.path %}active{% endif %}" href="{% url 'core:service_point_list' %}">Service Points</a>
                     <a class="collapse-item {% if 'admin' in request.path %}active{% endif %}" href="{% url 'core:admin_dashboard' %}">Admin Dashboard</a>
                     <a class="collapse-item {% if 'activity_log' in request.path %}active{% endif %}" href="{% url 'core:activity_log' %}">Activity Log</a>
                     <a class="collapse-item {% if 'security_overview' in request.path %}active{% endif %}" href="{% url 'core:security_overview' %}">Security Overview</a>

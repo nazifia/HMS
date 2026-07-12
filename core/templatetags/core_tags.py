@@ -31,6 +31,15 @@ def has_role(user, role_name):
 
 
 @register.filter
+def is_department_head(user):
+    """Check if user heads at least one department"""
+    if not user or not user.is_authenticated:
+        return False
+    from accounts.models import Department
+    return Department.objects.filter(head=user).exists()
+
+
+@register.filter
 def has_permission(user, permission_name):
     """Check if user has a specific permission"""
     if not user or not user.is_authenticated:
