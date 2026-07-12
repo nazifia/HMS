@@ -356,6 +356,54 @@
     </div>
     {% endif %}
 
+    <!-- Analytics Charts -->
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="section-hdr"><i class="fas fa-chart-line"></i>Analytics</div>
+        </div>
+        <div class="col-lg-8">
+            <div class="panel h-100">
+                <div class="panel-header">
+                    <span class="panel-title"><i class="fas fa-chart-area text-primary me-2"></i>Revenue — Last {{ chart_range }} Days</span>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Revenue date range">
+                        <a href="?range=7" class="btn btn-{% if chart_range == 7 %}primary{% else %}outline-primary{% endif %}">7D</a>
+                        <a href="?range=30" class="btn btn-{% if chart_range == 30 %}primary{% else %}outline-primary{% endif %}">30D</a>
+                        <a href="?range=90" class="btn btn-{% if chart_range == 90 %}primary{% else %}outline-primary{% endif %}">90D</a>
+                    </div>
+                </div>
+                <div class="panel-body" style="padding:1rem 1.25rem;">
+                    <div style="position:relative;height:260px;">
+                        <canvas id="revenueChart" role="img" aria-label="Line chart of daily revenue for the last 7 days"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="panel h-100">
+                <div class="panel-header">
+                    <span class="panel-title"><i class="fas fa-chart-pie text-primary me-2"></i>Appointments by Status</span>
+                </div>
+                <div class="panel-body" style="padding:1rem 1.25rem;">
+                    <div style="position:relative;height:260px;">
+                        <canvas id="appointmentChart" role="img" aria-label="Doughnut chart of appointments by status"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title"><i class="fas fa-chart-bar text-primary me-2"></i>Department Records</span>
+                </div>
+                <div class="panel-body" style="padding:1rem 1.25rem;">
+                    <div style="position:relative;height:240px;">
+                        <canvas id="deptChart" role="img" aria-label="Bar chart of record counts per department"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Activity Section -->
     <div class="row g-3 mb-4">
         <div class="col-12">
@@ -570,6 +618,135 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ chart_data|json_script:"dashboard-chart-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    if (typeof Chart === 'undefined') return;
+    const dataEl = document.getElementById('dashboard-chart-data');
+    if (!dataEl) return;
+    const data = JSON.parse(dataEl.textContent);
+    if (!data || !data.revenue_labels) return; // stale cached context without chart data
+
+    const gridColor = '#e2e8f0';
+    const tickColor = '#64748b';
+
+    // Drilldown helpers: click a mark to navigate, pointer cursor on hover
+    function drilldown(urls) {
+        return {
+            onClick: (evt, elements) => {
+                if (!elements.length) return;
+                const url = Array.isArray(urls) ? urls[elements[0].index] : urls;
+                if (url) window.location.href = url;
+            },
+            onHover: (evt, elements) => {
+                evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+            }
+        };
+    }
+    Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+    Chart.defaults.color = tickColor;
+
+    // Revenue line — last 7 days
+    const revEl = document.getElementById('revenueChart');
+    if (revEl) {
+        new Chart(revEl, {
+            type: 'line',
+            data: {
+                labels: data.revenue_labels,
+                datasets: [{
+                    label: 'Revenue',
+                    data: data.revenue_values,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#2563eb',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                ...drilldown(data.revenue_url),
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => '₦' + Number(ctx.parsed.y).toLocaleString()
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: gridColor },
+                        ticks: { callback: (v) => '₦' + Number(v).toLocaleString() }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // Appointments by status — doughnut
+    const apptEl = document.getElementById('appointmentChart');
+    if (apptEl) {
+        new Chart(apptEl, {
+            type: 'doughnut',
+            data: {
+                labels: data.appointment_labels,
+                datasets: [{
+                    data: data.appointment_values,
+                    backgroundColor: ['#2563eb', '#16a34a', '#dc2626'],
+                    borderColor: '#fff',
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                ...drilldown(data.appointment_urls),
+                cutout: '62%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } }
+                }
+            }
+        });
+    }
+
+    // Department records — bar
+    const deptEl = document.getElementById('deptChart');
+    if (deptEl) {
+        new Chart(deptEl, {
+            type: 'bar',
+            data: {
+                labels: data.dept_labels,
+                datasets: [{
+                    label: 'Records',
+                    data: data.dept_values,
+                    backgroundColor: '#2563eb',
+                    borderRadius: 4,
+                    maxBarThickness: 42,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                ...drilldown(data.dept_urls),
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: gridColor }, ticks: { precision: 0 } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+})();
+</script>
 <script>
     // Live date/time
     function updateDate() {

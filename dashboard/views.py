@@ -42,8 +42,16 @@ def dashboard(request):
     week_start_dt = timezone.make_aware(timezone.datetime.combine(this_week_start, timezone.datetime.min.time()))
     month_start_dt = timezone.make_aware(timezone.datetime.combine(this_month_start, timezone.datetime.min.time()))
 
-    # Create cache key based on user and date
-    cache_key = f'dashboard_data_{request.user.id}_{today}'
+    # Revenue chart date range (7/30/90 days)
+    try:
+        range_days = int(request.GET.get('range', 7))
+    except (TypeError, ValueError):
+        range_days = 7
+    if range_days not in (7, 30, 90):
+        range_days = 7
+
+    # Create cache key based on user, date and chart range
+    cache_key = f'dashboard_data_{request.user.id}_{today}_{range_days}'
     cached_data = cache.get(cache_key)
 
     if cached_data:
@@ -139,6 +147,50 @@ def dashboard(request):
         'patient_wallet__patient'
     ).order_by('-created_at')[:5]
 
+    # Chart data: daily revenue for the selected range (single query)
+    from django.db.models.functions import TruncDate
+    from django.urls import reverse
+    range_start = today - timedelta(days=range_days - 1)
+    range_start_dt = timezone.make_aware(timezone.datetime.combine(range_start, timezone.datetime.min.time()))
+    daily_rows = Payment.objects.filter(
+        payment_date__gte=range_start_dt, payment_date__lte=today_end
+    ).annotate(day=TruncDate('payment_date')).values('day').annotate(
+        total=Sum('amount')
+    ).order_by('day')
+    revenue_by_day = {row['day']: float(row['total'] or 0) for row in daily_rows}
+    revenue_days = [range_start + timedelta(days=i) for i in range(range_days)]
+    label_fmt = '%a %d' if range_days == 7 else '%d %b'
+    appointment_url = reverse('appointments:list')
+    chart_data = {
+        'revenue_labels': [d.strftime(label_fmt) for d in revenue_days],
+        'revenue_values': [revenue_by_day.get(d, 0) for d in revenue_days],
+        'revenue_url': reverse('core:revenue_trends_view'),
+        'appointment_urls': [
+            f'{appointment_url}?status=scheduled',
+            f'{appointment_url}?status=completed',
+            f'{appointment_url}?status=cancelled',
+        ],
+        'dept_urls': [
+            reverse('ophthalmic:dashboard'), reverse('ent:dashboard'),
+            reverse('oncology:dashboard'), reverse('scbu:dashboard'),
+            reverse('anc:dashboard'), reverse('labor:dashboard'),
+            reverse('icu:dashboard'), reverse('family_planning:dashboard'),
+            reverse('gynae_emergency:dashboard'),
+        ],
+        'appointment_labels': ['Scheduled', 'Completed', 'Cancelled'],
+        'appointment_values': [
+            appointment_stats['scheduled'],
+            appointment_stats['completed'],
+            appointment_stats['cancelled'],
+        ],
+        'dept_labels': ['Ophthalmic', 'ENT', 'Oncology', 'SCBU', 'ANC', 'Labor', 'ICU', 'Family Planning', 'Gynae Emerg.'],
+        'dept_values': [
+            total_ophthalmic_records, total_ent_records, total_oncology_records,
+            total_scbu_records, total_anc_records, total_labor_records,
+            total_icu_records, total_family_planning_records, total_gynae_emergency_records,
+        ],
+    }
+
     context = {
         'total_patients': total_patients,
         'total_appointments': total_appointments,
@@ -179,6 +231,8 @@ def dashboard(request):
         'negative_wallets': negative_wallets,
         'zero_wallets': zero_wallets,
         'recent_wallet_transactions': recent_wallet_transactions,
+        'chart_data': chart_data,
+        'chart_range': range_days,
     }
 
     # Cache the context for 5 minutes (300 seconds)
