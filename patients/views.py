@@ -703,30 +703,22 @@ def wallet_dashboard(request, patient_id):
     # Calculate monthly activity
     from django.utils import timezone
     from datetime import timedelta
+    from inpatient.models import Admission
+    from billing.models import Invoice
 
     # Get transactions from the last 30 days
     thirty_days_ago = timezone.now() - timedelta(days=30)
 
-    monthly_transactions = wallet.transactions.filter(created_at__gte=thirty_days_ago)
-
-    monthly_stats = monthly_transactions.aggregate(
+    monthly_stats = wallet.transactions.filter(
+        created_at__gte=thirty_days_ago
+    ).aggregate(
         credits=Sum(
             "amount",
-            filter=Q(
-                transaction_type__in=[
-                    "credit",
-                    "deposit",
-                    "refund",
-                    "transfer_in",
-                    "adjustment",
-                ]
-            ),
+            filter=Q(transaction_type__in=WalletTransaction.CREDIT_TYPES),
         ),
         debits=Sum(
             "amount",
-            filter=Q(
-                transaction_type__in=["debit", "payment", "withdrawal", "transfer_out"]
-            ),
+            filter=~Q(transaction_type__in=WalletTransaction.CREDIT_TYPES),
         ),
     )
     monthly_credits = monthly_stats["credits"] or 0
@@ -736,14 +728,9 @@ def wallet_dashboard(request, patient_id):
     recent_transactions = wallet.get_transaction_history(limit=10)
 
     # Get recent admissions (last 5)
-    try:
-        from inpatient.models import Admission
-
-        recent_admissions = Admission.objects.filter(patient=patient).order_by(
-            "-admission_date"
-        )[:5]
-    except:
-        recent_admissions = []
+    recent_admissions = Admission.objects.filter(patient=patient).select_related(
+        "bed__ward", "attending_doctor"
+    ).order_by("-admission_date")[:5]
 
     # Calculate hospital services total (admission fees and daily charges)
     hospital_services_stats = wallet_stats.get("by_category", {}).get(
@@ -752,37 +739,26 @@ def wallet_dashboard(request, patient_id):
     hospital_services_total = hospital_services_stats.get("total", 0)
 
     # Get current admission if any
-    current_admission = None
-    try:
-        from inpatient.models import Admission
+    current_admission = Admission.objects.filter(
+        patient=patient, status="admitted"
+    ).first()
 
-        current_admission = Admission.objects.filter(
-            patient=patient, status="admitted"
-        ).first()
-    except:
-        pass
+    # Outstanding invoices
+    outstanding_invoices = Invoice.objects.filter(
+        patient=patient, status__in=["pending", "partially_paid", "overdue"]
+    ).order_by("created_at")
+    invoice_outstanding = sum(
+        invoice.get_balance() for invoice in outstanding_invoices
+    )
 
-    # Get outstanding invoices for the new functionality
-    outstanding_invoices = []
-    total_outstanding = 0
-    try:
-        from billing.models import Invoice
-
-        outstanding_invoices = Invoice.objects.filter(
-            patient=patient, status__in=["pending", "partially_paid"]
-        ).order_by("created_at")
-        total_outstanding = sum(
-            invoice.get_balance() for invoice in outstanding_invoices
-        )
-    except:
-        pass
-
-    # Calculate total outstanding from admissions and invoices
     admission_outstanding = 0
     if current_admission:
         admission_outstanding = current_admission.get_outstanding_admission_cost()
 
-    total_outstanding = admission_outstanding + total_outstanding
+    total_outstanding = admission_outstanding + invoice_outstanding
+
+    # Compute once; template previously called this heavy method repeatedly
+    total_impact = wallet.get_total_wallet_impact_with_admissions()
 
     context = {
         "patient": patient,
@@ -797,9 +773,11 @@ def wallet_dashboard(request, patient_id):
         "current_admission": current_admission,
         "outstanding_invoices": outstanding_invoices,
         "total_outstanding": total_outstanding,
-        "total_invoice_outstanding": total_outstanding,  # Alias for clarity in template
+        "total_invoice_outstanding": invoice_outstanding,
         "admission_outstanding": admission_outstanding,
+        "total_impact": total_impact,
         "wallet": wallet,
+        "title": f"Wallet - {patient.get_full_name()}",
         "page_title": f"Wallet - {patient.get_full_name()}",
         "active_nav": "patients",
     }
