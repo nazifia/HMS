@@ -614,6 +614,59 @@ class Department(TenantModel):
         return self.name
 
 
+class StaffDepartmentAssignment(TenantModel):
+    """Tracks which staff members are assigned to which department
+    (generic equivalent of pharmacy's PharmacistDispensaryAssignment)."""
+
+    staff = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="department_assignments",
+        help_text="The staff user",
+    )
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.CASCADE,
+        related_name="staff_assignments",
+        help_text="The department where the staff is assigned",
+    )
+    start_date = models.DateTimeField(
+        help_text="Date when staff was assigned to this department"
+    )
+    end_date = models.DateTimeField(
+        null=True, blank=True, help_text="Date when assignment ended"
+    )
+    is_active = models.BooleanField(
+        default=True, help_text="Whether this assignment is currently active"
+    )
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Staff Department Assignment"
+        verbose_name_plural = "Staff Department Assignments"
+        ordering = ["-start_date", "department__name"]
+        constraints = [
+            # One active assignment per staff/department; ended ones keep history
+            models.UniqueConstraint(
+                fields=["staff", "department"],
+                condition=models.Q(is_active=True),
+                name="uniq_active_staff_department_assignment",
+            ),
+        ]
+
+    def __str__(self):
+        if self.end_date:
+            return f"{self.staff.get_full_name()} - {self.department.name} ({self.start_date} to {self.end_date})"
+        return f"{self.staff.get_full_name()} - {self.department.name} (since {self.start_date})"
+
+    def save(self, *args, **kwargs):
+        if self.end_date:
+            self.is_active = False
+        super().save(*args, **kwargs)
+
+
 # User Activity Monitoring Models
 class UserActivity(TenantModel):
     """Tracks all user activities in the system"""

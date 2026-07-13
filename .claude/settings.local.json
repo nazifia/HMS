@@ -263,7 +263,23 @@
       "Bash(awk '/def request_medication_transfer/,/^@login_required|^def [a-z]/' pharmacy/views.py)",
       "Bash(PYTHONPATH=/c/Users/Dell/Desktop/MY_PRODUCTS/HMS python \"C:\\\\Users\\\\Dell\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Dell-Desktop-MY-PRODUCTS-HMS\\\\14efad30-5ddb-4529-86ef-07f454d17d65\\\\scratchpad\\\\param_sweep.py\")",
       "Bash(sed -i 's/redirect\\(\"theatre:surgery_detail\", surgery_id=surgery.id\\)/redirect\\(\"theatre:surgery_detail\", pk=surgery.id\\)/g' theatre/payment_views.py)",
-      "Bash(sed -i \"s/{% url 'surgery_detail'/{% url 'theatre:surgery_detail'/\" templates/theatre/payment_history.html)"
+      "Bash(sed -i \"s/{% url 'surgery_detail'/{% url 'theatre:surgery_detail'/\" templates/theatre/payment_history.html)",
+      "WebFetch(domain:nazhms.pythonanywhere.com)",
+      "Skill(dataviz)",
+      "PowerShell(python -c \"import django,os; os.environ.setdefault\\('DJANGO_SETTINGS_MODULE','hms.settings'\\); django.setup\\(\\); from django.core.management import call_command; call_command\\('check'\\); print\\('OK'\\)\")",
+      "PowerShell(rtk git *)",
+      "PowerShell(schtasks *)",
+      "PowerShell(Register-ScheduledTask *)",
+      "PowerShell(Start-ScheduledTask *)",
+      "PowerShell(Get-ScheduledTaskInfo *)",
+      "PowerShell(& \"C:\\\\Users\\\\Dell\\\\Desktop\\\\MY_PRODUCTS\\\\HMS\\\\venv\\\\Scripts\\\\python.exe\" manage.py backup_db --keep 14; Test-Path backups; ls backups)",
+      "PowerShell(& \"C:\\\\Users\\\\Dell\\\\Desktop\\\\MY_PRODUCTS\\\\HMS\\\\venv\\\\Scripts\\\\python.exe\" run_backup.py; echo \"exit=$LASTEXITCODE\"; ls backups | Select-Object Name)",
+      "PowerShell(\\(Get-ScheduledTask -TaskName \"HMS Nightly DB Backup\"\\).State; Start-Sleep 20; \\(Get-ScheduledTask -TaskName \"HMS Nightly DB Backup\"\\).State; $i = Get-ScheduledTaskInfo -TaskName \"HMS Nightly DB Backup\"; \"LastRun: $\\($i.LastRunTime\\)  Result: $\\($i.LastTaskResult\\)\"; ls backups | Select-Object -ExpandProperty Name)",
+      "PowerShell(Stop-ScheduledTask *)",
+      "PowerShell(python manage.py makemigrations accounts; python manage.py migrate accounts; python manage.py check)",
+      "PowerShell(python -c \"import django,os; os.environ.setdefault\\('DJANGO_SETTINGS_MODULE','hms.settings'\\); django.setup\\(\\); from django.core.management import call_command; call_command\\('makemigrations','accounts'\\); call_command\\('migrate','accounts'\\); call_command\\('check'\\)\")",
+      "PowerShell(python -c \"import django,os; os.environ.setdefault\\('DJANGO_SETTINGS_MODULE','hms.settings'\\); django.setup\\(\\); from django.core.management import call_command; call_command\\('test','accounts.test_department_assignments','--verbosity','2'\\)\")",
+      "PowerShell(python -c \"import django,os; os.environ.setdefault\\('DJANGO_SETTINGS_MODULE','hms.settings'\\); django.setup\\(\\); from django.core.management import call_command; call_command\\('test','accounts.test_department_assignments','--verbosity','1'\\); call_command\\('check'\\)\")"
     ]
   }
 }

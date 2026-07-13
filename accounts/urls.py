@@ -4,6 +4,7 @@ from django.views.generic import TemplateView
 from . import views
 from . import session_views
 from . import urls_activity
+from . import department_assignment_views
 from .forms import CustomLoginForm, PhoneNumberPasswordResetForm
 
 app_name = "accounts"
@@ -82,6 +83,37 @@ urlpatterns = [
     path("staff/<int:staff_id>/edit/", views.edit_staff, name="edit_staff"),
     path("staff/<int:staff_id>/delete/", views.delete_staff, name="delete_staff"),
     # Department Management URLs (for admin)
+    # Staff-department assignments (mirrors pharmacy pharmacist assignments)
+    path(
+        "department-assignments/",
+        department_assignment_views.manage_department_assignments,
+        name="manage_department_assignments",
+    ),
+    path(
+        "department-assignments/add/",
+        department_assignment_views.add_department_assignment,
+        name="add_department_assignment",
+    ),
+    path(
+        "department-assignments/<int:assignment_id>/edit/",
+        department_assignment_views.edit_department_assignment,
+        name="edit_department_assignment",
+    ),
+    path(
+        "department-assignments/<int:assignment_id>/end/",
+        department_assignment_views.end_department_assignment,
+        name="end_department_assignment",
+    ),
+    path(
+        "department-assignments/<int:assignment_id>/delete/",
+        department_assignment_views.delete_department_assignment,
+        name="delete_department_assignment",
+    ),
+    path(
+        "department-assignments/reports/",
+        department_assignment_views.department_assignment_reports,
+        name="department_assignment_reports",
+    ),
     path("departments/", views.department_list, name="department_list"),
     path("departments/add/", views.add_department, name="add_department"),
     path(
