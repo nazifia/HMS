@@ -95,8 +95,8 @@
                         <td>{{ c.patient.occupation|default:"-" }}</td>
                         <td>{{ c.patient.get_marital_status_display|default:"-" }}</td>
                         <td>{{ c.patient.lga|default:"-" }}</td>
-                        <td>{{ c.get_clinic_type_display|default:"-" }}</td>
-                        <td>{{ c.consultation_date|date:"d.m.Y H:i" }}</td>
+                        <td>{{ c.clinic_label }}</td>
+                        <td>{{ c.row_date|date:"d.m.Y H:i" }}</td>
                         <td>{{ c.diagnosis|default:"-" }}</td>
                     </tr>
                     {% empty %}

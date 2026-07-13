@@ -2103,16 +2103,39 @@ def outpatient_register(request):
     consultations = Consultation.objects.select_related('patient').filter(
         consultation_date__gte=start,
         consultation_date__lt=end,
-    ).order_by('consultation_date')
+    )
+
+    from inpatient.models import Admission
+    admissions = Admission.objects.select_related('patient', 'bed__ward').filter(
+        admission_date__gte=start,
+        admission_date__lt=end,
+    )
 
     if patient_no:
         consultations = consultations.filter(patient__patient_id__icontains=patient_no)
+        admissions = admissions.filter(patient__patient_id__icontains=patient_no)
     if diagnosis:
         consultations = consultations.filter(diagnosis__icontains=diagnosis)
-    if clinic:
+        admissions = admissions.filter(diagnosis__icontains=diagnosis)
+    if clinic == 'inpatient':
+        consultations = consultations.none()
+    elif clinic:
         consultations = consultations.filter(clinic_type=clinic)
+        admissions = admissions.none()
 
-    page_obj = Paginator(consultations, 50).get_page(request.GET.get('page'))
+    for c in consultations:
+        c.row_date = c.consultation_date
+        c.clinic_label = c.get_clinic_type_display() or '-'
+    for a in admissions:
+        a.row_date = a.admission_date
+        ward = a.bed.ward.name if a.bed and a.bed.ward else ''
+        a.clinic_label = f"INPATIENT ({ward})" if ward else 'INPATIENT'
+
+    # ponytail: in-memory merge of two querysets; fine at register scale,
+    # revisit with a DB union if a single day ever holds thousands of rows.
+    records = sorted(list(consultations) + list(admissions), key=lambda r: r.row_date)
+
+    page_obj = Paginator(records, 50).get_page(request.GET.get('page'))
 
     for c in page_obj:
         dob = c.patient.date_of_birth
@@ -2126,7 +2149,7 @@ def outpatient_register(request):
 
     context = {
         'page_obj': page_obj,
-        'clinic_choices': [c for c in CLINIC_TYPE_CHOICES if c[0]],
+        'clinic_choices': [c for c in CLINIC_TYPE_CHOICES if c[0]] + [('inpatient', 'Inpatient')],
         'filters': {'patient_no': patient_no, 'diagnosis': diagnosis, 'clinic': clinic,
                     'date_from': date_from.isoformat(), 'date_to': date_to.isoformat()},
         'total_count': page_obj.paginator.count,
