@@ -329,6 +329,8 @@ class Patient(TenantModel):
 
     # Additional Information
     occupation = models.CharField(max_length=100, blank=True, null=True)
+    tribe = models.CharField(max_length=100, blank=True, null=True)
+    lga = models.CharField("LGA", max_length=100, blank=True, null=True, help_text="Local Government Area")
     notes = models.TextField(blank=True, null=True)
     # Consolidated profile image field (removed duplicate profile_picture)
     photo = models.ImageField(upload_to="profile_pics/", blank=True, null=True)

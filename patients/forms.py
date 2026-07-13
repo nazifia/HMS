@@ -218,6 +218,22 @@ class PatientForm(forms.ModelForm):
         help_text='Enter patient occupation'
     )
 
+    tribe = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        label='Tribe',
+        help_text='Enter patient tribe/ethnicity'
+    )
+
+    lga = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        label='LGA',
+        help_text='Enter Local Government Area'
+    )
+
     notes = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
@@ -247,7 +263,7 @@ class PatientForm(forms.ModelForm):
             'emergency_contact_relation', 'emergency_contact_phone', 'address',
             'city', 'state', 'postal_code', 'country', 'allergies', 'chronic_diseases',
             'current_medications', 'insurance_provider', 'insurance_policy_number',
-            'insurance_expiry_date', 'occupation', 'notes', 'photo', 'id_document',
+            'insurance_expiry_date', 'occupation', 'tribe', 'lga', 'notes', 'photo', 'id_document',
             'service_point',
         ]
         widgets = {
@@ -1113,7 +1129,7 @@ class NHIAIndependentPatientForm(PatientForm):
         'city', 'state', 'postal_code', 'country',
         'allergies', 'chronic_diseases', 'current_medications',
         'insurance_provider', 'insurance_policy_number', 'insurance_expiry_date',
-        'occupation', 'notes', 'photo', 'id_document',
+        'occupation', 'tribe', 'lga', 'notes', 'photo', 'id_document',
     ]
 
     def __init__(self, *args, **kwargs):
@@ -1184,7 +1200,7 @@ class RetainershipIndependentPatientForm(PatientForm):
         'city', 'state', 'postal_code', 'country',
         'allergies', 'chronic_diseases', 'current_medications',
         'insurance_provider', 'insurance_policy_number', 'insurance_expiry_date',
-        'occupation', 'notes', 'photo', 'id_document',
+        'occupation', 'tribe', 'lga', 'notes', 'photo', 'id_document',
     ]
 
     def __init__(self, *args, **kwargs):

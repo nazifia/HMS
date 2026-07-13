@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.db import transaction
 from django.db.models import Count, Q, Max, F
 from django.core.paginator import Paginator
-from .models import Consultation, ConsultationNote, Referral, SOAPNote, ConsultationOrder, ConsultingRoom, WaitingList
+from .models import Consultation, ConsultationNote, Referral, SOAPNote, ConsultationOrder, ConsultingRoom, WaitingList, CLINIC_TYPE_CHOICES
 from .forms import QuickLabOrderForm, QuickRadiologyOrderForm, QuickPrescriptionForm, ConsultingRoomForm, WaitingListForm, ReferralForm, ConsultationForm, VitalsSelectionForm
 from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
@@ -2075,3 +2075,55 @@ def department_referral_dashboard(request):
     }
 
     return render(request, 'consultations/department_referral_dashboard.html', context)
+
+@login_required
+@permission_required('consultations.view')
+def outpatient_register(request):
+    """Out-patient register: filterable log of consultations (like the classic OPD register book)."""
+    from datetime import date
+
+    today = timezone.localdate()
+    patient_no = request.GET.get('patient_no', '').strip()
+    diagnosis = request.GET.get('diagnosis', '').strip()
+    clinic = request.GET.get('clinic', '').strip()
+    def _parse_date(value):
+        try:
+            return date.fromisoformat(value)
+        except (TypeError, ValueError):
+            return today
+
+    date_from = _parse_date(request.GET.get('date_from'))
+    date_to = _parse_date(request.GET.get('date_to'))
+
+    consultations = Consultation.objects.select_related('patient').filter(
+        consultation_date__date__gte=date_from,
+        consultation_date__date__lte=date_to,
+    ).order_by('consultation_date')
+
+    if patient_no:
+        consultations = consultations.filter(patient__patient_id__icontains=patient_no)
+    if diagnosis:
+        consultations = consultations.filter(diagnosis__icontains=diagnosis)
+    if clinic:
+        consultations = consultations.filter(clinic_type=clinic)
+
+    page_obj = Paginator(consultations, 50).get_page(request.GET.get('page'))
+
+    for c in page_obj:
+        dob = c.patient.date_of_birth
+        if dob:
+            months = (today.year - dob.year) * 12 + today.month - dob.month
+            if today.day < dob.day:
+                months -= 1
+            c.age_display = f"{months // 12} Yrs {months % 12} Mths"
+        else:
+            c.age_display = ''
+
+    context = {
+        'page_obj': page_obj,
+        'clinic_choices': [c for c in CLINIC_TYPE_CHOICES if c[0]],
+        'filters': {'patient_no': patient_no, 'diagnosis': diagnosis, 'clinic': clinic,
+                    'date_from': date_from.isoformat(), 'date_to': date_to.isoformat()},
+        'total_count': page_obj.paginator.count,
+    }
+    return render(request, 'consultations/outpatient_register.html', context)

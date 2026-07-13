@@ -68,6 +68,9 @@ urlpatterns = [
     path('doctor/consultation/<int:consultation_id>/create-radiology-order-ajax/', views.create_radiology_order_ajax, name='create_radiology_order_ajax'),
     path('doctor/consultation/<int:consultation_id>/create-prescription-ajax/', views.create_prescription_ajax, name='create_prescription_ajax'),
     
+    # Out-patient register report
+    path('register/outpatient/', views.outpatient_register, name='outpatient_register'),
+
     # Payment management
     path('consultation/<int:consultation_id>/payment/', payment_views.consultation_payment, name='consultation_payment'),
     path('consultation/<int:consultation_id>/payment-history/', payment_views.consultation_payment_history, name='consultation_payment_history'),

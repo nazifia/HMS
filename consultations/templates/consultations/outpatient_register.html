@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}Out Patient Register{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-book-medical me-2 text-primary"></i>Out Patient Register
+        </h1>
+        <button class="btn btn-outline-secondary" onclick="window.print()">
+            <i class="fas fa-print"></i> Print
+        </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">PT NO</label>
+                    <input type="text" name="patient_no" class="form-control" placeholder="Patient number" value="{{ filters.patient_no }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Diagnosis</label>
+                    <input type="text" name="diagnosis" class="form-control" placeholder="Diagnosis or ICD code" value="{{ filters.diagnosis }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Clinic</label>
+                    <select name="clinic" class="form-select">
+                        <option value="">All Clinics</option>
+                        {% for value, label in clinic_choices %}
+                        <option value="{{ value }}" {% if filters.clinic == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">From</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ filters.date_from }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">To</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ filters.date_to }}">
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Get
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Register table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                OUT PATIENT REGISTER ({{ filters.date_from }} - {{ filters.date_to }}) — {{ total_count }} record{{ total_count|pluralize }}
+            </h6>
+        </div>
+        <div class="card-body table-responsive">
+            <table class="table table-bordered table-striped table-sm align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>S/N</th>
+                        <th>PT NO</th>
+                        <th>Patient Name</th>
+                        <th>Age</th>
+                        <th>Sex</th>
+                        <th>Tribe</th>
+                        <th>Occupation</th>
+                        <th>Marital Status</th>
+                        <th>LGA</th>
+                        <th>Clinic</th>
+                        <th>Date</th>
+                        <th>Diagnosis</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in page_obj %}
+                    <tr>
+                        <td>{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                        <td>
+                            <a href="{% url 'patients:detail' c.patient.id %}" class="btn btn-sm btn-outline-info">
+                                {{ c.patient.patient_id }}
+                            </a>
+                        </td>
+                        <td>{{ c.patient.get_full_name|upper }}</td>
+                        <td>
+                            {{ c.patient.date_of_birth|date:"d.m.Y" }}<br>
+                            <span class="text-warning small">({{ c.age_display }})</span>
+                        </td>
+                        <td>{{ c.patient.get_gender_display }}</td>
+                        <td>{{ c.patient.tribe|default:"-" }}</td>
+                        <td>{{ c.patient.occupation|default:"-" }}</td>
+                        <td>{{ c.patient.get_marital_status_display|default:"-" }}</td>
+                        <td>{{ c.patient.lga|default:"-" }}</td>
+                        <td>{{ c.get_clinic_type_display|default:"-" }}</td>
+                        <td>{{ c.consultation_date|date:"d.m.Y H:i" }}</td>
+                        <td>{{ c.diagnosis|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="12" class="text-center text-muted py-4">No records found for the selected filters.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if page_obj.has_other_pages %}
+            <nav>
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?patient_no={{ filters.patient_no }}&diagnosis={{ filters.diagnosis }}&clinic={{ filters.clinic }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ page_obj.previous_page_number }}">Previous</a></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+                    {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?patient_no={{ filters.patient_no }}&diagnosis={{ filters.diagnosis }}&clinic={{ filters.clinic }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ page_obj.next_page_number }}">Next</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
