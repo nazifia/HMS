@@ -2123,6 +2123,21 @@ def outpatient_register(request):
         consultations = consultations.filter(clinic_type=clinic)
         admissions = admissions.none()
 
+    # All patients registered in the range, even without a consultation/admission.
+    from patients.models import Patient
+    registrations = Patient.objects.filter(
+        registration_date__gte=start,
+        registration_date__lt=end,
+    )
+    if patient_no:
+        registrations = registrations.filter(patient_id__icontains=patient_no)
+    # Registration-only rows have no diagnosis/clinic, so these filters exclude them.
+    if diagnosis or clinic:
+        registrations = registrations.none()
+    else:
+        seen = set(consultations.values_list('patient_id', flat=True)) | set(admissions.values_list('patient_id', flat=True))
+        registrations = registrations.exclude(id__in=seen)
+
     for c in consultations:
         c.row_date = c.consultation_date
         c.clinic_label = c.get_clinic_type_display() or '-'
@@ -2130,10 +2145,15 @@ def outpatient_register(request):
         a.row_date = a.admission_date
         ward = a.bed.ward.name if a.bed and a.bed.ward else ''
         a.clinic_label = f"INPATIENT ({ward})" if ward else 'INPATIENT'
+    for p in registrations:
+        p.row_date = p.registration_date
+        p.clinic_label = 'NEW REGISTRATION'
+        p.patient = p  # template reads row.patient.*
+        p.diagnosis = ''
 
-    # ponytail: in-memory merge of two querysets; fine at register scale,
+    # ponytail: in-memory merge of querysets; fine at register scale,
     # revisit with a DB union if a single day ever holds thousands of rows.
-    records = sorted(list(consultations) + list(admissions), key=lambda r: r.row_date)
+    records = sorted(list(consultations) + list(admissions) + list(registrations), key=lambda r: r.row_date)
 
     page_obj = Paginator(records, 50).get_page(request.GET.get('page'))
 
