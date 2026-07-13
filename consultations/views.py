@@ -2086,6 +2086,7 @@ def outpatient_register(request):
     patient_no = request.GET.get('patient_no', '').strip()
     diagnosis = request.GET.get('diagnosis', '').strip()
     clinic = request.GET.get('clinic', '').strip()
+    category = request.GET.get('category', '').strip()
     def _parse_date(value):
         try:
             return date.fromisoformat(value)
@@ -2114,6 +2115,9 @@ def outpatient_register(request):
     if patient_no:
         consultations = consultations.filter(patient__patient_id__icontains=patient_no)
         admissions = admissions.filter(patient__patient_id__icontains=patient_no)
+    if category:
+        consultations = consultations.filter(patient__patient_type=category)
+        admissions = admissions.filter(patient__patient_type=category)
     if diagnosis:
         consultations = consultations.filter(diagnosis__icontains=diagnosis)
         admissions = admissions.filter(diagnosis__icontains=diagnosis)
@@ -2131,6 +2135,8 @@ def outpatient_register(request):
     )
     if patient_no:
         registrations = registrations.filter(patient_id__icontains=patient_no)
+    if category:
+        registrations = registrations.filter(patient_type=category)
     # Registration-only rows have no diagnosis/clinic, so these filters exclude them.
     if diagnosis or clinic:
         registrations = registrations.none()
@@ -2170,7 +2176,8 @@ def outpatient_register(request):
     context = {
         'page_obj': page_obj,
         'clinic_choices': [c for c in CLINIC_TYPE_CHOICES if c[0]] + [('inpatient', 'Inpatient')],
-        'filters': {'patient_no': patient_no, 'diagnosis': diagnosis, 'clinic': clinic,
+        'category_choices': Patient.PATIENT_TYPE_CHOICES,
+        'filters': {'patient_no': patient_no, 'diagnosis': diagnosis, 'clinic': clinic, 'category': category,
                     'date_from': date_from.isoformat(), 'date_to': date_to.isoformat()},
         'total_count': page_obj.paginator.count,
     }
