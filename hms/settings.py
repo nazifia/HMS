@@ -15,12 +15,12 @@ import os
 from decimal import Decimal
 import sys
 
-# Apply Windows OSError patches FIRST, before Django loads
-if sys.platform == "win32":
-    try:
-        from core import django_patches
-    except ImportError:
-        pass  # Patches not available yet during initial setup
+# Apply patches FIRST, before Django loads (Windows OSError fixes are gated
+# inside the module; MySQL CONVERT_TZ fix applies on every platform)
+try:
+    from core import django_patches
+except ImportError:
+    pass  # Patches not available yet during initial setup
 
 # Fix for Python 3.13 timezone compatibility issue with django_celery_beat
 if sys.version_info >= (3, 13):

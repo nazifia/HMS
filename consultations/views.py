@@ -2080,7 +2080,7 @@ def department_referral_dashboard(request):
 @permission_required('consultations.view')
 def outpatient_register(request):
     """Out-patient register: filterable log of consultations (like the classic OPD register book)."""
-    from datetime import date
+    from datetime import date, datetime, time, timedelta
 
     today = timezone.localdate()
     patient_no = request.GET.get('patient_no', '').strip()
@@ -2095,9 +2095,14 @@ def outpatient_register(request):
     date_from = _parse_date(request.GET.get('date_from'))
     date_to = _parse_date(request.GET.get('date_to'))
 
+    # ponytail: avoid __date lookup — it needs MySQL tz tables (CONVERT_TZ) and
+    # returns no rows on hosts without them (e.g. PythonAnywhere).
+    tz = timezone.get_current_timezone()
+    start = datetime.combine(date_from, time.min, tzinfo=tz)
+    end = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=tz)
     consultations = Consultation.objects.select_related('patient').filter(
-        consultation_date__date__gte=date_from,
-        consultation_date__date__lte=date_to,
+        consultation_date__gte=start,
+        consultation_date__lt=end,
     ).order_by('consultation_date')
 
     if patient_no:

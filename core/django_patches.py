@@ -147,7 +147,56 @@ def _patch_django_logging():
         logger.error(f"Failed to patch Django logging: {e}")
 
 
+def patch_mysql_convert_tz():
+    """Make __date/__time/Trunc lookups work on MySQL servers without tz tables.
+
+    Django compiles `datetime_field__date=...` to CONVERT_TZ(col, 'UTC',
+    'Africa/Lagos'). With named zones, CONVERT_TZ returns NULL when the MySQL
+    server's timezone tables are empty (e.g. PythonAnywhere) — so every such
+    filter silently matches nothing. Numeric offsets ('+01:00') need no tz
+    tables, so rewrite both zone args as offsets.
+
+    ponytail: offset is computed at query time, so in DST regions dates near a
+    past DST boundary can shift by an hour. Africa/Lagos has no DST; load the
+    server tz tables and delete this patch if that ever matters.
+    """
+    try:
+        from django.db.backends.mysql.operations import DatabaseOperations
+    except ImportError:
+        return
+
+    import datetime
+    import zoneinfo
+
+    def _offset(tzname):
+        if not tzname or tzname[0] in '+-':
+            return tzname
+        try:
+            tz = zoneinfo.ZoneInfo(tzname)
+        except Exception:
+            return tzname
+        total = int((datetime.datetime.now(tz).utcoffset() or datetime.timedelta()).total_seconds())
+        sign = '+' if total >= 0 else '-'
+        total = abs(total)
+        return '%s%02d:%02d' % (sign, total // 3600, (total % 3600) // 60)
+
+    def _convert_field_to_tz(self, field_name, tzname):
+        from django.conf import settings
+        if tzname and settings.USE_TZ and self.connection.timezone_name != tzname:
+            field_name = "CONVERT_TZ(%s, '%s', '%s')" % (
+                field_name,
+                _offset(self.connection.timezone_name),
+                _offset(self._prepare_tzname_delta(tzname)),
+            )
+        return field_name
+
+    DatabaseOperations._convert_field_to_tz = _convert_field_to_tz
+    logger.info("MySQL CONVERT_TZ patched to use numeric offsets")
+
+
 # Auto-apply patches when module is imported
 if sys.platform == 'win32':
     patch_django_for_windows()
+
+patch_mysql_convert_tz()
 
