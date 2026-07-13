@@ -2079,7 +2079,7 @@ def department_referral_dashboard(request):
 @login_required
 @permission_required('consultations.view')
 def outpatient_register(request):
-    """Out-patient register: filterable log of consultations (like the classic OPD register book)."""
+    """Patient register: filterable log of all patients (registrations, consultations, admissions)."""
     from datetime import date, datetime, time, timedelta
 
     today = timezone.localdate()
@@ -2091,26 +2091,30 @@ def outpatient_register(request):
         try:
             return date.fromisoformat(value)
         except (TypeError, ValueError):
-            return today
+            return None
 
+    # No dates given = all time, so every registered patient shows by default.
     date_from = _parse_date(request.GET.get('date_from'))
     date_to = _parse_date(request.GET.get('date_to'))
 
     # ponytail: avoid __date lookup — it needs MySQL tz tables (CONVERT_TZ) and
     # returns no rows on hosts without them (e.g. PythonAnywhere).
     tz = timezone.get_current_timezone()
-    start = datetime.combine(date_from, time.min, tzinfo=tz)
-    end = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=tz)
-    consultations = Consultation.objects.select_related('patient').filter(
-        consultation_date__gte=start,
-        consultation_date__lt=end,
-    )
+    date_bounds = {}
+    if date_from:
+        date_bounds['gte'] = datetime.combine(date_from, time.min, tzinfo=tz)
+    if date_to:
+        date_bounds['lt'] = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=tz)
+
+    def _bound(qs, field):
+        for op, value in date_bounds.items():
+            qs = qs.filter(**{f'{field}__{op}': value})
+        return qs
+
+    consultations = _bound(Consultation.objects.select_related('patient'), 'consultation_date')
 
     from inpatient.models import Admission
-    admissions = Admission.objects.select_related('patient', 'bed__ward').filter(
-        admission_date__gte=start,
-        admission_date__lt=end,
-    )
+    admissions = _bound(Admission.objects.select_related('patient', 'bed__ward'), 'admission_date')
 
     if patient_no:
         consultations = consultations.filter(patient__patient_id__icontains=patient_no)
@@ -2129,10 +2133,7 @@ def outpatient_register(request):
 
     # All patients registered in the range, even without a consultation/admission.
     from patients.models import Patient
-    registrations = Patient.objects.filter(
-        registration_date__gte=start,
-        registration_date__lt=end,
-    )
+    registrations = _bound(Patient.objects.all(), 'registration_date')
     if patient_no:
         registrations = registrations.filter(patient_id__icontains=patient_no)
     if category:
@@ -2178,7 +2179,8 @@ def outpatient_register(request):
         'clinic_choices': [c for c in CLINIC_TYPE_CHOICES if c[0]] + [('inpatient', 'Inpatient')],
         'category_choices': Patient.PATIENT_TYPE_CHOICES,
         'filters': {'patient_no': patient_no, 'diagnosis': diagnosis, 'clinic': clinic, 'category': category,
-                    'date_from': date_from.isoformat(), 'date_to': date_to.isoformat()},
+                    'date_from': date_from.isoformat() if date_from else '',
+                    'date_to': date_to.isoformat() if date_to else ''},
         'total_count': page_obj.paginator.count,
     }
     return render(request, 'consultations/outpatient_register.html', context)

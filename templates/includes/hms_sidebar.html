@@ -144,7 +144,7 @@
                     <a class="collapse-item {% if '/consultations/list/' in request.path %}active{% endif %}" href="{% url 'consultations:consultation_list' %}">All Consultations</a>
                     <a class="collapse-item {% if '/consultations/patients/' in request.path %}active{% endif %}" href="{% url 'consultations:patient_list' %}">Create Consultation</a>
                     <a class="collapse-item {% if '/consultations/referrals/' in request.path %}active{% endif %}" href="{% url 'consultations:referral_list' %}">Referrals</a>
-                    <a class="collapse-item {% if '/consultations/register/outpatient/' in request.path %}active{% endif %}" href="{% url 'consultations:outpatient_register' %}">Out Patient Register</a>
+                    <a class="collapse-item {% if '/consultations/register/outpatient/' in request.path %}active{% endif %}" href="{% url 'consultations:outpatient_register' %}">Patient Register</a>
                     {% if user|has_permission:'consultations.create' %}
                     <a class="collapse-item {% if '/consultations/doctor/' in request.path %}active{% endif %}" href="{% url 'consultations:doctor_dashboard' %}">Doctor Dashboard</a>
                     {% endif %}

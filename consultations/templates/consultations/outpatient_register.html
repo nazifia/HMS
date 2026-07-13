@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 
-{% block title %}Out Patient Register{% endblock %}
+{% block title %}Patient Register{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-book-medical me-2 text-primary"></i>Out Patient Register
+            <i class="fas fa-book-medical me-2 text-primary"></i>Patient Register
         </h1>
         <button class="btn btn-outline-secondary" onclick="window.print()">
             <i class="fas fa-print"></i> Print
@@ -64,7 +64,7 @@
     <div class="card shadow mb-4">
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">
-                OUT PATIENT REGISTER ({{ filters.date_from }} - {{ filters.date_to }}) — {{ total_count }} record{{ total_count|pluralize }}
+                PATIENT REGISTER{% if filters.date_from or filters.date_to %} ({{ filters.date_from|default:"..." }} - {{ filters.date_to|default:"..." }}){% else %} (ALL TIME){% endif %} — {{ total_count }} record{{ total_count|pluralize }}
             </h6>
         </div>
         <div class="card-body table-responsive">
