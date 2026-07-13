@@ -2936,10 +2936,29 @@ def superuser_security_audit(request):
 @superuser_required
 def superuser_backup_restore(request):
     """Backup and restore operations"""
+    import os
+    import json
+    from django.conf import settings
+
+    backup_dir = os.path.join(settings.BASE_DIR, "backups")
+    backups = []
+    if os.path.exists(backup_dir):
+        for file in os.listdir(backup_dir):
+            if file.endswith(".meta"):
+                try:
+                    with open(os.path.join(backup_dir, file), "r") as f:
+                        metadata = json.load(f)
+                    metadata["size_kb"] = metadata.get("size", 0) / 1024
+                    backups.append(metadata)
+                except (OSError, ValueError):
+                    continue
+    backups.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
     return render(
         request,
         "accounts/superuser/backup_restore.html",
         {
+            "backups": backups,
             "page_title": "Backup & Restore",
             "active_nav": "backup_restore",
         },
@@ -2949,13 +2968,14 @@ def superuser_backup_restore(request):
 @superuser_required
 def create_backup(request):
     """Create database backup"""
-    import subprocess
+    import io
     import os
+    import re
+    import zipfile
     from django.conf import settings
     from django.utils import timezone
     import json
     from django.core.management import call_command
-    from django.http import HttpResponse
 
     if request.method == "POST":
         try:
@@ -2967,18 +2987,45 @@ def create_backup(request):
             backup_dir = os.path.join(settings.BASE_DIR, "backups")
             os.makedirs(backup_dir, exist_ok=True)
 
-            # Generate backup filename
+            # Generate backup filename (sanitize name — it becomes part of a path)
             timestamp = timezone.now().strftime("%Y%m%d_%H%M%S")
-            if backup_name:
-                filename = f"{backup_name}_{timestamp}.sql"
-            else:
-                filename = f"backup_{timestamp}.sql"
-
+            safe_name = re.sub(r"[^\w-]", "_", backup_name) or "backup"
+            extension = "zip" if include_media else "sql"
+            filename = f"{safe_name}_{timestamp}.{extension}"
             backup_path = os.path.join(backup_dir, filename)
 
-            # Create database backup using Django management command
-            with open(backup_path, "w") as f:
-                call_command("dumpdata", stdout=f)
+            # Dump flags chosen so a restore (flush + loaddata) round-trips:
+            # contenttypes/permissions are recreated by Django and clash on PK
+            dump_kwargs = {
+                "natural_foreign": True,
+                "natural_primary": True,
+                "exclude": [
+                    "contenttypes",
+                    "admin.logentry",
+                    "sessions.session",
+                ],
+            }
+
+            if include_media:
+                # Zip: DB dump + media files
+                dump = io.StringIO()
+                call_command("dumpdata", stdout=dump, **dump_kwargs)
+                with zipfile.ZipFile(backup_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                    zf.writestr("db.json", dump.getvalue())
+                    media_root = str(settings.MEDIA_ROOT or "")
+                    if media_root and os.path.isdir(media_root):
+                        for root, _dirs, files in os.walk(media_root):
+                            for name in files:
+                                file_path = os.path.join(root, name)
+                                archive_name = os.path.join(
+                                    "media", os.path.relpath(file_path, media_root)
+                                )
+                                zf.write(file_path, archive_name)
+            else:
+                # Plain JSON dump of the database (.sql extension kept for
+                # backward compatibility with existing backups)
+                with open(backup_path, "w") as f:
+                    call_command("dumpdata", stdout=f, **dump_kwargs)
 
             # Store backup metadata
             metadata = {
@@ -2987,6 +3034,7 @@ def create_backup(request):
                 "description": backup_description,
                 "created_at": timezone.now().isoformat(),
                 "include_media": include_media,
+                "type": extension.upper(),
                 "size": os.path.getsize(backup_path),
                 "user": request.user.username,
             }
@@ -3008,134 +3056,131 @@ def create_backup(request):
 
 @superuser_required
 def restore_backup(request):
-    """Restore database from backup"""
-    import subprocess
+    """Restore database (and media, for zip backups) from an uploaded backup"""
     import os
+    import shutil
+    import tempfile
+    import zipfile
     from django.conf import settings
-    import json
+    from django.core.management import call_command
+    from django.db import transaction
 
-    if request.method == "POST":
-        try:
-            backup_file = request.FILES.get("backup_file")
-            confirm_restore = request.POST.get("confirm_restore") == "on"
+    if request.method != "POST":
+        return redirect("accounts:superuser_backup_restore")
 
-            if not backup_file:
-                messages.error(request, "Please select a backup file.")
-                return redirect("accounts:superuser_backup_restore")
+    backup_file = request.FILES.get("backup_file")
+    confirm_restore = request.POST.get("confirm_restore") == "on"
 
-            if not confirm_restore:
-                messages.error(
-                    request,
-                    "Please confirm that you understand the restore will overwrite current data.",
-                )
-                return redirect("accounts:superuser_backup_restore")
+    if not backup_file:
+        messages.error(request, "Please select a backup file.")
+        return redirect("accounts:superuser_backup_restore")
 
-            # Save uploaded file temporarily
-            temp_dir = os.path.join(settings.BASE_DIR, "temp_restore")
-            os.makedirs(temp_dir, exist_ok=True)
+    if not confirm_restore:
+        messages.error(
+            request,
+            "Please confirm that you understand the restore will overwrite current data.",
+        )
+        return redirect("accounts:superuser_backup_restore")
 
-            temp_path = os.path.join(temp_dir, backup_file.name)
-            with open(temp_path, "wb+") as destination:
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            upload_path = os.path.join(temp_dir, "upload")
+            with open(upload_path, "wb+") as destination:
                 for chunk in backup_file.chunks():
                     destination.write(chunk)
 
-            # Process restore (simplified version - in production, you'd want more sophisticated restore)
-            messages.warning(
-                request,
-                "Restore functionality needs to be implemented with proper database migration handling.",
-            )
-            messages.info(
-                request,
-                f"File '{backup_file.name}' uploaded successfully. Manual restore required.",
-            )
+            name = backup_file.name.lower()
+            media_src = None
 
-            # Clean up temporary file
-            os.remove(temp_path)
+            if name.endswith(".zip"):
+                extract_dir = os.path.join(temp_dir, "extracted")
+                with zipfile.ZipFile(upload_path) as zf:
+                    zip_names = zf.namelist()
+                    if "db.json" not in zip_names:
+                        messages.error(
+                            request,
+                            "Not a valid HMS backup zip (missing db.json).",
+                        )
+                        return redirect("accounts:superuser_backup_restore")
+                    # Zip-slip guard: no absolute paths or '..' components
+                    for member in zip_names:
+                        parts = member.replace("\\", "/").split("/")
+                        if member.startswith(("/", "\\")) or ".." in parts:
+                            messages.error(
+                                request, "Backup zip contains unsafe file paths."
+                            )
+                            return redirect("accounts:superuser_backup_restore")
+                    zf.extractall(extract_dir)
+                fixture_path = os.path.join(extract_dir, "db.json")
+                media_src = os.path.join(extract_dir, "media")
+            elif name.endswith(".sql"):
+                # Our .sql backups are dumpdata JSON; loaddata picks the
+                # deserializer from the extension, so copy to .json
+                fixture_path = os.path.join(temp_dir, "db.json")
+                shutil.copyfile(upload_path, fixture_path)
+            else:
+                messages.error(
+                    request, "Unsupported backup file type (use .sql or .zip)."
+                )
+                return redirect("accounts:superuser_backup_restore")
 
-            return redirect("accounts:superuser_backup_restore")
+            # Wipe and reload inside one transaction: if loaddata fails,
+            # the flush rolls back and current data is untouched
+            from django.contrib.contenttypes.models import ContentType
 
-        except Exception as e:
-            messages.error(request, f"Error restoring backup: {str(e)}")
+            with transaction.atomic():
+                call_command("flush", interactive=False)
+                # flush recreates content types with new PKs; drop stale cache
+                ContentType.objects.clear_cache()
+                call_command("loaddata", fixture_path)
+
+            if media_src and os.path.isdir(media_src):
+                media_root = str(settings.MEDIA_ROOT or "")
+                if media_root:
+                    shutil.copytree(media_src, media_root, dirs_exist_ok=True)
+
+        messages.success(
+            request,
+            f"Database restored from '{backup_file.name}'. "
+            "All sessions were cleared — you may need to log in again.",
+        )
+
+    except Exception as e:
+        messages.error(request, f"Error restoring backup: {str(e)}")
 
     return redirect("accounts:superuser_backup_restore")
 
 
-@superuser_required
-def backup_list(request):
-    """Return HTML fragment of backup list"""
+def _safe_backup_path(backup_name):
+    """Resolve a backup filename inside the backups dir, rejecting traversal."""
     import os
-    import json
     from django.conf import settings
-    from django.http import HttpResponse
 
-    try:
-        backup_dir = os.path.join(settings.BASE_DIR, "backups")
-        backups = []
-
-        if os.path.exists(backup_dir):
-            for file in os.listdir(backup_dir):
-                if file.endswith(".meta"):
-                    metadata_path = os.path.join(backup_dir, file)
-                    with open(metadata_path, "r") as f:
-                        metadata = json.load(f)
-                        backups.append(metadata)
-
-        backups.sort(key=lambda x: x["created_at"], reverse=True)
-
-        html = ""
-        if backups:
-            for backup in backups:
-                html += f"""
-                <tr>
-                    <td>{backup["name"]}</td>
-                    <td>{backup["description"] or "N/A"}</td>
-                    <td>{backup["created_at"]}</td>
-                    <td>{backup["size"] / 1024:.2f} KB</td>
-                    <td>SQL</td>
-                    <td>
-                        <a href="/accounts/superuser/download-backup/{backup["filename"]}/" 
-                           class="btn btn-sm btn-primary me-1">
-                            <i class="fas fa-download"></i>
-                        </a>
-                        <button class="btn btn-sm btn-danger delete-backup" 
-                                data-backup-name="{backup["name"]}"
-                                data-url="/accounts/superuser/delete-backup/{backup["filename"]}/">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-                """
-        else:
-            html = """
-            <tr>
-                <td colspan="6" class="text-center text-muted">
-                    <i class="fas fa-inbox fa-3x mb-3"></i>
-                    <p>No backup files found. Create your first backup above.</p>
-                </td>
-            </tr>
-            """
-
-        return HttpResponse(html)
-
-    except Exception as e:
-        return HttpResponse(
-            f"<tr><td colspan='6'>Error loading backups: {str(e)}</td></tr>"
-        )
+    if os.path.basename(backup_name) != backup_name or not backup_name.endswith(
+        (".sql", ".zip")
+    ):
+        return None, None
+    backup_dir = os.path.join(settings.BASE_DIR, "backups")
+    return backup_dir, os.path.join(backup_dir, backup_name)
 
 
 @superuser_required
 def delete_backup(request, backup_name):
     """Delete a backup file"""
     import os
-    from django.conf import settings
+
+    if request.method != "POST":
+        return redirect("accounts:superuser_backup_restore")
 
     try:
-        backup_dir = os.path.join(settings.BASE_DIR, "backups")
-        backup_path = os.path.join(backup_dir, backup_name)
-        metadata_path = os.path.join(backup_dir, f"{backup_name}.meta")
+        backup_dir, backup_path = _safe_backup_path(backup_name)
+        if backup_path is None:
+            messages.error(request, "Invalid backup file name.")
+            return redirect("accounts:superuser_backup_restore")
 
         if os.path.exists(backup_path):
             os.remove(backup_path)
+        metadata_path = f"{backup_path}.meta"
         if os.path.exists(metadata_path):
             os.remove(metadata_path)
 
@@ -3151,14 +3196,11 @@ def delete_backup(request, backup_name):
 def download_backup(request, backup_name):
     """Download a backup file"""
     import os
-    from django.conf import settings
     from django.http import HttpResponse, Http404
 
     try:
-        backup_dir = os.path.join(settings.BASE_DIR, "backups")
-        backup_path = os.path.join(backup_dir, backup_name)
-
-        if not os.path.exists(backup_path):
+        backup_dir, backup_path = _safe_backup_path(backup_name)
+        if backup_path is None or not os.path.exists(backup_path):
             raise Http404("Backup file not found")
 
         with open(backup_path, "rb") as f:

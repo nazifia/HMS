@@ -5,11 +5,15 @@ from .models import Patient, PatientWallet
 
 @receiver(post_save, sender=Patient)
 def create_patient_wallet(sender, instance, created, **kwargs):
+    if kwargs.get('raw'):  # fixture loading: wallets come from the fixture
+        return
     if created:
         PatientWallet.objects.create(patient=instance)
 
 @receiver(post_save, sender=Patient)
 def save_patient_wallet(sender, instance, **kwargs):
+    if kwargs.get('raw'):
+        return
     if hasattr(instance, 'wallet'):
         instance.wallet.save()
 

@@ -33,6 +33,8 @@ def capture_payment_original_values(sender, instance, **kwargs):
 @receiver(post_save, sender=Payment)
 def handle_payment_wallet_operations(sender, instance, created, **kwargs):
     """Handle wallet deductions/refunds when payments are created or updated."""
+    if kwargs.get('raw'):  # fixture loading: wallet state comes from the fixture
+        return
     if instance.payment_method != 'wallet':
         # Check if payment method changed FROM wallet to something else
         if hasattr(instance, '_original_payment_method') and instance._original_payment_method == 'wallet':
@@ -75,6 +77,8 @@ def handle_payment_deletion_wallet_refund(sender, instance, **kwargs):
 @receiver(post_save, sender=Payment)
 def update_invoice_after_payment_save(sender, instance, created, **kwargs):
     """Update invoice's amount_paid and status whenever a payment is saved."""
+    if kwargs.get('raw'):
+        return
     invoice = instance.invoice
 
     # Recalculate invoice total from ALL payments (not just wallet)
@@ -128,6 +132,8 @@ def capture_admission_original_values(sender, instance, **kwargs):
 @receiver(post_save, sender=Admission)
 def handle_admission_wallet_debit(sender, instance, created, **kwargs):
     """Automatically deduct admission fees from patient's wallet when created or updated."""
+    if kwargs.get('raw'):  # fixture loading: wallet state comes from the fixture
+        return
     # Only process admitted patients with a bed
     if instance.status != 'admitted' or not instance.bed:
         return

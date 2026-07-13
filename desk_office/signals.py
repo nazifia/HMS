@@ -7,6 +7,8 @@ from django.contrib.auth.models import Group
 
 @receiver(post_save, sender=Invoice)
 def create_authorization_code_for_invoice(sender, instance, created, **kwargs):
+    if kwargs.get('raw'):  # fixture loading: codes come from the fixture
+        return
     if instance.status == 'paid':
         for item in instance.items.all():
             # Skip items without a service (custom items)

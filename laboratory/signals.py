@@ -14,6 +14,8 @@ def update_revenue_on_test_result_save(sender, instance, created, **kwargs):
     Update revenue analysis when a test result is created or updated.
     This ensures revenue calculations reflect the latest test completion status.
     """
+    if kwargs.get('raw'):  # fixture loading: statuses come from the fixture
+        return
     # Clear revenue-related cache keys
     cache_keys_to_clear = [
         'lab_revenue_daily',
@@ -69,6 +71,8 @@ def update_revenue_on_payment(sender, instance, created, **kwargs):
     """
     Update revenue analysis when a payment is made for laboratory services.
     """
+    if kwargs.get('raw'):  # fixture loading: invoice totals come from the fixture
+        return
     # Check if this payment is for a laboratory invoice
     if hasattr(instance.invoice, 'lab_test_request'):
         # Clear revenue-related cache keys

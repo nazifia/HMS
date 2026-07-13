@@ -78,6 +78,8 @@ def create_active_store_for_dispensary(sender, instance, created, **kwargs):
     """
     Automatically create an ActiveStore when a new Dispensary is created.
     """
+    if kwargs.get('raw'):  # fixture loading: active stores come from the fixture
+        return
     if created:
         try:
             with transaction.atomic():

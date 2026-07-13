@@ -122,12 +122,35 @@
                                 </tr>
                             </thead>
                             <tbody id="backup-list-container">
+                                {% for backup in backups %}
+                                <tr>
+                                    <td>{{ backup.name }}</td>
+                                    <td>{{ backup.description|default:"N/A" }}</td>
+                                    <td>{{ backup.created_at }}</td>
+                                    <td>{{ backup.size_kb|floatformat:2 }} KB</td>
+                                    <td>{{ backup.type|default:"SQL" }}</td>
+                                    <td>
+                                        <a href="{% url 'accounts:download_backup' backup.filename %}"
+                                           class="btn btn-sm btn-primary me-1" title="Download">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                        <form method="post" action="{% url 'accounts:delete_backup' backup.filename %}"
+                                              class="d-inline delete-backup-form" data-backup-name="{{ backup.name }}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
                                 <tr>
                                     <td colspan="6" class="text-center text-muted">
                                         <i class="fas fa-inbox fa-3x mb-3"></i>
                                         <p>No backup files found. Create your first backup above.</p>
                                     </td>
                                 </tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     </div>
@@ -164,14 +187,11 @@
 // Using vanilla JavaScript to avoid jQuery conflicts with HTMX
 document.addEventListener('DOMContentLoaded', function() {
     // Add confirmation for delete operations
-    const deleteButtons = document.querySelectorAll('.delete-backup');
-    deleteButtons.forEach(function(button) {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
+    document.querySelectorAll('.delete-backup-form').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
             const backupName = this.getAttribute('data-backup-name');
-            const deleteUrl = this.getAttribute('data-url');
-            if (confirm(`Are you sure you want to delete backup "${backupName}"? This action cannot be undone.`)) {
-                window.location.href = deleteUrl;
+            if (!confirm(`Are you sure you want to delete backup "${backupName}"? This action cannot be undone.`)) {
+                e.preventDefault();
             }
         });
     });

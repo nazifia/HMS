@@ -206,7 +206,6 @@ urlpatterns = [
     ),
     path("superuser/create-backup/", views.create_backup, name="create_backup"),
     path("superuser/restore-backup/", views.restore_backup, name="restore_backup"),
-    path("superuser/backup-list/", views.backup_list, name="backup_list"),
     path(
         "superuser/delete-backup/<str:backup_name>/",
         views.delete_backup,

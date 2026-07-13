@@ -10,6 +10,10 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
     """
     Signal receiver to create or update user profile when a CustomUser is saved.
     """
+    if kwargs.get("raw"):
+        # Fixture loading (loaddata/restore): profiles come from the fixture,
+        # auto-creating one here collides with the unique user_id constraint
+        return
     if created:
         # Create profile for new user
         CustomUserProfile.objects.create(user=instance)

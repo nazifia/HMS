@@ -9,6 +9,8 @@ def update_user_profile_role(sender, instance, created, **kwargs):
     """
     When a doctor is created or updated, ensure the user has the 'doctor' role
     """
+    if kwargs.get('raw'):  # fixture loading: roles come from the fixture
+        return
     if instance.user:
         from accounts.models import Role
         doctor_role, _ = Role.objects.get_or_create(name='doctor')

@@ -16,6 +16,8 @@ def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwar
     2. Create a wallet payment (which triggers billing signals to deduct from wallet)
     3. Update admission billed_amount if wallet deduction succeeds
     """
+    if kwargs.get('raw'):  # fixture loading: invoices/wallets come from the fixture
+        return
     if created:
         try:
             # Check if patient is NHIA - NHIA patients are exempt from admission fees

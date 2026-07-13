@@ -37,7 +37,7 @@ def seed_clinic_rooms_for(hospital):
 
 @receiver(post_save, sender=Hospital, dispatch_uid="seed_clinic_rooms")
 def create_clinic_rooms(sender, instance, created, **kwargs):
-    if not created:
+    if kwargs.get('raw') or not created:  # raw = fixture loading
         return
     # Departments must exist before rooms can point at them. The signup view
     # also seeds departments; both calls are idempotent.
