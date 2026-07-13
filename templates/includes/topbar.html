@@ -128,6 +128,21 @@
         </li>
         {% endif %}
 
+        <!-- Service Point Display (reception/records/cashier desks) -->
+        {% if request.session.selected_service_point_id and user.is_authenticated and user.is_active %}
+        <li class="nav-item">
+            <span class="nav-link text-info">
+                <i class="fas fa-map-marker-alt fa-sm fa-fw mr-2"></i>
+                <span>
+                    {{ request.session.selected_service_point_name|default:"Service Point" }}
+                </span>
+                <a href="{% url 'core:select_service_point' %}" class="ml-2 text-danger" title="Change service point">
+                    <i class="fas fa-exchange-alt"></i>
+                </a>
+            </span>
+        </li>
+        {% endif %}
+
         <div class="topbar-divider d-none d-sm-block"></div>
 
         <!-- Nav Item - User Information -->

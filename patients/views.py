@@ -33,6 +33,7 @@ from .forms import (
 )
 from .utils import get_safe_vitals_for_patient
 from accounts.permissions import permission_required, user_has_permission
+from core.service_point_views import service_point_required
 from appointments.models import Appointment
 from consultations.models import Consultation
 from pharmacy.models import Prescription
@@ -171,6 +172,7 @@ def patient_list(request):
 
 @login_required
 @permission_required("patients.create")
+@service_point_required
 def register_patient(request):
     """View for registering a new patient"""
     if request.method == "POST":
@@ -207,7 +209,12 @@ def register_patient(request):
                 )
             return redirect("patients:detail", patient_id=patient.id)
     else:
-        form = PatientForm(initial={"is_active": True})
+        initial = {"is_active": True}
+        # Default the registration desk to the staff member's logged-in service point.
+        selected_point_id = request.session.get("selected_service_point_id")
+        if selected_point_id:
+            initial["service_point"] = selected_point_id
+        form = PatientForm(initial=initial)
 
     context = {
         "form": form,

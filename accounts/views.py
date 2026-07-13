@@ -1,5 +1,6 @@
 import logging
 import json
+from urllib.parse import quote
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User, Permission
@@ -189,6 +190,9 @@ def custom_login_view(request):
             # Clear any existing pharmacy dispensary session on new login
             request.session.pop("selected_dispensary_id", None)
             request.session.pop("selected_dispensary_name", None)
+            # Clear any existing service point session on new login
+            request.session.pop("selected_service_point_id", None)
+            request.session.pop("selected_service_point_name", None)
 
             login(request, user)
 
@@ -215,6 +219,23 @@ def custom_login_view(request):
                 require_https=request.is_secure(),
             ):
                 next_page = "dashboard:dashboard"
+
+            # Service-point staff (receptionist, records, cashier/accountant)
+            # sign in to their desk before proceeding. Auto-selects when the
+            # user has exactly one assigned point.
+            from core.service_point_views import SERVICE_POINT_ROLES
+
+            role = getattr(getattr(user, "profile", None), "role", None)
+            if (
+                not user.is_superuser
+                and role in SERVICE_POINT_ROLES
+                and user.service_points.filter(is_active=True).exists()
+            ):
+                select_url = reverse("core:select_service_point")
+                if next_page != "dashboard:dashboard":
+                    select_url += f"?next={quote(next_page)}"
+                return redirect(select_url)
+
             return redirect(next_page)
     else:
         form = CustomLoginForm()
@@ -256,6 +277,9 @@ def custom_logout_view(request):
         del request.session["selected_dispensary_id"]
     if "selected_dispensary_name" in request.session:
         del request.session["selected_dispensary_name"]
+    # Clear service point session before logout
+    request.session.pop("selected_service_point_id", None)
+    request.session.pop("selected_service_point_name", None)
 
     # Perform logout
     logout(request)

@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Select Service Point - HMS{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Select Your Service Point</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Choose the desk you are working at for this session.</p>
+
+                    {% if current_selection %}
+                    <div class="alert alert-info py-2">
+                        Currently signed in at: <strong>{{ current_selection.name }}</strong>
+                    </div>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+                        <div class="list-group mb-3">
+                            {% for point in service_points %}
+                            <label class="list-group-item d-flex align-items-center gap-2">
+                                <input class="form-check-input flex-shrink-0" type="radio"
+                                       name="service_point_id" value="{{ point.id }}"
+                                       {% if current_selection and current_selection.id == point.id %}checked{% elif forloop.first and not current_selection %}checked{% endif %}>
+                                <span>
+                                    <strong>{{ point.name }}</strong>
+                                    <span class="badge bg-secondary ms-1">{{ point.get_point_type_display }}</span>
+                                    {% if point.department %}<small class="text-muted d-block">{{ point.department.name }}</small>{% endif %}
+                                    {% if point.location %}<small class="text-muted d-block">{{ point.location }}</small>{% endif %}
+                                </span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-sign-in-alt me-1"></i> Start Working Here
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

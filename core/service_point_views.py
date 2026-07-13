@@ -18,6 +18,118 @@ from accounts.models import CustomUser, Department
 
 from .models import ServicePoint
 
+# Roles that work at a service point and must select one after login.
+SERVICE_POINT_ROLES = (
+    'receptionist',
+    'health_record_officer',
+    'accountant',
+    'cashier_accountant',
+)
+
+
+def require_service_point(request):
+    """
+    For views that record a service point (registration, routing): if the user
+    is desk staff with assigned points but hasn't signed in at one, return a
+    redirect to the selector (preserving the current URL as next); else None.
+    """
+    if request.session.get('selected_service_point_id') or request.user.is_superuser:
+        return None
+    role = getattr(getattr(request.user, 'profile', None), 'role', None)
+    if role not in SERVICE_POINT_ROLES:
+        return None
+    if not request.user.service_points.filter(is_active=True).exists():
+        return None
+    from urllib.parse import quote
+    from django.urls import reverse
+    messages.info(request, 'Select your service point to continue.')
+    return redirect(f"{reverse('core:select_service_point')}?next={quote(request.get_full_path())}")
+
+
+def service_point_required(view_func):
+    """Decorator: desk staff must sign in at a service point before this view."""
+    from functools import wraps
+
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        desk_redirect = require_service_point(request)
+        if desk_redirect:
+            return desk_redirect
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
+
+
+def get_selected_service_point(request):
+    """Return the ServicePoint stored in the session, or None."""
+    point_id = request.session.get('selected_service_point_id')
+    if not point_id:
+        return None
+    try:
+        return ServicePoint.objects.get(id=point_id, is_active=True)
+    except ServicePoint.DoesNotExist:
+        request.session.pop('selected_service_point_id', None)
+        request.session.pop('selected_service_point_name', None)
+        return None
+
+
+def set_session_service_point(request, point):
+    request.session['selected_service_point_id'] = point.id
+    request.session['selected_service_point_name'] = point.name
+
+
+@login_required
+def select_service_point(request):
+    """
+    Post-login desk selection for reception/records/billing staff.
+
+    GET: show assigned points (auto-select when exactly one).
+    POST: store the chosen point in the session.
+    """
+    if request.user.is_superuser:
+        points = ServicePoint.objects.filter(is_active=True)
+    else:
+        points = request.user.service_points.filter(is_active=True)
+    points = points.select_related('department')
+
+    next_url = request.GET.get('next') or request.POST.get('next') or ''
+
+    if not points.exists():
+        messages.warning(
+            request,
+            'You are not assigned to any service point. '
+            'Contact an administrator to be assigned to one.',
+        )
+        return redirect('dashboard:dashboard')
+
+    if request.method == 'POST':
+        point = points.filter(id=request.POST.get('service_point_id')).first()
+        if point is None:
+            messages.error(request, 'Invalid service point selected.')
+        else:
+            set_session_service_point(request, point)
+            messages.success(request, f"You are now working at '{point.name}'.")
+            from django.utils.http import url_has_allowed_host_and_scheme
+            if next_url and url_has_allowed_host_and_scheme(
+                next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+            ):
+                return redirect(next_url)
+            return redirect('dashboard:dashboard')
+
+    # Auto-select when the user has exactly one point and none chosen yet.
+    if points.count() == 1 and not request.session.get('selected_service_point_id'):
+        point = points.first()
+        set_session_service_point(request, point)
+        messages.success(request, f"Automatically signed in at '{point.name}'.")
+        return redirect(next_url or 'dashboard:dashboard')
+
+    return render(request, 'core/select_service_point.html', {
+        'service_points': points,
+        'current_selection': get_selected_service_point(request),
+        'next': next_url,
+        'page_title': 'Select Service Point',
+    })
+
 
 class ServicePointForm(forms.ModelForm):
     class Meta:

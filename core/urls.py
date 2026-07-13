@@ -13,6 +13,7 @@ app_name = 'core'
 urlpatterns = [
     # Service Points (reception/records routing desks)
     path('service-points/', service_point_views.service_point_list, name='service_point_list'),
+    path('service-points/select/', service_point_views.select_service_point, name='select_service_point'),
     path('service-points/create/', service_point_views.service_point_create, name='service_point_create'),
     path('service-points/<int:pk>/edit/', service_point_views.service_point_edit, name='service_point_edit'),
 

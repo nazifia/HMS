@@ -19,6 +19,7 @@ from patients.models import Patient, Vitals, ClinicalNote
 from patients.utils import get_safe_vitals_for_patient, get_latest_safe_vitals_for_patient
 from appointments.models import Appointment
 from core.audit_utils import log_audit_action
+from core.service_point_views import service_point_required
 from core.models import send_notification_email, send_notification_sms, InternalNotification
 
 
@@ -1653,12 +1654,17 @@ def waiting_list(request):
 
 @login_required
 @permission_required('consultations.create')
+@service_point_required
 def add_to_waiting_list(request, patient_id=None):
     """View for adding a patient to the waiting list"""
     initial_data = {}
     if patient_id:
         patient = get_object_or_404(Patient, id=patient_id)
         initial_data['patient'] = patient
+    # Default routing desk to the staff member's logged-in service point.
+    selected_point_id = request.session.get('selected_service_point_id')
+    if selected_point_id:
+        initial_data['service_point'] = selected_point_id
 
     if request.method == 'POST':
         form = WaitingListForm(request.POST, initial=initial_data, user=request.user)
