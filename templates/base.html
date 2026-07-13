@@ -893,7 +893,9 @@
         });
     </script>
 
-    <!-- Auto Logout for Inactive Users -->
+    <!-- Auto Logout for Inactive Users (authenticated pages only: on the login
+         page this script fired bogus logout POSTs / redirect loops) -->
+    {% if user.is_authenticated %}
     <script>
         $(document).ready(function() {
             // Auto logout configuration
@@ -1165,7 +1167,9 @@
             */
 
         });
-
+    </script>
+    {% endif %}
+    <script>
         // Patient context management functions
         function clearPatientContext() {
             if (confirm('Are you sure you want to clear the current patient context?')) {

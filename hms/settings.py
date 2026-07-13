@@ -641,7 +641,11 @@ SESSION_COOKIE_AGE = int(
     os.environ.get("SESSION_COOKIE_AGE", "3600")
 )  # 1 hour default
 SESSION_COOKIE_NAME = "hms_sessionid"
-SESSION_SAVE_EVERY_REQUEST = False
+# Sliding expiry: refresh the session on every request so active users are
+# never logged out mid-work. With this False the expiry is frozen at login
+# time (SESSION_COOKIE_AGE later), which bounced busy users back to the
+# login page exactly 1 hour after signing in.
+SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Session expires when browser closes
 SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access to session cookie
 
