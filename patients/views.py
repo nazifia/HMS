@@ -273,7 +273,7 @@ def patient_detail(request, patient_id):
     medical_histories = MedicalHistory.objects.filter(patient=patient).order_by("-date")
     clinical_notes = (
         ClinicalNote.objects.filter(patient=patient)
-        .select_related("doctor")
+        .select_related("doctor", "department")
         .order_by("-date")
     )
 

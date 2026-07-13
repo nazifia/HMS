@@ -1244,7 +1244,7 @@ class ClinicalNoteForm(forms.ModelForm):
 
     class Meta:
         model = ClinicalNote
-        fields = CLERKING_FIELDS + ['note', 'doctor']
+        fields = CLERKING_FIELDS + ['note', 'department', 'clinic_type', 'doctor']
         widgets = clerking_widgets()
         labels = CLERKING_LABELS
 

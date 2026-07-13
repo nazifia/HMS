@@ -1682,6 +1682,28 @@ class ClinicalNote(NigerianClerkingNote, TenantModel):
         related_name="clinical_notes",
     )
     note = models.TextField(blank=True, default="", help_text="Additional notes / remarks")
+    department = models.ForeignKey(
+        "accounts.Department",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="clinical_notes",
+        help_text="Department where the patient was seen",
+    )
+    # ponytail: duplicated from consultations.CLINIC_TYPE_CHOICES (importing would be circular)
+    CLINIC_TYPE_CHOICES = (
+        ("", "N/A (General)"),
+        ("mopd", "MOPD (Medical Outpatient)"),
+        ("sopd", "SOPD (Surgical Outpatient)"),
+        ("popd", "POPD (Pediatric Outpatient)"),
+    )
+    clinic_type = models.CharField(
+        max_length=10,
+        choices=CLINIC_TYPE_CHOICES,
+        blank=True,
+        default="",
+        help_text="Outpatient clinic where the patient was seen",
+    )
     date = models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
