@@ -16,6 +16,9 @@ urlpatterns = [
     path('service-points/create/', service_point_views.service_point_create, name='service_point_create'),
     path('service-points/<int:pk>/edit/', service_point_views.service_point_edit, name='service_point_edit'),
 
+    # Database export (superuser only)
+    path('export-database/', views.export_database, name='export_database'),
+
     path('notifications/', views.notifications_list, name='notifications_list'),
     path('notifications/<int:notification_id>/read/', views.mark_notification_read, name='mark_notification_read'),
     path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark_all_read'),

@@ -109,6 +109,9 @@
                     <a class="collapse-item {% if 'role_demo' in request.path %}active{% endif %}" href="{% url 'accounts:role_demo' %}">
                         <i class="fas fa-flask me-2"></i>Role Demo
                     </a>
+                    <a class="collapse-item" href="{% url 'core:export_database' %}">
+                        <i class="fas fa-database me-2"></i>Export Database
+                    </a>
                     {% endif %}
                 </div>
             </div>

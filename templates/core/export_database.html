@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Export Database - Hospital Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800"><i class="fas fa-database me-2"></i>Export Database</h1>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Choose export format</h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <a href="?type=json" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong><i class="fas fa-file-code me-2"></i>JSON Fixture</strong>
+                                <div class="small text-muted">All data as Django fixture. Restore on any database engine with <code>manage.py loaddata</code>.</div>
+                            </div>
+                            <span class="badge bg-primary">Recommended for migration</span>
+                        </a>
+                        <a href="?type=zip" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong><i class="fas fa-file-archive me-2"></i>Full ZIP (data + media)</strong>
+                                <div class="small text-muted">JSON fixture plus all uploaded files (photos, documents) in one archive.</div>
+                            </div>
+                            <span class="badge bg-secondary">Complete backup</span>
+                        </a>
+                        {% if is_sqlite %}
+                        <a href="?type=sqlite" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong><i class="fas fa-hdd me-2"></i>Raw SQLite File</strong>
+                                <div class="small text-muted">Consistent snapshot of the database file. Fastest; SQLite-to-SQLite only.</div>
+                            </div>
+                            <span class="badge bg-secondary">Exact copy</span>
+                        </a>
+                        {% endif %}
+                    </div>
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Exports contain all patient and financial records. Store the downloaded file securely.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

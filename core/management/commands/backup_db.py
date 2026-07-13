@@ -14,6 +14,12 @@ class Command(BaseCommand):
             default=None,
             help='Directory where backup will be stored',
         )
+        parser.add_argument(
+            '--keep',
+            type=int,
+            default=0,
+            help='Keep only the N most recent backups in the output dir (0 = keep all)',
+        )
 
     def handle(self, *args, **options):
         # Get the database settings
@@ -36,13 +42,16 @@ class Command(BaseCommand):
             backup_file = os.path.join(output_dir, f'db_backup_{timestamp}.sqlite3')
             
             try:
-                # Use sqlite3 .backup command
                 self.stdout.write(self.style.SUCCESS(f'Backing up SQLite database to {backup_file}...'))
-                
-                # Simple file copy for SQLite
-                import shutil
-                shutil.copy2(db_path, backup_file)
-                
+
+                # sqlite3 backup API = consistent snapshot even while server writes
+                # (plain file copy can capture a mid-transaction, corrupt state).
+                import sqlite3
+                from contextlib import closing
+                with closing(sqlite3.connect(str(db_path))) as src, \
+                     closing(sqlite3.connect(backup_file)) as dst:
+                    src.backup(dst)
+
                 self.stdout.write(self.style.SUCCESS('Database backup completed successfully!'))
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f'Error backing up database: {e}'))
@@ -87,3 +96,15 @@ class Command(BaseCommand):
         
         else:
             self.stdout.write(self.style.ERROR(f'Unsupported database engine: {db_engine}'))
+            return
+
+        keep = options['keep']
+        if keep > 0:
+            backups = sorted(
+                Path(output_dir).glob('db_backup_*'),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            for old in backups[keep:]:
+                old.unlink()
+                self.stdout.write(f'Pruned old backup: {old.name}')

@@ -45,3 +45,6 @@ test_output.log
 
 # Serena MCP tool files
 .serena/
+
+# Nightly DB backups
+backups/

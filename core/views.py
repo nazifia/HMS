@@ -516,3 +516,115 @@ def mark_notification_read(request, notification_id):
             },
             status=500,
         )
+
+
+def _stream_and_delete(path, chunk_size=1024 * 1024):
+    """Yield a file in chunks, deleting it when done (or aborted)."""
+    import os
+    try:
+        with open(path, "rb") as f:
+            while True:
+                data = f.read(chunk_size)
+                if not data:
+                    break
+                yield data
+    finally:
+        os.remove(path)
+
+
+def _dump_fixture_to(path):
+    """Run dumpdata into a file on disk (not RAM)."""
+    from django.core.management import call_command
+    with open(path, "w", encoding="utf-8") as out:
+        call_command(
+            "dumpdata",
+            natural_foreign=True,
+            natural_primary=True,
+            exclude=["contenttypes", "auth.permission", "sessions", "admin.logentry"],
+            indent=2,
+            stdout=out,
+        )
+
+
+@login_required
+def export_database(request):
+    """Database export page + download for migration. Superuser only.
+
+    ?type=json   - dumpdata JSON fixture (default)
+    ?type=zip    - JSON fixture + all media files in one ZIP
+    ?type=sqlite - consistent snapshot of the SQLite DB file
+    """
+    import os
+    import sqlite3
+    import tempfile
+    import zipfile
+    from django.conf import settings
+    from django.http import HttpResponseForbidden, HttpResponseBadRequest, StreamingHttpResponse
+    from django.utils import timezone as tz
+    from .audit_utils import log_audit_action
+
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("Superuser access required.")
+
+    export_type = request.GET.get("type")
+    if export_type is None:
+        db_engine = settings.DATABASES["default"]["ENGINE"]
+        return render(request, "core/export_database.html", {
+            "is_sqlite": db_engine.endswith("sqlite3"),
+        })
+
+    stamp = tz.now().strftime("%Y%m%d_%H%M%S")
+    tmp_fd, tmp_path = tempfile.mkstemp(prefix="hms_export_")
+    os.close(tmp_fd)
+
+    try:
+        if export_type == "json":
+            _dump_fixture_to(tmp_path)
+            filename = f"hms_export_{stamp}.json"
+            content_type = "application/json"
+
+        elif export_type == "zip":
+            with zipfile.ZipFile(tmp_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                fixture_fd, fixture_path = tempfile.mkstemp(prefix="hms_fixture_")
+                os.close(fixture_fd)
+                try:
+                    _dump_fixture_to(fixture_path)
+                    zf.write(fixture_path, "hms_export.json")
+                finally:
+                    os.remove(fixture_path)
+                media_root = str(settings.MEDIA_ROOT or "")
+                if media_root and os.path.isdir(media_root):
+                    for root, _dirs, files in os.walk(media_root):
+                        for name in files:
+                            full = os.path.join(root, name)
+                            zf.write(full, os.path.join("media", os.path.relpath(full, media_root)))
+            filename = f"hms_export_{stamp}.zip"
+            content_type = "application/zip"
+
+        elif export_type == "sqlite":
+            db = settings.DATABASES["default"]
+            if not db["ENGINE"].endswith("sqlite3"):
+                return HttpResponseBadRequest("Database is not SQLite; use JSON export.")
+            # sqlite3 backup API = consistent copy even while server writes.
+            # closing() needed: sqlite's "with" commits but never closes, and
+            # Windows can't delete a file with an open handle.
+            from contextlib import closing
+            with closing(sqlite3.connect(str(db["NAME"]))) as src, \
+                 closing(sqlite3.connect(tmp_path)) as dst:
+                src.backup(dst)
+            filename = f"hms_db_{stamp}.sqlite3"
+            content_type = "application/x-sqlite3"
+
+        else:
+            return HttpResponseBadRequest("Unknown export type.")
+    except Exception:
+        os.remove(tmp_path)
+        raise
+
+    log_audit_action(request.user, "export", request.user,
+                     f"Full database export downloaded (type={export_type})")
+
+    response = StreamingHttpResponse(_stream_and_delete(tmp_path), content_type=content_type)
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Content-Length"] = os.path.getsize(tmp_path)
+    return response
