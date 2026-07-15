@@ -21,9 +21,38 @@
         </div>
     </div>
 
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow p-3 text-center">
+                <h6 class="text-success">Total Income</h6>
+                <h4>₦{{ total_income|floatformat:2 }}</h4>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow p-3 text-center">
+                <h6 class="text-danger">Total Expenses</h6>
+                <h4>₦{{ total_expense|floatformat:2 }}</h4>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow p-3 text-center">
+                <h6 class="{% if net_profit >= 0 %}text-success{% else %}text-danger{% endif %}">Net Profit/Loss</h6>
+                <h4>₦{{ net_profit|floatformat:2 }}</h4>
+            </div>
+        </div>
+    </div>
+
     <div class="card shadow mb-4">
-        <div class="card-header py-3">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">Financial Report</h6>
+            <div>
+                <a href="{% url 'reporting:export_csv' 'financial' %}?{{ request.GET.urlencode }}" class="btn btn-sm btn-outline-success">
+                    <i class="fas fa-file-csv"></i> CSV
+                </a>
+                <a href="{% url 'reporting:export_pdf' 'financial' %}?{{ request.GET.urlencode }}" class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </a>
+            </div>
         </div>
         <div class="card-body">
             <div class="table-responsive">

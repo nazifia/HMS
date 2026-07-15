@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{{ title }}</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filter by Date</h6>
+        </div>
+        <div class="card-body">
+            <form method="get">
+                <div class="row">
+                    <div class="col-md-4">{{ form.start_date.label_tag }} {{ form.start_date }}</div>
+                    <div class="col-md-4">{{ form.end_date.label_tag }} {{ form.end_date }}</div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Filter</button>
+                <a href="{% url 'reporting:export_csv' 'medical' %}?{{ request.GET.urlencode }}" class="btn btn-outline-secondary mt-3">
+                    <i class="fas fa-file-csv mr-1"></i>Export CSV
+                </a>
+                <a href="{% url 'reporting:export_pdf' 'medical' %}?{{ request.GET.urlencode }}" class="btn btn-outline-secondary mt-3">
+                    <i class="fas fa-file-pdf mr-1"></i>Export PDF
+                </a>
+            </form>
+        </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Deliveries</div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_deliveries }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Deaths</div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_deaths }}</div>
+                    <small class="text-muted">Mortality rate: {{ mortality_rate }}%</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Admissions</div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_admissions }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Discharges</div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_discharges }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly trend -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Monthly Trend — Deliveries vs Deaths</h6>
+        </div>
+        <div class="card-body">
+            {% if trend %}
+            <div style="height: 320px;">
+                <canvas id="trendChart"></canvas>
+            </div>
+            {% else %}
+            <p class="text-center text-muted mb-0">No data in this period.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Deliveries by mode -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">Deliveries by Mode</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead><tr><th>Mode of Delivery</th><th>Count</th></tr></thead>
+                            <tbody>
+                                {% for row in delivery_modes %}
+                                <tr><td>{{ row.mode_of_delivery }}</td><td>{{ row.count }}</td></tr>
+                                {% empty %}
+                                <tr><td colspan="2" class="text-center">No delivery data in this period.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deaths by ward -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-danger">Deaths by Ward</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead><tr><th>Ward</th><th>Count</th></tr></thead>
+                            <tbody>
+                                {% for row in deaths_by_ward %}
+                                <tr><td>{{ row.bed__ward__name|default:"Unassigned" }}</td><td>{{ row.count }}</td></tr>
+                                {% empty %}
+                                <tr><td colspan="2" class="text-center">No deaths recorded in this period.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent deliveries -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">Recent Deliveries</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead><tr><th>Patient</th><th>Date</th><th>Mode</th></tr></thead>
+                            <tbody>
+                                {% for rec in recent_deliveries %}
+                                <tr>
+                                    <td>{{ rec.patient.get_full_name }}</td>
+                                    <td>{{ rec.visit_date|date:"Y-m-d H:i" }}</td>
+                                    <td>{{ rec.mode_of_delivery|default:"—" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="3" class="text-center">No deliveries found.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent deaths -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-danger">Recent Deaths</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead><tr><th>Patient</th><th>Date</th><th>Ward</th></tr></thead>
+                            <tbody>
+                                {% for adm in recent_deaths %}
+                                <tr>
+                                    <td>{{ adm.patient.get_full_name }}</td>
+                                    <td>{{ adm.discharge_date|date:"Y-m-d H:i"|default:"—" }}</td>
+                                    <td>{{ adm.bed.ward.name|default:"Unassigned" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="3" class="text-center">No deaths found.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if trend %}
+{{ trend|json_script:"trend-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    var trend = JSON.parse(document.getElementById('trend-data').textContent);
+    var ctx = document.getElementById('trendChart');
+    if (!ctx || typeof Chart === 'undefined') return;
+
+    /* Palette validated (CVD + contrast) for light surface: blue #2a78d6, red #e34948 */
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: trend.map(function (r) { return r.month; }),
+            datasets: [
+                {
+                    label: 'Deliveries',
+                    data: trend.map(function (r) { return r.deliveries; }),
+                    borderColor: '#2a78d6',
+                    backgroundColor: '#2a78d6',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    tension: 0.2
+                },
+                {
+                    label: 'Deaths',
+                    data: trend.map(function (r) { return r.deaths; }),
+                    borderColor: '#e34948',
+                    backgroundColor: '#e34948',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    tension: 0.2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', labels: { color: '#52514e' } },
+                tooltip: { enabled: true }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0, color: '#898781' },
+                    grid: { color: '#e1e0d9' }
+                },
+                x: {
+                    ticks: { color: '#898781' },
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

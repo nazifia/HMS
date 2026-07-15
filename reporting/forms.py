@@ -98,6 +98,10 @@ class HRReportForm(forms.Form):
     department = forms.ModelChoiceField(queryset=Department.objects.all(), required=False)
     designation = forms.ModelChoiceField(queryset=Designation.objects.all(), required=False)
 
+class MedicalStatsReportForm(forms.Form):
+    start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+
 class FinancialReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))

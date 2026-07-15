@@ -791,6 +791,14 @@
             <div id="collapseFinancialReports" class="collapse {% if '/billing/reports/' in request.path or '/pharmacy/revenue/' in request.path or '/core/revenue/' in request.path or '/radiology/sales-report/' in request.path %}show{% endif %}" aria-labelledby="headingFinancialReports">
                 <div class="bg-white py-2 collapse-inner rounded">
                     <h6 class="collapse-header">Hospital-Wide Revenue:</h6>
+                    {% if user.is_superuser or user|has_permission:'view_reports' %}
+                    <a class="collapse-item {% if '/reporting/financials/' in request.path %}active{% endif %}" href="{% url 'reporting:financial_reports' %}">
+                        <i class="fas fa-coins fa-sm fa-fw mr-1"></i>Financial Statistics
+                    </a>
+                    <a class="collapse-item {% if '/reporting/medical-stats/' in request.path %}active{% endif %}" href="{% url 'reporting:medical_stats_reports' %}">
+                        <i class="fas fa-heartbeat fa-sm fa-fw mr-1"></i>Delivery &amp; Death Statistics
+                    </a>
+                    {% endif %}
                     <a class="collapse-item {% if '/core/revenue/dashboard/' in request.path %}active{% endif %}" href="{% url 'core:revenue_point_dashboard' %}">
                         <i class="fas fa-tachometer-alt fa-sm fa-fw mr-1"></i>Revenue Dashboard
                     </a>

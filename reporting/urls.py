@@ -30,6 +30,7 @@ urlpatterns = [
     path('inpatient/', views.inpatient_reports, name='inpatient_reports'),
     path('staff/', views.staff_reports, name='staff_reports'),
     path('financials/', views.financial_reports, name='financial_reports'),
+    path('medical-stats/', views.medical_stats_reports, name='medical_stats_reports'),
 
     # Pharmacy Sales Report
     path('pharmacy/sales-report/', views.pharmacy_sales_report, name='pharmacy_sales_report'),

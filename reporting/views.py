@@ -22,7 +22,8 @@ from .models import Report, ReportExecution, Dashboard, DashboardWidget
 from .forms import (ReportForm, ReportExecutionForm, DashboardForm, DashboardWidgetForm,
                     ReportSearchForm, DashboardSearchForm, PatientReportForm, AppointmentReportForm,
                     BillingReportForm, PharmacySalesReportForm, LaboratoryReportForm, RadiologyReportForm,
-                    InpatientReportForm, HRReportForm, FinancialReportForm)
+                    InpatientReportForm, HRReportForm, FinancialReportForm,
+                    MedicalStatsReportForm)
 from hr.models import StaffProfile
 from inpatient.models import Admission as Inpatient
 from radiology.models import RadiologyOrder
@@ -34,6 +35,7 @@ from patients.models import Patient
 from pharmacy.models import Medication, ActiveStoreInventory, DispensingLog
 
 from core.models import AuditLog, InternalNotification
+from accounts.permissions import permission_required as hms_permission_required
 
 # Helper functions
 def execute_report(report, parameters_json=None):
@@ -466,35 +468,168 @@ def hr_reports(request):
     }
     return render(request, 'reporting/hr_reports.html', context)
 
-@login_required
-def financial_reports(request):
-    form = FinancialReportForm(request.GET)
-    # This is a simplified example. A real implementation would need
-    # to query actual financial data (e.g., from a dedicated financial model or by aggregating bills)
-    # and calculate income, expenses, and profit/loss.
-    
-    # For demonstration, we'll create some dummy data.
-    report_items = []
+def _medical_stats_data(request):
+    """Shared by medical_stats_reports view and exports: stats context dict."""
+    from django.db.models import Count
+    from django.db.models.functions import TruncMonth
+    from labor.models import LaborRecord
 
+    form = MedicalStatsReportForm(request.GET)
+    start_date = end_date = None
+    if form.is_valid():
+        start_date = form.cleaned_data.get('start_date')
+        end_date = form.cleaned_data.get('end_date')
+
+    deliveries = LaborRecord.objects.all()
+    deaths = Inpatient.objects.filter(status='deceased')
+    admissions = Inpatient.objects.all()
+    discharges = Inpatient.objects.filter(status='discharged')
+
+    if start_date:
+        deliveries = deliveries.filter(visit_date__date__gte=start_date)
+        deaths = deaths.filter(discharge_date__date__gte=start_date)
+        admissions = admissions.filter(admission_date__date__gte=start_date)
+        discharges = discharges.filter(discharge_date__date__gte=start_date)
+    if end_date:
+        deliveries = deliveries.filter(visit_date__date__lte=end_date)
+        deaths = deaths.filter(discharge_date__date__lte=end_date)
+        admissions = admissions.filter(admission_date__date__lte=end_date)
+        discharges = discharges.filter(discharge_date__date__lte=end_date)
+
+    total_deliveries = deliveries.count()
+    total_deaths = deaths.count()
+    total_admissions = admissions.count()
+    total_discharges = discharges.count()
+
+    # Breakdown of deliveries by mode (normal, caesarean, assisted, ...)
+    delivery_modes = (
+        deliveries.exclude(mode_of_delivery__isnull=True)
+        .exclude(mode_of_delivery='')
+        .values('mode_of_delivery')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
+
+    # Deaths grouped by ward at time of death
+    deaths_by_ward = (
+        deaths.values('bed__ward__name')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
+
+    # Mortality rate among concluded admissions (discharged + deceased)
+    concluded = total_discharges + total_deaths
+    mortality_rate = round(total_deaths * 100 / concluded, 1) if concluded else 0
+
+    # Monthly trend: deliveries by visit month, deaths by discharge month
+    delivery_by_month = dict(
+        deliveries.annotate(m=TruncMonth('visit_date')).values_list('m')
+        .annotate(count=Count('id')).order_by('m')
+    )
+    death_by_month = dict(
+        deaths.exclude(discharge_date__isnull=True)
+        .annotate(m=TruncMonth('discharge_date')).values_list('m')
+        .annotate(count=Count('id')).order_by('m')
+    )
+    months = sorted(set(delivery_by_month) | set(death_by_month))
+    trend = [
+        {
+            'month': m.strftime('%b %Y'),
+            'deliveries': delivery_by_month.get(m, 0),
+            'deaths': death_by_month.get(m, 0),
+        }
+        for m in months
+    ]
+
+    recent_deaths = deaths.select_related('patient', 'bed__ward').order_by('-discharge_date')[:20]
+    recent_deliveries = deliveries.select_related('patient').order_by('-visit_date')[:20]
+
+    return {
+        'form': form,
+        'title': 'Delivery & Death Statistics',
+        'total_deliveries': total_deliveries,
+        'total_deaths': total_deaths,
+        'total_admissions': total_admissions,
+        'total_discharges': total_discharges,
+        'mortality_rate': mortality_rate,
+        'delivery_modes': delivery_modes,
+        'deaths_by_ward': deaths_by_ward,
+        'trend': trend,
+        'recent_deaths': recent_deaths,
+        'recent_deliveries': recent_deliveries,
+    }
+
+
+@login_required
+@hms_permission_required('view_reports')
+def medical_stats_reports(request):
+    """Delivery, death and related clinical statistics for a date range."""
+    context = _medical_stats_data(request)
+    return render(request, 'reporting/medical_stats_reports.html', context)
+
+
+def _financial_report_data(request):
+    """Shared by financial_reports view and exports: filtered items + totals."""
+    from django.db.models import Sum
+    from billing.models import Payment
+    from pharmacy.models import Purchase
+
+    form = FinancialReportForm(request.GET)
+    report_type = start_date = end_date = None
     if form.is_valid():
         report_type = form.cleaned_data.get('report_type')
         start_date = form.cleaned_data.get('start_date')
         end_date = form.cleaned_data.get('end_date')
 
-        # Dummy data generation based on report type
-        if report_type == 'income' or not report_type:
-            report_items.extend([
-                {'date': '2023-10-01', 'description': 'Patient Payment', 'type': 'Income', 'amount': 5000},
-                {'date': '2023-10-05', 'description': 'Insurance Payout', 'type': 'Income', 'amount': 15000},
-            ])
-        if report_type == 'expense' or not report_type:
-            report_items.extend([
-                {'date': '2023-10-02', 'description': 'Medical Supplies', 'type': 'Expense', 'amount': -7000},
-                {'date': '2023-10-10', 'description': 'Salaries', 'type': 'Expense', 'amount': -25000},
-            ])
-        if report_type == 'profit_loss' or not report_type:
-            # In a real scenario, this would be a calculation
-            pass
+    payments = Payment.objects.select_related('invoice', 'invoice__patient')
+    purchases = Purchase.objects.select_related('supplier')
+    if start_date:
+        payments = payments.filter(payment_date__date__gte=start_date)
+        purchases = purchases.filter(purchase_date__date__gte=start_date)
+    if end_date:
+        payments = payments.filter(payment_date__date__lte=end_date)
+        purchases = purchases.filter(purchase_date__date__lte=end_date)
+
+    # Totals over the full filtered range (not just the current page)
+    total_income = payments.aggregate(t=Sum('amount'))['t'] or 0
+    total_expense = purchases.aggregate(t=Sum('total_amount'))['t'] or 0
+
+    include_income = report_type in ('income', 'profit_loss') or not report_type
+    include_expense = report_type in ('expense', 'profit_loss') or not report_type
+
+    # ponytail: builds the full item list in memory; switch to a UNION queryset if row counts get large
+    report_items = []
+    if include_income:
+        report_items += [
+            {
+                'date': p.payment_date.date(),
+                'description': f"Payment — Invoice #{p.invoice.invoice_number} ({p.invoice.patient.get_full_name()})",
+                'type': 'Income',
+                'amount': p.amount,
+            }
+            for p in payments
+        ]
+    if include_expense:
+        report_items += [
+            {
+                'date': p.purchase_date.date(),
+                'description': f"Pharmacy purchase — {p.supplier.name}",
+                'type': 'Expense',
+                'amount': -p.total_amount,
+            }
+            for p in purchases
+        ]
+    report_items.sort(key=lambda item: item['date'], reverse=True)
+
+    return form, report_items, total_income, total_expense
+
+
+@login_required
+@hms_permission_required('view_reports')
+def financial_reports(request):
+    """Financial report from real data: income = invoice payments, expense = pharmacy purchases."""
+    form, report_items, total_income, total_expense = _financial_report_data(request)
+    net_profit = total_income - total_expense
 
     paginator = Paginator(report_items, 20)
     page_number = request.GET.get('page')
@@ -503,23 +638,164 @@ def financial_reports(request):
     context = {
         'form': form,
         'page_obj': page_obj,
+        'total_income': total_income,
+        'total_expense': total_expense,
+        'net_profit': net_profit,
         'title': 'Financial Reports'
     }
     return render(request, 'reporting/financial_reports.html', context)
 
 
 @login_required
+@hms_permission_required('view_reports')
 def export_csv(request, report_type):
-    # Placeholder view for CSV export
+    """CSV export for financial and medical reports; honors the same GET filters."""
+    import csv
+    from django.http import Http404
+
+    if report_type == 'medical':
+        stats = _medical_stats_data(request)
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="medical_stats_report.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Delivery & Death Statistics'])
+        writer.writerow([])
+        writer.writerow(['Summary'])
+        writer.writerow(['Total Deliveries', stats['total_deliveries']])
+        writer.writerow(['Total Deaths', stats['total_deaths']])
+        writer.writerow(['Total Admissions', stats['total_admissions']])
+        writer.writerow(['Total Discharges', stats['total_discharges']])
+        writer.writerow(['Mortality Rate (%)', stats['mortality_rate']])
+        writer.writerow([])
+        writer.writerow(['Deliveries by Mode'])
+        writer.writerow(['Mode of Delivery', 'Count'])
+        for row in stats['delivery_modes']:
+            writer.writerow([row['mode_of_delivery'], row['count']])
+        writer.writerow([])
+        writer.writerow(['Deaths by Ward'])
+        writer.writerow(['Ward', 'Count'])
+        for row in stats['deaths_by_ward']:
+            writer.writerow([row['bed__ward__name'] or 'Unassigned', row['count']])
+        writer.writerow([])
+        writer.writerow(['Monthly Trend'])
+        writer.writerow(['Month', 'Deliveries', 'Deaths'])
+        for row in stats['trend']:
+            writer.writerow([row['month'], row['deliveries'], row['deaths']])
+        return response
+
+    if report_type != 'financial':
+        raise Http404(f"CSV export not available for '{report_type}' reports")
+
+    _, report_items, total_income, total_expense = _financial_report_data(request)
+
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="{report_type}_report.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Date', 'Description', 'Type', 'Amount'])
+    for item in report_items:
+        writer.writerow([item['date'], item['description'], item['type'], item['amount']])
+    writer.writerow([])
+    writer.writerow(['', 'Total Income', '', total_income])
+    writer.writerow(['', 'Total Expenses', '', total_expense])
+    writer.writerow(['', 'Net Profit/Loss', '', total_income - total_expense])
     return response
 
 @login_required
+@hms_permission_required('view_reports')
 def export_pdf(request, report_type):
-    # Placeholder view for PDF export
+    """PDF export for financial and medical reports; honors the same GET filters."""
+    from django.http import Http404
+
+    if report_type not in ('financial', 'medical'):
+        raise Http404(f"PDF export not available for '{report_type}' reports")
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    def _styled_table(data, col_widths):
+        table = Table(data, colWidths=col_widths, repeatRows=1)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4e73df')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ]))
+        return table
+
+    if report_type == 'medical':
+        stats = _medical_stats_data(request)
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="medical_stats_report.pdf"'
+
+        doc = SimpleDocTemplate(response, pagesize=A4, topMargin=1.5 * cm, bottomMargin=1.5 * cm)
+        styles = getSampleStyleSheet()
+        elements = [Paragraph('Delivery & Death Statistics', styles['Title']), Spacer(1, 12)]
+
+        summary = [
+            ['Metric', 'Value'],
+            ['Total Deliveries', str(stats['total_deliveries'])],
+            ['Total Deaths', str(stats['total_deaths'])],
+            ['Total Admissions', str(stats['total_admissions'])],
+            ['Total Discharges', str(stats['total_discharges'])],
+            ['Mortality Rate (%)', str(stats['mortality_rate'])],
+        ]
+        elements += [_styled_table(summary, [8 * cm, 8 * cm]), Spacer(1, 16)]
+
+        elements.append(Paragraph('Deliveries by Mode', styles['Heading2']))
+        modes = [['Mode of Delivery', 'Count']] + [
+            [row['mode_of_delivery'], str(row['count'])] for row in stats['delivery_modes']
+        ]
+        elements += [_styled_table(modes, [8 * cm, 8 * cm]), Spacer(1, 16)]
+
+        elements.append(Paragraph('Deaths by Ward', styles['Heading2']))
+        wards = [['Ward', 'Count']] + [
+            [row['bed__ward__name'] or 'Unassigned', str(row['count'])] for row in stats['deaths_by_ward']
+        ]
+        elements += [_styled_table(wards, [8 * cm, 8 * cm]), Spacer(1, 16)]
+
+        elements.append(Paragraph('Monthly Trend', styles['Heading2']))
+        trend = [['Month', 'Deliveries', 'Deaths']] + [
+            [row['month'], str(row['deliveries']), str(row['deaths'])] for row in stats['trend']
+        ]
+        elements.append(_styled_table(trend, [6 * cm, 5 * cm, 5 * cm]))
+
+        doc.build(elements)
+        return response
+
+    _, report_items, total_income, total_expense = _financial_report_data(request)
+
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{report_type}_report.pdf"'
+
+    doc = SimpleDocTemplate(response, pagesize=A4, topMargin=1.5 * cm, bottomMargin=1.5 * cm)
+    styles = getSampleStyleSheet()
+    elements = [Paragraph('Financial Report', styles['Title']), Spacer(1, 12)]
+
+    data = [['Date', 'Description', 'Type', 'Amount']]
+    for item in report_items:
+        data.append([str(item['date']), item['description'], item['type'], f"{item['amount']:.2f}"])
+    data.append(['', 'Total Income', '', f"{total_income:.2f}"])
+    data.append(['', 'Total Expenses', '', f"{total_expense:.2f}"])
+    data.append(['', 'Net Profit/Loss', '', f"{total_income - total_expense:.2f}"])
+
+    table = Table(data, colWidths=[2.5 * cm, 9.5 * cm, 2.5 * cm, 3 * cm], repeatRows=1)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4e73df')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, -3), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ALIGN', (3, 0), (3, -1), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+    elements.append(table)
+    doc.build(elements)
     return response
 
 @login_required
@@ -949,33 +1225,3 @@ def delete_widget(request, widget_id):
     }
 
     return render(request, 'reporting/delete_widget.html', context)
-
-@login_required
-def export_patient_reports(request, format):
-    """Stub for exporting patient reports (CSV/PDF)"""
-    # TODO: Implement actual export logic
-    return HttpResponse(f"Exporting patient reports as {format.upper()} (stub)")
-
-@login_required
-def export_appointment_reports(request, format):
-    """Stub for exporting appointment reports (CSV/PDF)"""
-    # TODO: Implement actual export logic
-    return HttpResponse(f"Exporting appointment reports as {format.upper()} (stub)")
-
-@login_required
-def export_billing_reports(request, format):
-    """Stub for exporting billing/financial reports (CSV/PDF)"""
-    # TODO: Implement actual export logic
-    return HttpResponse(f"Exporting billing reports as {format.upper()} (stub)")
-
-@login_required
-def export_pharmacy_reports(request, format):
-    """Stub for exporting pharmacy reports (CSV/PDF)"""
-    # TODO: Implement actual export logic
-    return HttpResponse(f"Exporting pharmacy reports as {format.upper()} (stub)")
-
-@login_required
-def export_laboratory_reports(request, format):
-    """Stub for exporting laboratory/clinical reports (CSV/PDF)"""
-    # TODO: Implement actual export logic
-    return HttpResponse(f"Exporting laboratory reports as {format.upper()} (stub)")
