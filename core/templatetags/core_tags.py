@@ -438,6 +438,15 @@ def count_add_permissions(grouped_permissions):
         return 0
 
 
+@register.filter
+def path_starts_with_any(path, prefixes):
+    """
+    True if path starts with any of the comma-separated prefixes.
+    Usage: {% if request.path|path_starts_with_any:'/dental/,/ent/' %}
+    """
+    return any(path.startswith(p) for p in prefixes.split(","))
+
+
 @register.simple_tag
 def static_v(path):
     """
