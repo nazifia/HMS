@@ -1,5 +1,6 @@
 {% load static %}
 {% load custom_filters %}
+{% load consultation_tags %}
 
 <!-- Department Dashboard Base Template -->
 <!-- This template provides a standardized layout for all department dashboards -->
@@ -188,7 +189,8 @@
                                                    title="View Details">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
-                                                {% if referral.can_be_accepted_by(request.user) and referral.status == 'pending' %}
+                                                {% can_accept_referral referral request.user as can_accept %}
+                                                {% if can_accept and referral.status == 'pending' %}
                                                     {% if referral.authorization_status == 'authorized' or referral.authorization_status == 'not_required' %}
                                                         <form method="post" action="{% url 'consultations:update_referral_status_detailed' referral.id %}" 
                                                               onsubmit="return confirm('Accept this referral for {{ referral.patient.get_full_name }}?')" class="d-inline">

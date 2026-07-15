@@ -1703,8 +1703,13 @@ def laboratory_sales_report(request):
         .aggregate(total=Sum('total_cost'))['total'] or 0
     )
 
+    daily_totals = daily_tests.aggregate(
+        tests=Sum('total_tests'), revenue=Sum('total_revenue')
+    )
+
     context = {
         'daily_tests': daily_tests,
+        'daily_totals': daily_totals,
         'monthly_revenue': monthly_revenue,
         'today': today,
         'month_start': month_start,

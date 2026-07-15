@@ -51,7 +51,15 @@
                                         <td>{{ medication.category.name }}</td>
                                         <td>{{ medication.reorder_level }}</td>
                                         <td>{{ medication.price |currency }}</td>
-                                        <td>{{ medication|stock_status_badge }}</td>
+                                        <td>
+                                            {% if medication.stock_quantity == 0 %}
+                                                <span class="badge bg-danger">Out of Stock</span>
+                                            {% elif medication.stock_quantity <= medication.reorder_level %}
+                                                <span class="badge bg-warning">Low Stock</span>
+                                            {% else %}
+                                                <span class="badge bg-success">In Stock</span>
+                                            {% endif %}
+                                        </td>
                                         <td class="no-print">
                                             <a href="{% url 'pharmacy:medication_detail' medication.id %}" class="btn btn-sm btn-primary">
                                                 <i class="fas fa-eye"></i> View

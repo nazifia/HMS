@@ -119,13 +119,14 @@
                                     {% else %}
                                         <span class="text-muted">No visits</span>
                                     {% endif %}
+                                    {% endwith %}
                                 </td>
                                 <td>
                                     <span class="badge bg-info">{{ patient.consultations_set.count }}</span>
                                 </td>
                                 <td>
-                                    {% with waiting_entry=patient.waitinglist_set.filter(status='waiting').first %}
-                                        {% if waiting_entry %}
+                                    {% with waiting_entry=patient.waitinglist_set.first %}
+                                        {% if waiting_entry and waiting_entry.status == 'waiting' %}
                                             <span class="badge bg-warning">
                                                 <i class="fas fa-clock"></i> Waiting
                                             </span>
@@ -151,6 +152,7 @@
                                     <a href="{% url 'consultations:create_consultation' patient.id %}" class="btn btn-sm btn-success">
                                         <i class="fas fa-stethoscope"></i> Consult
                                     {% endif %}
+                                    {% endwith %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -262,37 +264,6 @@
                 <div class="col-md-3 mb-3">
                     <a href="{% url 'consultations:patient_list' %}" class="btn btn-secondary btn-block">
                         <i class="fas fa-user-injured mr-2"></i>All Patients
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-{% endblock %}
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">
-                <i class="fas fa-bolt mr-2"></i>Quick Actions
-            </h6>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-3 mb-3">
-                    <a href="{% url 'consultations:add_to_waiting_list' %}" class="btn btn-primary btn-block">
-                        <i class="fas fa-plus mr-2"></i>Add Patient to Waiting List
-                    </a>
-                </div>
-                <div class="col-md-3 mb-3">
-                    <a href="{% url 'consultations:unified_dashboard' %}" class="btn btn-info btn-block">
-                        <i class="fas fa-th-large mr-2"></i>Dashboard
-                    </a>
-                </div>
-                <div class="col-md-3 mb-3">
-                    <a href="{% url 'consultations:waiting_list' %}" class="btn btn-warning btn-block">
-                        <i class="fas fa-clock mr-2"></i>Waiting List
-                    </a>
-                </div>
-                <div class="col-md-3 mb-3">
-                    <a href="{% url 'consultations:consultation_list' %}" class="btn btn-success btn-block">
-                        <i class="fas fa-stethoscope mr-2"></i>My Consultations
                     </a>
                 </div>
             </div>

@@ -79,8 +79,8 @@
                                     <tfoot class="table-secondary">
                                         <tr>
                                             <th>Total</th>
-                                            <th>{{ daily_tests|aggregate:total_tests|default:0 }}</th>
-                                            <th>{{ daily_tests|aggregate:total_revenue|currency }}</th>
+                                            <th>{{ daily_totals.tests|default:0 }}</th>
+                                            <th>{{ daily_totals.revenue|default:0|currency }}</th>
                                             <th>-</th>
                                         </tr>
                                     </tfoot>

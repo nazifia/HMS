@@ -93,7 +93,7 @@
                     <div class="form-group row">
                         <label class="col-sm-4 col-form-label font-weight-bold">Service:</label>
                         <div class="col-sm-8">
-                            {{ record.service.name if record.service else 'N/A' }}
+                            {{ record.service.name|default:"N/A" }}
                         </div>
                     </div>
                     <div class="form-group row">
@@ -115,13 +115,13 @@
                     <div class="form-group row">
                         <label class="col-sm-4 col-form-label font-weight-bold">Next Appointment:</label>
                         <div class="col-sm-8">
-                            {{ record.next_appointment_date|date:"M d, Y H:i" if record.next_appointment_date else 'Not scheduled' }}
+                            {% if record.next_appointment_date %}{{ record.next_appointment_date|date:"M d, Y H:i" }}{% else %}Not scheduled{% endif %}
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-4 col-form-label font-weight-bold">Neurologist:</label>
                         <div class="col-sm-8">
-                            {{ record.neurologist.get_full_name if record.neurologist else 'Not assigned' }}
+                            {{ record.neurologist.get_full_name|default:"Not assigned" }}
                         </div>
                     </div>
                 </div>
@@ -225,7 +225,7 @@
                         <tr>
                             <td>{{ test.get_test_type_display }}</td>
                             <td>{{ test.performed_at|date:"M d, Y H:i" }}</td>
-                            <td>{{ test.performed_by.get_full_name if test.performed_by else 'N/A' }}</td>
+                            <td>{{ test.performed_by.get_full_name|default:"N/A" }}</td>
                             <td>
                                 <a href="{% url 'neurology:delete_test' test.id %}" class="btn btn-sm btn-danger">
                                     <i class="fas fa-trash"></i> Delete
@@ -261,7 +261,7 @@
                     <div class="card-header" id="heading{{ note.id }}">
                         <h2 class="mb-0">
                             <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse" data-target="#collapse{{ note.id }}" aria-expanded="true" aria-controls="collapse{{ note.id }}">
-                                <strong>Clinical Note - {{ note.created_at|date:"M d, Y H:i" }}</strong> by {{ note.created_by.get_full_name if note.created_by else 'Unknown' }}
+                                <strong>Clinical Note - {{ note.created_at|date:"M d, Y H:i" }}</strong> by {{ note.created_by.get_full_name|default:"Unknown" }}
                             </button>
                         </h2>
                     </div>

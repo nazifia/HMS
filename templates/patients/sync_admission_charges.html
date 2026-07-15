@@ -63,8 +63,7 @@
                                                 {% comment %}
                                                 Check if patient is NHIA - NHIA patients are exempt from admission fees
                                                 {% endcomment %}
-                                                {% try %}
-                                                    {% if patient.nhia_info and patient.nhia_info.is_active %}
+                                                {% if patient.nhia_info and patient.nhia_info.is_active %}
                                                         <div class="text-muted">
                                                             Admission Fee: <strong>₦0.00</strong> (NHIA Exempt)<br>
                                                             Daily Charge: <strong>₦{{ current_admission.bed.ward.charge_per_day }}</strong><br>
@@ -80,16 +79,7 @@
                                                             Total for {{ current_admission.get_duration }} days: 
                                                             <strong>₦{{ current_admission.bed.ward.charge_per_day|mul:current_admission.get_duration }}</strong>
                                                         </div>
-                                                    {% endif %}
-                                                {% except %}
-                                                    <div>
-                                                        Admission Fee: <strong>₦{{ current_admission.bed.ward.charge_per_day }}</strong><br>
-                                                        Daily Charge: <strong>₦{{ current_admission.bed.ward.charge_per_day }}</strong><br>
-                                                        <hr>
-                                                        Total for {{ current_admission.get_duration }} days: 
-                                                        <strong>₦{{ current_admission.bed.ward.charge_per_day|mul:current_admission.get_duration }}</strong>
-                                                    </div>
-                                                {% endtry %}
+                                                {% endif %}
                                             {% else %}
                                                 <div class="text-muted">
                                                     Ward/Bed not assigned - Cannot calculate charges

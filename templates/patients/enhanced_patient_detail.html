@@ -68,7 +68,7 @@
                         </div>
                     {% endif %}
                     <div class="mt-2">
-                        <span class="badge bg-{{ patient.gender == 'M' ? 'info' : 'danger' }}">
+                        <span class="badge bg-{% if patient.gender == 'M' %}info{% else %}danger{% endif %}">
                             {{ patient.get_gender_display }}
                         </span>
                         <span class="badge bg-primary ms-1">
@@ -501,7 +501,7 @@ function processWalletTopUp() {
     
     HMSUI.loading.show(document.querySelector('#walletTopUpForm').parentNode);
     
-    fetch(`/patients/{{ { patient.id |currency }}/wallet/topup/`, {
+    fetch(`/patients/{{ patient.id }}/wallet/topup/`, {
         method: 'POST',
         body: formData,
         headers: {

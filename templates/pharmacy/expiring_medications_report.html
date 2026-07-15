@@ -65,7 +65,15 @@
                                         <td>{{ medication.category.name }}</td>
                                         <td class="text-danger">{{ medication.expiry_date|date:"M d, Y" }}</td>
                                         <td>{{ medication.stock_quantity }}</td>
-                                        <td>{{ medication|stock_status_badge }}</td>
+                                        <td>
+                                            {% if medication.stock_quantity == 0 %}
+                                                <span class="badge bg-danger">Out of Stock</span>
+                                            {% elif medication.stock_quantity <= medication.reorder_level %}
+                                                <span class="badge bg-warning">Low Stock</span>
+                                            {% else %}
+                                                <span class="badge bg-success">In Stock</span>
+                                            {% endif %}
+                                        </td>
                                         <td class="no-print">
                                             <a href="{% url 'pharmacy:medication_detail' medication.id %}" class="btn btn-sm btn-primary">
                                                 <i class="fas fa-eye"></i> View
@@ -103,7 +111,7 @@
                                         </td>
                                         <td>{{ medication.category.name }}</td>
                                         <td>{{ medication.expiry_date|date:"M d, Y" }}</td>
-                                        <td>{{ medication.expiry_date|days_until_expiry }} days</td>
+                                        <td>{{ medication.expiry_date|timeuntil }}</td>
                                         <td>{{ medication.stock_quantity }}</td>
                                         <td class="no-print">
                                             <a href="{% url 'pharmacy:medication_detail' medication.id %}" class="btn btn-sm btn-primary">
