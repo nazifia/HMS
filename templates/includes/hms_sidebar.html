@@ -786,7 +786,7 @@
         <li class="nav-item {% if '/billing/reports/' in request.path or '/pharmacy/revenue/' in request.path or '/core/revenue/' in request.path or '/radiology/sales-report/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/billing/reports/' in request.path and not '/pharmacy/revenue/' in request.path and not '/core/revenue/' in request.path and not '/radiology/sales-report/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseFinancialReports" aria-expanded="{% if '/billing/reports/' in request.path or '/pharmacy/revenue/' in request.path or '/core/revenue/' in request.path or '/radiology/sales-report/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseFinancialReports">
                 <i class="fas fa-fw fa-chart-bar text-white"></i>
-                <span class="text-white">Financial Reports</span>
+                <span class="text-white">Reports</span>
             </a>
             <div id="collapseFinancialReports" class="collapse {% if '/billing/reports/' in request.path or '/pharmacy/revenue/' in request.path or '/core/revenue/' in request.path or '/radiology/sales-report/' in request.path %}show{% endif %}" aria-labelledby="headingFinancialReports">
                 <div class="bg-white py-2 collapse-inner rounded">
