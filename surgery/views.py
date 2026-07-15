@@ -99,7 +99,7 @@ def surgery_dashboard(request):
     recent_records = SurgeryRecord.objects.select_related('patient', 'doctor', 'surgeon').order_by('-created_at')[:10]
 
     # Categorize referrals
-    categorized_referrals = categorize_referrals(user_department)
+    categorized_referrals = categorize_referrals(getattr(request, 'dashboard_department', None) or user_department, unit=getattr(getattr(request.user, 'profile', None), 'unit', None))
 
     # Add to context
     context.update({

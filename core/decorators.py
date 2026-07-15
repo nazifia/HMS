@@ -213,6 +213,14 @@ def department_access_required(department_name):
                 messages.error(request, "You must be logged in to access this page.")
                 return redirect("accounts:login")
 
+            # Resolve the department this dashboard belongs to and attach it to
+            # the request, so views scope referrals to THIS department instead of
+            # the viewer's own profile department (or all, for superusers).
+            from accounts.models import Department
+            request.dashboard_department = Department.objects.filter(
+                name__iexact=department_name
+            ).first()
+
             # Allow superusers to access all departments
             if request.user.is_superuser:
                 return view_func(request, *args, **kwargs)

@@ -358,6 +358,7 @@ class CustomUserProfileAdmin(admin.ModelAdmin):
                 "fields": (
                     "employee_id",
                     "department",
+                    "unit",
                     "specialization",
                     "qualification",
                 )

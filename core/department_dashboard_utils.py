@@ -436,12 +436,15 @@ def get_unauthorized_referrals(department, limit=None):
     return referrals
 
 
-def categorize_referrals(department):
+def categorize_referrals(department, unit=None):
     """
     Categorize referrals by their authorization and status
 
     Args:
         department: Department instance or None (for superusers)
+        unit: Optional unit name. When provided, only referrals sent to that
+            unit (referred_to_unit) are shown - lets a staff member scoped to a
+            single unit see just their unit's referrals within the department.
 
     Returns:
         dict: Categorized referrals including pending and accepted
@@ -452,6 +455,9 @@ def categorize_referrals(department):
     else:
         # For superusers, get all referrals
         base_queryset = Referral.objects.all()
+
+    if unit:
+        base_queryset = base_queryset.filter(referred_to_unit__iexact=unit)
 
     # Pre-fetch related data for all referrals we might need
     # CRITICAL FIX: Also include 'referred_to_department' in select_related

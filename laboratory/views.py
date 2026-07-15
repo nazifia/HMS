@@ -118,7 +118,7 @@ def laboratory_dashboard(request):
     ).select_related('test_request__patient').count()
 
     # Categorize referrals
-    categorized_referrals = categorize_referrals(user_department)
+    categorized_referrals = categorize_referrals(getattr(request, 'dashboard_department', None) or user_department, unit=getattr(getattr(request.user, 'profile', None), 'unit', None))
 
     # Get priority distribution for chart
     priority_data = TestRequest.objects.values('priority').annotate(count=Count('id')).order_by('priority')

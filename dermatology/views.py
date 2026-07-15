@@ -97,7 +97,7 @@ def dermatology_dashboard(request):
     recent_records = DermatologyRecord.objects.select_related('patient', 'service', 'dermatologist').order_by('-created_at')[:10]
 
     # Categorize referrals
-    categorized_referrals = categorize_referrals(user_department)
+    categorized_referrals = categorize_referrals(getattr(request, 'dashboard_department', None) or user_department, unit=getattr(getattr(request.user, 'profile', None), 'unit', None))
 
     # Get chart data from build_enhanced_dashboard_context
     # Ensure we have the chart data needed by template

@@ -410,6 +410,14 @@ class CustomUserProfile(models.Model):
         related_name="assigned_staff",
         verbose_name="assigned departments",
     )
+    unit = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text="Optional unit within the department. When set, department "
+        "dashboards show only referrals sent to this unit.",
+    )
     employee_id = models.CharField(
         max_length=20, blank=True, null=True, unique=True, db_index=True
     )
