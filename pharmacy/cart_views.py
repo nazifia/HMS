@@ -23,6 +23,34 @@ from pharmacy.billing_utils import create_pharmacy_invoice
 from core.audit_utils import log_audit_action
 
 
+def _cart_invoice_editable(cart):
+    """True when the cart's linked invoice (if any) has no payment yet."""
+    inv = cart.invoice
+    return not inv or not inv.amount_paid or inv.amount_paid == 0
+
+
+def sync_cart_invoice(cart):
+    """
+    Re-sync the cart's unpaid invoice to the current patient-payable total after
+    the cart items change (manual qty edit, item removal, recost). If nothing is
+    left to bill, void the invoice and reopen the cart. No-op if there is no
+    invoice or it already has a payment.
+    """
+    inv = cart.invoice
+    if not inv or (inv.amount_paid and inv.amount_paid > 0):
+        return
+    new_payable = cart.get_patient_payable()
+    if new_payable <= 0:
+        inv.status = "cancelled"
+        inv.save()
+        cart.invoice = None
+        cart.status = "active"
+        cart.save(update_fields=["invoice", "status"])
+    else:
+        inv.subtotal = new_payable
+        inv.save()  # save() recomputes total_amount + status
+
+
 @login_required
 @permission_required("pharmacy.create")
 def create_cart_from_prescription(request, prescription_id):
@@ -401,6 +429,8 @@ def view_cart(request, cart_id):
         "cart_payable_now": cart_payable_now,
         "can_pay_with_wallet": can_pay_with_wallet,
         "wallet_balance_sufficient": patient_wallet.balance >= cart_payable_now,
+        "can_edit_quantities": cart.status in ("active", "invoiced")
+        and _cart_invoice_editable(cart),
         "available_medications": json.dumps(available_medications),
         "page_title": f"Prescription Cart #{cart.id}",
         "active_nav": "pharmacy",
@@ -470,6 +500,19 @@ def update_cart_item_quantity(request, item_id):
             quantity = int(data.get("quantity", 0))
 
             item = get_object_or_404(PrescriptionCartItem, id=item_id)
+            cart = item.cart
+
+            # Editable while active, or invoiced with an unpaid invoice.
+            if cart.status not in ("active", "invoiced") or not _cart_invoice_editable(
+                cart
+            ):
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": "Quantities can only be edited before the invoice is paid.",
+                    },
+                    status=400,
+                )
 
             # Validate quantity
             if quantity <= 0:
@@ -491,12 +534,17 @@ def update_cart_item_quantity(request, item_id):
                     status=400,
                 )
 
-            # Update quantity
-            item.quantity = quantity
-            item.save()
+            with transaction.atomic():
+                # Update quantity
+                item.quantity = quantity
+                item.save()
+                # Keep the linked unpaid invoice in step with the new total.
+                sync_cart_invoice(cart)
 
-            # Recalculate totals
-            cart = item.cart
+            cart.refresh_from_db()
+            invoice_balance = (
+                float(cart.invoice.get_balance()) if cart.invoice else None
+            )
 
             return JsonResponse(
                 {
@@ -507,6 +555,7 @@ def update_cart_item_quantity(request, item_id):
                     "cart_subtotal": float(cart.get_subtotal()),
                     "cart_patient_payable": float(cart.get_patient_payable()),
                     "cart_nhia_coverage": float(cart.get_nhia_coverage()),
+                    "invoice_balance": invoice_balance,
                     "stock_status": item.get_stock_status(),
                 }
             )
@@ -548,22 +597,8 @@ def recost_cart(request, cart_id):
     try:
         with transaction.atomic():
             result = cart.recost_to_amount(target)
-
-            # Keep any existing unpaid invoice in step with the new total so the
-            # patient isn't billed the old (higher) amount.
-            invoice = cart.invoice
-            if invoice and (not invoice.amount_paid or invoice.amount_paid == 0):
-                new_payable = result["new_payable"]
-                if new_payable <= 0:
-                    # Nothing left to bill: void the invoice, reopen the cart.
-                    invoice.status = "cancelled"
-                    invoice.save()
-                    cart.invoice = None
-                    cart.status = "active"
-                    cart.save(update_fields=["invoice", "status"])
-                else:
-                    invoice.subtotal = new_payable
-                    invoice.save()  # save() recomputes total_amount + status
+            # Keep any existing unpaid invoice in step with the new total.
+            sync_cart_invoice(cart)
     except Exception as e:
         messages.error(request, f"Cannot recost cart: {e}")
         return redirect("pharmacy:view_cart", cart_id=cart.id)
@@ -595,12 +630,21 @@ def remove_cart_item(request, item_id):
     Remove an item from cart.
     """
     item = get_object_or_404(PrescriptionCartItem, id=item_id)
-    cart_id = item.cart.id
+    cart = item.cart
 
-    item.delete()
+    if cart.status not in ("active", "invoiced") or not _cart_invoice_editable(cart):
+        messages.error(
+            request, "Items can only be removed before the invoice is paid."
+        )
+        return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+    with transaction.atomic():
+        item.delete()
+        # Keep the linked unpaid invoice in step with the new total.
+        sync_cart_invoice(cart)
     messages.success(request, "Item removed from cart")
 
-    return redirect("pharmacy:view_cart", cart_id=cart_id)
+    return redirect("pharmacy:view_cart", cart_id=cart.id)
 
 
 @login_required
