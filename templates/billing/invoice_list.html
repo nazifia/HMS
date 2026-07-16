@@ -355,7 +355,7 @@
                                 </span>
                             </td>
                             <td>
-                                <span class="badge status-badge {{ invoice.status|payment_status_badge|cut:'<'|cut:'>'|cut:'span' }}">
+                                <span class="badge status-badge {{ invoice.status|payment_status_class }}">
                                     {{ invoice.status|capfirst }}
                                 </span>
                             </td>
