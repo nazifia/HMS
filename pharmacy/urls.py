@@ -566,6 +566,11 @@ urlpatterns = [
         name="remove_cart_item",
     ),
     path(
+        "cart/<int:cart_id>/recost/",
+        cart_views.recost_cart,
+        name="recost_cart",
+    ),
+    path(
         "cart/item/<int:item_id>/substitute/",
         cart_views.substitute_cart_item,
         name="substitute_cart_item",

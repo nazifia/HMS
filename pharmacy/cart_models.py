@@ -216,6 +216,81 @@ class PrescriptionCart(TenantModel):
         """Check if cart has items pending dispensing"""
         return any(item.get_remaining_quantity() > 0 for item in self.items.all())
 
+    def recost_to_amount(self, target):
+        """
+        Scale down item quantities so the patient-payable total fits within
+        `target` (e.g. what the patient can actually afford / wallet balance).
+
+        Greedy: allocate one affordable unit at a time to the items, cycling
+        through them so quantities stay proportional to the original request.
+        Never exceeds an item's original quantity or its available stock.
+        Returns a summary dict; raises ValidationError if nothing is affordable.
+
+        ponytail: only usable while cart is 'active' (before invoicing).
+        """
+        if self.status != "active":
+            raise ValidationError("Can only recost an active cart")
+
+        target = Decimal(str(target))
+        if target < 0:
+            target = Decimal("0.00")
+
+        rate = (
+            NHIA_PATIENT_RATE
+            if self.prescription.patient.is_nhia_patient()
+            else Decimal("1")
+        )
+
+        items = list(self.items.all())
+        # Cap each item by its available stock so we never bill unstocked units.
+        for item in items:
+            item.update_available_stock()
+
+        # Per-unit patient price for each item.
+        priced = [
+            (item, (item.unit_price or Decimal("0.00")) * rate)
+            for item in items
+            if item.quantity > 0
+        ]
+        # Skip zero-priced items from budgeting (they cost nothing).
+        payable_items = [(i, p) for (i, p) in priced if p > 0]
+
+        # New quantities start at 0 for payable items; free items keep original.
+        new_qty = {id(i): 0 for (i, _) in payable_items}
+
+        spent = Decimal("0.00")
+        # Cheapest-first cycle so a tiny budget still buys something.
+        payable_items.sort(key=lambda ip: ip[1])
+        added = True
+        while added:
+            added = False
+            for item, unit in payable_items:
+                caps = min(item.quantity, item.available_stock)
+                if new_qty[id(item)] >= caps:
+                    continue
+                if spent + unit <= target:
+                    new_qty[id(item)] += 1
+                    spent += unit
+                    added = True
+
+        old_payable = self.get_patient_payable()
+        removed = []
+        for item, _ in payable_items:
+            q = new_qty[id(item)]
+            if q == 0:
+                removed.append(item.prescription_item.medication.name)
+                item.delete()
+            elif q != item.quantity:
+                item.quantity = q
+                item.save(update_fields=["quantity"])
+
+        return {
+            "old_payable": old_payable,
+            "new_payable": self.get_patient_payable(),
+            "target": target,
+            "removed": removed,
+        }
+
     def clear_cart(self):
         """Remove all items from cart"""
         self.items.all().delete()

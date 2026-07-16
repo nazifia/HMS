@@ -519,6 +519,61 @@ def update_cart_item_quantity(request, item_id):
 
 @login_required
 @permission_required("pharmacy.edit")
+def recost_cart(request, cart_id):
+    """
+    Recost an active cart so the patient-payable total fits the amount the
+    patient actually has. Defaults to the patient's wallet balance; an explicit
+    `target` (POST) overrides it. Scales/removes items via cart.recost_to_amount.
+    """
+    from patients.models import PatientWallet
+
+    cart = get_object_or_404(PrescriptionCart, id=cart_id)
+
+    if request.method != "POST":
+        return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+    raw_target = request.POST.get("target", "").strip()
+    if raw_target:
+        try:
+            target = Decimal(raw_target)
+        except Exception:
+            messages.error(request, "Invalid target amount.")
+            return redirect("pharmacy:view_cart", cart_id=cart.id)
+    else:
+        wallet, _ = PatientWallet.objects.get_or_create(
+            patient=cart.prescription.patient, defaults={"balance": Decimal("0.00")}
+        )
+        target = wallet.balance
+
+    try:
+        with transaction.atomic():
+            result = cart.recost_to_amount(target)
+    except Exception as e:
+        messages.error(request, f"Cannot recost cart: {e}")
+        return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+    log_audit_action(
+        request.user,
+        "update",
+        cart,
+        f"Recosted cart #{cart.id} to ₦{result['target']:.2f} "
+        f"(payable ₦{result['old_payable']:.2f} → ₦{result['new_payable']:.2f})",
+    )
+
+    msg = (
+        f"✅ Recosted to fit ₦{result['target']:.2f}. "
+        f"Patient payable now ₦{result['new_payable']:.2f} "
+        f"(was ₦{result['old_payable']:.2f})."
+    )
+    if result["removed"]:
+        msg += f" Removed (unaffordable): {', '.join(result['removed'])}."
+    messages.success(request, msg)
+
+    return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+
+@login_required
+@permission_required("pharmacy.edit")
 def remove_cart_item(request, item_id):
     """
     Remove an item from cart.

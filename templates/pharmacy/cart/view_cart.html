@@ -985,6 +985,27 @@
                         </button>
                     </div>
                 </form>
+                {% if not wallet_balance_sufficient and cart.status == 'active' %}
+                <form method="post" action="{% url 'pharmacy:recost_cart' cart.id %}" class="px-3 pb-3">
+                    {% csrf_token %}
+                    <hr>
+                    <p class="small text-muted mb-2">
+                        Or recost this cart to fit what the patient can afford. Leave the
+                        amount blank to use the wallet balance ({{ patient_wallet.balance|currency }}).
+                        Quantities are reduced, and items that can't be afforded are removed.
+                    </p>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">₦</span>
+                        <input type="number" step="0.01" min="0" name="target"
+                               class="form-control" placeholder="Wallet balance"
+                               aria-label="Recost target amount">
+                    </div>
+                    <button type="submit" class="btn btn-outline-warning w-100"
+                            onclick="return confirm('Reduce quantities to fit this amount? This edits the cart.');">
+                        <i class="fas fa-scissors"></i> Recost to amount
+                    </button>
+                </form>
+                {% endif %}
             </div>
         </div>
     </div>
