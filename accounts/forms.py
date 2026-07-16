@@ -265,6 +265,13 @@ class UserProfileForm(forms.ModelForm):
         label="Additional Departments",
         widget=forms.CheckboxSelectMultiple,
     )
+    unit = forms.CharField(
+        max_length=100,
+        required=False,
+        label="Unit (Optional)",
+        help_text="When set, department dashboards show only referrals sent to this unit.",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
     employee_id = forms.CharField(
         max_length=20,
         required=False,
@@ -352,6 +359,7 @@ class UserProfileForm(forms.ModelForm):
                     initial_data["departments"] = list(
                         profile_instance.departments.all()
                     )
+                    initial_data["unit"] = getattr(profile_instance, "unit", "")
                     initial_data["employee_id"] = getattr(
                         profile_instance, "employee_id", ""
                     )
@@ -539,6 +547,7 @@ class UserProfileForm(forms.ModelForm):
             else:
                 profile.employee_id = employee_id_value
 
+            profile.unit = self.cleaned_data.get("unit") or None
             profile.specialization = self.cleaned_data.get("specialization")
             profile.qualification = self.cleaned_data.get("qualification")
 
