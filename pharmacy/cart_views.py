@@ -548,6 +548,22 @@ def recost_cart(request, cart_id):
     try:
         with transaction.atomic():
             result = cart.recost_to_amount(target)
+
+            # Keep any existing unpaid invoice in step with the new total so the
+            # patient isn't billed the old (higher) amount.
+            invoice = cart.invoice
+            if invoice and (not invoice.amount_paid or invoice.amount_paid == 0):
+                new_payable = result["new_payable"]
+                if new_payable <= 0:
+                    # Nothing left to bill: void the invoice, reopen the cart.
+                    invoice.status = "cancelled"
+                    invoice.save()
+                    cart.invoice = None
+                    cart.status = "active"
+                    cart.save(update_fields=["invoice", "status"])
+                else:
+                    invoice.subtotal = new_payable
+                    invoice.save()  # save() recomputes total_amount + status
     except Exception as e:
         messages.error(request, f"Cannot recost cart: {e}")
         return redirect("pharmacy:view_cart", cart_id=cart.id)

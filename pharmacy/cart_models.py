@@ -226,10 +226,18 @@ class PrescriptionCart(TenantModel):
         Never exceeds an item's original quantity or its available stock.
         Returns a summary dict; raises ValidationError if nothing is affordable.
 
-        ponytail: only usable while cart is 'active' (before invoicing).
+        Allowed while the cart has no payment yet: 'active', or 'invoiced'
+        with an unpaid invoice (the caller re-syncs that invoice afterwards).
         """
-        if self.status != "active":
-            raise ValidationError("Can only recost an active cart")
+        if self.status not in ("active", "invoiced"):
+            raise ValidationError(
+                f"Cannot recost a {self.get_status_display()} cart"
+            )
+        if self.invoice and self.invoice.amount_paid and self.invoice.amount_paid > 0:
+            raise ValidationError(
+                "Cannot recost: the invoice already has a payment. "
+                "Refund/cancel it first."
+            )
 
         target = Decimal(str(target))
         if target < 0:

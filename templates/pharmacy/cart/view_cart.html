@@ -985,7 +985,7 @@
                         </button>
                     </div>
                 </form>
-                {% if not wallet_balance_sufficient and cart.status == 'active' %}
+                {% if cart.status == 'active' or cart.status == 'invoiced' %}{% if not wallet_balance_sufficient %}
                 <form method="post" action="{% url 'pharmacy:recost_cart' cart.id %}" class="px-3 pb-3">
                     {% csrf_token %}
                     <hr>
@@ -1005,7 +1005,7 @@
                         <i class="fas fa-scissors"></i> Recost to amount
                     </button>
                 </form>
-                {% endif %}
+                {% endif %}{% endif %}
             </div>
         </div>
     </div>
