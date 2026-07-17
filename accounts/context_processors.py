@@ -79,7 +79,7 @@ def page_user_context(request):
         'user_can_manage_patients': any(r in user_roles for r in ['admin', 'receptionist', 'health_record_officer']),
         'user_can_manage_pharmacy': any(r in user_roles for r in ['admin', 'pharmacist']),
         'user_can_manage_billing': any(r in user_roles for r in ['admin', 'accountant', 'receptionist', 'health_record_officer']),
-        'user_can_manage_laboratory': any(r in user_roles for r in ['admin', 'lab_technician']),
+        'user_can_manage_laboratory': any(r in user_roles for r in ['admin', 'lab_technician', 'medical_lab_scientist']),
     }
     # --- core.hms_permissions (top-level dump) ---
     result.update(perms)

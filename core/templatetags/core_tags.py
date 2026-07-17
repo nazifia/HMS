@@ -94,6 +94,7 @@ def get_role_badge_class(role_name):
         "nurse": "bg-info",
         "pharmacist": "bg-warning",
         "lab_technician": "bg-purple",
+        "medical_lab_scientist": "bg-teal",
         "radiology_staff": "bg-teal",
         "accountant": "bg-warning text-dark",
         "receptionist": "bg-primary",

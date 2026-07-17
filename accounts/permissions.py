@@ -1806,6 +1806,20 @@ ROLE_PERMISSIONS = {
             "reports.view",
         ],
     },
+    "medical_lab_scientist": {
+        "description": "Medical Lab Scientist - Test management, results and verification",
+        "permissions": [
+            "view_dashboard",
+            "patients.view",
+            "lab.view",
+            "lab.create",
+            "lab.edit",
+            "lab.results",
+            "enter_lab_results",
+            "prescriptions.view",
+            "reports.view",
+        ],
+    },
     "accountant": {
         "description": "Hospital Accountant - Financial management and billing",
         "permissions": [
@@ -2413,6 +2427,7 @@ def get_role_badge_class(role_name):
         "receptionist": "bg-success",
         "pharmacist": "bg-warning",
         "lab_technician": "bg-secondary",
+        "medical_lab_scientist": "bg-teal",
         "accountant": "bg-dark",
         "health_record_officer": "bg-purple",
         "radiology_staff": "bg-pink",
@@ -2429,6 +2444,7 @@ def get_role_display_name(role_name):
         "receptionist": "Receptionist",
         "pharmacist": "Pharmacist",
         "lab_technician": "Lab Technician",
+        "medical_lab_scientist": "Medical Lab Scientist",
         "accountant": "Accountant",
         "health_record_officer": "Health Record Officer",
         "radiology_staff": "Radiology Staff",

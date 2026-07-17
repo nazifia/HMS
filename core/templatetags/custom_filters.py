@@ -76,6 +76,7 @@ def role_icon(role_name):
         "receptionist": "fa-user-tie",
         "pharmacist": "fa-pills",
         "lab_technician": "fa-flask",
+        "medical_lab_scientist": "fa-microscope",
         "radiology_staff": "fa-x-ray",
         "accountant": "fa-calculator",
         "health_record_officer": "fa-file-medical",

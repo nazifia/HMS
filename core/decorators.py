@@ -96,7 +96,7 @@ def lab_technician_required(view_func):
         def lab_technician_only_view(request):
             ...
     """
-    return role_required(["lab_technician", "admin"])(view_func)
+    return role_required(["lab_technician", "medical_lab_scientist", "admin"])(view_func)
 
 
 def nurse_required(view_func):
@@ -252,7 +252,7 @@ def department_access_required(department_name):
                 # Allow access if user has the role/permission for this department
                 # Map department names to expected roles/permissions
                 dept_role_map = {
-                    "laboratory": ["lab_technician", "lab.view"],
+                    "laboratory": ["lab_technician", "medical_lab_scientist", "lab.view"],
                     "pharmacy": ["pharmacist", "pharmacy.view"],
                     "radiology": ["radiology_staff", "radiology.view"],
                     "dental": ["doctor", "dental.view"],

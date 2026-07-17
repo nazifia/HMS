@@ -119,8 +119,8 @@ class RoleBasedAccessMiddleware:
             ('pharmacy/dispense/', ['pharmacist', 'admin']),
 
             # Laboratory-specific URLs
-            ('laboratory/', ['lab_technician', 'doctor', 'admin']),
-            ('laboratory/results/create/', ['lab_technician', 'admin']),
+            ('laboratory/', ['lab_technician', 'medical_lab_scientist', 'doctor', 'admin']),
+            ('laboratory/results/create/', ['lab_technician', 'medical_lab_scientist', 'admin']),
 
             # Billing-specific URLs
             ('billing/', ['accountant', 'admin']),

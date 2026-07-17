@@ -237,7 +237,7 @@ class Command(BaseCommand):
                 'is_system': True,
                 'display_order': 30,
                 'permission_codenames': ['view_tests'],
-                'role_names': ['lab_technician', 'doctor', 'admin'],
+                'role_names': ['lab_technician', 'medical_lab_scientist', 'doctor', 'admin'],
             },
             {
                 'element_id': 'btn_create_test',
@@ -263,7 +263,7 @@ class Command(BaseCommand):
                 'is_system': True,
                 'display_order': 2,
                 'permission_codenames': ['enter_results'],
-                'role_names': ['lab_technician', 'admin'],
+                'role_names': ['lab_technician', 'medical_lab_scientist', 'admin'],
             },
 
             # ============ BILLING MODULE ============

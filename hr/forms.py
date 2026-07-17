@@ -299,6 +299,7 @@ class StaffSearchForm(forms.Form):
             ('receptionist', 'Receptionist'),
             ('pharmacist', 'Pharmacist'),
             ('lab_technician', 'Lab Technician'),
+            ('medical_lab_scientist', 'Medical Lab Scientist'),
             ('admin', 'Administrator'),
         ],
         widget=forms.Select(attrs={'class': 'form-select'})

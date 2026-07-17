@@ -27,6 +27,7 @@ DEFAULT_ROLE_MAPPING = {
     'receptionist': 'receptionist',
     'pharmacist': 'pharmacist',
     'lab_technician': 'lab_technician',
+    'medical_lab_scientist': 'medical_lab_scientist',
     'radiology_staff': 'radiology_staff',
     'accountant': 'accountant',
     'health_record_officer': 'health_record_officer',

@@ -293,7 +293,7 @@
                 {% endif %}
 
                 <!-- Laboratory -->
-                {% if user.is_superuser or user|has_any_role:"admin,lab_technician,doctor" %}
+                {% if user.is_superuser or user|has_any_role:"admin,lab_technician,medical_lab_scientist,doctor" %}
                 <li class="nav-item">
                     <a class="nav-link nav-link-sidebar {% if '/laboratory/' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#labMenu">
                         <i class="fas fa-flask sidebar-icon"></i>

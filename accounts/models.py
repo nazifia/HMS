@@ -373,6 +373,7 @@ class CustomUserProfile(models.Model):
         ("receptionist", "Receptionist"),
         ("pharmacist", "Pharmacist"),
         ("lab_technician", "Lab Technician"),
+        ("medical_lab_scientist", "Medical Lab Scientist"),
         ("radiology_staff", "Radiology Staff"),
         ("accountant", "Accountant"),
         ("health_record_officer", "Health Record Officer"),
