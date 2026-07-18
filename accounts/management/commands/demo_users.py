@@ -77,6 +77,16 @@ class Command(BaseCommand):
                 'employee_id': 'LAB001'
             },
             {
+                'username': 'lab_sci_grace',
+                'phone_number': '+1234567897',
+                'first_name': 'Grace',
+                'last_name': 'Okafor',
+                'email': 'grace.okafor@hospital.com',
+                'role': 'medical_lab_scientist',
+                'department': 'Laboratory',
+                'employee_id': 'MLS001'
+            },
+            {
                 'username': 'accountant_david',
                 'phone_number': '+1234567895',
                 'first_name': 'David',
@@ -113,7 +123,9 @@ class Command(BaseCommand):
 
                 # Update profile
                 profile = user.profile  # This will create the profile if it doesn't exist
-                profile.department = user_data['department']
+                department = (Department.objects.filter(name=user_data['department']).first()
+                              or Department.objects.create(name=user_data['department']))
+                profile.department = department
                 profile.employee_id = user_data['employee_id']
                 if 'specialization' in user_data:
                     profile.specialization = user_data['specialization']
