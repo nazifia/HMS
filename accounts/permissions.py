@@ -1811,9 +1811,11 @@ ROLE_PERMISSIONS = {
         "permissions": [
             "view_dashboard",
             "patients.view",
+            "patients.edit",
             "lab.view",
             "lab.create",
             "lab.edit",
+            "lab.delete",
             "lab.results",
             "enter_lab_results",
             "prescriptions.view",
