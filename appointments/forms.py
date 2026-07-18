@@ -46,7 +46,7 @@ class AppointmentForm(forms.ModelForm):
         return label
     
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
+        queryset=User.objects.filter(is_active=True, profile__role='doctor'),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Doctor"
     )
@@ -91,8 +91,8 @@ class AppointmentForm(forms.ModelForm):
         self.fields['patient'].queryset = Patient.objects.filter(is_active=True).select_related('nhia_info', 'retainership_info').order_by('first_name', 'last_name')
         # Scope doctor picker to the current hospital (per-request, not import-time).
         self.fields['doctor'].queryset = User.tenant_objects.filter(
-            is_active=True, profile__specialization__isnull=False
-        )
+            is_active=True, profile__role='doctor'
+        ).order_by('first_name', 'last_name')
 
         # Show patient ID / NHIA / Retainership in the dropdown labels.
         self.fields['patient'].label_from_instance = self._format_patient_label
@@ -316,7 +316,7 @@ class AppointmentSearchForm(forms.Form):
                                'class': 'form-control'
                            }))
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
+        queryset=User.objects.filter(is_active=True, profile__role='doctor'),
         required=False,
         empty_label="All Doctors",
         widget=forms.Select(attrs={'class': 'form-control'})
@@ -338,8 +338,8 @@ class AppointmentSearchForm(forms.Form):
         super().__init__(*args, **kwargs)
         # Scope doctor filter to the current hospital (per-request).
         self.fields['doctor'].queryset = User.tenant_objects.filter(
-            is_active=True, profile__specialization__isnull=False
-        )
+            is_active=True, profile__role='doctor'
+        ).order_by('first_name', 'last_name')
 
 
 class AppointmentsPatientSearchForm(PatientSearchForm):
