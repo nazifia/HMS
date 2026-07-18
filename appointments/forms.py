@@ -27,11 +27,6 @@ class AppointmentForm(forms.ModelForm):
         empty_label="Select Patient"
     )
     
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Custom label_from_instance to show patient ID and type for better identification
-        self.fields['patient'].label_from_instance = self._format_patient_label
-        
     def _format_patient_label(self, obj):
         """Format patient label with type information"""
         if not obj:
@@ -98,10 +93,20 @@ class AppointmentForm(forms.ModelForm):
             is_active=True, profile__specialization__isnull=False
         )
 
+        # Show patient ID / NHIA / Retainership in the dropdown labels.
+        self.fields['patient'].label_from_instance = self._format_patient_label
+
         # If editing an existing record, populate the search field
         if self.instance and self.instance.pk and self.instance.patient:
             patient = self.instance.patient
             self.fields['patient_search'].initial = f"{patient.first_name} {patient.last_name} ({patient.patient_id})"
+
+        # appointment_date is a DateTimeField on the model but a DateField here,
+        # so an unedited instance would render an unparsable value in <input type=date>.
+        if self.instance and self.instance.pk and self.instance.appointment_date:
+            self.initial['appointment_date'] = timezone.localtime(
+                self.instance.appointment_date
+            ).date()
     
     def clean(self):
         cleaned_data = super().clean()
@@ -111,8 +116,14 @@ class AppointmentForm(forms.ModelForm):
         doctor = cleaned_data.get('doctor')
 
         # Check if appointment date is in the past
-        if appointment_date and appointment_date < timezone.now().date():
+        now = timezone.localtime()
+        if appointment_date and appointment_date < now.date():
             raise forms.ValidationError("Appointment date cannot be in the past.")
+
+        # A time earlier today is just as much in the past as yesterday.
+        if (appointment_date == now.date() and appointment_time
+                and not self.instance.pk and appointment_time < now.time()):
+            raise forms.ValidationError("Appointment time cannot be in the past.")
 
         # Check if end time is after start time
         if appointment_time and end_time and end_time <= appointment_time:
@@ -121,10 +132,12 @@ class AppointmentForm(forms.ModelForm):
         # Check if doctor is available on the selected date and time
         if appointment_date and appointment_time and doctor:
             # Check if doctor is on leave
+            # start_date/end_date are DateTimeFields; compare on the date part so a
+            # leave that starts mid-day still covers the whole day.
             doctor_leaves = DoctorLeave.objects.filter(
                 doctor=doctor,
-                start_date__lte=appointment_date,
-                end_date__gte=appointment_date,
+                start_date__date__lte=appointment_date,
+                end_date__date__gte=appointment_date,
                 is_approved=True
             )
 
@@ -143,7 +156,14 @@ class AppointmentForm(forms.ModelForm):
                 raise forms.ValidationError(f"Doctor {doctor.get_full_name()} is not available on this day.")
 
             # Check if appointment time is within doctor's schedule
-            if appointment_time < doctor_schedule.start_time or appointment_time > doctor_schedule.end_time:
+            # The slot must start within the shift and finish by the end of it.
+            slot_end = end_time or (
+                datetime.datetime.combine(appointment_date, appointment_time)
+                + datetime.timedelta(minutes=30)
+            ).time()
+            if (appointment_time < doctor_schedule.start_time
+                    or appointment_time >= doctor_schedule.end_time
+                    or slot_end > doctor_schedule.end_time):
                 raise forms.ValidationError(
                     f"Doctor {doctor.get_full_name()} is only available from "
                     f"{doctor_schedule.start_time.strftime('%I:%M %p')} to "

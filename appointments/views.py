@@ -8,13 +8,15 @@ from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.http import JsonResponse
-from django.core.cache import cache
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta
 from calendar import monthrange
 from .models import Appointment, AppointmentFollowUp, DoctorSchedule, DoctorLeave
 from .forms import AppointmentForm, AppointmentFollowUpForm, DoctorScheduleForm, DoctorLeaveForm, AppointmentSearchForm
 from patients.models import Patient
 from core.utils import send_notification_email, send_sms_notification
+
+# ponytail: fixed slot length. Move to DoctorSchedule if per-doctor slots are needed.
+SLOT_MINUTES = 30
 
 @login_required
 @permission_required('appointments.view')
@@ -54,21 +56,6 @@ def appointment_list(request):
         if date_to:
             appointments = appointments.filter(appointment_date__date__lte=date_to)
 
-    # Build cache key for computed data only
-    cache_key = f'appointment_list_data_{hash(request.GET.urlencode())}' if request.GET else 'appointment_list_data_all'
-    cached_data = cache.get(cache_key)
-
-    if cached_data:
-        # Reconstruct queryset from cached IDs
-        appointment_ids = cached_data['appointment_ids']
-        appointments = Appointment.objects.filter(id__in=appointment_ids).select_related('patient', 'doctor').order_by('-appointment_date', '-appointment_time')
-    else:
-        # Cache the data for future use
-        cache_data = {
-            'appointment_ids': list(appointments.values_list('id', flat=True)),
-        }
-        cache.set(cache_key, cache_data, 60)
-
     # Pagination
     paginator = Paginator(appointments, 10)  # Show 10 appointments per page
     page_number = request.GET.get('page')
@@ -90,7 +77,7 @@ def appointment_list(request):
     context = {
         'page_obj': page_obj,
         'search_form': search_form,
-        'total_appointments': appointments.count(),
+        'total_appointments': paginator.count,
         'upcoming_count': upcoming_count,
         'completed_count': completed_count,
         'cancelled_count': cancelled_count,
@@ -110,22 +97,18 @@ def create_appointment(request):
 
     if patient_id:
         try:
-            patient = Patient.objects.get(id=patient_id)
-            initial_data['patient'] = patient
-        except Patient.DoesNotExist:
+            initial_data['patient'] = Patient.objects.get(id=patient_id)
+        except (Patient.DoesNotExist, ValueError):
             pass
 
     if doctor_id:
         try:
-            doctor = CustomUser.objects.get(id=doctor_id)
-            initial_data['doctor'] = doctor
-        except CustomUser.DoesNotExist:
+            initial_data['doctor'] = CustomUser.tenant_objects.get(id=doctor_id)
+        except (CustomUser.DoesNotExist, ValueError):
             pass
 
     if request.method == 'POST':
         form = AppointmentForm(request.POST)
-        # Ensure all patients are available for selection
-        form.fields['patient'].queryset = Patient.objects.all()
         if form.is_valid():
             appointment = form.save(commit=False)
             appointment.created_by = request.user
@@ -146,8 +129,6 @@ def create_appointment(request):
             return redirect('appointments:detail', appointment_id=appointment.id)
     else:
         form = AppointmentForm(initial=initial_data)
-        # Ensure all patients are available for selection
-        form.fields['patient'].queryset = Patient.objects.all()
 
     # Get all doctors for the template
     doctors = CustomUser.tenant_objects.filter(
@@ -248,8 +229,14 @@ def cancel_appointment(request, appointment_id):
 def appointment_calendar(request):
     """View for displaying appointments in a calendar view"""
     # Get the month and year from the request, default to current month
-    month = int(request.GET.get('month', timezone.now().month))
-    year = int(request.GET.get('year', timezone.now().year))
+    today = timezone.localdate()
+    try:
+        month = int(request.GET.get('month', today.month))
+        year = int(request.GET.get('year', today.year))
+        if not 1 <= month <= 12 or not 1900 <= year <= 2999:
+            raise ValueError
+    except (TypeError, ValueError):
+        month, year = today.month, today.year
 
     # Get all doctors
     doctors = CustomUser.tenant_objects.filter(is_active=True, profile__role='doctor')
@@ -258,14 +245,14 @@ def appointment_calendar(request):
     # Filter appointments by doctor if selected
     if selected_doctor_id:
         try:
-            selected_doctor = CustomUser.objects.get(id=selected_doctor_id)
+            selected_doctor = CustomUser.tenant_objects.get(id=selected_doctor_id)
             appointments = Appointment.objects.filter(
                 doctor=selected_doctor,
                 appointment_date__year=year,
                 appointment_date__month=month
             )
-        except User.DoesNotExist:
-            appointments = Appointment.objects.filter(
+        except (CustomUser.DoesNotExist, ValueError):
+            appointments = Appointment.objects.select_related('patient', 'doctor').filter(
                 appointment_date__year=year,
                 appointment_date__month=month
             )
@@ -288,11 +275,14 @@ def appointment_calendar(request):
 
     # Add days of the month with their appointments
     for day in range(1, num_days + 1):
-        day_appointments = [a for a in appointments if a.appointment_date.day == day]
+        day_appointments = [
+            a for a in appointments
+            if timezone.localtime(a.appointment_date).day == day
+        ]
         cal_data.append({
             'day': day,
             'appointments': day_appointments,
-            'is_today': timezone.now().date() == datetime(year, month, day).date()
+            'is_today': today == datetime(year, month, day).date()
         })
 
     # Get previous and next month links
@@ -329,7 +319,7 @@ def appointment_calendar(request):
 @permission_required('appointments.view')
 def doctor_appointments(request, doctor_id):
     """View for displaying appointments for a specific doctor"""
-    doctor = get_object_or_404(CustomUser, id=doctor_id)
+    doctor = get_object_or_404(CustomUser.tenant_objects, id=doctor_id)
 
     # Get date range from request, default to today
     date_str = request.GET.get('date')
@@ -342,7 +332,7 @@ def doctor_appointments(request, doctor_id):
         selected_date = timezone.now().date()
 
     # Get appointments for the selected date
-    appointments = Appointment.objects.filter(
+    appointments = Appointment.objects.select_related('patient').filter(
         doctor=doctor,
         appointment_date__date=selected_date
     ).order_by('appointment_time')
@@ -354,8 +344,8 @@ def doctor_appointments(request, doctor_id):
     # Check if doctor is on leave
     is_on_leave = DoctorLeave.objects.filter(
         doctor=doctor,
-        start_date__lte=selected_date,
-        end_date__gte=selected_date,
+        start_date__date__lte=selected_date,
+        end_date__date__gte=selected_date,
         is_approved=True
     ).exists()
 
@@ -388,7 +378,7 @@ def manage_doctor_schedule(request, doctor_id=None):
             return redirect(f'{url}?edit_schedule_id={edit_schedule_id}')
     
     if doctor_id:
-        doctor = get_object_or_404(CustomUser, id=doctor_id)
+        doctor = get_object_or_404(CustomUser.tenant_objects, id=doctor_id)
         schedules = DoctorSchedule.objects.filter(doctor=doctor).order_by('weekday')
     else:
         doctor = None
@@ -530,15 +520,15 @@ def get_available_slots(request):
 
     try:
         selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        doctor = CustomUser.objects.get(id=doctor_id)
+        doctor = CustomUser.tenant_objects.get(id=doctor_id)
     except (ValueError, CustomUser.DoesNotExist):
         return JsonResponse({'error': 'Invalid date or doctor'}, status=400)
 
     # Check if doctor is on leave
     is_on_leave = DoctorLeave.objects.filter(
         doctor=doctor,
-        start_date__lte=selected_date,
-        end_date__gte=selected_date,
+        start_date__date__lte=selected_date,
+        end_date__date__gte=selected_date,
         is_approved=True
     ).exists()
 
@@ -552,35 +542,38 @@ def get_available_slots(request):
     if not schedule or not schedule.is_available:
         return JsonResponse({'available_slots': [], 'message': 'Doctor is not available on this date'}, status=200)
 
-    # Generate time slots based on schedule (30-minute intervals)
-    start_time = schedule.start_time
-    end_time = schedule.end_time
-
-    # Get existing appointments for this doctor on this date
-    existing_appointments = Appointment.objects.filter(
+    # Existing bookings as (start, end) datetimes so a slot overlapping a longer
+    # appointment is blocked too, not only one starting at the exact same minute.
+    booked = []
+    for appt in Appointment.objects.filter(
         doctor=doctor,
         appointment_date__date=selected_date,
-        status__in=['scheduled', 'confirmed']
-    ).values_list('appointment_time', flat=True)
+        status__in=['scheduled', 'confirmed'],
+    ).only('appointment_time', 'end_time'):
+        appt_start = datetime.combine(selected_date, appt.appointment_time)
+        appt_end = (
+            datetime.combine(selected_date, appt.end_time)
+            if appt.end_time else appt_start + timedelta(minutes=SLOT_MINUTES)
+        )
+        booked.append((appt_start, appt_end))
 
-    # Generate available slots
+    # Don't offer slots that have already started today.
+    now = timezone.localtime()
+    earliest = now.replace(tzinfo=None) if selected_date == now.date() else None
+
     available_slots = []
-    current_time = start_time
+    shift_end = datetime.combine(selected_date, schedule.end_time)
+    slot_start = datetime.combine(selected_date, schedule.start_time)
 
-    while current_time < end_time:
-        # Check if this slot is already booked
-        if current_time not in existing_appointments:
-            slot_value = current_time.strftime('%H:%M')
-            slot_text = current_time.strftime('%I:%M %p')
+    while slot_start < shift_end:
+        slot_end = slot_start + timedelta(minutes=SLOT_MINUTES)
+        taken = any(slot_start < b_end and slot_end > b_start for b_start, b_end in booked)
+        if slot_end <= shift_end and not taken and (earliest is None or slot_start >= earliest):
             available_slots.append({
-                'value': slot_value,
-                'text': slot_text
+                'value': slot_start.strftime('%H:%M'),
+                'text': slot_start.strftime('%I:%M %p'),
             })
-
-        # Move to next slot (30 minutes later)
-        current_time_dt = datetime.combine(datetime.today(), current_time)
-        current_time_dt += timedelta(minutes=30)
-        current_time = current_time_dt.time()
+        slot_start = slot_end
 
     return JsonResponse({'available_slots': available_slots}, status=200)
 
@@ -596,6 +589,13 @@ def update_appointment_status(request, appointment_id):
 
     if new_status not in dict(Appointment.STATUS_CHOICES).keys():
         return JsonResponse({'error': 'Invalid status'}, status=400)
+
+    # Completed/cancelled are terminal: reopening one would silently free the slot.
+    if appointment.status in ('completed', 'cancelled') and new_status != appointment.status:
+        return JsonResponse(
+            {'error': f'Cannot change a {appointment.get_status_display().lower()} appointment.'},
+            status=400,
+        )
 
     # Update appointment status
     appointment.status = new_status
