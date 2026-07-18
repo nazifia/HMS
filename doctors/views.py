@@ -5,6 +5,7 @@ from django.db.models import Avg, Count, Q
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.urls import reverse
+from django.utils import timezone
 
 from .models import (
     Specialization,
@@ -777,13 +778,13 @@ def get_doctor_availability(request, doctor_id):
 
         existing_appointments = Appointment.objects.filter(
             doctor__user=doctor.user,
-            appointment_date=selected_date,
+            appointment_date__date=selected_date,
             status__in=["scheduled", "confirmed"],
-        ).values("appointment_time")
+        ).values_list("appointment_date", flat=True)
 
-        # Convert to list of times
+        # Convert to list of local start times
         booked_times = [
-            appt["appointment_time"].strftime("%H:%M") for appt in existing_appointments
+            timezone.localtime(start).strftime("%H:%M") for start in existing_appointments
         ]
 
         # Format availability data

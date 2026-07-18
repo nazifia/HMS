@@ -81,7 +81,7 @@ def dashboard(request):
     # Optimize: Get today's appointments with select_related for related objects
     today_appointments = Appointment.objects.filter(
         appointment_date=today
-    ).select_related('patient', 'doctor').order_by('appointment_time')[:5]
+    ).select_related('patient', 'doctor').order_by('appointment_date')[:5]
 
     # Optimize: Get pending prescriptions with select_related
     pending_prescriptions = Prescription.objects.filter(

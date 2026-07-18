@@ -14,7 +14,8 @@ class AppointmentAdmin(admin.ModelAdmin):
     inlines = [AppointmentFollowUpInline]
     fieldsets = (
         ('Appointment Information', {
-            'fields': ('patient', 'doctor', 'appointment_date', 'appointment_time', 'end_time')
+            # appointment_time is a read-only property, not an editable field.
+            'fields': ('patient', 'doctor', 'appointment_date', 'end_time')
         }),
         ('Details', {
             'fields': ('reason', 'status', 'priority', 'notes')

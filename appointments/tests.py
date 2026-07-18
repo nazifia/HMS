@@ -1,6 +1,7 @@
 from datetime import date, datetime, time, timedelta
 
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import CustomUser
@@ -90,9 +91,37 @@ class AppointmentBookingTests(TestCase):
         self.assertEqual(local.hour, 10)
         self.assertEqual(appt.appointment_time, time(10, 0))
 
-    def test_edit_form_prefills_date_from_datetime(self):
+    def test_edit_form_prefills_date_and_time_from_datetime(self):
         appt = self.form("10:00").save()
-        self.assertEqual(AppointmentForm(instance=appt).initial["appointment_date"], self.day)
+        initial = AppointmentForm(instance=appt).initial
+        self.assertEqual(initial["appointment_date"], self.day)
+        self.assertEqual(initial["appointment_time"], time(10, 0))
+
+    def test_appointment_time_property_tracks_the_datetime(self):
+        appt = self.form("10:00").save()
+        self.assertEqual(appt.appointment_time, time(10, 0))
+        appt.refresh_from_db()
+        self.assertEqual(appt.appointment_time, time(10, 0))
+        # Property is derived, so it follows a change to the stored datetime.
+        appt.appointment_date = timezone.make_aware(datetime.combine(self.day, time(14, 30)))
+        self.assertEqual(appt.appointment_time, time(14, 30))
+
+    def test_pages_render_the_time_from_the_property(self):
+        """Templates still read appointment.appointment_time after the column drop."""
+        appt = self.form("10:00").save()
+        admin = CustomUser.objects.create_superuser(
+            phone_number="08000000002", username="root", password="pw",
+        )
+        self.client.force_login(admin)
+        for url in (
+            reverse("appointments:detail", args=[appt.pk]),
+            reverse("appointments:list"),
+            f"{reverse('appointments:calendar')}?month={self.day.month}&year={self.day.year}",
+        ):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, "10:00 AM")
 
     def test_patient_labels_include_patient_id(self):
         form = AppointmentForm()

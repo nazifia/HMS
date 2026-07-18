@@ -78,7 +78,7 @@ class WaitingListForm(forms.ModelForm):
         self.fields['doctor'].queryset = doctors.order_by('first_name', 'last_name')
         self.fields['appointment'].queryset = Appointment.objects.filter(
             status__in=['scheduled', 'confirmed']
-        ).order_by('appointment_date', 'appointment_time')
+        ).order_by('appointment_date')
         
         # Set empty labels
         self.fields['doctor'].empty_label = "Select Doctor (Optional)"

@@ -28,8 +28,9 @@ class Appointment(TenantModel):
         on_delete=models.CASCADE,
         related_name="doctor_appointments",
     )
+    # Full start datetime. The old separate appointment_time column was folded in
+    # here (migration 0007); `appointment_time` below is now a read-only view of it.
     appointment_date = models.DateTimeField()
-    appointment_time = models.TimeField()
     end_time = models.TimeField(null=True, blank=True)
     reason = models.TextField()
     status = models.CharField(
@@ -51,6 +52,13 @@ class Appointment(TenantModel):
     def __str__(self):
         return f"{self.patient.get_full_name()} - {self.doctor.get_full_name()} - {self.appointment_date}"
 
+    @property
+    def appointment_time(self):
+        """Local start time. Kept as a property so templates reading
+        `appointment.appointment_time` still work after the column was dropped.
+        Not queryable — order and filter on `appointment_date` instead."""
+        return timezone.localtime(self.appointment_date).time()
+
     def is_past_due(self):
         return timezone.now().date() > self.appointment_date.date()
 
@@ -64,7 +72,7 @@ class Appointment(TenantModel):
         return self.appointment_date.date() == timezone.now().date()
 
     class Meta:
-        ordering = ["appointment_date", "appointment_time"]
+        ordering = ["appointment_date"]
         indexes = [
             models.Index(fields=["appointment_date"], name="idx_appt_date"),
             models.Index(fields=["patient"], name="idx_appt_patient"),

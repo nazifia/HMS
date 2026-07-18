@@ -66,8 +66,9 @@ class AppointmentForm(forms.ModelForm):
     
     class Meta:
         model = Appointment
-        fields = ['patient', 'doctor', 'appointment_date', 'appointment_time', 
-                 'end_time', 'reason', 'status', 'priority', 'notes']
+        # appointment_date and appointment_time are declared above as plain form
+        # fields; save() combines them into the model's appointment_date datetime.
+        fields = ['patient', 'doctor', 'end_time', 'reason', 'status', 'priority', 'notes']
         widgets = {
             'reason': forms.Textarea(attrs={'rows': 3}),
             'notes': forms.Textarea(attrs={'rows': 3}),
@@ -101,12 +102,11 @@ class AppointmentForm(forms.ModelForm):
             patient = self.instance.patient
             self.fields['patient_search'].initial = f"{patient.first_name} {patient.last_name} ({patient.patient_id})"
 
-        # appointment_date is a DateTimeField on the model but a DateField here,
-        # so an unedited instance would render an unparsable value in <input type=date>.
+        # The model stores one datetime; split it back out for the two form fields.
         if self.instance and self.instance.pk and self.instance.appointment_date:
-            self.initial['appointment_date'] = timezone.localtime(
-                self.instance.appointment_date
-            ).date()
+            local = timezone.localtime(self.instance.appointment_date)
+            self.initial['appointment_date'] = local.date()
+            self.initial['appointment_time'] = local.time()
     
     def clean(self):
         cleaned_data = super().clean()

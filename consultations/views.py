@@ -522,7 +522,7 @@ def doctor_dashboard(request):
         doctor=doctor,
         appointment_date=today,
         status__in=['scheduled', 'confirmed']
-    ).order_by('appointment_time')
+    ).order_by('appointment_date')
 
     # Get patients with vitals taken today
     patients_with_vitals = Patient.objects.filter(

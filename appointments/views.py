@@ -23,7 +23,7 @@ SLOT_MINUTES = 30
 def appointment_list(request):
     """View for listing all appointments with search and filter functionality"""
     search_form = AppointmentSearchForm(request.GET)
-    appointments = Appointment.objects.select_related('patient', 'doctor').all().order_by('-appointment_date', '-appointment_time')
+    appointments = Appointment.objects.select_related('patient', 'doctor').all().order_by('-appointment_date')
 
     # Apply filters if the form is valid
     if search_form.is_valid():
@@ -335,7 +335,7 @@ def doctor_appointments(request, doctor_id):
     appointments = Appointment.objects.select_related('patient').filter(
         doctor=doctor,
         appointment_date__date=selected_date
-    ).order_by('appointment_time')
+    ).order_by('appointment_date')
 
     # Get doctor's schedule for the selected date
     weekday = selected_date.weekday()
@@ -549,7 +549,7 @@ def get_available_slots(request):
         doctor=doctor,
         appointment_date__date=selected_date,
         status__in=['scheduled', 'confirmed'],
-    ).only('appointment_time', 'end_time'):
+    ).only('appointment_date', 'end_time'):
         appt_start = datetime.combine(selected_date, appt.appointment_time)
         appt_end = (
             datetime.combine(selected_date, appt.end_time)
