@@ -1,11 +1,24 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 User = get_user_model()
 from django.utils import timezone
 from .models import Appointment, AppointmentFollowUp, DoctorSchedule, DoctorLeave
 from patients.models import Patient
 from core.patient_search_forms import PatientSearchForm
 import datetime
+
+# ponytail: two role systems live side by side - legacy profile.role CharField
+# and the newer roles M2M. A doctor may be tagged in either, so match both.
+DOCTOR_Q = Q(profile__role__iexact='doctor') | Q(roles__name__iexact='doctor')
+
+
+def doctor_queryset(manager=None):
+    """Active doctors, tenant-scoped by default."""
+    manager = manager or User.tenant_objects
+    return manager.filter(DOCTOR_Q, is_active=True).distinct().order_by(
+        'first_name', 'last_name'
+    )
 
 class AppointmentForm(forms.ModelForm):
     """Form for creating and editing appointments with patient search"""
@@ -46,7 +59,7 @@ class AppointmentForm(forms.ModelForm):
         return label
     
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, profile__role='doctor'),
+        queryset=doctor_queryset(User.objects),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Doctor"
     )
@@ -90,9 +103,7 @@ class AppointmentForm(forms.ModelForm):
         # Ensure all patients are available for selection
         self.fields['patient'].queryset = Patient.objects.filter(is_active=True).select_related('nhia_info', 'retainership_info').order_by('first_name', 'last_name')
         # Scope doctor picker to the current hospital (per-request, not import-time).
-        self.fields['doctor'].queryset = User.tenant_objects.filter(
-            is_active=True, profile__role='doctor'
-        ).order_by('first_name', 'last_name')
+        self.fields['doctor'].queryset = doctor_queryset()
 
         # Show patient ID / NHIA / Retainership in the dropdown labels.
         self.fields['patient'].label_from_instance = self._format_patient_label
@@ -316,7 +327,7 @@ class AppointmentSearchForm(forms.Form):
                                'class': 'form-control'
                            }))
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, profile__role='doctor'),
+        queryset=doctor_queryset(User.objects),
         required=False,
         empty_label="All Doctors",
         widget=forms.Select(attrs={'class': 'form-control'})
@@ -337,9 +348,7 @@ class AppointmentSearchForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Scope doctor filter to the current hospital (per-request).
-        self.fields['doctor'].queryset = User.tenant_objects.filter(
-            is_active=True, profile__role='doctor'
-        ).order_by('first_name', 'last_name')
+        self.fields['doctor'].queryset = doctor_queryset()
 
 
 class AppointmentsPatientSearchForm(PatientSearchForm):
