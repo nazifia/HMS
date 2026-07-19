@@ -94,6 +94,15 @@ class AppointmentFollowUp(TenantModel):
     )
     follow_up_date = models.DateField()
     notes = models.TextField()
+    # Set once the follow-up is turned into a real booking; keeps the
+    # "Book Appointment" button from showing twice for the same follow-up.
+    booked_appointment = models.OneToOneField(
+        Appointment,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="booked_from_follow_up",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True

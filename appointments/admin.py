@@ -3,6 +3,7 @@ from .models import Appointment, AppointmentFollowUp, DoctorSchedule, DoctorLeav
 
 class AppointmentFollowUpInline(admin.TabularInline):
     model = AppointmentFollowUp
+    fk_name = 'appointment'
     extra = 0
 
 @admin.register(Appointment)

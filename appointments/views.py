@@ -95,6 +95,23 @@ def create_appointment(request):
     doctor_id = request.GET.get('doctor_id')
     initial_data = {}
 
+    # Booking a follow-up: prefill from the original appointment. The form posts
+    # back to the same URL, so the follow_up_id query param survives the POST.
+    follow_up = None
+    follow_up_id = request.GET.get('follow_up_id')
+    if follow_up_id:
+        follow_up = AppointmentFollowUp.objects.filter(
+            id=follow_up_id, booked_appointment__isnull=True
+        ).select_related('appointment__patient', 'appointment__doctor').first()
+        if follow_up is None:
+            messages.warning(request, 'This follow-up is already booked or does not exist.')
+        else:
+            initial_data['patient'] = follow_up.appointment.patient
+            initial_data['doctor'] = follow_up.appointment.doctor
+            initial_data['appointment_date'] = follow_up.follow_up_date
+            initial_data['reason'] = f"Follow-up: {follow_up.appointment.reason}"
+            initial_data['notes'] = follow_up.notes
+
     if patient_id:
         try:
             initial_data['patient'] = Patient.objects.get(id=patient_id)
@@ -113,6 +130,9 @@ def create_appointment(request):
             appointment = form.save(commit=False)
             appointment.created_by = request.user
             appointment.save()
+            if follow_up:
+                follow_up.booked_appointment = appointment
+                follow_up.save(update_fields=['booked_appointment'])
             # Send appointment reminder notification (stub)
             if appointment.patient.email:
                 send_notification_email(
@@ -139,7 +159,7 @@ def create_appointment(request):
 
     context = {
         'form': form,
-        'title': 'Schedule New Appointment',
+        'title': 'Book Follow-up Appointment' if follow_up else 'Schedule New Appointment',
         'doctors': doctors,
     }
 
@@ -150,7 +170,7 @@ def create_appointment(request):
 def appointment_detail(request, appointment_id):
     """View for displaying appointment details"""
     appointment = get_object_or_404(Appointment, id=appointment_id)
-    follow_ups = appointment.follow_ups.all().order_by('-follow_up_date')
+    follow_ups = appointment.follow_ups.select_related('booked_appointment', 'created_by').order_by('-follow_up_date')
 
     # Handle adding new follow-up
     if request.method == 'POST' and 'add_follow_up' in request.POST:

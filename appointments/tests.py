@@ -8,7 +8,7 @@ from accounts.models import CustomUser
 from patients.models import Patient
 
 from .forms import AppointmentForm, DoctorLeaveForm, DoctorScheduleForm
-from .models import Appointment, DoctorLeave, DoctorSchedule
+from .models import Appointment, AppointmentFollowUp, DoctorLeave, DoctorSchedule
 
 
 class AppointmentBookingTests(TestCase):
@@ -152,6 +152,43 @@ class AppointmentBookingTests(TestCase):
                 self.assertEqual(
                     list(form.fields["doctor"].queryset), [self.doctor]
                 )
+
+    def test_booking_a_follow_up_prefills_and_links_the_new_appointment(self):
+        original = self.form("10:00").save()
+        original.status = "completed"
+        original.save()
+        follow_up = AppointmentFollowUp.objects.create(
+            appointment=original, follow_up_date=self.day, notes="review results",
+        )
+        admin = CustomUser.objects.create_superuser(
+            phone_number="08000000004", username="root3", password="pw",
+        )
+        self.client.force_login(admin)
+        url = f"{reverse('appointments:create')}?follow_up_id={follow_up.pk}"
+
+        # GET prefills patient, doctor and date from the original appointment.
+        response = self.client.get(url)
+        form = response.context["form"]
+        self.assertEqual(form.initial["doctor"], self.doctor)
+        self.assertEqual(form.initial["appointment_date"], self.day)
+
+        # POST books it and links the follow-up to the new appointment.
+        response = self.client.post(url, {
+            "patient": self.patient.pk,
+            "doctor": self.doctor.pk,
+            "appointment_date": self.day.isoformat(),
+            "appointment_time": "11:00",
+            "reason": "Follow-up: checkup",
+            "status": "scheduled",
+            "priority": "normal",
+        })
+        follow_up.refresh_from_db()
+        self.assertIsNotNone(follow_up.booked_appointment)
+        self.assertEqual(follow_up.booked_appointment.appointment_time, time(11, 0))
+
+        # Already-booked follow-up can't be booked again.
+        response = self.client.get(url)
+        self.assertNotIn("appointment_date", response.context["form"].initial)
 
     def test_leave_dates_are_stored_as_aware_full_day_datetimes(self):
         form = DoctorLeaveForm(data={
