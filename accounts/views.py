@@ -2,7 +2,7 @@ import logging
 import json
 from urllib.parse import quote
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib import messages
@@ -43,21 +43,6 @@ from accounts.permissions import (
     check_user_management_access,
     get_user_roles,
 )
-
-
-# Custom decorators for backward compatibility
-def user_passes_test(test_func):
-    def decorator(view_func):
-        def _wrapped_view(request, *args, **kwargs):
-            if not test_func(request.user):
-                from django.contrib.auth.decorators import PermissionDenied
-
-                raise PermissionDenied
-            return view_func(request, *args, **kwargs)
-
-        return _wrapped_view
-
-    return decorator
 
 
 def is_admin(user):
@@ -111,31 +96,6 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from django.contrib import messages
 from django.urls import reverse
-
-
-# Custom decorators for backward compatibility
-def user_passes_test(test_func):
-    def decorator(view_func):
-        def _wrapped_view(request, *args, **kwargs):
-            if not test_func(request.user):
-                from django.contrib.auth.decorators import PermissionDenied
-
-                raise PermissionDenied
-            return view_func(request, *args, **kwargs)
-
-        return _wrapped_view
-
-    return decorator
-
-
-def is_admin(user):
-    return user.is_authenticated and (
-        user.is_superuser or user.roles.filter(name="admin").exists()
-    )
-
-
-def is_admin_or_staff(user):
-    return user.is_authenticated and (user.is_superuser or user.is_staff)
 
 
 from django.http import JsonResponse
@@ -1194,21 +1154,6 @@ from .forms import (
 )
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-
-
-# Custom decorators for backward compatibility
-def user_passes_test(test_func):
-    def decorator(view_func):
-        def _wrapped_view(request, *args, **kwargs):
-            if not test_func(request.user):
-                from django.contrib.auth.decorators import PermissionDenied
-
-                raise PermissionDenied
-            return view_func(request, *args, **kwargs)
-
-        return _wrapped_view
-
-    return decorator
 
 
 def is_admin(user):

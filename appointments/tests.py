@@ -123,6 +123,29 @@ class AppointmentBookingTests(TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, "10:00 AM")
 
+    def test_room_must_match_department(self):
+        from accounts.models import Department
+        from consultations.models import ConsultingRoom
+        cardio, _ = Department.objects.get_or_create(name="Cardiology")
+        derma, _ = Department.objects.get_or_create(name="Dermatology")
+        room = ConsultingRoom.objects.create(room_number="C1", floor="1", department=cardio)
+
+        form = self.form("10:00")
+        form.data = form.data.copy()
+        form.data["department"] = derma.pk
+        form.data["consulting_room"] = room.pk
+        self.assertFalse(form.is_valid())
+        self.assertIn("consulting_room", form.errors)
+
+        # Room alone fills the department in from the room.
+        form = self.form("10:00")
+        form.data = form.data.copy()
+        form.data["consulting_room"] = room.pk
+        self.assertTrue(form.is_valid(), form.errors)
+        appt = form.save()
+        self.assertEqual(appt.department, cardio)
+        self.assertEqual(appt.consulting_room, room)
+
     def test_patient_labels_include_patient_id(self):
         form = AppointmentForm()
         label = form.fields["patient"].label_from_instance(self.patient)

@@ -472,35 +472,35 @@
                                 </button>
                                 {% endif %}
 
-                                {% if user|has_permission:'create_prescription' or user.is_superuser %}
+                                {% if user|has_permission:'prescriptions.create' or user.is_superuser %}
                                 <a href="{% url 'pharmacy:pharmacy_create_prescription' patient.id %}" class="qa-item">
                                     <i class="fas fa-pills" style="color:var(--p-warning);"></i>
                                     Prescribe
                                 </a>
                                 {% endif %}
 
-                                {% if user|has_permission:'create_test_request' or user.is_superuser %}
+                                {% if user|has_permission:'lab.create' or user.is_superuser %}
                                 <a href="{% url 'laboratory:create_test_request' %}?patient={{ patient.id }}" class="qa-item">
                                     <i class="fas fa-flask" style="color:var(--p-info);"></i>
                                     Lab Test
                                 </a>
                                 {% endif %}
 
-                                {% if user|has_permission:'create_radiology_request' or user.is_superuser %}
+                                {% if user|has_permission:'radiology.create' or user.is_superuser %}
                                 <a href="{% url 'radiology:order' patient.id %}" class="qa-item">
                                     <i class="fas fa-x-ray" style="color:var(--p-info);"></i>
                                     Radiology
                                 </a>
                                 {% endif %}
 
-                                {% if user|has_permission:'manage_patient_admission' or user.is_superuser %}
+                                {% if user|has_permission:'inpatient.create' or user.is_superuser %}
                                 <a href="{% url 'inpatient:create_admission' %}?patient_id={{ patient.id }}" class="qa-item">
                                     <i class="fas fa-bed" style="color:#f59e0b;"></i>
                                     Admit
                                 </a>
                                 {% endif %}
 
-                                {% if user|has_permission:'refer_patient' or user.is_superuser %}
+                                {% if user|has_permission:'referrals.create' or user.is_superuser %}
                                 <a href="{% url 'consultations:create_referral_for_patient' patient.id %}" class="qa-item">
                                     <i class="fas fa-user-md" style="color:var(--p-danger);"></i>
                                     Refer
@@ -515,14 +515,14 @@
                                 </a>
                                 {% endif %}
 
-                                {% if user|has_permission:'create_invoice' or user.is_superuser %}
+                                {% if user|has_permission:'billing.create' or user.is_superuser %}
                                 <a href="{% url 'billing:create' %}?patient={{ patient.id }}" class="qa-item">
                                     <i class="fas fa-file-invoice-dollar" style="color:var(--p-success);"></i>
                                     Invoice
                                 </a>
                                 {% endif %}
 
-                                {% if user|has_permission:'manage_vitals' or user.is_superuser %}
+                                {% if user|has_permission:'vitals.create' or user.is_superuser %}
                                 <button type="button" class="qa-item" data-bs-toggle="modal" data-bs-target="#vitalsModal">
                                     <i class="fas fa-heartbeat" style="color:var(--p-danger);"></i>
                                     Vitals
@@ -707,7 +707,7 @@
                             <div class="pd-empty">
                                 <i class="fas fa-heartbeat"></i>
                                 <p>No vitals recorded yet.</p>
-                                {% if user|has_permission:'manage_vitals' or user.is_superuser %}
+                                {% if user|has_permission:'vitals.create' or user.is_superuser %}
                                 <button type="button" class="btn btn-sm btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#vitalsModal">
                                     <i class="fas fa-plus me-1"></i>Record Vitals
                                 </button>

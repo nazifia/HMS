@@ -1,9 +1,10 @@
-"""Login gate: hospital staff may only authenticate on their own subdomain."""
+"""Login gate: hospital staff may only authenticate on their own subdomain.
+Base domain / localhost resolves no tenant, so nothing is gated there."""
 from types import SimpleNamespace
 
 from django.test import TestCase
 
-from accounts.backends import PhoneNumberBackend
+from accounts.backends import AdminBackend, PhoneNumberBackend
 from accounts.models import CustomUser
 from saas.models import Hospital
 
@@ -32,11 +33,29 @@ class TenantLoginGateTest(TestCase):
     def test_staff_blocked_on_other_subdomain(self):
         assert self.auth(self._req(self.h2)) is None
 
-    def test_staff_blocked_on_base_domain(self):
-        assert self.auth(self._req(None)) is None
+    def test_staff_allowed_on_base_domain(self):
+        # No tenant resolved (localhost / bare domain): nothing to gate against.
+        assert self.auth(self._req(None)) == self.staff
 
     def test_platform_user_allowed_anywhere(self):
         req = self._req(self.h1)
         u = self.backend.authenticate(req, username="999", password="pw")
         assert u == self.platform
         assert self.backend.authenticate(self._req(None), username="999", password="pw") == self.platform
+
+
+class AdminBackendTenantGateTest(TenantLoginGateTest):
+    """AdminBackend runs first and matches username or phone; it must apply
+    the same tenant gate or it becomes a cross-tenant login bypass."""
+
+    def setUp(self):
+        super().setUp()
+        self.backend = AdminBackend()
+
+    def test_staff_blocked_on_other_subdomain_via_username(self):
+        req = self._req(self.h2)
+        assert self.backend.authenticate(req, username="staff1", password="pw") is None
+
+    def test_staff_allowed_on_own_subdomain_via_username(self):
+        req = self._req(self.h1)
+        assert self.backend.authenticate(req, username="staff1", password="pw") == self.staff

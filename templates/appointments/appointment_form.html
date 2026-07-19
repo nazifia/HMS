@@ -42,6 +42,26 @@
                             {% endif %}
                         </div>
                         
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.department.id_for_label }}" class="form-label">Department (Optional)</label>
+                            {{ form.department|add_class:"form-select" }}
+                            {% if form.department.errors %}
+                                <div class="text-danger">
+                                    {{ form.department.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.consulting_room.id_for_label }}" class="form-label">Consulting Room (Optional)</label>
+                            {{ form.consulting_room|add_class:"form-select" }}
+                            {% if form.consulting_room.errors %}
+                                <div class="text-danger">
+                                    {{ form.consulting_room.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
                         <div class="col-md-4 mb-3">
                             <label for="{{ form.appointment_date.id_for_label }}" class="form-label">Appointment Date</label>
                             {{ form.appointment_date|add_class:"form-control" }}
@@ -137,6 +157,7 @@
                         </button>
                     </div>
                 </form>
+                {{ form.room_department_map|json_script:"room-dept-map" }}
             </div>
         </div>
     </div>
@@ -200,6 +221,23 @@
         }
         $patient.on('change', toggleAuthCode);
         toggleAuthCode();
+
+        // Filter consulting rooms to the selected department. Server-side
+        // clean() re-validates, so this is convenience only.
+        var roomDeptMap = JSON.parse(document.getElementById('room-dept-map').textContent);
+        var $dept = $('#{{ form.department.id_for_label }}');
+        var $room = $('#{{ form.consulting_room.id_for_label }}');
+        function filterRooms() {
+            var deptId = $dept.val();
+            $room.find('option').each(function() {
+                var roomDept = roomDeptMap[this.value];
+                var show = !this.value || !deptId || String(roomDept) === deptId;
+                $(this).toggle(show);
+                if (!show && this.selected) $room.val('');
+            });
+        }
+        $dept.on('change', filterRooms);
+        filterRooms();
     });
 </script>
 {% endblock %}

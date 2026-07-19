@@ -133,7 +133,11 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Department:</div>
-                            <div class="col-md-8">{{ appointment.doctor.profile.department|default:"Not specified" }}</div>
+                            <div class="col-md-8">{{ appointment.department|default:appointment.doctor.profile.department|default:"Not specified" }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Consulting Room:</div>
+                            <div class="col-md-8">{{ appointment.consulting_room|default:"Not assigned" }}</div>
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Specialization:</div>

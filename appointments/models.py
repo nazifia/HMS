@@ -32,6 +32,20 @@ class Appointment(TenantModel):
         on_delete=models.CASCADE,
         related_name="doctor_appointments",
     )
+    department = models.ForeignKey(
+        'accounts.Department',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='appointments',
+    )
+    consulting_room = models.ForeignKey(
+        'consultations.ConsultingRoom',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='appointments',
+    )
     # Full start datetime. The old separate appointment_time column was folded in
     # here (migration 0007); `appointment_time` below is now a read-only view of it.
     appointment_date = models.DateTimeField()

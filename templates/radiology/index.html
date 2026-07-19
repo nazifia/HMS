@@ -73,7 +73,7 @@
                                             <a href="{{ patient.results_url }}" class="btn btn-outline-primary" title="View Results">
                                                 <i class="fas fa-file-medical-alt"></i> Results
                                             </a>
-                                            <a href="{% if user|has_permission:'create_radiology_request' %}{% url 'radiology:order' patient.id %}{% else %}#{% endif %}" class="btn btn-outline-success{% if not user|has_permission:'create_radiology_request' %} disabled{% endif %}" title="New Order">
+                                            <a href="{% if user|has_permission:'radiology.create' %}{% url 'radiology:order' patient.id %}{% else %}#{% endif %}" class="btn btn-outline-success{% if not user|has_permission:'radiology.create' %} disabled{% endif %}" title="New Order">
                                                 <i class="fas fa-plus"></i> Order
                                             </a>
                                         </div>

@@ -64,6 +64,20 @@ class AppointmentForm(forms.ModelForm):
         empty_label="Select Doctor"
     )
     
+    department = forms.ModelChoiceField(
+        queryset=None,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        empty_label="Select Department",
+    )
+
+    consulting_room = forms.ModelChoiceField(
+        queryset=None,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        empty_label="Select Consulting Room",
+    )
+
     appointment_date = forms.DateField(
         widget=forms.DateInput(attrs={'type': 'date', 'min': timezone.now().date().isoformat()})
     )
@@ -91,7 +105,7 @@ class AppointmentForm(forms.ModelForm):
         model = Appointment
         # appointment_date and appointment_time are declared above as plain form
         # fields; save() combines them into the model's appointment_date datetime.
-        fields = ['patient', 'doctor', 'end_time', 'reason', 'status', 'priority', 'notes']
+        fields = ['patient', 'doctor', 'department', 'consulting_room', 'end_time', 'reason', 'status', 'priority', 'notes']
         widgets = {
             'reason': forms.Textarea(attrs={'rows': 3}),
             'notes': forms.Textarea(attrs={'rows': 3}),
@@ -114,6 +128,15 @@ class AppointmentForm(forms.ModelForm):
         self.fields['patient'].queryset = Patient.objects.filter(is_active=True).select_related('nhia_info', 'retainership_info').order_by('first_name', 'last_name')
         # Scope doctor picker to the current hospital (per-request, not import-time).
         self.fields['doctor'].queryset = doctor_queryset()
+
+        # Department and consulting room pickers, tenant-scoped. The template
+        # filters rooms client-side via room_department_map; clean() re-checks.
+        from accounts.models import Department
+        from consultations.models import ConsultingRoom
+        self.fields['department'].queryset = Department.objects.order_by('name')
+        rooms = ConsultingRoom.objects.filter(is_active=True).select_related('department')
+        self.fields['consulting_room'].queryset = rooms
+        self.room_department_map = {str(r.pk): r.department_id for r in rooms}
 
         # Show patient ID / NHIA / Retainership in the dropdown labels.
         self.fields['patient'].label_from_instance = self._format_patient_label
@@ -189,6 +212,19 @@ class AppointmentForm(forms.ModelForm):
                 'Consultation fee has not been paid. The patient must pay '
                 'before the appointment can be confirmed or completed.'
             )
+
+        # Room must belong to the chosen department; picking only a room
+        # fills the department in from it.
+        department = cleaned_data.get('department')
+        room = cleaned_data.get('consulting_room')
+        if room:
+            if department and room.department_id and room.department_id != department.pk:
+                self.add_error(
+                    'consulting_room',
+                    f'{room} is not in the {department.name} department.'
+                )
+            elif not department and room.department_id:
+                cleaned_data['department'] = room.department
 
         # Check if appointment date is in the past
         now = timezone.localtime()

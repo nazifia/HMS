@@ -12,6 +12,17 @@ from core.validators import normalize_nigerian_phone
 User = get_user_model()
 
 
+def _tenant_allowed(user, request):
+    """Tenant gate: hospital staff may only authenticate on their own
+    hospital's subdomain. Platform users (hospital is None) log in anywhere.
+    When no tenant is resolved (localhost / bare domain) there is nothing to
+    gate against, so allow. request.hospital is set by saas.TenantMiddleware."""
+    if user.hospital_id is None:
+        return True
+    req_hospital = getattr(request, "hospital", None)
+    return req_hospital is None or req_hospital.id == user.hospital_id
+
+
 class PhoneNumberBackend(BaseBackend):
     """
     Authentication backend for regular application users using phone numbers.
@@ -36,16 +47,8 @@ class PhoneNumberBackend(BaseBackend):
             return None
 
         if user.check_password(password) and user.is_active:
-            # Tenant gate: a hospital staff may only authenticate on their own
-            # hospital's subdomain. Platform users (hospital is None) log in
-            # anywhere. request.hospital is set by saas.TenantMiddleware.
-            # When a tenant IS resolved (subdomain), staff may only auth on their
-            # own hospital. When no tenant is resolved (localhost / bare domain),
-            # there is nothing to gate against, so allow the login.
-            if user.hospital_id is not None:
-                req_hospital = getattr(request, "hospital", None)
-                if req_hospital is not None and req_hospital.id != user.hospital_id:
-                    return None
+            if not _tenant_allowed(user, request):
+                return None
             return user
         return None
 
@@ -83,6 +86,12 @@ class AdminBackend(ModelBackend):
 
         # Admin login page is restricted to staff users.
         if is_admin_request and not user.is_staff:
+            return None
+
+        # Same tenant gate as PhoneNumberBackend — without it, this backend
+        # (which runs first and also matches phone numbers) lets hospital A
+        # staff log in on hospital B's subdomain.
+        if not _tenant_allowed(user, request):
             return None
 
         return user

@@ -13,7 +13,7 @@ class UserManagementTests(TestCase):
     def setUp(self):
         # Create admin user
         self.admin = CustomUser.objects.create_superuser(
-            phone_number='+1234567890',
+            phone_number='08011111111',
             username='admin',
             email='admin@example.com',
             password='adminpass'
@@ -23,7 +23,7 @@ class UserManagementTests(TestCase):
 
         # Create regular user
         self.user = CustomUser.objects.create_user(
-            phone_number='+1234567891',
+            phone_number='08022222222',
             username='testuser',
             email='user@example.com',
             password='testpass'
@@ -47,12 +47,12 @@ class UserManagementTests(TestCase):
         url = reverse('user-list')
         data = {
             'username': 'newuser',
-            'phone_number': '+1234567892',
+            'phone_number': '08033333333',
             'email': 'new@example.com',
             'password': 'newpass123',
             'profile': {
                 'employee_id': 'EMP002',
-                'phone_number': '+1234567890'
+                'phone_number': '08011111111'
             },
             'role_ids': [self.user_role.id]
         }
@@ -70,7 +70,7 @@ class UserManagementTests(TestCase):
         data = {
             'email': 'updated@example.com',
             'profile': {
-                'phone_number': '+9876543210'
+                'phone_number': '08055555555'
             }
         }
         response = self.client.patch(url, data, format='json')
@@ -79,7 +79,7 @@ class UserManagementTests(TestCase):
         # Verify changes
         self.user.refresh_from_db()
         self.assertEqual(self.user.email, 'updated@example.com')
-        self.assertEqual(self.user.profile.phone_number, '+9876543210')
+        self.assertEqual(self.user.profile.phone_number, '08055555555')
         
         # Verify audit log
         log = AuditLog.objects.last()
@@ -141,7 +141,7 @@ class UserManagementTests(TestCase):
     def test_rbac_permissions(self):
         # Create user with limited permissions
         limited_user = CustomUser.objects.create_user(
-            phone_number='+1234567892',
+            phone_number='08033333333',
             username='limited',
             email='limited@example.com',
             password='limitedpass'

@@ -290,7 +290,13 @@
       "Bash(DJANGO_SETTINGS_MODULE=hms.settings DB_ENGINE=sqlite python -c ' *)",
       "Bash(DB_ENGINE=sqlite ./venv/Scripts/python.exe manage.py test appointments)",
       "Bash(DJANGO_SETTINGS_MODULE=hms.settings DB_ENGINE=sqlite ./venv/Scripts/python.exe -c ' *)",
-      "PowerShell(python manage.py test appointments.test_nhia_auth -v 1)"
+      "PowerShell(python manage.py test appointments.test_nhia_auth -v 1)",
+      "PowerShell(python manage.py test appointments -v 1 2>$null)",
+      "PowerShell(python manage.py test appointments -v 2 2>&1 | Select-Object -Last 15)",
+      "PowerShell(ls appointments\\\\migrations | Select-String 0010; python manage.py showmigrations appointments)",
+      "PowerShell(python manage.py makemigrations appointments; python manage.py showmigrations appointments | Select-Object -Last 2; python manage.py check)",
+      "PowerShell(python manage.py test appointments 2>&1 | Select-Object -Last 5)",
+      "PowerShell(python manage.py test appointments 2>&1 | Select-Object -Last 3)"
     ]
   }
 }

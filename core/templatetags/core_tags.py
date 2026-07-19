@@ -48,6 +48,11 @@ def has_permission(user, permission_name):
     if user.is_superuser:
         return True
 
+    # Alias-aware RBAC check (maps custom keys like 'create_appointment'
+    # to Django codenames); raw codename match kept as fallback.
+    from accounts.permissions import user_has_permission
+    if user_has_permission(user, permission_name):
+        return True
     return check_user_permission(user, permission_name)
 
 
