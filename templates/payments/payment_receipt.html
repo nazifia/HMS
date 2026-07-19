@@ -167,10 +167,10 @@
 <div class="receipt-container">
     <!-- Receipt Header -->
     <div class="receipt-header">
-        <h1>{{ hospital_name|default:"Hospital Management System" }}</h1>
+        <h1>{{ hospital_name }}</h1>
         <div class="hospital-info">
-            <p>{{ hospital_address|default:"123 Medical Center Drive, City, State" }}</p>
-            <p>Phone: {{ hospital_phone|default:"(123) 456-7890" }} | Email: {{ hospital_email|default:"info@hospital.com" }}</p>
+            {% if hospital_address %}<p>{{ hospital_address }}</p>{% endif %}
+            {% if hospital_phone or hospital_email %}<p>{% if hospital_phone %}Phone: {{ hospital_phone }}{% endif %}{% if hospital_phone and hospital_email %} | {% endif %}{% if hospital_email %}Email: {{ hospital_email }}{% endif %}</p>{% endif %}
         </div>
         <div class="receipt-number">
             RECEIPT #{{ receipt_number|default:payment.id }}

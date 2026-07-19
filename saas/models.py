@@ -84,6 +84,10 @@ class Hospital(models.Model):
 
     name = models.CharField(max_length=200)
     subdomain = models.SlugField(max_length=63, unique=True)
+    # Shown on printed receipts / result sheets.
+    address = models.CharField(max_length=255, blank=True)
+    phone = models.CharField(max_length=30, blank=True)
+    email = models.EmailField(blank=True)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

@@ -81,7 +81,9 @@
 {% block content %}
 <!-- Print Header (only visible when printing) -->
 <div class="print-header">
-    <h2>Hospital Management System</h2>
+    <h2>{{ hospital_name }}</h2>
+    {% if hospital_address %}<p>{{ hospital_address }}</p>{% endif %}
+    {% if hospital_phone or hospital_email %}<p>{% if hospital_phone %}Phone: {{ hospital_phone }}{% endif %}{% if hospital_phone and hospital_email %} | {% endif %}{% if hospital_email %}Email: {{ hospital_email }}{% endif %}</p>{% endif %}
     <p>Radiology Results Report</p>
     <p>Generated on: {{ today|date:"F d, Y" }}</p>
 </div>

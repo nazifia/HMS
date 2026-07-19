@@ -46,9 +46,9 @@
 <div class="container mt-4 mb-5">
     <div class="row">
         <div class="col-12 text-center mb-4">
-            <h2 class="mb-0">{{ hospital_name|default:"Hospital Management System" }}</h2>
-            <p class="mb-0">{{ hospital_address|default:"123 Medical Center Drive" }}</p>
-            <p class="mb-0">{{ hospital_contact|default:"Phone: (123) 456-7890 | Email: info@hospital.com" }}</p>
+            <h2 class="mb-0">{{ hospital_name }}</h2>
+            {% if hospital_address %}<p class="mb-0">{{ hospital_address }}</p>{% endif %}
+            {% if hospital_phone or hospital_email %}<p class="mb-0">{% if hospital_phone %}Phone: {{ hospital_phone }}{% endif %}{% if hospital_phone and hospital_email %} | {% endif %}{% if hospital_email %}Email: {{ hospital_email }}{% endif %}</p>{% endif %}
         </div>
     </div>
     

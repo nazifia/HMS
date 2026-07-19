@@ -296,7 +296,10 @@
       "PowerShell(ls appointments\\\\migrations | Select-String 0010; python manage.py showmigrations appointments)",
       "PowerShell(python manage.py makemigrations appointments; python manage.py showmigrations appointments | Select-Object -Last 2; python manage.py check)",
       "PowerShell(python manage.py test appointments 2>&1 | Select-Object -Last 5)",
-      "PowerShell(python manage.py test appointments 2>&1 | Select-Object -Last 3)"
+      "PowerShell(python manage.py test appointments 2>&1 | Select-Object -Last 3)",
+      "Bash(./venv/Scripts/python.exe manage.py makemigrations saas)",
+      "Bash(./venv/Scripts/python.exe *)",
+      "PowerShell(Get-Content *)"
     ]
   }
 }

@@ -306,6 +306,7 @@ TEMPLATES = [
                 "patients.context_processors.current_patient_context",
                 "core.context_processors.browser_reload",
                 "accounts.context_processors.page_user_context",
+                "saas.context_processors.hospital_details",
             ],
         },
     },

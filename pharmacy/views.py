@@ -8484,10 +8484,6 @@ def pharmacy_payment_receipt(request, payment_id):
         if prescription
         else "Medication Payment",
         "receipt_number": f"PH-{payment.id}",
-        "hospital_name": "Hospital Management System",
-        "hospital_address": "123 Medical Center Drive, City, State",
-        "hospital_phone": "(123) 456-7890",
-        "hospital_email": "info@hospital.com",
         "now": timezone.now(),
     }
 
@@ -8538,10 +8534,6 @@ def laboratory_payment_receipt(request, payment_id):
         if test_request
         else "Laboratory Tests",
         "receipt_number": f"LAB-{payment.id}",
-        "hospital_name": "Hospital Management System",
-        "hospital_address": "123 Medical Center Drive, City, State",
-        "hospital_phone": "(123) 456-7890",
-        "hospital_email": "info@hospital.com",
         "now": timezone.now(),
     }
 
@@ -8592,10 +8584,6 @@ def consultation_payment_receipt(request, payment_id):
         if consultation
         else "Medical Consultation",
         "receipt_number": f"CONS-{payment.id}",
-        "hospital_name": "Hospital Management System",
-        "hospital_address": "123 Medical Center Drive, City, State",
-        "hospital_phone": "(123) 456-7890",
-        "hospital_email": "info@hospital.com",
         "now": timezone.now(),
     }
 
@@ -8645,10 +8633,6 @@ def admission_payment_receipt(request, payment_id):
         if admission and admission.ward
         else "Hospital Admission",
         "receipt_number": f"ADM-{payment.id}",
-        "hospital_name": "Hospital Management System",
-        "hospital_address": "123 Medical Center Drive, City, State",
-        "hospital_phone": "(123) 456-7890",
-        "hospital_email": "info@hospital.com",
         "now": timezone.now(),
     }
 

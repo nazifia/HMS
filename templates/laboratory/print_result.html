@@ -104,8 +104,8 @@
 <body>
     <div class="header">
         <div class="hospital-name">{{ hospital_name }}</div>
-        <div class="hospital-info">{{ hospital_address }}</div>
-        <div class="hospital-info">Phone: {{ hospital_phone }} | Email: {{ hospital_email }}</div>
+        {% if hospital_address %}<div class="hospital-info">{{ hospital_address }}</div>{% endif %}
+        {% if hospital_phone or hospital_email %}<div class="hospital-info">{% if hospital_phone %}Phone: {{ hospital_phone }}{% endif %}{% if hospital_phone and hospital_email %} | {% endif %}{% if hospital_email %}Email: {{ hospital_email }}{% endif %}</div>{% endif %}
     </div>
     <div class="report-title">Lab Test Result</div>
     <div class="info-row"><span class="info-label">Patient:</span><span class="info-value">{{ result.test_request.patient.get_full_name }}</span></div>

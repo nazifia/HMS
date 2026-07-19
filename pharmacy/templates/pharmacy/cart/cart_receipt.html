@@ -181,9 +181,9 @@
 <div class="receipt-container">
     <!-- Receipt Header -->
     <div class="receipt-header">
-        <div class="hospital-name">{{ hospital_name|default:"Hospital Management System" }}</div>
-        <div>{{ hospital_address|default:"" }}</div>
-        <div>{{ hospital_phone|default:"" }}</div>
+        <div class="hospital-name">{{ hospital_name }}</div>
+        {% if hospital_address %}<div>{{ hospital_address }}</div>{% endif %}
+        {% if hospital_phone %}<div>{{ hospital_phone }}</div>{% endif %}
         <div class="receipt-title">PRESCRIPTION CART RECEIPT</div>
     </div>
 

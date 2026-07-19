@@ -1502,10 +1502,6 @@ def print_result(request, result_id):
     context = {
         'result': result,
         'parameters': parameters,
-        'hospital_name': settings.HOSPITAL_NAME,
-        'hospital_address': settings.HOSPITAL_ADDRESS,
-        'hospital_phone': settings.HOSPITAL_PHONE,
-        'hospital_email': settings.HOSPITAL_EMAIL,
         'print_date': timezone.now(),
     }
 

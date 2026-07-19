@@ -1304,26 +1304,26 @@ def cart_receipt(request, cart_id):
                 )
                 return redirect("pharmacy:cart_list")
 
-    # Get hospital information (you may need to adjust this based on your settings)
-    from django.conf import settings
+    # Per-tenant letterhead (falls back to settings on the bare host).
+    from saas.context_processors import hospital_details
 
-    hospital_name = getattr(settings, "HOSPITAL_NAME", "Hospital Management System")
-    hospital_address = getattr(settings, "HOSPITAL_ADDRESS", "")
-    hospital_phone = getattr(settings, "HOSPITAL_PHONE", "")
+    details = hospital_details(request)
 
     output = (request.GET.get("format") or "").lower()
 
     if output == "pdf":
-        return _cart_receipt_pdf(cart, hospital_name, hospital_address, hospital_phone)
+        return _cart_receipt_pdf(
+            cart,
+            details["hospital_name"],
+            details["hospital_address"],
+            details["hospital_phone"],
+        )
 
     if output == "thermal":
         # 80mm default; allow ?width=58 for narrow rolls.
         roll_width = "58" if request.GET.get("width") == "58" else "80"
         context = {
             "cart": cart,
-            "hospital_name": hospital_name,
-            "hospital_address": hospital_address,
-            "hospital_phone": hospital_phone,
             "now": timezone.now(),
             "roll_width": roll_width,
             "auto_print": request.GET.get("auto") == "1",
@@ -1332,9 +1332,6 @@ def cart_receipt(request, cart_id):
 
     context = {
         "cart": cart,
-        "hospital_name": hospital_name,
-        "hospital_address": hospital_address,
-        "hospital_phone": hospital_phone,
         "now": timezone.now(),
         "page_title": f"Cart Receipt #{cart.id}",
     }
