@@ -181,6 +181,15 @@ class AppointmentForm(forms.ModelForm):
                 else:
                     cleaned_data['authorization_code_obj'] = auth_code
 
+        # Confirming or completing requires the consultation fee paid.
+        if (cleaned_data.get('status') in ('confirmed', 'completed') and self.instance.pk
+                and not self.instance.consultation_payment_verified()):
+            self.add_error(
+                'status',
+                'Consultation fee has not been paid. The patient must pay '
+                'before the appointment can be confirmed or completed.'
+            )
+
         # Check if appointment date is in the past
         now = timezone.localtime()
         if appointment_date and appointment_date < now.date():

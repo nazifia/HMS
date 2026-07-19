@@ -78,6 +78,34 @@ class Appointment(TenantModel):
         nhia_info = getattr(self.patient, 'nhia_info', None)
         return nhia_info is not None and nhia_info.is_active
 
+    def consultation_invoice(self):
+        """Latest consultation-fee invoice for this appointment (or the
+        patient's latest unlinked one, for invoices created before linking)."""
+        invoice = (
+            self.invoices.filter(source_app__in=['consultation', 'appointment'])
+            .order_by('-created_at')
+            .first()
+        )
+        if invoice:
+            return invoice
+        return (
+            self.patient.invoices.filter(
+                source_app__in=['consultation', 'appointment'],
+                appointment__isnull=True,
+            )
+            .order_by('-created_at')
+            .first()
+        )
+
+    def consultation_payment_verified(self):
+        """Regular patients must settle the consultation fee before being
+        consulted. NHIA is covered by the authorization code; retainership and
+        other types are not billed here."""
+        if self.patient.patient_type != 'regular':
+            return True
+        invoice = self.consultation_invoice()
+        return invoice is not None and invoice.status == 'paid'
+
     def is_past_due(self):
         return timezone.now().date() > self.appointment_date.date()
 

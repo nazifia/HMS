@@ -80,6 +80,25 @@
                             </div>
                         </div>
                         {% endif %}
+                        {% if appointment.patient.patient_type == 'regular' %}
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">Consultation Fee:</div>
+                            <div class="col-md-8">
+                                {% with invoice=appointment.consultation_invoice %}
+                                    {% if invoice %}
+                                        {% if invoice.status == 'paid' %}
+                                            <span class="badge bg-success">Paid</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Unpaid (₦{{ invoice.get_balance|floatformat:2 }})</span>
+                                            <a href="{% url 'billing:detail' invoice.id %}" class="btn btn-sm btn-outline-primary ms-2">Pay Invoice</a>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">Not billed</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                        </div>
+                        {% endif %}
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Created By:</div>
                             <div class="col-md-8">{{ appointment.created_by.get_full_name }}</div>

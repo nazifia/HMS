@@ -16,6 +16,7 @@ from .forms import (
     DoctorLeaveForm, AppointmentSearchForm, doctor_queryset,
 )
 from patients.models import Patient
+from billing.fee_utils import create_consultation_fee
 from core.utils import send_notification_email, send_sms_notification
 
 @login_required
@@ -130,6 +131,22 @@ def create_appointment(request):
             appointment = form.save(commit=False)
             appointment.created_by = request.user
             appointment.save()
+            # Bill the consultation fee up front; the patient must pay it
+            # before the appointment can be marked completed (consulted).
+            invoice = create_consultation_fee(appointment.patient, user=request.user)
+            if invoice is None:
+                # Idempotent helper returned the day's existing open invoice as
+                # None — link that one to this appointment instead.
+                invoice = appointment.consultation_invoice()
+            if invoice is not None and invoice.appointment_id is None:
+                invoice.appointment = appointment
+                invoice.save(update_fields=['appointment'])
+            if invoice is not None and invoice.status != 'paid':
+                messages.info(
+                    request,
+                    f'Consultation fee invoice #{invoice.invoice_number} '
+                    f'(₦{invoice.get_balance():.2f}) must be paid before the patient can be consulted.'
+                )
             if follow_up:
                 follow_up.booked_appointment = appointment
                 follow_up.save(update_fields=['booked_appointment'])
@@ -624,6 +641,13 @@ def update_appointment_status(request, appointment_id):
     if appointment.status in ('completed', 'cancelled') and new_status != appointment.status:
         return JsonResponse(
             {'error': f'Cannot change a {appointment.get_status_display().lower()} appointment.'},
+            status=400,
+        )
+
+    # Confirming or completing requires the consultation fee settled first.
+    if new_status in ('confirmed', 'completed') and not appointment.consultation_payment_verified():
+        return JsonResponse(
+            {'error': 'Consultation fee has not been paid. The patient must pay before the appointment can be confirmed or completed.'},
             status=400,
         )
 
