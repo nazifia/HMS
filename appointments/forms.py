@@ -153,7 +153,7 @@ class AppointmentForm(forms.ModelForm):
             )
 
             if doctor_leaves.exists():
-                raise forms.ValidationError(f"Doctor {doctor.get_full_name()} is on leave on the selected date.")
+                raise forms.ValidationError(f"{doctor.get_full_name()} is on leave on the selected date.")
 
             # Check doctor's schedule for the day of the week
             weekday = appointment_date.weekday()
@@ -164,7 +164,16 @@ class AppointmentForm(forms.ModelForm):
             ).first()
 
             if not doctor_schedule:
-                raise forms.ValidationError(f"Doctor {doctor.get_full_name()} is not available on this day.")
+                # No schedule at all is a setup problem, not a busy day - say which.
+                if DoctorSchedule.objects.filter(doctor=doctor).exists():
+                    raise forms.ValidationError(
+                        f"{doctor.get_full_name()} does not work on "
+                        f"{appointment_date.strftime('%A')}s."
+                    )
+                raise forms.ValidationError(
+                    f"{doctor.get_full_name()} has no working hours set up yet. "
+                    f"Add a schedule under Appointments > Doctor Schedules first."
+                )
 
             # Check if appointment time is within doctor's schedule
             # The slot must start within the shift and finish by the end of it.
@@ -176,7 +185,7 @@ class AppointmentForm(forms.ModelForm):
                     or appointment_time >= doctor_schedule.end_time
                     or slot_end > doctor_schedule.end_time):
                 raise forms.ValidationError(
-                    f"Doctor {doctor.get_full_name()} is only available from "
+                    f"{doctor.get_full_name()} is only available from "
                     f"{doctor_schedule.start_time.strftime('%I:%M %p')} to "
                     f"{doctor_schedule.end_time.strftime('%I:%M %p')} on this day."
                 )

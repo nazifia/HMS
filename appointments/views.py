@@ -537,7 +537,13 @@ def get_available_slots(request):
     schedule = DoctorSchedule.objects.filter(doctor=doctor, weekday=weekday).first()
 
     if not schedule or not schedule.is_available:
-        return JsonResponse({'available_slots': [], 'message': 'Doctor is not available on this date'}, status=200)
+        # No schedule at all is a setup problem, not a busy day - say which.
+        message = (
+            f'Doctor does not work on {selected_date.strftime("%A")}s'
+            if DoctorSchedule.objects.filter(doctor=doctor).exists()
+            else 'Doctor has no working hours set up yet'
+        )
+        return JsonResponse({'available_slots': [], 'message': message}, status=200)
 
     # Existing bookings as (start, end) datetimes so a slot overlapping a longer
     # appointment is blocked too, not only one starting at the exact same minute.
