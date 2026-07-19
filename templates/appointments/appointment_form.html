@@ -94,6 +94,19 @@
                             {% endif %}
                         </div>
                         
+                        <div class="col-md-6 mb-3" id="auth-code-group">
+                            <label for="{{ form.authorization_code.id_for_label }}" class="form-label">
+                                NHIA Authorization Code
+                            </label>
+                            {{ form.authorization_code }}
+                            <div class="form-text">{{ form.authorization_code.help_text }}</div>
+                            {% if form.authorization_code.errors %}
+                                <div class="text-danger">
+                                    {{ form.authorization_code.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
                         <div class="col-md-12 mb-3">
                             <label for="{{ form.reason.id_for_label }}" class="form-label">Reason for Appointment</label>
                             {{ form.reason|add_class:"form-control" }}
@@ -177,6 +190,16 @@
         $('#{{ form.doctor.id_for_label }}, #{{ form.appointment_date.id_for_label }}')
             .on('change', loadSlots);
         loadSlots();
+
+        // Show the authorization code box only for NHIA patients (their dropdown
+        // label carries an "[NHIA: ...]" tag). Server-side clean() still enforces it.
+        var $patient = $('#{{ form.patient.id_for_label }}');
+        function toggleAuthCode() {
+            var label = $patient.find('option:selected').text() || '';
+            $('#auth-code-group').toggle(label.indexOf('[NHIA') !== -1);
+        }
+        $patient.on('change', toggleAuthCode);
+        toggleAuthCode();
     });
 </script>
 {% endblock %}

@@ -76,7 +76,17 @@ class AppointmentForm(forms.ModelForm):
         widget=forms.TimeInput(attrs={'type': 'time'}),
         required=False
     )
-    
+
+    authorization_code = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter authorization code',
+            'autocomplete': 'off',
+        }),
+        help_text='Required for NHIA patients. Obtain from the desk office.'
+    )
+
     class Meta:
         model = Appointment
         # appointment_date and appointment_time are declared above as plain form
@@ -113,6 +123,10 @@ class AppointmentForm(forms.ModelForm):
             patient = self.instance.patient
             self.fields['patient_search'].initial = f"{patient.first_name} {patient.last_name} ({patient.patient_id})"
 
+        # Show the attached code when editing so re-saving doesn't demand a new one.
+        if self.instance and self.instance.pk and self.instance.authorization_code:
+            self.initial['authorization_code'] = self.instance.authorization_code.code
+
         # The model stores one datetime; split it back out for the two form fields.
         if self.instance and self.instance.pk and self.instance.appointment_date:
             local = timezone.localtime(self.instance.appointment_date)
@@ -125,6 +139,47 @@ class AppointmentForm(forms.ModelForm):
         appointment_time = cleaned_data.get('appointment_time')
         end_time = cleaned_data.get('end_time')
         doctor = cleaned_data.get('doctor')
+
+        # NHIA patients must book with a valid desk-office authorization code.
+        patient = cleaned_data.get('patient')
+        code_text = (cleaned_data.get('authorization_code') or '').strip()
+        cleaned_data['authorization_code_obj'] = None
+        nhia_info = getattr(patient, 'nhia_info', None) if patient else None
+        if nhia_info and nhia_info.is_active:
+            existing = self.instance.authorization_code if self.instance.pk else None
+            if not code_text and existing:
+                # Editing without retyping the code keeps the one already attached.
+                cleaned_data['authorization_code_obj'] = existing
+            elif not code_text:
+                self.add_error(
+                    'authorization_code',
+                    'This is an NHIA patient. An authorization code from the '
+                    'desk office is required to book an appointment.'
+                )
+            else:
+                from nhia.models import AuthorizationCode
+                auth_code = AuthorizationCode.objects.filter(
+                    code=code_text, patient=patient
+                ).first()
+                if auth_code is None:
+                    self.add_error(
+                        'authorization_code',
+                        'Invalid authorization code for this patient.'
+                    )
+                elif not auth_code.is_valid() and auth_code != existing:
+                    self.add_error(
+                        'authorization_code',
+                        f'This authorization code is {auth_code.get_status_display().lower()} '
+                        'and can no longer be used.'
+                    )
+                elif auth_code.service_type not in ('appointment', 'general'):
+                    self.add_error(
+                        'authorization_code',
+                        f'This code is for {auth_code.get_service_type_display()} '
+                        'services, not appointments.'
+                    )
+                else:
+                    cleaned_data['authorization_code_obj'] = auth_code
 
         # Check if appointment date is in the past
         now = timezone.localtime()
@@ -246,8 +301,15 @@ class AppointmentForm(forms.ModelForm):
             naive_datetime = datetime.datetime.combine(appointment_date, appointment_time)
             instance.appointment_date = timezone.make_aware(naive_datetime)
 
+        instance.authorization_code = self.cleaned_data.get('authorization_code_obj')
+
         if commit:
             instance.save()
+            # One code, one appointment: consume the code on first attach.
+            # An already-attached code (edit flow) is 'used' and skipped here.
+            auth_code = instance.authorization_code
+            if auth_code and auth_code.status == 'active':
+                auth_code.mark_as_used(f"Appointment #{instance.pk}")
 
         return instance
 

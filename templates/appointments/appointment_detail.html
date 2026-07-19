@@ -68,6 +68,18 @@
                                 {% endif %}
                             </div>
                         </div>
+                        {% if appointment.is_nhia_patient %}
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-muted">NHIA Authorization:</div>
+                            <div class="col-md-8">
+                                {% if appointment.authorization_code %}
+                                    <span class="badge bg-success">{{ appointment.authorization_code.code }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Missing</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Created By:</div>
                             <div class="col-md-8">{{ appointment.created_by.get_full_name }}</div>

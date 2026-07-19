@@ -289,7 +289,8 @@
       "Bash(node scripts/validate_palette.js \"#3987e5,#e66767\" --mode dark)",
       "Bash(DJANGO_SETTINGS_MODULE=hms.settings DB_ENGINE=sqlite python -c ' *)",
       "Bash(DB_ENGINE=sqlite ./venv/Scripts/python.exe manage.py test appointments)",
-      "Bash(DJANGO_SETTINGS_MODULE=hms.settings DB_ENGINE=sqlite ./venv/Scripts/python.exe -c ' *)"
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings DB_ENGINE=sqlite ./venv/Scripts/python.exe -c ' *)",
+      "PowerShell(python manage.py test appointments.test_nhia_auth -v 1)"
     ]
   }
 }

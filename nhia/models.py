@@ -55,6 +55,7 @@ class AuthorizationCode(TenantModel):
             ('opthalmic', 'Opthalmic'),
             ('ent', 'ENT'),
             ('oncology', 'Oncology'),
+            ('appointment', 'Appointment'),
             ('general', 'General'),  # For any service
         ],
         help_text="Type of service this authorization code is for"

@@ -44,6 +44,16 @@ class Appointment(TenantModel):
         max_length=20, choices=PRIORITY_CHOICES, default="normal"
     )
     notes = models.TextField(blank=True, null=True)
+    # NHIA patients must present a desk-office authorization code to book.
+    # Enforced in AppointmentForm.clean(); nullable so legacy rows stay valid.
+    authorization_code = models.ForeignKey(
+        'nhia.AuthorizationCode',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='appointments',
+        help_text="Authorization code required for NHIA patients",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
@@ -62,6 +72,11 @@ class Appointment(TenantModel):
         `appointment.appointment_time` still work after the column was dropped.
         Not queryable — order and filter on `appointment_date` instead."""
         return timezone.localtime(self.appointment_date).time()
+
+    def is_nhia_patient(self):
+        """NHIA patients need an authorization code to book appointments."""
+        nhia_info = getattr(self.patient, 'nhia_info', None)
+        return nhia_info is not None and nhia_info.is_active
 
     def is_past_due(self):
         return timezone.now().date() > self.appointment_date.date()
