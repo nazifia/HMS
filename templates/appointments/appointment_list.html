@@ -150,14 +150,14 @@
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <a href="{% url 'appointments:detail' appointment.id %}" class="btn btn-info" title="View">
+                                            <a href="{% url 'appointments:detail' appointment.id %}" class="btn btn-outline-info" title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                             {% if appointment.status != 'cancelled' and appointment.status != 'completed' and appointment.status != 'no_show' %}
-                                                <a href="{% url 'appointments:edit' appointment.id %}" class="btn btn-primary" title="Edit">
+                                                <a href="{% url 'appointments:edit' appointment.id %}" class="btn btn-outline-primary" title="Edit">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
-                                                <a href="{% url 'appointments:cancel' appointment.id %}" class="btn btn-danger" title="Cancel">
+                                                <a href="{% url 'appointments:cancel' appointment.id %}" class="btn btn-outline-danger" title="Cancel">
                                                     <i class="fas fa-times"></i>
                                                 </a>
                                             {% endif %}
