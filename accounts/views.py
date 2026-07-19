@@ -1626,27 +1626,17 @@ def edit_role(request, role_id):
                 f"[Role Edit] Cleared permission cache for {cache_cleared_count} users with role '{role.name}'"
             )
 
-            # Clear UI permission cache
+            # Clear UI permission cache (ui_perm_* entries, 300s TTL).
+            # ponytail: cache.clear() nukes the whole default cache — no
+            # per-key pattern delete on DatabaseCache (prod). Sessions are
+            # cached_db so they survive; worst case is one cold-cache page load.
             try:
                 from django.core.cache import cache
 
-                # Get all cache keys matching pattern
-                cache_keys_to_delete = []
-                try:
-                    # Try to get cache keys if cache backend supports it
-                    if hasattr(cache, "keys"):
-                        cache_keys_to_delete = [
-                            k for k in cache.keys("*") if k.startswith("ui_perm_")
-                        ]
-                        if cache_keys_to_delete:
-                            cache.delete_many(cache_keys_to_delete)
-                            logger.info(
-                                f"[Role Edit] Cleared {len(cache_keys_to_delete)} UI permission cache entries"
-                            )
-                except Exception as e:
-                    logger.warning(f"[Role Edit] Could not clear UI cache: {e}")
+                cache.clear()
+                logger.info("[Role Edit] Cleared cache (UI permission entries included)")
             except Exception as e:
-                logger.warning(f"[Role Edit] Error accessing cache: {e}")
+                logger.warning(f"[Role Edit] Could not clear UI cache: {e}")
 
             # Log the action
             AuditLog.objects.create(
