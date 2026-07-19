@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Q
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 User = get_user_model()
@@ -86,7 +87,9 @@ class TestRequestForm(forms.ModelForm):
         return label
 
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
+        queryset=User.objects.filter(is_active=True).filter(
+            Q(profile__role='doctor') | Q(profile__specialization__isnull=False)
+        ).distinct(),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Doctor"
     )
@@ -179,6 +182,12 @@ class TestRequestForm(forms.ModelForm):
         else:
             # Ensure all patients are available for selection when not preselected
             self.fields['patient'].queryset = Patient.objects.filter(is_active=True).select_related('nhia_info', 'retainership_info')
+
+        # Preselect logged-in doctor as requesting doctor
+        if request and not self.initial.get('doctor') and not (self.instance and self.instance.pk):
+            user = request.user
+            if user.is_authenticated and self.fields['doctor'].queryset.filter(pk=user.pk).exists():
+                self.fields['doctor'].initial = user
 
         # Organize tests by category for better display
         self.fields['tests'].queryset = Test.objects.filter(is_active=True).select_related('category').order_by('category__name', 'name')
@@ -430,7 +439,9 @@ class TestRequestSearchForm(forms.Form):
     )
 
     doctor = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True, profile__specialization__isnull=False),
+        queryset=User.objects.filter(is_active=True).filter(
+            Q(profile__role='doctor') | Q(profile__specialization__isnull=False)
+        ).distinct(),
         required=False,
         empty_label="All Doctors",
         widget=forms.Select(attrs={'class': 'form-control'})
