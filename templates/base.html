@@ -1505,6 +1505,35 @@
         document.addEventListener('htmx:responseError', function() { NProgress.done(); });
     </script>
 
+    <!-- Hover prefetch: warm the browser cache for a nav page before the click lands.
+         Scoped to sidebar nav links only (safe list/dashboard GETs); anything with a
+         query string, fragment, or destructive-looking path is skipped. -->
+    <script>
+        (function () {
+            var seen = {};
+            function prefetch(link) {
+                var href = link.getAttribute('href') || '';
+                if (!href || href.charAt(0) === '#' || seen[href]) return;
+                if (href.indexOf('?') !== -1) return;
+                if (/logout|delete|cancel|remove|toggle|approve|confirm/.test(href)) return;
+                if (link.origin && link.origin !== location.origin) return;
+                if (href === location.pathname) return;
+                seen[href] = true;
+                var l = document.createElement('link');
+                l.rel = 'prefetch';
+                l.href = href;
+                l.as = 'document';
+                document.head.appendChild(l);
+            }
+            var root = document.getElementById('sidebar-container');
+            if (!root) return;
+            root.addEventListener('mouseover', function (e) {
+                var link = e.target.closest('a[href]');
+                if (link) setTimeout(function () { if (link.matches(':hover')) prefetch(link); }, 65);
+            });
+        })();
+    </script>
+
     {% if BROWSER_RELOAD %}{% include "includes/_browser_reload.html" %}{% endif %}
 </body>
 </html>

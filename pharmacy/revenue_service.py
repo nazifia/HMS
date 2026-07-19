@@ -42,7 +42,7 @@ class RevenueAggregationService:
         """
         # Pharmacy billing payments - Temporarily disabled
         # pharmacy_payments = PharmacyPayment.objects.filter(
-        #     payment_date__range=[self.start_date, self.end_date]
+        #     payment_date__date__range=[self.start_date, self.end_date]
         # ).aggregate(
         #     total_amount=Sum('amount'),
         #     total_payments=Count('id')
@@ -84,7 +84,7 @@ class RevenueAggregationService:
             dict: Laboratory revenue breakdown
         """
         lab_payments = BillingPayment.objects.filter(
-            payment_date__range=[self.start_date, self.end_date],
+            payment_date__date__range=[self.start_date, self.end_date],
             invoice__source_app='laboratory'
         ).aggregate(
             total_amount=Sum('amount'),
@@ -93,7 +93,7 @@ class RevenueAggregationService:
         
         # Get test count from laboratory invoices
         test_count = Invoice.objects.filter(
-            invoice_date__range=[self.start_date, self.end_date],
+            invoice_date__date__range=[self.start_date, self.end_date],
             source_app='laboratory'
         ).count()
         
@@ -111,7 +111,7 @@ class RevenueAggregationService:
             dict: Consultation revenue breakdown
         """
         consultation_payments = BillingPayment.objects.filter(
-            payment_date__range=[self.start_date, self.end_date],
+            payment_date__date__range=[self.start_date, self.end_date],
             invoice__source_app='appointment'
         ).aggregate(
             total_amount=Sum('amount'),
@@ -120,7 +120,7 @@ class RevenueAggregationService:
         
         # Get consultation count
         consultation_count = Invoice.objects.filter(
-            invoice_date__range=[self.start_date, self.end_date],
+            invoice_date__date__range=[self.start_date, self.end_date],
             source_app='appointment'
         ).count()
         
@@ -138,7 +138,7 @@ class RevenueAggregationService:
             dict: Theatre revenue breakdown
         """
         theatre_payments = BillingPayment.objects.filter(
-            payment_date__range=[self.start_date, self.end_date],
+            payment_date__date__range=[self.start_date, self.end_date],
             invoice__source_app='theatre'
         ).aggregate(
             total_amount=Sum('amount'),
@@ -147,7 +147,7 @@ class RevenueAggregationService:
         
         # Get surgery count
         surgery_count = Invoice.objects.filter(
-            invoice_date__range=[self.start_date, self.end_date],
+            invoice_date__date__range=[self.start_date, self.end_date],
             source_app='theatre'
         ).count()
         
@@ -165,7 +165,7 @@ class RevenueAggregationService:
             dict: Admission revenue breakdown
         """
         admission_payments = BillingPayment.objects.filter(
-            payment_date__range=[self.start_date, self.end_date],
+            payment_date__date__range=[self.start_date, self.end_date],
             invoice__source_app='inpatient'
         ).aggregate(
             total_amount=Sum('amount'),
@@ -174,7 +174,7 @@ class RevenueAggregationService:
         
         # Get admission count
         admission_count = Invoice.objects.filter(
-            invoice_date__range=[self.start_date, self.end_date],
+            invoice_date__date__range=[self.start_date, self.end_date],
             source_app='inpatient'
         ).count()
         
@@ -192,7 +192,7 @@ class RevenueAggregationService:
             dict: General revenue breakdown
         """
         general_payments = BillingPayment.objects.filter(
-            payment_date__range=[self.start_date, self.end_date],
+            payment_date__date__range=[self.start_date, self.end_date],
             invoice__source_app__in=['billing', 'general']
         ).aggregate(
             total_amount=Sum('amount'),
@@ -201,7 +201,7 @@ class RevenueAggregationService:
         
         # Include payments without specific source app (legacy data)
         other_payments = BillingPayment.objects.filter(
-            payment_date__range=[self.start_date, self.end_date],
+            payment_date__date__range=[self.start_date, self.end_date],
             invoice__source_app__isnull=True
         ).aggregate(
             total_amount=Sum('amount'),
@@ -313,23 +313,30 @@ class RevenueAggregationService:
             else:
                 next_month = current_date.replace(month=current_date.month + 1, day=1)
             
-            # Get revenue for this month
-            month_service = RevenueAggregationService(current_date, next_month - timedelta(days=1))
-            month_revenue = month_service.get_comprehensive_revenue()
-            
-            monthly_data.append({
-                'month': current_date.strftime('%b %Y'),
-                'month_date': current_date,
-                'total_revenue': month_revenue['total_revenue'],
-                'pharmacy': month_revenue['pharmacy_revenue']['total_revenue'],
-                'laboratory': month_revenue['laboratory_revenue']['total_revenue'],
-                'consultations': month_revenue['consultation_revenue']['total_revenue'],
-                'theatre': month_revenue['theatre_revenue']['total_revenue'],
-                'admissions': month_revenue['admission_revenue']['total_revenue'],
-                'general': month_revenue['general_revenue']['total_revenue'],
-                'wallet': month_revenue['wallet_revenue']['total_revenue']
-            })
-            
+            # Per-month results cached: completed months 6h, current month 5 min.
+            # ponytail: cache instead of grouped rewrite — same numbers, warm loads skip the loop.
+            from django.core.cache import cache
+            month_end = next_month - timedelta(days=1)
+            cache_key = f"pharm_rev_trends_month:{current_date:%Y-%m}"
+            entry = cache.get(cache_key)
+            if entry is None:
+                month_service = RevenueAggregationService(current_date, month_end)
+                month_revenue = month_service.get_comprehensive_revenue()
+                entry = {
+                    'month': current_date.strftime('%b %Y'),
+                    'month_date': current_date,
+                    'total_revenue': month_revenue['total_revenue'],
+                    'pharmacy': month_revenue['pharmacy_revenue']['total_revenue'],
+                    'laboratory': month_revenue['laboratory_revenue']['total_revenue'],
+                    'consultations': month_revenue['consultation_revenue']['total_revenue'],
+                    'theatre': month_revenue['theatre_revenue']['total_revenue'],
+                    'admissions': month_revenue['admission_revenue']['total_revenue'],
+                    'general': month_revenue['general_revenue']['total_revenue'],
+                    'wallet': month_revenue['wallet_revenue']['total_revenue']
+                }
+                cache.set(cache_key, entry, 21600 if month_end < end_date else 300)
+            monthly_data.append(entry)
+
             current_date = next_month
         
         return monthly_data

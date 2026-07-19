@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Count, Prefetch
 from django.contrib import messages
 from django.db import transaction
 from decimal import Decimal
@@ -45,9 +45,16 @@ import os
 @login_required
 @permission_required("retainership.view")
 def retainership_patient_list(request):
+    retainership_wallet_prefetch = Prefetch(
+        "patient__wallet_memberships",
+        queryset=WalletMembership.objects.filter(
+            wallet__wallet_type="retainership"
+        ).select_related("wallet"),
+        to_attr="retainership_memberships",
+    )
     retainership_patients = (
         RetainershipPatient.objects.select_related("patient")
-        .all()
+        .prefetch_related(retainership_wallet_prefetch)
         .order_by("-date_registered")
     )
 
@@ -64,13 +71,10 @@ def retainership_patient_list(request):
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    # Annotate wallet info after pagination to avoid re-querying the full set
+    # Annotate wallet info from the prefetched memberships (no per-row queries)
     for retainership_patient in page_obj:
-        patient = retainership_patient.patient
-        membership = patient.wallet_memberships.filter(
-            wallet__wallet_type="retainership"
-        ).first()
-        retainership_patient.wallet_info = membership.wallet if membership else None
+        memberships = retainership_patient.patient.retainership_memberships
+        retainership_patient.wallet_info = memberships[0].wallet if memberships else None
 
     context = {
         "page_obj": page_obj,
@@ -96,6 +100,15 @@ def select_patient_for_retainership(request):
     patients = (
         Patient.objects.filter(retainership_info__isnull=False)
         .select_related("retainership_info")
+        .prefetch_related(
+            Prefetch(
+                "wallet_memberships",
+                queryset=WalletMembership.objects.filter(
+                    wallet__wallet_type="retainership"
+                ),
+                to_attr="retainership_memberships",
+            )
+        )
         .order_by("first_name")
     )
 
@@ -110,16 +123,13 @@ def select_patient_for_retainership(request):
                 | Q(retainership_info__retainership_reg_number__icontains=search_query)
             )
 
-    # Add wallet info to each patient
-    for patient in patients:
-        membership = patient.wallet_memberships.filter(
-            wallet__wallet_type="retainership"
-        ).first()
-        patient.has_retainership_wallet = membership is not None
-
     paginator = Paginator(patients, 10)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
+
+    # Add wallet info to the current page only, from the prefetched memberships
+    for patient in page_obj:
+        patient.has_retainership_wallet = bool(patient.retainership_memberships)
 
     context = {
         "search_form": search_form,
@@ -153,27 +163,34 @@ def retainership_wallet_list(request):
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    # Add aggregated information to each wallet in the current page
+    # Add aggregated information to the current page in 3 grouped queries
+    # instead of 3 queries per wallet.
+    wallet_ids = [w.pk for w in page_obj]
+    member_counts = dict(
+        WalletMembership.objects.filter(wallet_id__in=wallet_ids)
+        .values("wallet_id")
+        .annotate(c=Count("id"))
+        .values_list("wallet_id", "c")
+    )
+    credit_types = ["credit", "deposit", "transfer_in"]
+    debit_types = ["debit", "withdrawal", "transfer_out"]
+    totals = {}
+    for row in (
+        WalletTransaction.objects.filter(
+            shared_wallet_id__in=wallet_ids,
+            transaction_type__in=credit_types + debit_types,
+        )
+        .values("shared_wallet_id", "transaction_type")
+        .annotate(total=Sum("amount"))
+    ):
+        bucket = totals.setdefault(row["shared_wallet_id"], {"credits": 0, "debits": 0})
+        key = "credits" if row["transaction_type"] in credit_types else "debits"
+        bucket[key] += row["total"] or 0
     for wallet in page_obj:
-        # Count members
-        wallet.member_count = wallet.members.count()
-
-        # Get total credits and debits
-        wallet.total_credits = (
-            WalletTransaction.objects.filter(
-                shared_wallet=wallet,
-                transaction_type__in=["credit", "deposit", "transfer_in"],
-            ).aggregate(total=Sum("amount"))["total"]
-            or 0
-        )
-
-        wallet.total_debits = (
-            WalletTransaction.objects.filter(
-                shared_wallet=wallet,
-                transaction_type__in=["debit", "withdrawal", "transfer_out"],
-            ).aggregate(total=Sum("amount"))["total"]
-            or 0
-        )
+        wallet.member_count = member_counts.get(wallet.pk, 0)
+        wallet_totals = totals.get(wallet.pk, {})
+        wallet.total_credits = wallet_totals.get("credits", 0)
+        wallet.total_debits = wallet_totals.get("debits", 0)
 
     # Calculate totals for dashboard (on the filtered queryset, not just page)
     total_wallets = wallets.count()

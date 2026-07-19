@@ -343,7 +343,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
         try:
             # Get revenue from invoices linked to department
             dept_payments = BillingPayment.objects.filter(
-                payment_date__range=[self.start_date, self.end_date],
+                payment_date__date__range=[self.start_date, self.end_date],
                 invoice__source_app=department
             ).aggregate(
                 total_amount=Sum('amount'),
@@ -404,7 +404,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
         """
         try:
             radiology_payments = BillingPayment.objects.filter(
-                payment_date__range=[self.start_date, self.end_date],
+                payment_date__date__range=[self.start_date, self.end_date],
                 invoice__source_app='radiology'
             ).aggregate(
                 total_amount=Sum('amount'),
@@ -413,7 +413,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
             
             # Get radiology order count
             order_count = Invoice.objects.filter(
-                invoice_date__range=[self.start_date, self.end_date],
+                invoice_date__date__range=[self.start_date, self.end_date],
                 source_app='radiology'
             ).count()
             
@@ -479,7 +479,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
             emergency_sources = ['emergency', 'gynae_emergency', 'a_and_e']
             
             emergency_payments = BillingPayment.objects.filter(
-                payment_date__range=[self.start_date, self.end_date],
+                payment_date__date__range=[self.start_date, self.end_date],
                 invoice__source_app__in=emergency_sources
             ).aggregate(
                 total_amount=Sum('amount'),
@@ -487,7 +487,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
             )
             
             case_count = Invoice.objects.filter(
-                invoice_date__range=[self.start_date, self.end_date],
+                invoice_date__date__range=[self.start_date, self.end_date],
                 source_app__in=emergency_sources
             ).count()
             
@@ -509,7 +509,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
         """
         try:
             insurance_payments = BillingPayment.objects.filter(
-                payment_date__range=[self.start_date, self.end_date],
+                payment_date__date__range=[self.start_date, self.end_date],
                 payment_method='insurance'
             ).aggregate(
                 total_amount=Sum('amount'),
@@ -589,7 +589,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
         """
         try:
             payment_methods = BillingPayment.objects.filter(
-                payment_date__range=[self.start_date, self.end_date]
+                payment_date__date__range=[self.start_date, self.end_date]
             ).values('payment_method').annotate(
                 total_amount=Sum('amount'),
                 total_payments=Count('id')
@@ -597,7 +597,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
             
             # Also get pharmacy payment methods - Temporarily disabled
             # pharmacy_methods = PharmacyPayment.objects.filter(
-            #     payment_date__range=[self.start_date, self.end_date]
+            #     payment_date__date__range=[self.start_date, self.end_date]
             # ).values('payment_method').annotate(
             #     total_amount=Sum('amount'),
             #     total_payments=Count('id')
@@ -627,7 +627,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
         try:
             # Top services by revenue
             top_services = InvoiceItem.objects.filter(
-                invoice__invoice_date__range=[self.start_date, self.end_date]
+                invoice__invoice_date__date__range=[self.start_date, self.end_date]
             ).values('service__name').annotate(
                 total_revenue=Sum('total_amount'),
                 total_quantity=Sum('quantity')
@@ -635,7 +635,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
             
             # Service categories by revenue
             service_categories = InvoiceItem.objects.filter(
-                invoice__invoice_date__range=[self.start_date, self.end_date]
+                invoice__invoice_date__date__range=[self.start_date, self.end_date]
             ).values('service__category__name').annotate(
                 total_revenue=Sum('total_amount'),
                 total_services=Count('service', distinct=True)
@@ -718,6 +718,17 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
             else:
                 month_end = datetime(year, month + 1, 1).date() - timedelta(days=1)
 
+            # Per-month results are cached: completed months are immutable for
+            # reporting purposes (6h TTL), current month refreshes every 5 min.
+            # ponytail: cache instead of grouped-TruncMonth rewrite — same numbers,
+            # 1/12th the queries on warm cache.
+            from django.core.cache import cache
+            cache_key = f"rev_trends_month:{month_start:%Y-%m}"
+            cached_entry = cache.get(cache_key)
+            if cached_entry is not None:
+                trends.append(cached_entry)
+                continue
+
             # Create analyzer for this month
             from .department_revenue_utils import DepartmentRevenueCalculator
             month_calculator = DepartmentRevenueCalculator(month_start, month_end)
@@ -798,7 +809,7 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
                 wallet_revenue
             )
 
-            trends.append({
+            entry = {
                 'month': month_start,
                 'total_revenue': total_revenue,
                 'pharmacy': pharmacy_revenue,
@@ -808,7 +819,10 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
                 'admissions': admissions_revenue,
                 'general': general_revenue,
                 'wallet': wallet_revenue
-            })
+            }
+            ttl = 21600 if month_end < timezone.now().date() else 300
+            cache.set(cache_key, entry, ttl)
+            trends.append(entry)
 
         # Return in chronological order (oldest first)
         return list(reversed(trends))

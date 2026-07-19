@@ -897,7 +897,11 @@ def bed_occupancy_report(request):
     from django.db.models import Count, Q, Avg
     from datetime import datetime, timedelta
 
-    wards = Ward.objects.all().prefetch_related('beds__admissions')
+    # Bed counts per ward in one annotated query instead of 2 per ward
+    wards = Ward.objects.annotate(
+        total_beds_count=Count('beds', filter=Q(beds__is_active=True)),
+        occupied_beds_count=Count('beds', filter=Q(beds__is_occupied=True, beds__is_active=True)),
+    )
     report_data = []
 
     # Overall statistics
@@ -906,33 +910,35 @@ def bed_occupancy_report(request):
     total_available_hospital = total_beds_hospital - total_occupied_hospital
     overall_occupancy_rate = (total_occupied_hospital / total_beds_hospital * 100) if total_beds_hospital > 0 else 0
 
-    # Calculate average length of stay
-    current_admissions = Admission.objects.filter(status='admitted')
+    # Fetch all current admissions once; reuse for hospital avg and per-ward lists
+    current_admissions = list(
+        Admission.objects.filter(status='admitted')
+        .select_related('patient', 'attending_doctor', 'bed')
+    )
     avg_length_of_stay = 0
-    if current_admissions.exists():
-        total_days = sum([admission.get_duration() for admission in current_admissions])
-        avg_length_of_stay = total_days / current_admissions.count()
+    if current_admissions:
+        total_days = sum(admission.get_duration() for admission in current_admissions)
+        avg_length_of_stay = total_days / len(current_admissions)
 
-    # Ward-specific statistics
+    admissions_by_ward = {}
+    for admission in current_admissions:
+        if admission.bed_id:
+            admissions_by_ward.setdefault(admission.bed.ward_id, []).append(admission)
+
+    # Ward-specific statistics (no per-ward queries)
     for ward in wards:
-        total_beds = ward.beds.filter(is_active=True).count()
-        occupied_beds = ward.beds.filter(is_occupied=True, is_active=True).count()
+        total_beds = ward.total_beds_count
+        occupied_beds = ward.occupied_beds_count
         available_beds = total_beds - occupied_beds
         occupancy_rate = (occupied_beds / total_beds * 100) if total_beds > 0 else 0
 
-        # Get current admissions in this ward
-        current_ward_admissions = Admission.objects.filter(
-            bed__ward=ward,
-            status='admitted'
-        ).select_related('patient', 'attending_doctor')
+        current_ward_admissions = admissions_by_ward.get(ward.pk, [])
 
-        # Calculate ward-specific average length of stay
         ward_avg_los = 0
-        if current_ward_admissions.exists():
-            ward_total_days = sum([admission.get_duration() for admission in current_ward_admissions])
-            ward_avg_los = ward_total_days / current_ward_admissions.count()
+        if current_ward_admissions:
+            ward_total_days = sum(admission.get_duration() for admission in current_ward_admissions)
+            ward_avg_los = ward_total_days / len(current_ward_admissions)
 
-        # Add ward data to report
         report_data.append({
             'ward': ward,
             'total_beds': total_beds,

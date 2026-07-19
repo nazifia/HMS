@@ -53,7 +53,7 @@ class DepartmentRevenueCalculator:
         try:
             # Base pharmacy revenue (existing logic) - Temporarily disabled
             # pharmacy_payments = PharmacyPayment.objects.filter(
-            #     payment_date__range=[self.start_date, self.end_date]
+            #     payment_date__date__range=[self.start_date, self.end_date]
             # ).aggregate(
             #     total_amount=Sum('amount'),
             #     total_payments=Count('id')
@@ -131,7 +131,7 @@ class DepartmentRevenueCalculator:
         try:
             # Base laboratory revenue
             lab_payments = BillingPayment.objects.filter(
-                payment_date__range=[self.start_date, self.end_date],
+                payment_date__date__range=[self.start_date, self.end_date],
                 invoice__source_app='laboratory'
             ).aggregate(
                 total_amount=Sum('amount'),
@@ -141,7 +141,7 @@ class DepartmentRevenueCalculator:
             # Enhanced analysis
             # Top tests by revenue
             top_tests = InvoiceItem.objects.filter(
-                invoice__invoice_date__range=[self.start_date, self.end_date],
+                invoice__invoice_date__date__range=[self.start_date, self.end_date],
                 invoice__source_app='laboratory'
             ).values(
                 'service__name',
@@ -214,7 +214,7 @@ class DepartmentRevenueCalculator:
         try:
             # Base consultation revenue
             consultation_payments = BillingPayment.objects.filter(
-                payment_date__range=[self.start_date, self.end_date],
+                payment_date__date__range=[self.start_date, self.end_date],
                 invoice__source_app='appointment'
             ).aggregate(
                 total_amount=Sum('amount'),
@@ -272,7 +272,7 @@ class DepartmentRevenueCalculator:
         try:
             # Base theatre revenue
             theatre_payments = BillingPayment.objects.filter(
-                payment_date__range=[self.start_date, self.end_date],
+                payment_date__date__range=[self.start_date, self.end_date],
                 invoice__source_app='theatre'
             ).aggregate(
                 total_amount=Sum('amount'),
@@ -353,7 +353,7 @@ class DepartmentRevenueCalculator:
         try:
             # Base admission revenue
             admission_payments = BillingPayment.objects.filter(
-                payment_date__range=[self.start_date, self.end_date],
+                payment_date__date__range=[self.start_date, self.end_date],
                 invoice__source_app='inpatient'
             ).aggregate(
                 total_amount=Sum('amount'),
@@ -484,7 +484,7 @@ class DepartmentRevenueCalculator:
             
             # Base revenue calculation
             dept_payments = BillingPayment.objects.filter(
-                payment_date__range=[self.start_date, self.end_date],
+                payment_date__date__range=[self.start_date, self.end_date],
                 invoice__source_app=department
             ).aggregate(
                 total_amount=Sum('amount'),
@@ -527,7 +527,7 @@ class DepartmentRevenueCalculator:
             
             # Services provided analysis
             service_analysis = InvoiceItem.objects.filter(
-                invoice__invoice_date__range=[self.start_date, self.end_date],
+                invoice__invoice_date__date__range=[self.start_date, self.end_date],
                 invoice__source_app=department
             ).values(
                 'service__name'
@@ -573,7 +573,7 @@ class DepartmentRevenueCalculator:
             
             # Patient revenue breakdown
             patient_revenue = BillingPayment.objects.filter(
-                payment_date__range=[self.start_date, self.end_date]
+                payment_date__date__range=[self.start_date, self.end_date]
             ).filter(patient_filter).values(
                 'invoice__patient__patient_id',
                 'invoice__patient__user__first_name',
@@ -586,7 +586,7 @@ class DepartmentRevenueCalculator:
             
             # Payment method preferences
             payment_preferences = BillingPayment.objects.filter(
-                payment_date__range=[self.start_date, self.end_date]
+                payment_date__date__range=[self.start_date, self.end_date]
             ).filter(patient_filter).values(
                 'payment_method'
             ).annotate(
