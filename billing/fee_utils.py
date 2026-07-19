@@ -190,18 +190,38 @@ def create_consultation_fee(patient, user=None, service_point=None, clinic_type=
     Create the consultation-fee invoice for a regular outpatient.
 
     ``clinic_type`` ('mopd'/'sopd') selects the matching consultation fee, else
-    the generic fee. Only regular patients are billed here (NHIA goes through
-    authorization; retainership/others are out of scope per spec). Idempotent
-    for the same day.
+    the generic fee. Regular patients get a pending invoice; retainership
+    patients get the invoice auto-paid from the (shared) wallet. NHIA goes
+    through authorization instead. Idempotent for the same day.
     """
-    if patient.patient_type != "regular":
+    if patient.patient_type not in ("regular", RETAINERSHIP_TYPE):
         return None
 
     today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
     if _has_open_invoice(patient, "consultation", since=today_start):
         return None
 
+    # Retainership invoices are paid instantly, so an open-invoice check can't
+    # dedupe them - block on any non-cancelled consultation invoice today.
+    if patient.patient_type == RETAINERSHIP_TYPE and (
+        Invoice.objects.filter(
+            patient=patient, source_app="consultation", invoice_date__gte=today_start
+        )
+        .exclude(status="cancelled")
+        .exists()
+    ):
+        return None
+
     service = get_consultation_fee_service(clinic_type)
-    return create_service_invoice(
+    invoice = create_service_invoice(
         patient, service, source_app="consultation", created_by=user
     )
+
+    if patient.patient_type == RETAINERSHIP_TYPE:
+        try:
+            pay_invoice_from_wallet(invoice, user)
+        except Exception as exc:  # pragma: no cover - safety net
+            logger.error("Retainership consultation wallet payment failed: %s", exc)
+        invoice.refresh_from_db()
+
+    return invoice

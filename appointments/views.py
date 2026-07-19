@@ -147,6 +147,12 @@ def create_appointment(request):
                     f'Consultation fee invoice #{invoice.invoice_number} '
                     f'(₦{invoice.get_balance():.2f}) must be paid before the patient can be consulted.'
                 )
+            elif invoice is not None and appointment.patient.patient_type == 'retainership':
+                messages.info(
+                    request,
+                    f'Consultation fee invoice #{invoice.invoice_number} '
+                    f'(₦{invoice.total_amount:.2f}) paid from the retainership wallet.'
+                )
             if follow_up:
                 follow_up.booked_appointment = appointment
                 follow_up.save(update_fields=['booked_appointment'])

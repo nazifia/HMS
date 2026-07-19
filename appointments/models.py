@@ -98,10 +98,10 @@ class Appointment(TenantModel):
         )
 
     def consultation_payment_verified(self):
-        """Regular patients must settle the consultation fee before being
-        consulted. NHIA is covered by the authorization code; retainership and
-        other types are not billed here."""
-        if self.patient.patient_type != 'regular':
+        """Regular and retainership patients must settle the consultation fee
+        before being consulted (retainership auto-pays from the wallet at
+        billing). NHIA is covered by the authorization code instead."""
+        if self.patient.patient_type not in ('regular', 'retainership'):
             return True
         invoice = self.consultation_invoice()
         return invoice is not None and invoice.status == 'paid'

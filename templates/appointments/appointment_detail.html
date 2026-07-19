@@ -80,7 +80,7 @@
                             </div>
                         </div>
                         {% endif %}
-                        {% if appointment.patient.patient_type == 'regular' %}
+                        {% if appointment.patient.patient_type == 'regular' or appointment.patient.patient_type == 'retainership' %}
                         <div class="row mb-3">
                             <div class="col-md-4 text-muted">Consultation Fee:</div>
                             <div class="col-md-8">

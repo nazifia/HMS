@@ -72,8 +72,35 @@ class ConsultationPaymentGateTest(TestCase):
         appointment.refresh_from_db()
         self.assertEqual(appointment.status, 'scheduled')
 
-    def test_non_regular_patient_exempt(self):
+    def test_nhia_patient_exempt(self):
         self.patient.patient_type = 'nhia'
         self.patient.save(update_fields=['patient_type'])
         appointment = self.make_appointment()
         self.assertTrue(appointment.consultation_payment_verified())
+
+    def test_retainership_auto_pays_from_wallet(self):
+        from decimal import Decimal
+        from patients.models import PatientWallet
+        self.patient.patient_type = 'retainership'
+        self.patient.save(update_fields=['patient_type'])
+        wallet, _ = PatientWallet.objects.get_or_create(patient=self.patient)
+        wallet.balance = Decimal('5000.00')
+        wallet.save(update_fields=['balance'])
+        appointment = self.make_appointment()
+        invoice = create_consultation_fee(self.patient)
+        invoice.appointment = appointment
+        invoice.save(update_fields=['appointment'])
+        self.assertEqual(invoice.status, 'paid')
+        self.assertTrue(appointment.consultation_payment_verified())
+
+    def test_retainership_not_double_billed_same_day(self):
+        from decimal import Decimal
+        from patients.models import PatientWallet
+        self.patient.patient_type = 'retainership'
+        self.patient.save(update_fields=['patient_type'])
+        wallet, _ = PatientWallet.objects.get_or_create(patient=self.patient)
+        wallet.balance = Decimal('5000.00')
+        wallet.save(update_fields=['balance'])
+        first = create_consultation_fee(self.patient)
+        self.assertIsNotNone(first)
+        self.assertIsNone(create_consultation_fee(self.patient))
