@@ -11,7 +11,10 @@ from django.http import JsonResponse
 from datetime import datetime, timedelta
 from calendar import monthrange
 from .models import Appointment, AppointmentFollowUp, DoctorSchedule, DoctorLeave, SLOT_MINUTES
-from .forms import AppointmentForm, AppointmentFollowUpForm, DoctorScheduleForm, DoctorLeaveForm, AppointmentSearchForm
+from .forms import (
+    AppointmentForm, AppointmentFollowUpForm, DoctorScheduleForm,
+    DoctorLeaveForm, AppointmentSearchForm, doctor_queryset,
+)
 from patients.models import Patient
 from core.utils import send_notification_email, send_sms_notification
 
@@ -382,32 +385,29 @@ def manage_doctor_schedule(request, doctor_id=None):
         schedules = None
 
     if request.method == 'POST':
-        # If editing, use the instance
-        if edit_schedule:
-            form = DoctorScheduleForm(request.POST, instance=edit_schedule)
-        else:
-            form = DoctorScheduleForm(request.POST)
-            
-        if form.is_valid():
-            # Check for duplicates only if creating new or changing weekday
-            if not edit_schedule:
-                doctor_obj = form.cleaned_data['doctor']
-                weekday = form.cleaned_data['weekday']
-                existing_schedule = DoctorSchedule.objects.filter(doctor=doctor_obj, weekday=weekday).first()
-                
-                if existing_schedule:
-                    # Logic to update existing if user didn't click edit but selected same day
-                    existing_schedule.start_time = form.cleaned_data['start_time']
-                    existing_schedule.end_time = form.cleaned_data['end_time']
-                    existing_schedule.is_available = form.cleaned_data['is_available']
-                    existing_schedule.save()
-                    messages.success(request, f'Schedule updated for {doctor_obj.get_full_name()} on {existing_schedule.get_weekday_display()}')
-                    return redirect('appointments:manage_doctor_schedule_for_doctor', doctor_id=doctor_obj.id)
+        # (doctor, weekday) is unique_together, so a plain create for a day that
+        # already has a schedule fails validation instead of updating it. Bind the
+        # form to the existing row so the page behaves as "add or update".
+        instance = edit_schedule
+        posted_doctor = request.POST.get('doctor', '')
+        posted_weekday = request.POST.get('weekday', '')
+        if instance is None and posted_doctor.isdigit() and posted_weekday.isdigit():
+            instance = DoctorSchedule.objects.filter(
+                doctor_id=posted_doctor, weekday=posted_weekday
+            ).first()
+        was_update = instance is not None
 
-            form.save()
-            msg_action = "updated" if edit_schedule else "created"
-            messages.success(request, f'Schedule {msg_action} for {form.cleaned_data["doctor"].get_full_name()} on {form.instance.get_weekday_display()}')
-            return redirect('appointments:manage_doctor_schedule_for_doctor', doctor_id=form.cleaned_data['doctor'].id)
+        form = DoctorScheduleForm(request.POST, instance=instance)
+
+        if form.is_valid():
+            schedule = form.save()
+            msg_action = "updated" if was_update else "created"
+            messages.success(
+                request,
+                f'Schedule {msg_action} for {schedule.doctor.get_full_name()} '
+                f'on {schedule.get_weekday_display()}'
+            )
+            return redirect('appointments:manage_doctor_schedule_for_doctor', doctor_id=schedule.doctor_id)
     else:
         if edit_schedule:
             form = DoctorScheduleForm(instance=edit_schedule)
@@ -415,8 +415,8 @@ def manage_doctor_schedule(request, doctor_id=None):
             initial_data = {'doctor': doctor} if doctor else {}
             form = DoctorScheduleForm(initial=initial_data)
 
-    # Get all doctors for the dropdown
-    doctors = CustomUser.tenant_objects.filter(is_active=True, profile__role='doctor').order_by('last_name')
+    # Get all doctors for the dropdown (matches both role systems - see forms.DOCTOR_Q)
+    doctors = doctor_queryset()
 
     context = {
         'form': form,
