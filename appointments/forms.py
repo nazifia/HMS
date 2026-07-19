@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 User = get_user_model()
 from django.utils import timezone
-from .models import Appointment, AppointmentFollowUp, DoctorSchedule, DoctorLeave
+from .models import Appointment, AppointmentFollowUp, DoctorSchedule, DoctorLeave, SLOT_MINUTES
 from patients.models import Patient
 from core.patient_search_forms import PatientSearchForm
 import datetime
@@ -170,7 +170,7 @@ class AppointmentForm(forms.ModelForm):
             # The slot must start within the shift and finish by the end of it.
             slot_end = end_time or (
                 datetime.datetime.combine(appointment_date, appointment_time)
-                + datetime.timedelta(minutes=30)
+                + datetime.timedelta(minutes=SLOT_MINUTES)
             ).time()
             if (appointment_time < doctor_schedule.start_time
                     or appointment_time >= doctor_schedule.end_time
@@ -199,8 +199,7 @@ class AppointmentForm(forms.ModelForm):
                     datetime.datetime.combine(appointment_date, end_time)
                 )
             else:
-                # Default 30-minute duration
-                appointment_end = appointment_start + datetime.timedelta(minutes=30)
+                appointment_end = appointment_start + datetime.timedelta(minutes=SLOT_MINUTES)
 
             for existing_appt in overlapping_appointments:
                 # Existing appointment start is stored as appointment_date (datetime)
@@ -216,8 +215,7 @@ class AppointmentForm(forms.ModelForm):
                         )
                     )
                 else:
-                    # Default 30-minute duration
-                    existing_end = existing_start + datetime.timedelta(minutes=30)
+                    existing_end = existing_start + datetime.timedelta(minutes=SLOT_MINUTES)
 
                 # Check for overlap: A overlaps B if A.start < B.end AND A.end > B.start
                 if appointment_start < existing_end and appointment_end > existing_start:
@@ -277,7 +275,12 @@ class DoctorScheduleForm(forms.ModelForm):
             'end_time': forms.TimeInput(attrs={'type': 'time'}),
             'is_available': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
-    
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Scope doctor picker to the current hospital (per-request, not import-time).
+        self.fields['doctor'].queryset = doctor_queryset()
+
     def clean(self):
         cleaned_data = super().clean()
         start_time = cleaned_data.get('start_time')
@@ -307,15 +310,37 @@ class DoctorLeaveForm(forms.ModelForm):
             'reason': forms.Textarea(attrs={'rows': 3}),
             'is_approved': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
-    
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Scope doctor picker to the current hospital (per-request, not import-time).
+        self.fields['doctor'].queryset = doctor_queryset()
+        # Model stores datetimes; the widgets are date-only, so seed them from the date part.
+        for field in ('start_date', 'end_date'):
+            value = getattr(self.instance, field, None)
+            if value:
+                self.initial[field] = timezone.localtime(value).date()
+
     def clean(self):
         cleaned_data = super().clean()
         start_date = cleaned_data.get('start_date')
         end_date = cleaned_data.get('end_date')
-        
+
         if start_date and end_date and end_date < start_date:
             raise forms.ValidationError("End date must be after start date.")
-        
+
+        # start_date/end_date are DateTimeField columns but leave is day-granular.
+        # Widen to the full local day so a date-only value never lands in a datetime
+        # column (breaks admin date_hierarchy) and never shifts across midnight.
+        if start_date:
+            cleaned_data['start_date'] = timezone.make_aware(
+                datetime.datetime.combine(start_date, datetime.time.min)
+            )
+        if end_date:
+            cleaned_data['end_date'] = timezone.make_aware(
+                datetime.datetime.combine(end_date, datetime.time.max)
+            )
+
         return cleaned_data
 
 class AppointmentSearchForm(forms.Form):

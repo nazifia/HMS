@@ -55,6 +55,8 @@
                         <div class="col-md-4 mb-3">
                             <label for="{{ form.appointment_time.id_for_label }}" class="form-label">Start Time</label>
                             {{ form.appointment_time|add_class:"form-control" }}
+                            <datalist id="available-slots"></datalist>
+                            <div id="slots-hint" class="form-text"></div>
                             {% if form.appointment_time.errors %}
                                 <div class="text-danger">
                                     {{ form.appointment_time.errors }}
@@ -137,27 +139,44 @@
             width: '100%'
         });
         
-        // Get doctor schedule when doctor is selected
-        $('#{{ form.doctor.id_for_label }}').on('change', function() {
-            var doctorId = $(this).val();
-            var appointmentDate = $('#{{ form.appointment_date.id_for_label }}').val();
-            
-            if (doctorId && appointmentDate) {
-                // You can add AJAX call here to get doctor's schedule for the selected date
-                // and update available time slots
-            }
-        });
-        
-        // Update available time slots when date is changed
-        $('#{{ form.appointment_date.id_for_label }}').on('change', function() {
-            var appointmentDate = $(this).val();
+        // Show the doctor's free slots once both doctor and date are picked.
+        // Suggestions only - the form still validates availability server-side.
+        var $time = $('#{{ form.appointment_time.id_for_label }}');
+        var $hint = $('#slots-hint');
+        $time.attr('list', 'available-slots');
+
+        function loadSlots() {
             var doctorId = $('#{{ form.doctor.id_for_label }}').val();
-            
-            if (doctorId && appointmentDate) {
-                // You can add AJAX call here to get doctor's schedule for the selected date
-                // and update available time slots
+            var date = $('#{{ form.appointment_date.id_for_label }}').val();
+            $('#available-slots').empty();
+            if (!doctorId || !date) {
+                $hint.text('');
+                return;
             }
-        });
+            $hint.text('Loading available times...');
+            $.getJSON('{% url "appointments:get_available_slots" %}', {
+                doctor_id: doctorId,
+                date: date,
+                appointment_id: '{{ form.instance.pk|default_if_none:"" }}'
+            }).done(function(data) {
+                var slots = data.available_slots || [];
+                if (!slots.length) {
+                    $hint.text(data.message || 'No free slots on this date.');
+                    return;
+                }
+                slots.forEach(function(slot) {
+                    $('<option>').attr('value', slot.value).text(slot.text)
+                        .appendTo('#available-slots');
+                });
+                $hint.text('Available: ' + slots.map(function(s) { return s.text; }).join(', '));
+            }).fail(function() {
+                $hint.text('Could not load available times.');
+            });
+        }
+
+        $('#{{ form.doctor.id_for_label }}, #{{ form.appointment_date.id_for_label }}')
+            .on('change', loadSlots);
+        loadSlots();
     });
 </script>
 {% endblock %}

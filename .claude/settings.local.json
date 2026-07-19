@@ -286,7 +286,10 @@
       "Bash(mv /tmp/pl.html templates/consultations/patient_list.html)",
       "Bash(./venv/Scripts/python.exe -c ' *)",
       "Bash(node scripts/validate_palette.js \"#2a78d6,#e34948\" --mode light)",
-      "Bash(node scripts/validate_palette.js \"#3987e5,#e66767\" --mode dark)"
+      "Bash(node scripts/validate_palette.js \"#3987e5,#e66767\" --mode dark)",
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings DB_ENGINE=sqlite python -c ' *)",
+      "Bash(DB_ENGINE=sqlite ./venv/Scripts/python.exe manage.py test appointments)",
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings DB_ENGINE=sqlite ./venv/Scripts/python.exe -c ' *)"
     ]
   }
 }

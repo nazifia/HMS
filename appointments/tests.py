@@ -7,7 +7,7 @@ from django.utils import timezone
 from accounts.models import CustomUser
 from patients.models import Patient
 
-from .forms import AppointmentForm
+from .forms import AppointmentForm, DoctorLeaveForm, DoctorScheduleForm
 from .models import Appointment, DoctorLeave, DoctorSchedule
 
 
@@ -127,3 +127,45 @@ class AppointmentBookingTests(TestCase):
         form = AppointmentForm()
         label = form.fields["patient"].label_from_instance(self.patient)
         self.assertIn(self.patient.patient_id, label)
+
+    def slots(self, **extra):
+        admin = CustomUser.objects.filter(username="root2").first() or (
+            CustomUser.objects.create_superuser(
+                phone_number="08000000003", username="root2", password="pw",
+            )
+        )
+        self.client.force_login(admin)
+        params = {"doctor_id": self.doctor.pk, "date": self.day.isoformat(), **extra}
+        response = self.client.get(reverse("appointments:get_available_slots"), params)
+        return [s["value"] for s in response.json()["available_slots"]]
+
+    def test_booked_slot_is_not_offered_but_is_on_reschedule(self):
+        appt = self.form("10:00").save()
+        self.assertNotIn("10:00", self.slots())
+        self.assertIn("09:30", self.slots())  # neighbouring slot stays free
+        # Rescheduling that same appointment must not see itself as a conflict.
+        self.assertIn("10:00", self.slots(appointment_id=appt.pk))
+
+    def test_doctor_pickers_only_list_doctors(self):
+        for form in (DoctorScheduleForm(), DoctorLeaveForm()):
+            with self.subTest(form=type(form).__name__):
+                self.assertEqual(
+                    list(form.fields["doctor"].queryset), [self.doctor]
+                )
+
+    def test_leave_dates_are_stored_as_aware_full_day_datetimes(self):
+        form = DoctorLeaveForm(data={
+            "doctor": self.doctor.pk,
+            "start_date": self.day.isoformat(),
+            "end_date": self.day.isoformat(),
+            "reason": "conference",
+            "is_approved": True,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        leave = form.save()
+        self.assertTrue(timezone.is_aware(leave.start_date))
+        self.assertEqual(timezone.localtime(leave.start_date).date(), self.day)
+        self.assertEqual(timezone.localtime(leave.end_date).date(), self.day)
+        self.assertEqual(timezone.localtime(leave.start_date).time(), time.min)
+        # The whole day must be covered, so a booking on that day is blocked.
+        self.assertFalse(self.form("10:00").is_valid())

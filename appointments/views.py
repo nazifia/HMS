@@ -10,13 +10,10 @@ from django.utils import timezone
 from django.http import JsonResponse
 from datetime import datetime, timedelta
 from calendar import monthrange
-from .models import Appointment, AppointmentFollowUp, DoctorSchedule, DoctorLeave
+from .models import Appointment, AppointmentFollowUp, DoctorSchedule, DoctorLeave, SLOT_MINUTES
 from .forms import AppointmentForm, AppointmentFollowUpForm, DoctorScheduleForm, DoctorLeaveForm, AppointmentSearchForm
 from patients.models import Patient
 from core.utils import send_notification_email, send_sms_notification
-
-# ponytail: fixed slot length. Move to DoctorSchedule if per-doctor slots are needed.
-SLOT_MINUTES = 30
 
 @login_required
 @permission_required('appointments.view')
@@ -545,11 +542,18 @@ def get_available_slots(request):
     # Existing bookings as (start, end) datetimes so a slot overlapping a longer
     # appointment is blocked too, not only one starting at the exact same minute.
     booked = []
-    for appt in Appointment.objects.filter(
+    existing = Appointment.objects.filter(
         doctor=doctor,
         appointment_date__date=selected_date,
         status__in=['scheduled', 'confirmed'],
-    ).only('appointment_date', 'end_time'):
+    ).only('appointment_date', 'end_time')
+
+    # When rescheduling, the appointment's own slot is not a conflict with itself.
+    exclude_id = request.GET.get('appointment_id')
+    if exclude_id:
+        existing = existing.exclude(id=exclude_id)
+
+    for appt in existing:
         appt_start = datetime.combine(selected_date, appt.appointment_time)
         appt_end = (
             datetime.combine(selected_date, appt.end_time)

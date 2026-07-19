@@ -4,6 +4,10 @@ from django.utils import timezone
 from patients.models import Patient
 from django.conf import settings
 
+# ponytail: fixed slot length, shared by the slot generator and the booking
+# validator so they can't drift. Move to DoctorSchedule if per-doctor slots are needed.
+SLOT_MINUTES = 30
+
 
 class Appointment(TenantModel):
     STATUS_CHOICES = (
