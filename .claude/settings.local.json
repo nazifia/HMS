@@ -309,7 +309,8 @@
       "Bash(awk 'NR>=609 && NR<=800 && /class Meta/{print NR}' patients/models.py)",
       "Bash(awk 'NR>1004 && /^class /{print \"Prescription ends before \"NR\": \"$0; exit}' pharmacy/models.py)",
       "Bash(awk 'NR>609 && /^class /{print \"PatientWallet ends before \"NR\": \"$0; exit}' patients/models.py)",
-      "Bash(awk *)"
+      "Bash(awk *)",
+      "Bash(echo \"exit:$?\")"
     ]
   }
 }

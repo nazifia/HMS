@@ -2135,8 +2135,10 @@ def user_has_permission(user, permission):
     if permission != django_perm:
         user_roles = get_user_roles(user)
         for role_name in user_roles:
-            if role_name in ROLE_PERMISSIONS:
-                if permission in ROLE_PERMISSIONS[role_name]["permissions"]:
+            # Case-insensitive: a role saved as "Doctor" must match key "doctor".
+            role_def = ROLE_PERMISSIONS.get(role_name) or ROLE_PERMISSIONS.get(role_name.lower())
+            if role_def:
+                if permission in role_def["permissions"]:
                     if DEBUG_PERMISSIONS:
                         logger.info(
                             f"Permission GRANTED via ROLE_PERMISSIONS: {permission} for user {user}"
@@ -2315,13 +2317,15 @@ def user_permissions_context(request):
 
         # Build permission dictionary for templates
         for role_name in user_roles:
-            if role_name in ROLE_PERMISSIONS:
-                for permission in ROLE_PERMISSIONS[role_name]["permissions"]:
+            # Case-insensitive: a role saved as "Doctor" must match key "doctor".
+            role_def = ROLE_PERMISSIONS.get(role_name) or ROLE_PERMISSIONS.get(role_name.lower())
+            if role_def:
+                for permission in role_def["permissions"]:
                     user_permissions[permission] = True
 
         # Add role information
         user_permissions["roles"] = user_roles
-        user_permissions["is_admin"] = "admin" in user_roles
+        user_permissions["is_admin"] = any(r.lower() == "admin" for r in user_roles)
         user_permissions["is_superuser"] = request.user.is_superuser
 
         return user_permissions
@@ -2366,8 +2370,10 @@ def get_user_accessible_modules(user):
     user_roles = get_user_roles(user)
 
     for role_name in user_roles:
-        if role_name in ROLE_PERMISSIONS:
-            for permission in ROLE_PERMISSIONS[role_name]["permissions"]:
+        # Case-insensitive: a role saved as "Doctor" must match key "doctor".
+        role_def = ROLE_PERMISSIONS.get(role_name) or ROLE_PERMISSIONS.get(role_name.lower())
+        if role_def:
+            for permission in role_def["permissions"]:
                 # Extract module from custom permission string (e.g., 'patients.view' -> 'patients')
                 module = permission.split(".")[0]
                 if module not in accessible_modules:
