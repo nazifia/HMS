@@ -56,10 +56,13 @@ def page_user_context(request):
         return cached
 
     user_roles = get_user_roles(user)  # request-cached on the user object
+    # Role names are compared against lowercase ROLE_PERMISSIONS keys and literals
+    # below; a role stored as "Doctor" must still match. Keep user_roles for display.
+    roles_lc = {r.lower() for r in user_roles}
     is_super = user.is_superuser
 
     perms = {}
-    for role_name in user_roles:
+    for role_name in roles_lc:
         if role_name in ROLE_PERMISSIONS:
             for perm_key in ROLE_PERMISSIONS[role_name]['permissions']:
                 perms[perm_key] = True
@@ -69,22 +72,22 @@ def page_user_context(request):
         'user_roles': user_roles,
         'user_role_list': user_roles,
         'user_permissions': perms,
-        'is_admin_user': 'admin' in user_roles or is_super,
+        'is_admin_user': 'admin' in roles_lc or is_super,
         'accessible_modules': get_user_accessible_modules(user),
         # --- core.hms_user_roles ---
-        'user_is_admin': 'admin' in user_roles,
+        'user_is_admin': 'admin' in roles_lc,
         'user_is_superuser': is_super,
-        'user_has_medical_roles': any(r in user_roles for r in ['doctor', 'nurse']),
-        'user_has_management_roles': any(r in user_roles for r in ['admin', 'accountant', 'health_record_officer', 'receptionist']),
-        'user_can_manage_patients': any(r in user_roles for r in ['admin', 'receptionist', 'health_record_officer']),
-        'user_can_manage_pharmacy': any(r in user_roles for r in ['admin', 'pharmacist']),
-        'user_can_manage_billing': any(r in user_roles for r in ['admin', 'accountant', 'receptionist', 'health_record_officer']),
-        'user_can_manage_laboratory': any(r in user_roles for r in ['admin', 'lab_technician', 'medical_lab_scientist']),
+        'user_has_medical_roles': bool(roles_lc & {'doctor', 'nurse'}),
+        'user_has_management_roles': bool(roles_lc & {'admin', 'accountant', 'health_record_officer', 'receptionist'}),
+        'user_can_manage_patients': bool(roles_lc & {'admin', 'receptionist', 'health_record_officer'}),
+        'user_can_manage_pharmacy': bool(roles_lc & {'admin', 'pharmacist'}),
+        'user_can_manage_billing': bool(roles_lc & {'admin', 'accountant', 'receptionist', 'health_record_officer'}),
+        'user_can_manage_laboratory': bool(roles_lc & {'admin', 'lab_technician', 'medical_lab_scientist'}),
     }
     # --- core.hms_permissions (top-level dump) ---
     result.update(perms)
     result['roles'] = user_roles
-    result['is_admin'] = 'admin' in user_roles
+    result['is_admin'] = 'admin' in roles_lc
     result['is_superuser'] = is_super
 
     cache.set(cache_key, result, 300)

@@ -886,6 +886,21 @@ class RoleForm(forms.ModelForm):
             "content_type"
         ).order_by("content_type__app_label", "content_type__model", "codename")
 
+    def clean_name(self):
+        # Block case/whitespace variants ("Doctor" vs "doctor"). Model has a
+        # case-sensitive unique on name, so variants slip through and split
+        # permission grants across rows the user may not hold.
+        name = (self.cleaned_data.get("name") or "").strip()
+        clash = Role.objects.filter(name__iexact=name)
+        if self.instance.pk:
+            clash = clash.exclude(pk=self.instance.pk)
+        if clash.exists():
+            raise ValidationError(
+                f'A role named "{clash.first().name}" already exists. '
+                "Edit that role instead of creating a variant."
+            )
+        return name
+
     def clean_parent(self):
         parent = self.cleaned_data.get("parent")
         if not parent or not self.instance.pk:

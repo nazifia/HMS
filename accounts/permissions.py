@@ -2189,8 +2189,9 @@ def user_in_role(user, role_names):
     if isinstance(role_names, str):
         role_names = [role_names]
 
-    user_roles = get_user_roles(user)
-    return any(role in user_roles for role in role_names)
+    # Case-insensitive: a role saved as "Doctor" must match a check for "doctor".
+    user_roles = {r.lower() for r in get_user_roles(user)}
+    return any(role.lower() in user_roles for role in role_names)
 
 
 def user_in_all_roles(user, role_names):
@@ -2204,8 +2205,8 @@ def user_in_all_roles(user, role_names):
     if isinstance(role_names, str):
         role_names = [role_names]
 
-    user_roles = get_user_roles(user)
-    return all(role in user_roles for role in role_names)
+    user_roles = {r.lower() for r in get_user_roles(user)}
+    return all(role.lower() in user_roles for role in role_names)
 
 
 # Decorators for views

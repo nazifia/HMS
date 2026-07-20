@@ -252,13 +252,12 @@ class StrictAccessControlMiddleware(MiddlewareMixin):
         if not required_permission:
             return True
 
-        user_roles = get_user_roles(user)
-
-        for role_name in user_roles:
-            if role_name in ROLE_PERMISSIONS:
-                role_perms = ROLE_PERMISSIONS[role_name].get("permissions", [])
-                if required_permission in role_perms:
-                    return True
+        # Case-insensitive: ROLE_PERMISSIONS keys are lowercase, but a role may
+        # be stored as "Doctor".
+        for role_name in get_user_roles(user):
+            role_def = ROLE_PERMISSIONS.get(role_name.lower())
+            if role_def and required_permission in role_def.get("permissions", []):
+                return True
 
         return False
 
@@ -276,8 +275,9 @@ class StrictAccessControlMiddleware(MiddlewareMixin):
         # Specialty clinical modules: restricted to clinical cadres + admin
         namespace = self._get_namespace(request)
         if namespace in self.SPECIALTY_CLINICAL_NAMESPACES:
-            user_roles = get_user_roles(user)
-            if any(r in self.CLINICAL_ALLOWED_ROLES for r in user_roles):
+            # Case-insensitive: a role stored as "Doctor" must match "doctor".
+            user_roles = {r.lower() for r in get_user_roles(user)}
+            if user_roles & self.CLINICAL_ALLOWED_ROLES:
                 return True, "Clinical access to specialty module granted"
             return False, "Specialty module restricted to clinical staff (doctor/nurse)"
 
