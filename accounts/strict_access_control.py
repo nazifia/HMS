@@ -392,15 +392,9 @@ class StrictAccessControlMiddleware(MiddlewareMixin):
 
         return None
 
-    def __call__(self, request):
-        """Main middleware entry point."""
-        response = self.process_view(request, None, None, None)
-
-        if response is not None:
-            return response
-
-        response = self.get_response(request)
-        return response
+    # No __call__ override: MiddlewareMixin supplies one, and Django separately
+    # registers process_view in the view-middleware chain. Overriding __call__ to
+    # invoke process_view by hand ran the whole permission check twice per request.
 
 
 class PermissionAuditMiddleware:

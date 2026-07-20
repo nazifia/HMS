@@ -124,18 +124,46 @@ class RolePermissionBackend(ModelBackend):
         if not user_obj.is_active or user_obj.is_anonymous or obj is not None:
             return set()
 
-        # Use the standard Django _perm_cache if possible, or our own
         if not hasattr(user_obj, '_role_perm_cache'):
-            perms = set()
-            # Add permissions from roles
-            if hasattr(user_obj, 'roles'):
-                # Use select_related for efficiency
-                for role in user_obj.roles.all().prefetch_related('permissions'):
-                    # role.get_all_permissions() returns a set of Permission objects
-                    for permission in role.get_all_permissions():
-                        perms.add(f"{permission.content_type.app_label}.{permission.codename}")
-            user_obj._role_perm_cache = perms
+            user_obj._role_perm_cache = self._collect_role_perms(user_obj)
         return user_obj._role_perm_cache
+
+    @staticmethod
+    def _collect_role_perms(user_obj):
+        """Permission strings from the user's roles plus every ancestor role.
+
+        Previously this called Role.get_all_permissions() per role, which walks
+        the parent chain issuing one query per ancestor per role. The role table
+        holds tens of rows, so loading the whole id->parent_id map once and
+        walking it in memory costs three queries total regardless of depth.
+        """
+        if not hasattr(user_obj, 'roles'):
+            return set()
+
+        role_ids = set(user_obj.roles.values_list('id', flat=True))
+        if not role_ids:
+            return set()
+
+        parent_of = dict(Role.objects.values_list('id', 'parent_id'))
+        wanted = set()
+        pending = list(role_ids)
+        while pending:
+            role_id = pending.pop()
+            if role_id in wanted:
+                continue  # also breaks any accidental parent cycle
+            wanted.add(role_id)
+            parent_id = parent_of.get(role_id)
+            if parent_id is not None:
+                pending.append(parent_id)
+
+        return {
+            f"{app_label}.{codename}"
+            for app_label, codename in Role.permissions.through.objects.filter(
+                role_id__in=wanted
+            ).values_list(
+                'permission__content_type__app_label', 'permission__codename'
+            )
+        }
 
     def has_perm(self, user_obj, perm, obj=None):
         if not user_obj.is_active:

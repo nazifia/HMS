@@ -268,6 +268,10 @@ class TestResult(TenantModel):
         ordering = ["-result_date", "-created_at"]
         permissions = [
             ("add_labresult", "Can enter laboratory results"),
+            # Backs @permission_required('lab.results'), mapped to
+            # enter_testresults. Was only a hand-created prod row, so a fresh
+            # deploy locked result entry to superusers regardless of role grants.
+            ("enter_testresults", "Can enter/edit lab test results"),
         ]
 
 

@@ -26,42 +26,55 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
             CustomUserProfile.objects.create(user=instance)
 
 
+def clear_shared_user_cache(user_pks):
+    """Drop the cross-request context-processor cache entries for these users."""
+    from django.core.cache import cache
+    pks = [pk for pk in user_pks if pk]
+    cache.delete_many([f'page_user_ctx_{pk}' for pk in pks])
+    return len(pks)
+
+
 def clear_user_permission_cache(users):
     """
-    Clear permission cache for specified users.
+    Clear permission caches for the given *in-memory* CustomUser instances.
+
+    _role_perm_cache / _perm_cache / _cached_roles are per-instance, so this is
+    only effective when the caller holds the same object the request is using —
+    which is exactly the case for the user-side m2m signal below.
     """
-    from django.core.cache import cache
-    cleared_count = 0
     for user in users:
-        if hasattr(user, '_role_perm_cache'):
-            delattr(user, '_role_perm_cache')
-            cleared_count += 1
-        if hasattr(user, '_perm_cache'):
-            delattr(user, '_perm_cache')
-        # Bust context-processor caches
-        pk = getattr(user, 'pk', None)
-        if pk:
-            cache.delete(f'page_user_ctx_{pk}')
-    return cleared_count
+        user.clear_permission_cache()
+    return clear_shared_user_cache([getattr(u, 'pk', None) for u in users])
 
 
 def clear_role_permission_cache(sender, instance, **kwargs):
     """
-    Clear permission cache for all users associated with a role when its permissions change.
-    This ensures that permission changes take effect immediately.
+    Clear cached permission context for all users holding a role when that
+    role's permissions (or parent) change, so changes take effect immediately.
+
+    Only the shared cache is bust-able here: the users are looked up fresh, so
+    their per-instance caches are on throwaway objects. That is fine — those
+    caches die with the request that owns them anyway.
     """
-    logger.info(f"[Signal] Clearing permission cache for role '{instance.name}' (ID: {instance.id})")
-    # Clear the _role_perm_cache for all users having this role
-    users = list(instance.customuser_roles.all())
-    cleared_count = clear_user_permission_cache(users)
-    logger.info(f"[Signal] Cleared permission cache for {cleared_count} users with role '{instance.name}'")
+    pks = list(instance.customuser_roles.values_list('pk', flat=True))
+    cleared_count = clear_shared_user_cache(pks)
+    logger.info(
+        f"[Signal] Cleared permission cache for {cleared_count} users "
+        f"with role '{instance.name}' (ID: {instance.id})"
+    )
 
 
 def clear_user_role_cache(sender, instance, **kwargs):
     """
-    Clear permission cache for a user when their roles change.
+    Clear cached permission context when a user's role assignments change.
+
+    m2m_changed fires for both directions of CustomUser.roles: instance is a
+    CustomUser on user.roles.add(...), but a Role on role.customuser_roles.add(...).
+    Dispatch on the type rather than assuming a user.
     """
-    logger.info(f"[Signal] Clearing permission cache for user '{instance}' (ID: {instance.id})")
+    if isinstance(instance, Role):
+        clear_role_permission_cache(sender, instance, **kwargs)
+        return
     cleared_count = clear_user_permission_cache([instance])
     logger.info(f"[Signal] Cleared {cleared_count} cache entries for user '{instance}'")
 
@@ -98,23 +111,9 @@ def on_user_roles_changed(sender, instance, action, **kwargs):
         clear_user_role_cache(sender, instance, **kwargs)
 
 
-# Also keep the old-style connections for backwards compatibility
-# These will be caught by the @receiver decorators above, but we keep them
-# in case there are edge cases where decorators don't fire
-m2m_changed.connect(
-    clear_role_permission_cache,
-    sender=Role.permissions.through
-)
+# The three cache-clearing signals above are wired by @receiver alone. The
+# duplicate .connect() calls that used to sit here registered the *undecorated*
+# functions as separate receivers, so every role save and every m2m change ran
+# the clear twice, with an extra customuser_roles query each time.
 
-post_save.connect(
-    clear_role_permission_cache,
-    sender=Role
-)
-
-m2m_changed.connect(
-    clear_user_role_cache,
-    sender=CustomUser.roles.through
-)
-
-# Manually connect the signal to ensure it's registered
 post_save.connect(create_or_update_user_profile, sender=CustomUser)

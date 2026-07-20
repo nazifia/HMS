@@ -1418,6 +1418,10 @@ class PatientWallet(TenantModel):
             ("deposit_to_wallet", "Can deposit to patient wallet"),
             ("refund_walletpayment", "Can refund wallet payments"),
             ("withdraw_from_wallet", "Can withdraw from patient wallet"),
+            # Backs @permission_required('wallet.manage'), mapped to
+            # manage_patientwallet. Was only a hand-created prod row, so a fresh
+            # deploy locked shared-wallet views to superusers regardless of grants.
+            ("manage_patientwallet", "Can manage wallet operations (adjust balances, refunds)"),
         ]
 
 

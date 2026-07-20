@@ -299,7 +299,17 @@
       "PowerShell(python manage.py test appointments 2>&1 | Select-Object -Last 3)",
       "Bash(./venv/Scripts/python.exe manage.py makemigrations saas)",
       "Bash(./venv/Scripts/python.exe *)",
-      "PowerShell(Get-Content *)"
+      "PowerShell(Get-Content *)",
+      "Bash(xargs grep -l \"role\")",
+      "Bash(DJANGO_SETTINGS_MODULE=hms.settings timeout 500 python -c ' *)",
+      "Bash(awk 'NR>=77 && NR<=220 && /class Meta/{print NR\": \"$0; found=1; c=0} found && c<12 {print NR\": \"$0; c++} found && /^class /&&NR>77{exit}' inpatient/models.py)",
+      "Bash(awk 'NR>=77 {print NR\": \"$0} /^class / && NR>78 {exit}' inpatient/models.py)",
+      "Bash(awk 'NR>=1004 {print NR\": \"$0} /class Meta/&&NR>1004{m=1} m{c++} c>10{exit}' pharmacy/models.py)",
+      "Bash(awk 'NR>=1004 && NR<=1300 && /class Meta/{print NR}' pharmacy/models.py)",
+      "Bash(awk 'NR>=609 && NR<=800 && /class Meta/{print NR}' patients/models.py)",
+      "Bash(awk 'NR>1004 && /^class /{print \"Prescription ends before \"NR\": \"$0; exit}' pharmacy/models.py)",
+      "Bash(awk 'NR>609 && /^class /{print \"PatientWallet ends before \"NR\": \"$0; exit}' patients/models.py)",
+      "Bash(awk *)"
     ]
   }
 }

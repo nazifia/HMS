@@ -358,11 +358,15 @@ class CustomUser(AbstractUser):
             return []
 
     def clear_permission_cache(self):
-        """Clear the permission cache for this user"""
-        if hasattr(self, "_role_perm_cache"):
-            delattr(self, "_role_perm_cache")
-        if hasattr(self, "_perm_cache"):
-            delattr(self, "_perm_cache")
+        """Clear the per-instance permission caches for this user.
+
+        Only affects this in-memory instance; there is no cross-request cache
+        of permissions to invalidate. _cached_roles is set by
+        accounts.permissions.get_user_roles and was previously missed here.
+        """
+        for attr in ("_role_perm_cache", "_perm_cache", "_cached_roles"):
+            if hasattr(self, attr):
+                delattr(self, attr)
 
 
 class CustomUserProfile(models.Model):

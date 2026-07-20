@@ -395,4 +395,8 @@ class Payment(TenantModel):
         ordering = ["-payment_date", "-created_at"]
         permissions = [
             ("refund_payment", "Can refund payments"),
+            # Backs @permission_required("billing.process_payment"); previously
+            # only present in prod as a hand-created row, so a fresh deploy locked
+            # payment views to superusers regardless of role grants.
+            ("process_payment", "Can process payments"),
         ]

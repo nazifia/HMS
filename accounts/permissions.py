@@ -2400,7 +2400,9 @@ def can_perform_action(user, action, context=None):
         "view_lab_results": "lab.results",
         "manage_billing": "billing.view",
         "process_payment": "billing.process_payment",
-        "manage_wallet": "wallet.view",
+        # NOTE: "manage_wallet" is defined once, above, as patients.wallet_manage
+        # (matching permission_tags.py). A second "manage_wallet": "wallet.view"
+        # entry used to sit here and silently shadowed it.
         "manage_appointments": "appointments.view",
         "edit_appointments": "appointments.edit",
         "manage_inpatient": "inpatient.view",
@@ -2409,6 +2411,7 @@ def can_perform_action(user, action, context=None):
         "manage_roles": "roles.view",
         "view_reports": "reports.view",
         "generate_reports": "reports.generate",
+        "view_wallet": "wallet.view",
     }
 
     if action in permission_map:
@@ -2454,19 +2457,8 @@ def get_role_display_name(role_name):
     return role_names.get(role_name, role_name.title())
 
 
-# Migration helper to set up default roles
-def create_default_roles():
-    """Create default roles with permissions."""
-    from django.contrib.auth.models import Permission
-
-    for role_name, role_data in ROLE_PERMISSIONS.items():
-        role, created = Role.objects.get_or_create(
-            name=role_name, defaults={"description": role_data["description"]}
-        )
-
-        if created:
-            logger.info(f"Created role: {role_name}")
-        else:
-            logger.info(f"Role already exists: {role_name}")
+# create_default_roles() was removed: it had no callers, referenced an
+# unimported Role (immediate NameError), and despite its docstring never
+# assigned any permissions. Use `manage.py populate_roles` instead.
 
     return True

@@ -103,6 +103,14 @@ class Admission(TenantModel):
     # Authorization code for NHIA patients
     authorization_code = models.ForeignKey('nhia.AuthorizationCode', on_delete=models.SET_NULL, null=True, blank=True, related_name='admissions')
 
+    class Meta:
+        # Backs @permission_required('inpatient.discharge'), mapped to
+        # discharge_patient. Was only a hand-created prod row, so a fresh deploy
+        # locked discharge to superusers regardless of role grants.
+        permissions = [
+            ("discharge_patient", "Can discharge inpatients"),
+        ]
+
     def __str__(self):
         return f"{self.patient.get_full_name()} - {self.admission_date.strftime('%Y-%m-%d')}"
 

@@ -501,6 +501,12 @@ class Dispensary(TenantModel):
     class Meta:
         verbose_name_plural = "Dispensaries"
         ordering = ["name"]
+        # Backs @permission_required('pharmacy.manage_pharmacists') in
+        # assignment_views. Without a real Permission row the check could only
+        # ever pass for superusers and the role editor had nothing to grant.
+        permissions = [
+            ("manage_pharmacists", "Can manage pharmacist assignments to dispensary"),
+        ]
 
     def has_pharmacist(self, pharmacist):
         """Check if a pharmacist is assigned to this dispensary"""
@@ -1502,6 +1508,12 @@ class Prescription(TenantModel):
             models.Index(fields=["created_at"], name="idx_presc_created"),
         ]
         ordering = ["-prescription_date", "-created_at"]
+        # Backs pharmacy.dispense_medication (checked in pharmacy.middleware and
+        # mapped from 'pharmacy.dispense'). Was only a hand-created prod row, so a
+        # fresh deploy locked dispensing to superusers regardless of role grants.
+        permissions = [
+            ("dispense_medication", "Can dispense medications to patients"),
+        ]
 
 
 class PrescriptionItem(TenantModel):
