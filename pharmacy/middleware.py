@@ -36,6 +36,15 @@ class PharmacyAccessMiddleware:
             if request.user.is_superuser:
                 return self.get_response(request)
 
+            # Prescribers (e.g. doctors) use the prescription pages under
+            # /pharmacy/ but are not pharmacists and have no dispensary. Without
+            # this, add_prescription makes the pharmacist check below fire and
+            # bounces them to select_dispensary (which they can't view -> 403).
+            # View-level @permission_required still guards each prescription view.
+            if request.path.startswith('/pharmacy/prescriptions/') and \
+                    request.user.has_perm('pharmacy.add_prescription'):
+                return self.get_response(request)
+
             # Check if user has admin or pharmacist role
             # Normalize role names to lowercase for case-insensitive comparison
             user_roles = [r.lower() for r in request.user.roles.values_list('name', flat=True)]
