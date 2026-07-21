@@ -673,6 +673,30 @@ def patient_detail(request, patient_id):
 
     return render(request, 'patients/patient_detail.html', context)
 
+def seed_clerking_note(consultation, user):
+    """Create the consultation's first clinical note from what the doctor typed.
+
+    Chief complaint / symptoms / diagnosis / notes map onto the clerking
+    proforma so every consultation lands in the clinical record. Skipped when a
+    note already exists so edits never duplicate or clobber a written note.
+    """
+    if consultation.soap_notes.exists():
+        return None
+
+    values = {
+        'presenting_complaint': consultation.chief_complaint or '',
+        'history_of_presenting_complaint': consultation.symptoms or '',
+        'provisional_diagnosis': consultation.diagnosis or '',
+        'management_plan': consultation.consultation_notes or '',
+    }
+    if not any(values.values()):
+        return None
+
+    note = SOAPNote.objects.create(consultation=consultation, created_by=user, **values)
+    log_audit_action(user, 'create', note, f"Clinical note auto-created from consultation {consultation.id}")
+    return note
+
+
 @login_required
 @permission_required('consultations.edit')
 def edit_consultation(request, consultation_id):
@@ -696,6 +720,8 @@ def edit_consultation(request, consultation_id):
             if selected_vitals:
                 consultation.vitals = selected_vitals
                 consultation.save()
+
+            seed_clerking_note(consultation, request.user)
 
             messages.success(request, "Consultation updated successfully.")
             return redirect('consultations:consultation_detail', consultation_id=consultation.id)
@@ -762,9 +788,10 @@ def create_consultation(request, patient_id):
                 consultation.vitals = latest_vitals
 
             consultation.save()
+            seed_clerking_note(consultation, request.user)
 
             messages.success(request, f"Consultation for {patient.get_full_name()} created successfully.")
-            return redirect('patients:detail', patient_id=patient.id)
+            return redirect('consultations:consultation_detail', consultation_id=consultation.id)
         else:
             # Collect all form errors for display
             error_messages = []
@@ -1861,6 +1888,50 @@ def create_prescription(request, consultation_id):
 
     messages.success(request, "Prescription created. Please add medications.")
     return redirect('pharmacy:edit_prescription', prescription_id=prescription.id)
+
+@login_required
+@permission_required('prescriptions.create')
+@require_http_methods(["POST"])
+def prescribe_patient(request, patient_id):
+    """Doctor-initiated prescription straight from a patient's detail page.
+
+    Works with or without a consultation: an open consultation of the
+    prescribing doctor is linked when one exists, otherwise the prescription
+    stands on its own.
+    """
+    patient = get_object_or_404(Patient, id=patient_id)
+
+    # ponytail: link the doctor's own open consultation only; a completed or
+    # other doctor's consultation would misattribute the prescription.
+    consultation = (
+        Consultation.objects.filter(
+            patient=patient,
+            doctor=request.user,
+            status__in=['pending', 'in_progress'],
+        )
+        .order_by('-consultation_date')
+        .first()
+    )
+
+    prescription = Prescription.objects.create(
+        patient=patient,
+        doctor=request.user,
+        consultation=consultation,
+        prescription_date=timezone.now(),
+        diagnosis=(consultation.diagnosis if consultation else '') or '',
+        status='pending',
+    )
+
+    log_audit_action(
+        request.user,
+        'create',
+        prescription,
+        f'Prescription #{prescription.id} created for {patient.get_full_name()}',
+    )
+
+    messages.success(request, 'Prescription created. Add the medications below.')
+    return redirect('pharmacy:prescription_detail', prescription_id=prescription.id)
+
 
 @login_required
 @permission_required('consultations.create')

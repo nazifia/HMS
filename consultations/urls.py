@@ -56,6 +56,7 @@ urlpatterns = [
     path('doctor/consultation/<int:consultation_id>/', views.doctor_consultation, name='doctor_consultation'),
 
     # Doctor Actions from Consultation
+    path('doctor/patient/<int:patient_id>/prescribe/', views.prescribe_patient, name='prescribe_patient'),
     path('doctor/consultation/<int:consultation_id>/prescription/', views.create_prescription, name='create_prescription'),
     path('doctor/consultation/<int:consultation_id>/lab-request/', views.create_lab_request, name='create_lab_request'),
     path('doctor/consultation/<int:consultation_id>/radiology-order/', views.create_radiology_order, name='create_radiology_order'),

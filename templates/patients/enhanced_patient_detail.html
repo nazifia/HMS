@@ -37,7 +37,16 @@
                     <li><a class="dropdown-item" href="{% url 'consultations:create_consultation' patient.id %}">
                         <i class="fas fa-stethoscope me-2"></i>Consultation
                     </a></li>
-                    {% if user.is_superuser or not user|has_any_role:"doctor" %}
+                    {% if user|has_any_role:"doctor" and not user.is_superuser %}
+                    <li>
+                        <form method="post" action="{% url 'consultations:prescribe_patient' patient.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item">
+                                <i class="fas fa-prescription me-2"></i>Prescription
+                            </button>
+                        </form>
+                    </li>
+                    {% else %}
                     <li><a class="dropdown-item" href="{% url 'pharmacy:create_prescription' patient.id %}">
                         <i class="fas fa-prescription me-2"></i>Prescription
                     </a></li>

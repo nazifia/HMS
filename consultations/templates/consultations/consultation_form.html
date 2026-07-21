@@ -172,6 +172,11 @@
                         {% endif %}
 
                         <div class="d-flex justify-content-end">
+                            {% if consultation %}
+                            <a href="{% url 'consultations:create_prescription' consultation.id %}" class="btn btn-outline-success me-auto">
+                                <i class="fas fa-prescription-bottle-alt"></i> Create Prescription
+                            </a>
+                            {% endif %}
                             {% if patient %}
                             <a href="{% url 'patients:detail' patient.id %}" class="btn btn-secondary me-2">Cancel</a>
                             {% else %}

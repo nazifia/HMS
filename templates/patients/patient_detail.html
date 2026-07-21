@@ -466,17 +466,27 @@
                                 {% endif %}
 
                                 {% if user|has_permission:'create_appointment' or user.is_superuser %}
-                                <button type="button" class="qa-item" data-bs-toggle="modal" data-bs-target="#consultationModal">
+                                <a href="{% url 'consultations:create_consultation' patient.id %}" class="qa-item">
                                     <i class="fas fa-stethoscope" style="color:var(--p-success);"></i>
                                     Consult
-                                </button>
+                                </a>
                                 {% endif %}
 
-                                {% if user.is_superuser or user|has_permission:'prescriptions.create' and not user|has_any_role:"doctor" %}
-                                <a href="{% url 'pharmacy:pharmacy_create_prescription' patient.id %}" class="qa-item">
-                                    <i class="fas fa-pills" style="color:var(--p-warning);"></i>
-                                    Prescribe
-                                </a>
+                                {% if user|has_permission:'prescriptions.create' or user.is_superuser %}
+                                    {% if user|has_any_role:"doctor" and not user.is_superuser %}
+                                    <form method="post" action="{% url 'consultations:prescribe_patient' patient.id %}" style="display:contents;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="qa-item">
+                                            <i class="fas fa-pills" style="color:var(--p-warning);"></i>
+                                            Prescribe
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <a href="{% url 'pharmacy:pharmacy_create_prescription' patient.id %}" class="qa-item">
+                                        <i class="fas fa-pills" style="color:var(--p-warning);"></i>
+                                        Prescribe
+                                    </a>
+                                    {% endif %}
                                 {% endif %}
 
                                 {% if user|has_permission:'lab.create' or user.is_superuser %}
@@ -1180,45 +1190,6 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Vitals</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Consultation Modal -->
-<div class="modal fade" id="consultationModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-stethoscope me-2"></i>New Consultation — {{ patient.get_full_name }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="post" action="{% url 'consultations:create_consultation' patient.id %}">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label">Chief Complaint <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="chief_complaint" required>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Symptoms <span class="text-danger">*</span></label>
-                            <textarea class="form-control" name="symptoms" rows="3" required></textarea>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Diagnosis <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="diagnosis" required>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Notes</label>
-                            <textarea class="form-control" name="consultation_notes" rows="3"></textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Consultation</button>
                 </div>
             </form>
         </div>

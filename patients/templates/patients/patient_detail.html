@@ -327,7 +327,12 @@
                 </button>
                 {% endif %}
                 {% if user.is_superuser or user|has_any_role:"admin,doctor" %}
-                {% if user.is_superuser or not user|has_any_role:"doctor" %}
+                {% if user|has_any_role:"doctor" and not user.is_superuser %}
+                <form method="post" action="{% url 'consultations:prescribe_patient' patient.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success d-block w-100 mb-2">Prescribe Medication</button>
+                </form>
+                {% else %}
                 <a href="{% url 'pharmacy:create_prescription' patient.id %}" class="btn btn-success d-block w-100 mb-2">Send Medication Prescription</a>
                 <a href="{% url 'pharmacy:pharmacy_create_prescription' patient.id %}" class="btn btn-primary d-block w-100 mb-2">Pharmacy Prescription</a>
                 {% endif %}

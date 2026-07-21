@@ -745,9 +745,10 @@ class QuickPrescriptionForm(forms.Form):
     diagnosis = forms.CharField(
         max_length=200,
         widget=forms.TextInput(attrs={'class': 'form-control'}),
+        required=False,
         label='Diagnosis'
     )
-    
+
     prescription_type = forms.ChoiceField(
         choices=[
             ('outpatient', 'Out-Patient (Take-Home)'),
@@ -786,7 +787,7 @@ class QuickPrescriptionForm(forms.Form):
             patient=self.consultation.patient,
             doctor=doctor,
             prescription_date=timezone.now(),
-            diagnosis=self.cleaned_data['diagnosis'],
+            diagnosis=self.cleaned_data.get('diagnosis', ''),
             prescription_type=self.cleaned_data['prescription_type'],
             notes=self.cleaned_data['notes']
         )
