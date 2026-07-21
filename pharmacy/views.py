@@ -2,7 +2,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from nhia.utils import NHIA_PATIENT_RATE, NHIA_COVERED_RATE
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
-from accounts.permissions import permission_required
+from functools import wraps
+from accounts.permissions import permission_required, user_in_role
 from django.contrib import messages
 from django.db.models import (
     Q,
@@ -65,6 +66,28 @@ from reporting.forms import PharmacySalesReportForm
 from django.forms import formset_factory
 from decimal import Decimal
 from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
+
+
+def no_doctor_prescribing(view_func):
+    """Block doctors from creating prescriptions inside the pharmacy module.
+
+    Doctors must prescribe from the consultation / specialty-module workflows so
+    the prescription stays linked to the encounter that justified it.
+    """
+
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        user = request.user
+        if not user.is_superuser and user_in_role(user, "doctor"):
+            messages.error(
+                request,
+                "Doctors cannot create prescriptions from the pharmacy module. "
+                "Please prescribe from the patient's consultation instead.",
+            )
+            return redirect("pharmacy:prescription_list")
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped_view
 
 
 @login_required
@@ -524,6 +547,7 @@ def patient_prescriptions(request, patient_id):
 
 @login_required
 @permission_required("prescriptions.create")
+@no_doctor_prescribing
 def create_prescription(request, patient_id=None):
     """View for creating a prescription"""
     if request.method == "POST":
@@ -598,6 +622,7 @@ def create_prescription(request, patient_id=None):
 
 @login_required
 @permission_required("prescriptions.create")
+@no_doctor_prescribing
 def pharmacy_create_prescription(request, patient_id=None):
     """View for pharmacy creating a prescription"""
     # This is the same as create_prescription but might have different permissions or workflow
@@ -5446,6 +5471,7 @@ def patient_prescriptions(request, patient_id):
 
 @login_required
 @permission_required("prescriptions.create")
+@no_doctor_prescribing
 def create_prescription(request, patient_id=None):
     """View for creating a prescription"""
     if request.method == "POST":
@@ -5479,6 +5505,7 @@ def create_prescription(request, patient_id=None):
 
 @login_required
 @permission_required("prescriptions.create")
+@no_doctor_prescribing
 def pharmacy_create_prescription(request, patient_id=None):
     """View for pharmacy creating a prescription"""
     # Initialize preselected_patient at the beginning to avoid UnboundLocalError

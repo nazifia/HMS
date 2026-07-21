@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
+{% load core_tags %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -272,9 +273,11 @@
                         <a href="{% url 'consultations:create_referral' referral.patient.id %}" class="btn btn-info btn-sm">
                             <i class="fas fa-share"></i> Create New Referral
                         </a>
+                        {% if user.is_superuser or not user|has_any_role:"doctor" %}
                         <a href="{% url 'pharmacy:create_prescription' referral.patient.id %}" class="btn btn-primary btn-sm">
                             <i class="fas fa-prescription"></i> Create Prescription
                         </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>

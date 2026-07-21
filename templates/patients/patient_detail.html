@@ -472,7 +472,7 @@
                                 </button>
                                 {% endif %}
 
-                                {% if user|has_permission:'prescriptions.create' or user.is_superuser %}
+                                {% if user.is_superuser or user|has_permission:'prescriptions.create' and not user|has_any_role:"doctor" %}
                                 <a href="{% url 'pharmacy:pharmacy_create_prescription' patient.id %}" class="qa-item">
                                     <i class="fas fa-pills" style="color:var(--p-warning);"></i>
                                     Prescribe

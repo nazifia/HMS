@@ -37,9 +37,11 @@
                     <li><a class="dropdown-item" href="{% url 'consultations:create_consultation' patient.id %}">
                         <i class="fas fa-stethoscope me-2"></i>Consultation
                     </a></li>
+                    {% if user.is_superuser or not user|has_any_role:"doctor" %}
                     <li><a class="dropdown-item" href="{% url 'pharmacy:create_prescription' patient.id %}">
                         <i class="fas fa-prescription me-2"></i>Prescription
                     </a></li>
+                    {% endif %}
                     <li><a class="dropdown-item" href="{% url 'laboratory:add_test_request' patient.id %}">
                         <i class="fas fa-flask me-2"></i>Lab Test
                     </a></li>
