@@ -317,7 +317,8 @@
       "Bash(MSYS2_ARG_CONV_EXCL='*' venv/Scripts/python.exe \"C:/Users/Dell/AppData/Local/Temp/claude/C--Users-Dell-Desktop-MY-PRODUCTS-HMS/6ceef6ec-fab3-49ba-928f-d3ebf6ef3d68/scratchpad/prof_prod.py\" /dashboard/ /patients/ /billing/ /appointments/)",
       "Bash(MSYS2_ARG_CONV_EXCL='*' venv/Scripts/python.exe \"C:/Users/Dell/AppData/Local/Temp/claude/C--Users-Dell-Desktop-MY-PRODUCTS-HMS/6ceef6ec-fab3-49ba-928f-d3ebf6ef3d68/scratchpad/prof_sess.py\")",
       "Bash(MSYS2_ARG_CONV_EXCL='*' \"C:/Users/Dell/Desktop/MY_PRODUCTS/HMS/venv/Scripts/python.exe\" \"C:/Users/Dell/AppData/Local/Temp/claude/C--Users-Dell-Desktop-MY-PRODUCTS-HMS/6ceef6ec-fab3-49ba-928f-d3ebf6ef3d68/scratchpad/prof_keys.py\")",
-      "Bash(MSYS2_ARG_CONV_EXCL='*' venv/Scripts/python.exe manage.py test accounts.tests.test_sliding_session -v1)"
+      "Bash(MSYS2_ARG_CONV_EXCL='*' venv/Scripts/python.exe manage.py test accounts.tests.test_sliding_session -v1)",
+      "Bash(echo \"---exit:$?\")"
     ]
   }
 }
