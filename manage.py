@@ -3,7 +3,6 @@
 
 import os
 import sys
-import io
 
 # Fix closed stdout/stderr BEFORE any Django imports
 if sys.stdout.closed:
@@ -36,21 +35,16 @@ def main():
     """Run administrative tasks."""
     # Fix Windows console encoding issues
     if sys.platform == "win32":
-        # Force UTF-8 encoding for stdout and stderr
-        if sys.stdout.encoding != "utf-8":
-            sys.stdout = io.TextIOWrapper(
-                sys.stdout.buffer,
-                encoding="utf-8",
-                errors="replace",
-                line_buffering=True,
-            )
-        if sys.stderr.encoding != "utf-8":
-            sys.stderr = io.TextIOWrapper(
-                sys.stderr.buffer,
-                encoding="utf-8",
-                errors="replace",
-                line_buffering=True,
-            )
+        # Force UTF-8 encoding for stdout and stderr. reconfigure() mutates the
+        # existing stream: replacing sys.stdout with a fresh TextIOWrapper over
+        # .buffer instead lets the original wrapper be garbage collected, and a
+        # collected TextIOWrapper closes the buffer the new one is still using
+        # ("I/O operation on closed file" / "lost sys.stderr" at exit).
+        for stream in (sys.stdout, sys.stderr):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (AttributeError, ValueError, OSError):
+                pass  # not a text stream (redirected/closed); leave it alone
 
         # Set environment variables for Python to use UTF-8
         os.environ["PYTHONIOENCODING"] = "utf-8"
