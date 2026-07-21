@@ -450,6 +450,18 @@ LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "dashboard:dashboard"  # Where users go after app login
 LOGOUT_REDIRECT_URL = "accounts:login"
 
+# Map Django message levels onto Bootstrap alert classes so `alert-{{ message.tags }}`
+# renders a background everywhere (Django's "error"/"debug" are not Bootstrap classes).
+from django.contrib.messages import constants as _messages
+
+MESSAGE_TAGS = {
+    _messages.DEBUG: "secondary",
+    _messages.INFO: "info",
+    _messages.SUCCESS: "success",
+    _messages.WARNING: "warning",
+    _messages.ERROR: "danger",
+}
+
 # Admin site configuration (optional - for customization)
 ADMIN_SITE_HEADER = "HMS Administration"
 ADMIN_SITE_TITLE = "HMS Admin"
