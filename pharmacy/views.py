@@ -68,7 +68,6 @@ from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
 
 
 @login_required
-@permission_required("pharmacy.view")
 def select_dispensary(request):
     """View for pharmacists to select their working dispensary"""
     # Admins don't need to select dispensary
@@ -124,7 +123,6 @@ def select_dispensary(request):
 
 @login_required
 @require_http_methods(["POST"])
-@permission_required("pharmacy.view")
 def set_dispensary(request):
     """Endpoint to set the selected dispensary"""
     dispensary_id = request.POST.get("dispensary_id")
