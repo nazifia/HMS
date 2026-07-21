@@ -305,7 +305,12 @@ class CustomUser(AbstractUser):
             return None
 
     def get_all_assigned_dispensaries(self):
-        """Get all assigned dispensaries for this pharmacist (including historical)"""
+        """Get dispensaries this pharmacist may currently work from.
+
+        Must stay in sync with can_access_dispensary(): anything listed here is
+        offered on the selection page, and set_dispensary rejects whatever
+        can_access_dispensary() denies.
+        """
         if not self.is_pharmacist():
             return []
 
@@ -313,7 +318,9 @@ class CustomUser(AbstractUser):
             from pharmacy.models import PharmacistDispensaryAssignment
 
             assignments = (
-                PharmacistDispensaryAssignment.objects.filter(pharmacist=self)
+                PharmacistDispensaryAssignment.objects.filter(
+                    pharmacist=self, is_active=True, end_date__isnull=True
+                )
                 .select_related("dispensary")
                 .order_by("-start_date")
             )
