@@ -48,3 +48,6 @@ test_output.log
 
 # Nightly DB backups
 backups/
+
+# django-compressor output bundles (regenerated at render time; hashed name per build)
+staticfiles/CACHE/
