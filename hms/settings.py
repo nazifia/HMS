@@ -242,6 +242,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Slides session expiry without a per-request session write (replaces
+    # SESSION_SAVE_EVERY_REQUEST). Must run inside SessionMiddleware.
+    "accounts.middleware.SlidingSessionMiddleware",
     # Resolve tenant from subdomain + gate on subscription (before access control)
     "saas.middleware.TenantMiddleware",
     # STRICT ACCESS CONTROL - Must be right after AuthenticationMiddleware
@@ -619,21 +622,36 @@ HOSPITAL_EMAIL = os.environ.get("HOSPITAL_EMAIL", "info@citygeneralhospital.com"
 # SQLite SELECT per cache.get (sessions, permission/role context processors,
 # etc.), which removes several DB round-trips from every page load. The env
 # var CACHE_BACKEND still overrides either default.
-_DEFAULT_CACHE_BACKEND = (
-    "django.core.cache.backends.locmem.LocMemCache"
-    if DEBUG
-    else "django.core.cache.backends.db.DatabaseCache"
-)
-CACHES = {
-    "default": {
-        "BACKEND": os.environ.get("CACHE_BACKEND", _DEFAULT_CACHE_BACKEND),
-        "LOCATION": os.environ.get("CACHE_LOCATION", "cache_table"),
-        "TIMEOUT": int(os.environ.get("CACHE_TIMEOUT", "300")),  # 5 minutes default
-        "OPTIONS": {
-            "MAX_ENTRIES": int(os.environ.get("CACHE_MAX_ENTRIES", "10000")),
-        },
+#
+# If REDIS_URL is set, use it: DatabaseCache turns every cache read (sessions,
+# permission/role context processors, cached sidebar fragment) into a DB query and
+# every write into an extra `SELECT COUNT(*)` cull check. Redis removes that load
+# from the database entirely. Requires the `redis` package on the host.
+_REDIS_URL = os.environ.get("REDIS_URL", "")
+if _REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _REDIS_URL,
+            "TIMEOUT": int(os.environ.get("CACHE_TIMEOUT", "300")),
+        }
     }
-}
+else:
+    _DEFAULT_CACHE_BACKEND = (
+        "django.core.cache.backends.locmem.LocMemCache"
+        if DEBUG
+        else "django.core.cache.backends.db.DatabaseCache"
+    )
+    CACHES = {
+        "default": {
+            "BACKEND": os.environ.get("CACHE_BACKEND", _DEFAULT_CACHE_BACKEND),
+            "LOCATION": os.environ.get("CACHE_LOCATION", "cache_table"),
+            "TIMEOUT": int(os.environ.get("CACHE_TIMEOUT", "300")),  # 5 min default
+            "OPTIONS": {
+                "MAX_ENTRIES": int(os.environ.get("CACHE_MAX_ENTRIES", "10000")),
+            },
+        }
+    }
 
 # Session Configuration
 SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
@@ -642,11 +660,11 @@ SESSION_COOKIE_AGE = int(
     os.environ.get("SESSION_COOKIE_AGE", "3600")
 )  # 1 hour default
 SESSION_COOKIE_NAME = "hms_sessionid"
-# Sliding expiry: refresh the session on every request so active users are
-# never logged out mid-work. With this False the expiry is frozen at login
-# time (SESSION_COOKIE_AGE later), which bounced busy users back to the
-# login page exactly 1 hour after signing in.
-SESSION_SAVE_EVERY_REQUEST = True
+# Sliding expiry is handled by accounts.middleware.SlidingSessionMiddleware, which
+# touches the session once its expiry is half spent instead of rewriting the session
+# row + cache entry on every request. Active users still never get logged out
+# mid-work; idle-out behaviour is unchanged.
+SESSION_SAVE_EVERY_REQUEST = False
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Session expires when browser closes
 SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access to session cookie
 
@@ -705,6 +723,15 @@ MIN_INTER_DISPENSARY_TRANSFER_QUANTITY = Decimal("1.00")
 # Django Compressor Settings
 COMPRESS_ENABLED = not DEBUG  # Enable compression in production
 COMPRESS_OFFLINE = False  # Set to True for offline compression
+# Compressor looks up ~12 mtime/bundle keys per rendered page. Those are derived from
+# the local filesystem, so a per-process memory cache is both correct and free —
+# against the default (Database)cache they were ~12 extra DB reads on every page load.
+CACHES["compressor"] = {
+    "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    "LOCATION": "compressor",
+    "TIMEOUT": None,
+}
+COMPRESS_CACHE_BACKEND = "compressor"
 COMPRESS_CSS_FILTERS = [
     "compressor.filters.css_default.CssAbsoluteFilter",
     "compressor.filters.cssmin.rCSSMinFilter",

@@ -22,6 +22,32 @@ from .strict_access_control import (
 )
 
 
+class SlidingSessionMiddleware:
+    """Keep sessions sliding without paying a session write on every request.
+
+    SESSION_SAVE_EVERY_REQUEST=True gave active users a session that never expires
+    mid-work, but it cost one django_session UPDATE + one cache write (and, with the
+    DatabaseCache backend, a `SELECT COUNT(*)` cull check) on every single page load.
+    Instead we touch the session only once the current expiry is half spent, which
+    still pushes the expiry forward well before it can lapse under an active user.
+    """
+
+    # Touch at most once per half of SESSION_COOKIE_AGE.
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self.interval = getattr(settings, "SESSION_COOKIE_AGE", 3600) / 2
+
+    def __call__(self, request):
+        session = getattr(request, "session", None)
+        if session is not None and session.session_key:
+            now = time.time()
+            if now - session.get("_last_slide", 0) > self.interval:
+                # Assigning marks the session modified; SessionMiddleware then saves it,
+                # which recomputes expire_date as now + SESSION_COOKIE_AGE.
+                session["_last_slide"] = now
+        return self.get_response(request)
+
+
 class UserActivityMiddleware:
     """Middleware to track user activities"""
 

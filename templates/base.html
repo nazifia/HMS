@@ -7,6 +7,7 @@
     {% load core_tags %}
     {% load static %}
     {% load compress %}
+    {% load cache %}
     <title>{% block title %}Hospital Management System{% endblock %}</title>
 
     <!-- Vendor CSS (self-hosted; bundled + hashed in production) -->
@@ -375,7 +376,19 @@
     <div id="wrapper">
         <!-- Sidebar -->
         {% if user.is_authenticated %}
-            {% include 'includes/hms_sidebar.html' %}
+            {% comment %}
+            Sidebar is ~1300 lines, ~170 url reversals and ~340 permission ifs — about half
+            the render time of every page. It has no forms/CSRF and varies only by user
+            (permissions) and path (active states), so the rendered fragment is cached per
+            (user, path). The 300s TTL matches the permission context-processor caches, so
+            menu staleness after a role change is no worse than it already was; access is
+            enforced by middleware, not by which links are drawn.
+            ponytail: per-path keys are fine, nav targets are a small set; detail pages just
+            miss and render as before.
+            {% endcomment %}
+            {% cache 300 hms_sidebar user.id request.path %}
+                {% include 'includes/hms_sidebar.html' %}
+            {% endcache %}
         {% endif %}
         <!-- Content Wrapper -->
         <div id="content-wrapper" class="d-flex flex-column">

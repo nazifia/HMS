@@ -310,7 +310,14 @@
       "Bash(awk 'NR>1004 && /^class /{print \"Prescription ends before \"NR\": \"$0; exit}' pharmacy/models.py)",
       "Bash(awk 'NR>609 && /^class /{print \"PatientWallet ends before \"NR\": \"$0; exit}' patients/models.py)",
       "Bash(awk *)",
-      "Bash(echo \"exit:$?\")"
+      "Bash(echo \"exit:$?\")",
+      "Bash(MSYS2_ARG_CONV_EXCL='*' venv/Scripts/python.exe \"C:/Users/Dell/AppData/Local/Temp/claude/C--Users-Dell-Desktop-MY-PRODUCTS-HMS/6ceef6ec-fab3-49ba-928f-d3ebf6ef3d68/scratchpad/prof_cpu.py\" /dashboard/)",
+      "Bash(MSYS2_ARG_CONV_EXCL='*' venv/Scripts/python.exe \"C:/Users/Dell/AppData/Local/Temp/claude/C--Users-Dell-Desktop-MY-PRODUCTS-HMS/6ceef6ec-fab3-49ba-928f-d3ebf6ef3d68/scratchpad/prof_tpl.py\" /dashboard/)",
+      "Bash(MSYS2_ARG_CONV_EXCL=* venv/Scripts/python.exe -c ' *)",
+      "Bash(MSYS2_ARG_CONV_EXCL='*' venv/Scripts/python.exe \"C:/Users/Dell/AppData/Local/Temp/claude/C--Users-Dell-Desktop-MY-PRODUCTS-HMS/6ceef6ec-fab3-49ba-928f-d3ebf6ef3d68/scratchpad/prof_prod.py\" /dashboard/ /patients/ /billing/ /appointments/)",
+      "Bash(MSYS2_ARG_CONV_EXCL='*' venv/Scripts/python.exe \"C:/Users/Dell/AppData/Local/Temp/claude/C--Users-Dell-Desktop-MY-PRODUCTS-HMS/6ceef6ec-fab3-49ba-928f-d3ebf6ef3d68/scratchpad/prof_sess.py\")",
+      "Bash(MSYS2_ARG_CONV_EXCL='*' \"C:/Users/Dell/Desktop/MY_PRODUCTS/HMS/venv/Scripts/python.exe\" \"C:/Users/Dell/AppData/Local/Temp/claude/C--Users-Dell-Desktop-MY-PRODUCTS-HMS/6ceef6ec-fab3-49ba-928f-d3ebf6ef3d68/scratchpad/prof_keys.py\")",
+      "Bash(MSYS2_ARG_CONV_EXCL='*' venv/Scripts/python.exe manage.py test accounts.tests.test_sliding_session -v1)"
     ]
   }
 }

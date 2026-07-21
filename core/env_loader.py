@@ -44,7 +44,10 @@ def load_env_file(env_file=None):
                 if value and value[0] == value[-1] and value[0] in ('"', "'"):
                     value = value[1:-1]
                 
-                # Set environment variable
-                os.environ[key] = value
+                # Real environment wins over the file (standard dotenv semantics).
+                # Otherwise a stale .env shipped to a server silently overrides the
+                # deployment's own settings — e.g. DEBUG=True in production, which
+                # disables the cached template loader and leaks debug pages.
+                os.environ.setdefault(key, value)
     
     return True
