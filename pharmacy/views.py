@@ -5722,6 +5722,7 @@ def update_prescription_status(request, prescription_id):
 
 
 @login_required
+@permission_required("pharmacy.dispense")
 def dispense_prescription(request, prescription_id):
     """Dispensing landing page for a prescription.
 
@@ -5764,6 +5765,7 @@ def dispense_prescription(request, prescription_id):
 
 
 @login_required
+@permission_required("pharmacy.dispense")
 def debug_dispense_prescription(request, prescription_id):
     """View for debugging prescription dispensing"""
     prescription = get_object_or_404(Prescription, id=prescription_id)

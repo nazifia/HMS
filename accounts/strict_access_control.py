@@ -217,6 +217,12 @@ class StrictAccessControlMiddleware(MiddlewareMixin):
         Determine the required permission for the current URL.
         Returns None if no specific permission is required.
         """
+        # Prescription pages live under the pharmacy namespace but are a
+        # prescriber (doctor) surface, not pharmacy staff. Mapping them to
+        # pharmacy.view would lock doctors out of prescribing.
+        if request.path.startswith("/pharmacy/prescriptions/"):
+            return "prescriptions.view"
+
         try:
             resolved = self._resolve(request)
             namespace = resolved.namespace if resolved is not None else None

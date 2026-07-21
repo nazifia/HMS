@@ -64,10 +64,12 @@ class PharmacyAccessMiddleware:
                 request.user.has_perm('pharmacy.add_medication') or
                 request.user.has_perm('pharmacy.manage_pharmacists')
             )
+            # Prescription permissions are NOT pharmacy-staff markers: doctors hold
+            # pharmacy.add_prescription / view_prescription and would otherwise get
+            # the whole pharmacy module (inventory, procurement, dispensing).
+            # Their prescription pages are already exempted above.
             has_pharmacist_perm = (
-                request.user.has_perm('pharmacy.view_medication') or 
-                request.user.has_perm('pharmacy.add_prescription') or
-                request.user.has_perm('pharmacy.view_prescription') or
+                request.user.has_perm('pharmacy.view_medication') or
                 request.user.has_perm('pharmacy.dispense_medication') or
                 request.user.has_perm('pharmacy.view_dispensary')
             )

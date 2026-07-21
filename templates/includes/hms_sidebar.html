@@ -329,7 +329,8 @@
         </div>
 
         <!-- Nav Item - Pharmacy -->
-        {% if user.is_superuser or user|can_show_ui:'menu_pharmacy' or user|has_permission:'pharmacy.view' %}
+        {# can_show_ui fails open when no UIPermission row exists, so gate on real perms only. #}
+        {% if user.is_superuser or user|has_permission:'pharmacy.view' or user|has_permission:'prescriptions.view' %}
         <li class="nav-item {% if '/pharmacy/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/pharmacy/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePharmacy" aria-expanded="{% if '/pharmacy/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapsePharmacy">
                 <i class="fas fa-fw fa-pills text-white"></i>
@@ -341,16 +342,12 @@
 
                     <!-- Core Operations -->
                     <a class="collapse-item {% if request.path == '/pharmacy/prescriptions/' %}active{% endif %}" href="{% url 'pharmacy:prescriptions' %}">Prescriptions</a>
-                    <a class="collapse-item {% if '/pharmacy/dispensed-items/' in request.path %}active{% endif %}" href="{% url 'pharmacy:dispensed_items_tracker' %}">Dispensed Items Tracker</a>
 
-                    <!-- Cart Management -->
-                    <a class="collapse-item {% if '/pharmacy/carts/' in request.path %}active{% endif %}" href="{% url 'pharmacy:cart_list' %}">Prescription Carts</a>
-
-                    <!-- Enhanced Transfer System -->
-                    <a class="collapse-item {% if '/pharmacy/transfers/' in request.path %}active{% endif %}" href="{% url 'pharmacy:enhanced_transfer_dashboard' %}">Enhanced Transfers</a>
-
-                    <!-- Inventory management for pharmacists, admins, and users with inventory permissions -->
+                    <!-- Pharmacy staff only: dispensing, carts, transfers, inventory, procurement -->
                     {% if user.is_superuser or user|has_permission:'pharmacy.view' %}
+                    <a class="collapse-item {% if '/pharmacy/dispensed-items/' in request.path %}active{% endif %}" href="{% url 'pharmacy:dispensed_items_tracker' %}">Dispensed Items Tracker</a>
+                    <a class="collapse-item {% if '/pharmacy/carts/' in request.path %}active{% endif %}" href="{% url 'pharmacy:cart_list' %}">Prescription Carts</a>
+                    <a class="collapse-item {% if '/pharmacy/transfers/' in request.path %}active{% endif %}" href="{% url 'pharmacy:enhanced_transfer_dashboard' %}">Enhanced Transfers</a>
                     <a class="collapse-item {% if request.path == '/pharmacy/inventory/' %}active{% endif %}" href="{% url 'pharmacy:inventory' %}">Inventory</a>
                     <a class="collapse-item {% if '/pharmacy/alerts/' in request.path %}active{% endif %}" href="{% url 'pharmacy:alerts' %}">Stock Alerts</a>
 
