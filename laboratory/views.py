@@ -1011,18 +1011,9 @@ def create_test_result(request, request_id):
         messages.error(request, message)
         return redirect('laboratory:test_request_detail', request_id=test_request.id)
 
-    # Check payment status - redirect staff to manual entry for better experience
-    if test_request.status == 'awaiting_payment':
-        if request.user.is_staff or request.user.is_superuser:
-            # Redirect staff to manual entry view for better experience
-            messages.info(request, "Redirecting to manual entry mode for authorized staff.")
-            return redirect('laboratory:manual_test_result_entry', request_id=test_request.id)
-        else:
-            messages.error(request, "Cannot add results. Payment is pending for this test request.")
-            return redirect('laboratory:test_request_detail', request_id=test_request.id)
-    elif test_request.status == 'pending': # Should ideally be awaiting_payment or payment_confirmed
-        messages.warning(request, "This test request has not been processed for payment yet.")
-        # Allow to proceed but with a warning, or redirect based on stricter workflow
+    if not test_request.is_payment_verified():
+        messages.error(request, "Cannot add results. Payment is pending for this test request.")
+        return redirect('laboratory:test_request_detail', request_id=test_request.id)
 
     # Get tests that don't have results yet
     tests_with_results = TestResult.objects.filter(test_request=test_request).values_list('test_id', flat=True)
@@ -1413,9 +1404,12 @@ def manual_test_result_entry(request, request_id):
 
     test_request = get_object_or_404(TestRequest, id=request_id)
 
-    # Allow manual entry regardless of payment status for authorized users
     if test_request.status == 'cancelled':
         messages.error(request, "Cannot add results to a cancelled test request.")
+        return redirect('laboratory:test_request_detail', request_id=test_request.id)
+
+    if not test_request.is_payment_verified():
+        messages.error(request, "Cannot enter results. Payment for this test request is not confirmed.")
         return redirect('laboratory:test_request_detail', request_id=test_request.id)
 
     # Get tests that don't have results yet

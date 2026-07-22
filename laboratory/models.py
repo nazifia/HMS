@@ -205,6 +205,20 @@ class TestRequest(TenantModel):
 
         return True, "Test request can be processed"
 
+    def is_payment_verified(self):
+        """True if results may be entered: invoice fully paid, or NHIA-authorized."""
+        if self.requires_authorization and self.authorization_code:
+            return True
+        if self.invoice and self.invoice.is_paid():
+            return True
+        # ponytail: status is the fallback when no invoice row exists (legacy/manual flows)
+        return self.status in (
+            "payment_confirmed",
+            "sample_collected",
+            "processing",
+            "completed",
+        )
+
     def save(self, *args, **kwargs):
         """Override save to auto-check authorization requirement"""
         # Auto-check authorization requirement on save
