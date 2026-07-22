@@ -252,7 +252,112 @@ CATALOG = {
             ("TSH Level", "1-39 uIU/mL", "uIU/mL"),
         ]),
     ],
+    "Microbiology & Culture": [
+        ("Urine Microscopy, Culture & Sensitivity (MC&S)", 4000, "Urine", "Microscopy and culture of urine with antibiotic sensitivity.", [
+            ("Microscopy (Pus Cells)", "<5 /hpf", "/hpf"),
+            ("Red Blood Cells", "<3 /hpf", "/hpf"),
+            ("Epithelial Cells", "Few", "/hpf"),
+            ("Culture Result", "No growth / <10^5 CFU/mL", "CFU/mL"),
+            ("Organism Isolated", "None", ""),
+            ("Antibiotic Sensitivity", "Not applicable (no growth)", ""),
+        ]),
+        ("Blood Culture & Sensitivity", 6000, "Whole Blood", "Detects bacteraemia and antibiotic sensitivity.", [
+            ("Culture Result", "No growth after 5 days", ""),
+            ("Organism Isolated", "None", ""),
+            ("Antibiotic Sensitivity", "Not applicable (no growth)", ""),
+        ]),
+        ("Sputum Culture & Sensitivity", 5000, "Sputum", "Culture of sputum with antibiotic sensitivity.", [
+            ("Gram Stain", "No organisms seen", ""),
+            ("Culture Result", "No pathogenic growth", ""),
+            ("Organism Isolated", "None", ""),
+            ("Antibiotic Sensitivity", "Not applicable (no growth)", ""),
+        ]),
+        ("Wound Swab Culture & Sensitivity", 4500, "Swab", "Culture of wound swab with antibiotic sensitivity.", [
+            ("Gram Stain", "No organisms seen", ""),
+            ("Culture Result", "No pathogenic growth", ""),
+            ("Organism Isolated", "None", ""),
+            ("Antibiotic Sensitivity", "Not applicable (no growth)", ""),
+        ]),
+        ("High Vaginal Swab (HVS) MC&S", 4500, "Swab", "Microscopy and culture of high vaginal swab.", [
+            ("Microscopy", "No abnormal cells / organisms", ""),
+            ("Culture Result", "Normal vaginal flora", ""),
+            ("Organism Isolated", "None", ""),
+            ("Antibiotic Sensitivity", "Not applicable (no growth)", ""),
+        ]),
+        ("Stool Culture & Sensitivity", 4500, "Stool", "Culture of stool for enteric pathogens.", [
+            ("Culture Result", "No enteric pathogens isolated", ""),
+            ("Organism Isolated", "None", ""),
+            ("Antibiotic Sensitivity", "Not applicable (no growth)", ""),
+        ]),
+    ],
+    "Tumor Markers": [
+        ("Prostate Specific Antigen (PSA), Total", 8000, "Serum", "Screening/monitoring marker for prostate disease.", [
+            ("Total PSA", "<4.0 ng/mL", "ng/mL"),
+        ]),
+        ("CA-125", 12000, "Serum", "Marker associated with ovarian cancer.", [
+            ("CA-125", "<35 U/mL", "U/mL"),
+        ]),
+        ("Carcinoembryonic Antigen (CEA)", 10000, "Serum", "Marker used mainly in colorectal cancer monitoring.", [
+            ("CEA", "Non-smoker: <3 ng/mL Smoker: <5 ng/mL", "ng/mL"),
+        ]),
+        ("Alpha-Fetoprotein (AFP)", 10000, "Serum", "Marker for liver cancer and germ cell tumors.", [
+            ("AFP", "<10 ng/mL", "ng/mL"),
+        ]),
+    ],
+    "Andrology & Fertility": [
+        ("Seminal Fluid Analysis (Semen Analysis)", 6000, "Semen", "Assesses semen volume, count, motility and morphology.", [
+            ("Volume", "1.5-6.0 mL", "mL"),
+            ("Sperm Concentration", ">=15 million/mL", "million/mL"),
+            ("Total Sperm Count", ">=39 million/ejaculate", "million"),
+            ("Total Motility", ">=40%", "%"),
+            ("Progressive Motility", ">=32%", "%"),
+            ("Normal Morphology", ">=4%", "%"),
+            ("pH", "7.2-8.0", ""),
+            ("Liquefaction Time", "<60 minutes", "minutes"),
+        ]),
+    ],
+    "Body Fluid Analysis": [
+        ("Cerebrospinal Fluid (CSF) Analysis", 6000, "CSF", "Analysis of cerebrospinal fluid.", [
+            ("Appearance", "Clear, colorless", ""),
+            ("White Cell Count", "0-5 /uL", "/uL"),
+            ("Protein", "15-45 mg/dL", "mg/dL"),
+            ("Glucose", "50-80 mg/dL (2/3 of serum)", "mg/dL"),
+            ("Gram Stain", "No organisms seen", ""),
+        ]),
+        ("Ascitic Fluid Analysis", 5000, "Ascitic Fluid", "Analysis of peritoneal (ascitic) fluid.", [
+            ("Appearance", "Clear, straw-colored", ""),
+            ("White Cell Count", "<250 /uL", "/uL"),
+            ("Protein", "<2.5 g/dL (transudate)", "g/dL"),
+            ("Serum-Ascites Albumin Gradient (SAAG)", ">=1.1 g/dL suggests portal hypertension", "g/dL"),
+        ]),
+        ("Pleural Fluid Analysis", 5000, "Pleural Fluid", "Analysis of pleural fluid.", [
+            ("Appearance", "Clear, straw-colored", ""),
+            ("White Cell Count", "<1000 /uL", "/uL"),
+            ("Protein", "Transudate <3 g/dL", "g/dL"),
+            ("LDH", "Transudate <2/3 upper serum limit", "U/L"),
+        ]),
+    ],
 }
+
+# Extra standard hematology tests appended to the existing Hematology category.
+CATALOG["Hematology"].extend([
+    ("Reticulocyte Count", 2500, "Whole Blood", "Measures immature red blood cell production.", [
+        ("Reticulocyte %", "0.5-2.5%", "%"),
+        ("Absolute Reticulocyte Count", "25,000-75,000 /uL", "/uL"),
+    ]),
+    ("Peripheral Blood Film", 2500, "Whole Blood", "Microscopic examination of blood cells.", [
+        ("RBC Morphology", "Normocytic, normochromic", ""),
+        ("WBC Morphology", "Normal, no immature forms", ""),
+        ("Platelet Estimate", "Adequate", ""),
+    ]),
+    ("Sickling Test", 1500, "Whole Blood", "Screens for sickle haemoglobin.", [
+        ("Sickling Result", "Negative", ""),
+    ]),
+    ("Bleeding Time & Clotting Time", 2000, "Whole Blood", "Bedside assessment of primary haemostasis.", [
+        ("Bleeding Time", "2-7 minutes (Ivy)", "minutes"),
+        ("Clotting Time", "5-10 minutes", "minutes"),
+    ]),
+])
 
 
 def seed_lab_catalog_for(hospital):
