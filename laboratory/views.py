@@ -1329,6 +1329,34 @@ def add_result_parameter(request, result_id):
 
 
 @login_required
+@permission_required('lab.edit')
+@require_http_methods(["POST"])
+def add_all_result_parameters(request, result_id):
+    """Add every predefined parameter of the test that isn't already on the result.
+
+    Rows are created with empty values for the user to fill in the main table.
+    """
+    result = get_object_or_404(TestResult, id=result_id)
+
+    existing_ids = result.parameters.values_list('parameter_id', flat=True)
+    missing = result.test.parameters.exclude(id__in=existing_ids).order_by('order')
+
+    created = 0
+    with transaction.atomic():
+        for param in missing:
+            TestResultParameter.objects.create(
+                test_result=result, parameter=param, value='', is_normal=True
+            )
+            created += 1
+
+    if created:
+        message = f'Added {created} parameter(s).'
+    else:
+        message = 'No predefined parameters left to add.'
+    return JsonResponse({'success': True, 'added': created, 'message': message})
+
+
+@login_required
 @permission_required('lab.view')
 def get_test_parameters(request, test_id):
     """

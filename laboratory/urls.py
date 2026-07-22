@@ -33,6 +33,7 @@ urlpatterns = [
     path('results/<int:result_id>/', views.result_detail, name='result_detail'),
     path('results/<int:result_id>/edit/', views.edit_test_result, name='edit_test_result'),
     path('results/<int:result_id>/add-parameter/', views.add_result_parameter, name='add_result_parameter'),
+    path('results/<int:result_id>/add-all-parameters/', views.add_all_result_parameters, name='add_all_result_parameters'),
     path('results/<int:result_id>/verify/', views.verify_test_result, name='verify_test_result'),
     path('results/<int:result_id>/print/', views.print_result, name='print_result'),
 

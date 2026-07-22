@@ -283,6 +283,9 @@
                                 <div class="form-text mt-2">
                                     <i class="fas fa-info-circle me-1"></i> Choose from predefined parameters for this test
                                 </div>
+                                <button type="button" id="addAllPredefinedBtn" class="btn btn-outline-primary btn-sm mt-3">
+                                    <i class="fas fa-layer-group me-1"></i> Add all predefined parameters
+                                </button>
                             </div>
 
                             <!-- Parameter Info Display -->
@@ -700,6 +703,39 @@
             } else {
                 parameterInfo.classList.add('d-none');
             }
+        });
+
+        // Bulk-add every predefined parameter not already on this result
+        document.getElementById('addAllPredefinedBtn').addEventListener('click', function() {
+            const btn = this;
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+            fetch('{% url "laboratory:add_all_result_parameters" result.id %}', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.added > 0) {
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Nothing to add.');
+                    btn.disabled = false;
+                    btn.innerHTML = original;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while adding parameters.');
+                btn.disabled = false;
+                btn.innerHTML = original;
+            });
         });
 
         // Handle form submission
