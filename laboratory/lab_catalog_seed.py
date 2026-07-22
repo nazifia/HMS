@@ -357,6 +357,61 @@ CATALOG["Hematology"].extend([
         ("Bleeding Time", "2-7 minutes (Ivy)", "minutes"),
         ("Clotting Time", "5-10 minutes", "minutes"),
     ]),
+    ("Packed Cell Volume (PCV)", 1000, "Whole Blood", "Standalone haematocrit, commonly ordered alone.", [
+        ("PCV", "Male: 41-53% Female: 36-46%", "%"),
+    ]),
+])
+
+# Additional standard investigations (routinely ordered). Appended so the diff
+# stays localized; re-seed migrations pick these up via get_or_create.
+CATALOG.update({
+    "Autoimmune & Rheumatology": [
+        ("Rheumatoid Factor (RF)", 4000, "Serum", "Autoantibody marker for rheumatoid arthritis.", [
+            ("Rheumatoid Factor", "<14 IU/mL (Negative)", "IU/mL"),
+        ]),
+        ("Anti-Streptolysin O (ASO) Titre", 3500, "Serum", "Detects recent streptococcal infection.", [
+            ("ASO Titre", "<200 IU/mL", "IU/mL"),
+        ]),
+        ("Antinuclear Antibody (ANA)", 6000, "Serum", "Screening test for autoimmune connective tissue disease.", [
+            ("ANA", "Negative (<1:40 titre)", ""),
+        ]),
+    ],
+    "Metabolic Chemistry": [
+        ("Serum Uric Acid", 3000, "Serum", "Marker for gout and renal function.", [
+            ("Uric Acid", "Male: 3.4-7.0 mg/dL Female: 2.4-6.0 mg/dL", "mg/dL"),
+        ]),
+        ("Serum Lactate", 4000, "Plasma", "Marker of tissue hypoperfusion / sepsis.", [
+            ("Lactate", "0.5-2.2 mmol/L", "mmol/L"),
+        ]),
+    ],
+    "Blood Gas & Critical Care": [
+        ("Arterial Blood Gas (ABG)", 8000, "Arterial Blood", "Assesses oxygenation, ventilation and acid-base status.", [
+            ("pH", "7.35-7.45", ""),
+            ("pCO2", "35-45 mmHg", "mmHg"),
+            ("pO2", "80-100 mmHg", "mmHg"),
+            ("HCO3-", "22-26 mmol/L", "mmol/L"),
+            ("Base Excess", "-2 to +2 mmol/L", "mmol/L"),
+            ("Oxygen Saturation (SaO2)", "95-100%", "%"),
+        ]),
+    ],
+})
+
+# Append to existing categories.
+CATALOG["Inflammatory Markers"].append(
+    ("Procalcitonin (PCT)", 12000, "Serum", "Marker for bacterial sepsis.", [
+        ("Procalcitonin", "<0.5 ng/mL (low risk)", "ng/mL"),
+    ])
+)
+CATALOG["Infectious Disease Screening"].extend([
+    ("CD4 Count", 8000, "Whole Blood", "Monitors immune status in HIV infection.", [
+        ("CD4 Count", "500-1500 cells/uL", "cells/uL"),
+    ]),
+    ("Mantoux Test (PPD)", 2000, "Intradermal", "Tuberculin skin test for TB exposure.", [
+        ("Induration", "<5 mm (Negative)", "mm"),
+    ]),
+    ("Urine Pregnancy Test (hCG)", 1000, "Urine", "Qualitative urine test for pregnancy.", [
+        ("Urine hCG", "Negative (non-pregnant)", ""),
+    ]),
 ])
 
 
