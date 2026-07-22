@@ -69,10 +69,12 @@ def signup(request):
         status="pending",
         current_period_end=timezone.now(),
     )
-    # Each tenant gets its own department set.
+    # Each tenant gets its own department set + lab test catalog.
     from accounts.department_seed import seed_departments_for
+    from laboratory.lab_catalog_seed import seed_lab_catalog_for
 
     seed_departments_for(hospital)
+    seed_lab_catalog_for(hospital)
     return render(request, "saas/signup_done.html", {"hospital": hospital})
 
 
