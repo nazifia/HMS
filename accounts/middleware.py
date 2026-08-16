@@ -37,11 +37,14 @@ class TokenAuthUserMiddleware:
     def __call__(self, request):
         header = request.META.get("HTTP_AUTHORIZATION", "")
         if header.startswith("Token ") and not request.user.is_authenticated:
-            from rest_framework.authentication import TokenAuthentication
             from rest_framework.exceptions import AuthenticationFailed
 
+            from accounts.api.auth import ExpiringTokenAuthentication
+
             try:
-                result = TokenAuthentication().authenticate(request)
+                # Same class DRF uses, so an expired token is anonymous here too
+                # and the access-control middleware answers it with a 401.
+                result = ExpiringTokenAuthentication().authenticate(request)
             except AuthenticationFailed:
                 result = None
             if result:

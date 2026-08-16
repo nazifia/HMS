@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
-import 'dashboard.dart';
 import 'login.dart';
 import 'appointments/appointments.dart';
 import 'billing/billing.dart';
@@ -45,13 +44,44 @@ class HmsApp extends StatefulWidget {
 }
 
 class _HmsAppState extends State<HmsApp> {
+  final _navigator = GlobalKey<NavigatorState>();
   bool _signedIn = false;
   bool _restoring = true;
+  String? _notice;
 
   @override
   void initState() {
     super.initState();
+    Api.onUnauthorized = () => _bounceToLogin();
     _restore();
+  }
+
+  @override
+  void dispose() {
+    Api.onUnauthorized = null;
+    super.dispose();
+  }
+
+  /// The token expired or was revoked: drop it, close whatever screen raised
+  /// the 401 along with anything stacked under it, and ask for a sign-in.
+  Future<void> _bounceToLogin() async {
+    if (!_signedIn) return;
+    await Api.signOut();
+    await clearSessionCookie();
+    _navigator.currentState?.popUntil((route) => route.isFirst);
+    if (mounted) {
+      setState(() {
+        _signedIn = false;
+        _notice = 'Session expired. Sign in again.';
+      });
+    }
+  }
+
+  Future<void> _signOut() async {
+    await Api.signOut();
+    await clearSessionCookie();
+    _navigator.currentState?.popUntil((route) => route.isFirst);
+    if (mounted) setState(() => _signedIn = false);
   }
 
   Future<void> _restore() async {
@@ -69,17 +99,33 @@ class _HmsAppState extends State<HmsApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'HMS',
+      debugShowCheckedModeBanner: false,
+      navigatorKey: _navigator,
       theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
       home: _restoring
           ? const Scaffold(body: Center(child: CircularProgressIndicator()))
           : _signedIn
-              ? DashboardScreen(
-                  onSignOut: () async {
-                    await Api.signOut();
-                    if (mounted) setState(() => _signedIn = false);
-                  },
+              // The Django dashboard is the home screen: it carries the same
+              // figures as the native tiles plus its own sidebar, and stays in
+              // step with the web app for free.
+              // ponytail: `lib/dashboard.dart` is left in place unrouted --
+              // put `DashboardScreen(onSignOut: _signOut)` back here to return.
+              // ponytail: no app bar and no "All modules" button -- the page's
+              // own header and sidebar reach everything, and the native screens
+              // stay reachable through ModuleListScreen if one is routed back.
+              ? PageScreen(
+                  title: 'HMS',
+                  path: '/dashboard/',
+                  bare: true,
+                  onSessionEnded: _signOut,
                 )
-              : LoginScreen(onSignedIn: () => setState(() => _signedIn = true)),
+              : LoginScreen(
+                  notice: _notice,
+                  onSignedIn: () => setState(() {
+                    _signedIn = true;
+                    _notice = null;
+                  }),
+                ),
     );
   }
 }

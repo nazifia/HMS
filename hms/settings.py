@@ -100,6 +100,60 @@ CSRF_TRUSTED_ORIGINS = [
     if h.strip() and h.strip() not in ("localhost", "127.0.0.1", "testserver", "*")
 ]
 
+# Browser origins allowed to call the API cross-origin and to frame the
+# server-rendered pages — the Flutter web build, nothing else. Empty (the
+# default) disables core.cors.CorsMiddleware entirely. Full scheme + port:
+#   CORS_ALLOWED_ORIGINS=http://localhost:5000
+CORS_ALLOWED_ORIGINS = [
+    o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()
+]
+# Which paths answer cross-origin. Substring match: every module publishes its
+# endpoints under `<module>/api/`, and the client ends its session through the
+# logout view. The HTML pages are framed, not fetched, so they are not listed.
+CORS_ALLOWED_PATHS = ["/api/", "/accounts/logout/"]
+# Those origins post forms from inside the iframe, so CSRF must accept them too.
+CSRF_TRUSTED_ORIGINS += CORS_ALLOWED_ORIGINS
+
+# Ports do not make a different site, so a web client on localhost keeps the
+# default. Serve it from a different domain than the API and the browser
+# withholds both cookies inside the iframe unless these are "None" — which
+# browsers only honour over HTTPS.
+SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
+CSRF_COOKIE_SAMESITE = os.environ.get("CSRF_COOKIE_SAMESITE", "Lax")
+
+# ---------------------------------------------------------------------------
+# Content Security Policy (core.csp)
+# ---------------------------------------------------------------------------
+# frame-ancestors is always enforced and supersedes X_FRAME_OPTIONS. The rest
+# rides as Content-Security-Policy-Report-Only until CSP_ENFORCE=True: check
+# the browser console for violations on the busy pages first (pharmacy cart,
+# billing, DataTables lists), fix the policy, then enforce.
+CSP_ENABLED = os.environ.get("CSP_ENABLED", "True") == "True"
+CSP_ENFORCE = os.environ.get("CSP_ENFORCE", "False") == "True"
+
+# The CDNs the templates actually load: Bootstrap/jsDelivr, FontAwesome/cdnjs,
+# DataTables, jQuery, unpkg. Add a host here when you add a <script src> to a
+# template, or the tag stops loading once CSP_ENFORCE is on.
+_CSP_CDN = (
+    "https://cdn.jsdelivr.net https://cdnjs.cloudflare.com "
+    "https://cdn.datatables.net https://code.jquery.com https://unpkg.com"
+)
+CSP_POLICY = {
+    "default-src": "'self'",
+    # 300+ templates carry inline <script> blocks and style="" attributes, so
+    # dropping 'unsafe-inline' is a template rewrite, not a change to this line.
+    "script-src": f"'self' 'unsafe-inline' {_CSP_CDN}",
+    "style-src": f"'self' 'unsafe-inline' {_CSP_CDN}",
+    "font-src": f"'self' data: {_CSP_CDN}",
+    # data:/blob: cover generated charts, signatures and PDF previews.
+    "img-src": "'self' data: blob:",
+    "frame-src": "'self' blob:",
+    "connect-src": "'self'",
+    "object-src": "'none'",
+    "base-uri": "'self'",
+    "form-action": "'self'",
+}
+
 # HSTS settings - Set to 0 in development (warning suppressed), 1 year in production
 if DEBUG:
     SECURE_HSTS_SECONDS = 0
@@ -245,6 +299,15 @@ MIDDLEWARE = [
     # Disable SSL in development middleware (must be first to intercept HTTPS headers)
     "core.disable_ssl_in_dev.DisableSSLInDevMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # Cross-origin headers for the Flutter web client. Early, because it answers
+    # preflight OPTIONS itself — those arrive without credentials and would be
+    # bounced by the access control middleware further down. No-op unless
+    # CORS_ALLOWED_ORIGINS is set.
+    "core.cors.CorsMiddleware",
+    # Content Security Policy on HTML responses. Also owns frame-ancestors,
+    # which is what lets the web client frame these pages — X-Frame-Options
+    # cannot express "this one origin".
+    "core.csp.ContentSecurityPolicyMiddleware",
     # Serve /static/ with far-future cache headers + gzip/brotli so navigations
     # reuse cached CSS/JS instead of re-fetching. Must sit right after
     # SecurityMiddleware. No-op for non-static paths; defers to the staticfiles
@@ -498,10 +561,19 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # REST framework configuration
 REST_FRAMEWORK = {
+    # Token first: DRF takes the WWW-Authenticate header from the first class,
+    # and SessionAuthentication supplies none — which turns a rejected token
+    # into a 403 the mobile client cannot tell from "not permitted".
     "DEFAULT_AUTHENTICATION_CLASSES": (
+        "accounts.api.auth.ExpiringTokenAuthentication",
         "rest_framework.authentication.SessionAuthentication",
-        "rest_framework.authentication.TokenAuthentication",
     ),
+    "DEFAULT_THROTTLE_RATES": {
+        # Login is public and reachable from anywhere; scoped so the rest of the
+        # API stays unthrottled. Per IP, so keep it above what a clinic behind
+        # one NAT address does legitimately.
+        "login": os.environ.get("LOGIN_THROTTLE_RATE", "20/min"),
+    },
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
     "DEFAULT_PARSER_CLASSES": (
@@ -510,6 +582,10 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.MultiPartParser",
     ),
 }
+
+# How long a mobile token stays usable after the last sign-in. A shift plus a
+# margin; 0 disables expiry. Sessions (browser) keep their own SESSION_COOKIE_AGE.
+API_TOKEN_TTL_HOURS = int(os.environ.get("API_TOKEN_TTL_HOURS", "12"))
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

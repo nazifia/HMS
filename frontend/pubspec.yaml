@@ -10,6 +10,9 @@ dependencies:
   flutter:
     sdk: flutter
   webview_flutter: ^4.7.0
+  # Web implementation of webview_flutter (an iframe). Not endorsed, so it has
+  # to be listed here for `flutter build web` to have a WebView at all.
+  webview_flutter_web: ^0.2.3
   http: ^1.2.0
   flutter_secure_storage: ^9.2.2
 

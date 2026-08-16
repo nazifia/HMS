@@ -213,10 +213,14 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
 
 from django.contrib.auth import login, authenticate
 from rest_framework.authtoken.models import Token
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
+    # Public endpoint reachable from anywhere; rate limited per IP.
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
 
     def post(self, request, *args, **kwargs):
         phone_number = request.data.get('phone_number')
@@ -233,8 +237,14 @@ class LoginView(APIView):
             if user.is_active:
                 login(request, user)  # This creates a session
                 token, created = Token.objects.get_or_create(user=user)
+                if not created:
+                    # DRF keeps one token per user, so the key is reused; the
+                    # expiry clock (ExpiringTokenAuthentication) restarts here.
+                    token.created = timezone.now()
+                    token.save(update_fields=['created'])
                 return Response({
                     'token': token.key,
+                    'expires_in': settings.API_TOKEN_TTL_HOURS * 3600,
                     'user_id': user.pk,
                     'phone_number': user.phone_number
                 })

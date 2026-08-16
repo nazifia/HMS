@@ -1,9 +1,12 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'config.dart';
+import 'http_client_io.dart'
+    if (dart.library.js_interop) 'http_client_web.dart';
 
 class ApiException implements Exception {
   ApiException(this.message, [this.body]);
@@ -27,7 +30,16 @@ class Api {
   static const _tokenKey = 'hms_token';
   static const _sessionKey = 'hms_sessionid';
 
+  /// One client for the whole app: on web it is the credentialed browser client
+  /// that carries Django's session cookie, elsewhere the plain one.
+  static final _client = createClient();
+
   static String? token;
+
+  /// Called when the server rejects our token (expired, revoked, or the user
+  /// was deactivated). Set once by the app so every screen bounces to login
+  /// instead of each showing its own "session expired" error.
+  static void Function()? onUnauthorized;
 
   /// Restores a saved sign-in. Returns the Django session cookie, if any, so
   /// the caller can hand it back to the WebView.
@@ -46,6 +58,14 @@ class Api {
     token = null;
     await _store.delete(key: _tokenKey);
     await _store.delete(key: _sessionKey);
+    if (kIsWeb) {
+      // The session cookie is HttpOnly and cross-origin, so the page cannot
+      // drop it — ask the server to end the session instead. Best effort: a
+      // failure here still leaves the client signed out.
+      try {
+        await _client.get(Uri.parse('$baseUrl/accounts/logout/'));
+      } catch (_) {}
+    }
   }
 
   static Map<String, String> get _headers => {
@@ -57,12 +77,12 @@ class Api {
     final uri = Uri.parse('$baseUrl$path').replace(
       queryParameters: {...?query}..removeWhere((_, v) => v.isEmpty),
     );
-    return _decode(await http.get(uri, headers: _headers));
+    return _decode(await _client.get(uri, headers: _headers));
   }
 
   /// Follows a DRF `next` link, which already carries the query string.
   static Future<dynamic> getUrl(String url) async {
-    return _decode(await http.get(Uri.parse(url), headers: _headers));
+    return _decode(await _client.get(Uri.parse(url), headers: _headers));
   }
 
   /// Raw POST, used by the login screen which needs the Set-Cookie header.
@@ -70,7 +90,7 @@ class Api {
     String path,
     Map<String, dynamic> body,
   ) {
-    return http.post(
+    return _client.post(
       Uri.parse('$baseUrl$path'),
       headers: {..._headers, 'Content-Type': 'application/json'},
       body: jsonEncode(body),
@@ -95,11 +115,11 @@ class Api {
       request.files
           .add(await http.MultipartFile.fromPath(entry.key, entry.value));
     }
-    return _decode(await http.Response.fromStream(await request.send()));
+    return _decode(await http.Response.fromStream(await _client.send(request)));
   }
 
   static Future<dynamic> patch(String path, Map<String, dynamic> body) async {
-    return _decode(await http.patch(
+    return _decode(await _client.patch(
       Uri.parse('$baseUrl$path'),
       headers: {..._headers, 'Content-Type': 'application/json'},
       body: jsonEncode(body),
@@ -107,7 +127,8 @@ class Api {
   }
 
   static Future<dynamic> delete(String path) async {
-    return _decode(await http.delete(Uri.parse('$baseUrl$path'), headers: _headers));
+    return _decode(
+        await _client.delete(Uri.parse('$baseUrl$path'), headers: _headers));
   }
 
   static dynamic _decode(http.Response response) {
@@ -126,6 +147,9 @@ class Api {
     final body = jsonDecode(utf8.decode(response.bodyBytes));
     if (response.statusCode < 400) return body;
     if (response.statusCode == 401) {
+      // Both gates answer 401: DRF for an expired token, the access-control
+      // middleware for a request that arrived without one.
+      onUnauthorized?.call();
       throw ApiException('Session expired. Sign in again.');
     }
     // `detail` carries the actual reason ("You have not been assigned to any
@@ -146,6 +170,10 @@ extension Decimalish on Object? {
 /// Pull `sessionid` out of a Set-Cookie header so the WebView screens share the
 /// session the token login just created. Dart joins repeated Set-Cookie headers
 /// with commas, and `expires=` values contain commas too, so parse by name.
+///
+/// Always null on web: browsers hide Set-Cookie from page code. There the
+/// credentialed client has already handed the cookie to the browser's own jar,
+/// which is what the iframe reads, so nothing is lost.
 String? sessionIdFrom(String? setCookieHeader) {
   if (setCookieHeader == null) return null;
   final match = RegExp(r'sessionid=([^;,\s]+)').firstMatch(setCookieHeader);

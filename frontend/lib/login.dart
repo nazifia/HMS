@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -7,8 +8,11 @@ import 'api.dart';
 import 'config.dart';
 
 /// Hand the Django session cookie to the WebView screens.
+///
+/// No-op on web, where there is no separate WebView cookie store: the iframe
+/// shares the browser's jar, which the credentialed login already filled.
 Future<void> applySessionCookie(String? sessionId) async {
-  if (sessionId == null) return;
+  if (kIsWeb || sessionId == null) return;
   await WebViewCookieManager().setCookie(
     WebViewCookie(
       name: 'sessionid',
@@ -18,15 +22,25 @@ Future<void> applySessionCookie(String? sessionId) async {
   );
 }
 
+/// Drop the WebView's copy of the session, so the server-rendered screens are
+/// signed out too rather than running on a session the native side abandoned.
+/// On web that cookie is the browser's and HttpOnly, so `Api.signOut` ends the
+/// session server-side instead.
+Future<void> clearSessionCookie() =>
+    kIsWeb ? Future.value() : WebViewCookieManager().clearCookies();
+
 /// Phone + password against `/api/accounts/login/`.
 ///
 /// That endpoint returns a token *and* opens a Django session, so we keep the
 /// token for the native screens and push the session cookie into the WebView —
 /// one sign-in serves both.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, required this.onSignedIn});
+  const LoginScreen({super.key, required this.onSignedIn, this.notice});
 
   final VoidCallback onSignedIn;
+
+  /// Why the user is back here — "Session expired", typically.
+  final String? notice;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -81,6 +95,10 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('HMS', style: Theme.of(context).textTheme.headlineMedium),
+              if (widget.notice != null) ...[
+                const SizedBox(height: 12),
+                Text(widget.notice!, textAlign: TextAlign.center),
+              ],
               const SizedBox(height: 24),
               TextField(
                 controller: _phone,

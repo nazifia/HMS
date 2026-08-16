@@ -315,10 +315,26 @@ UX feature.
 `InternalNotification` rows already exist (referrals accepted, wallet payments).
 Surfacing them needs a device-token endpoint, a sender, and FCM setup.
 
-**Session and token lifetime** (S)
-Tokens never expire and are not rotated. Decide expiry, add a refresh or
-re-login prompt, and handle 401 globally in `Api` by bouncing to the login
-screen rather than showing an error.
+**Session and token lifetime** (done)
+`accounts/api/auth.py` adds `ExpiringTokenAuthentication`: a token older than
+`API_TOKEN_TTL_HOURS` (12 by default, `0` disables) is refused with 401.
+`LoginView` stamps `Token.created` on every sign-in, so the limit means "hours
+since the last sign-in" and the key itself is reused — one token per user is
+DRF's model, and rotating it would sign the user's other device out. The same
+class runs in `TokenAuthUserMiddleware`, so an expired token is anonymous to the
+access-control middleware too and gets its 401 rather than an HTML redirect. The
+token classes are listed *first* in `DEFAULT_AUTHENTICATION_CLASSES`: DRF takes
+the `WWW-Authenticate` header from the first class and `SessionAuthentication`
+supplies none, which would turn a rejected token into a 403.
+
+Client side, `Api.onUnauthorized` fires on any 401; `main.dart` drops the token
+and the WebView cookie, pops back to the root and shows the login screen with
+"Session expired. Sign in again." — instead of each screen showing its own
+error. `/api/accounts/login/` is now rate limited per IP
+(`LOGIN_THROTTLE_RATE`, 20/min).
+
+What is left: nothing forced until a token needs to outlive a shift. A refresh
+endpoint would avoid the re-login, and is only worth it if 12 hours proves short.
 
 **Printing and PDF** (S–M)
 Receipts and results exist as server-rendered PDFs (ReportLab). Simplest path:
@@ -385,8 +401,6 @@ Still open:
 - **Legacy bulk-store transfer views** still set approval fields inline instead
   of using `MedicationTransfer.approve_transfer()`. Harmless today, a drift risk
   tomorrow.
-- **No rate limiting on `/api/accounts/login/`**, which is now a public endpoint
-  reachable from anywhere.
 - **`Invoice.recalculate_from_items()` is only called by the API.** The HTML
   path computes totals its own way; worth converging.
 - **Admission charges accrue twice over a long stay.** `billing.signals`
@@ -432,5 +446,6 @@ Conventions worth keeping:
 6. ~~**Dashboard**~~ — done, and the last phase: every module is native now
 
 What is left is §9 — the cross-cutting work, in the order a pilot forces it:
-token expiry and a global 401 bounce, release engineering (`flutter build apk`
-has still never run in this repo), CI, then offline caching and push.
+~~token expiry and a global 401 bounce~~ (done), release engineering
+(`flutter build apk` has still never run in this repo), CI, then offline caching
+and push.
