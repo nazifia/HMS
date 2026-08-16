@@ -1,13 +1,15 @@
-from django.urls import path
+from django.urls import include, path
 from . import views
 from . import views_post_op
 from . import payment_views
 from . import views_equipment_management
 from . import views_equipment_maintenance
+from .api import urls as api_urls
 
 app_name = "theatre"
 
 urlpatterns = [
+    path("api/", include(api_urls)),
     # Operation Theatre URLs
     path("theatres/", views.OperationTheatreListView.as_view(), name="theatre_list"),
     path(

@@ -4,9 +4,15 @@ from .models import IcuRecord, IcuClinicalNote
 from core.medical_forms import MedicalRecordSearchForm
 from typing import Any
 from core.clinical_notes import CLERKING_FIELDS, CLERKING_LABELS, clerking_widgets
+from core.authorization_fields import limit_authorization_codes
 
 
 class IcuRecordForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The code is a link now, not free text: offer only this patient's.
+        limit_authorization_codes(self)
+
     """Form for creating and editing ICU records with patient search"""
 
     # Add patient search field

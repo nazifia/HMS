@@ -3,9 +3,15 @@ from patients.models import Patient
 from .models import GeneralMedicineRecord, GeneralMedicineClinicalNote
 from core.medical_forms import MedicalRecordSearchForm
 from core.clinical_notes import CLERKING_FIELDS, CLERKING_LABELS, clerking_widgets
+from core.authorization_fields import limit_authorization_codes
 
 
 class GeneralMedicineRecordForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The code is a link now, not free text: offer only this patient's.
+        limit_authorization_codes(self)
+
     # Add patient search field
     patient_search = forms.CharField(
         required=False,

@@ -8,6 +8,7 @@ from patients.models import Patient
 from django.contrib.auth.models import User
 from django.views.decorators.http import require_POST
 from .forms import RadiologyOrderForm, RadiologyResultForm
+from .services import RadiologyActionError, assert_can_add_result, update_status
 from core.decorators import department_access_required
 from core.department_dashboard_utils import (
     get_user_department,
@@ -461,17 +462,12 @@ def edit_order(request, order_id):
 @permission_required("radiology.edit")
 def schedule_order(request, order_id):
     order = get_object_or_404(RadiologyOrder, pk=order_id)
-
-    # Check authorization requirement before scheduling
-    can_process, message = order.can_be_processed()
-    if not can_process:
-        messages.error(request, message)
-        return redirect("radiology:order_detail", order_id=order.id)
-
-    order.status = "scheduled"
-    order.scheduled_date = timezone.now()
-    order.save()
-    messages.success(request, "Order scheduled.")
+    try:
+        update_status(order, "scheduled")
+    except RadiologyActionError as e:
+        messages.error(request, str(e))
+    else:
+        messages.success(request, "Order scheduled.")
     return redirect("radiology:order_detail", order_id=order.id)
 
 
@@ -480,17 +476,12 @@ def schedule_order(request, order_id):
 @permission_required("radiology.edit")
 def mark_completed(request, order_id):
     order = get_object_or_404(RadiologyOrder, pk=order_id)
-
-    # Check authorization requirement before marking as completed
-    can_process, message = order.can_be_processed()
-    if not can_process:
-        messages.error(request, message)
-        return redirect("radiology:order_detail", order_id=order.id)
-
-    order.status = "completed"
-    order.completed_date = timezone.now()
-    order.save()
-    messages.success(request, "Order marked as completed.")
+    try:
+        update_status(order, "completed")
+    except RadiologyActionError as e:
+        messages.error(request, str(e))
+    else:
+        messages.success(request, "Order marked as completed.")
     return redirect("radiology:order_detail", order_id=order.id)
 
 
@@ -499,9 +490,12 @@ def mark_completed(request, order_id):
 @permission_required("radiology.edit")
 def cancel_order(request, order_id):
     order = get_object_or_404(RadiologyOrder, pk=order_id)
-    order.status = "cancelled"
-    order.save()
-    messages.success(request, "Order cancelled.")
+    try:
+        update_status(order, "cancelled")
+    except RadiologyActionError as e:
+        messages.error(request, str(e))
+    else:
+        messages.success(request, "Order cancelled.")
     return redirect("radiology:order_detail", order_id=order.id)
 
 
@@ -510,10 +504,11 @@ def cancel_order(request, order_id):
 def add_result(request, order_id):
     order = get_object_or_404(RadiologyOrder, pk=order_id)
 
-    # Check if result can be added to this order
-    can_add, message = order.can_add_result()
-    if not can_add:
-        messages.error(request, message)
+    # Same gate the API uses: authorization settled and payment made.
+    try:
+        assert_can_add_result(order)
+    except RadiologyActionError as e:
+        messages.error(request, str(e))
         return redirect("radiology:order_detail", order_id=order.id)
 
     try:

@@ -1,10 +1,13 @@
-from django.urls import path
+from django.urls import include, path
 from . import views
 from . import payment_views
+from .api import urls as api_urls
 
 app_name = 'laboratory'
 
 urlpatterns = [
+    path('api/', include(api_urls)),
+
     # Dashboard
     path('', views.laboratory_dashboard, name='dashboard'),
 

@@ -14,6 +14,7 @@ from django.db import transaction
 from django.conf import settings
 
 from .models import Admission
+from .services import charge_admission_for_date
 from patients.models import PatientWallet, WalletTransaction
 from core.utils import send_notification_email
 
@@ -118,7 +119,7 @@ def send_low_balance_notifications():
         for wallet in low_balance_wallets:
             # Check if notification was sent recently (within last 24 hours)
             recent_notification = WalletTransaction.objects.filter(
-                wallet=wallet,
+                patient_wallet=wallet,
                 transaction_type='balance_notification',
                 created_at__gte=timezone.now() - timezone.timedelta(days=1)
             ).exists()
@@ -129,7 +130,8 @@ def send_low_balance_notifications():
                 
                 # Create a record to track notification
                 WalletTransaction.objects.create(
-                    wallet=wallet,
+                    patient_wallet=wallet,
+                    patient=wallet.patient,
                     transaction_type='balance_notification',
                     amount=Decimal('0.00'),
                     balance_after=wallet.balance,
@@ -148,68 +150,24 @@ def send_low_balance_notifications():
 def process_admission_charge_internal(admission, charge_date):
     """
     Internal function to process daily charge for a single admission.
-    This mirrors the logic from the management command but returns structured data.
+    Wraps inpatient.services.charge_admission_for_date, which the management
+    command uses too, and returns structured data.
     """
-    # Check if patient is NHIA - NHIA patients are exempt from admission fees
-    if admission.patient.is_nhia_patient():
-        return {'success': True, 'amount': None, 'reason': 'NHIA patient - exempt from charges'}
-
-    # Check if admission was active on the charge date
-    admission_date = admission.admission_date.date()
-    discharge_date = admission.discharge_date.date() if admission.discharge_date else None
-
-    if charge_date < admission_date:
-        return {'success': False, 'reason': 'Charge date before admission'}
-
-    if discharge_date and charge_date > discharge_date:
-        return {'success': False, 'reason': 'Charge date after discharge'}
-
-    # Calculate daily charge
-    if not admission.bed or not admission.bed.ward:
-        return {'success': False, 'reason': 'No bed/ward assigned'}
-
-    daily_charge = admission.bed.ward.charge_per_day
-    if daily_charge <= 0:
-        return {'success': False, 'reason': 'No daily charge configured'}
-
-    # Get or create patient wallet
-    wallet, created = PatientWallet.objects.get_or_create(
-        patient=admission.patient,
-        defaults={'balance': Decimal('0.00')}
-    )
-
-    # Check if daily charge already exists for this date
-    existing_charge = WalletTransaction.objects.filter(
-        wallet=wallet,
-        admission=admission,
-        transaction_type='daily_admission_charge',
-        created_at__date=charge_date
-    ).exists()
-
-    if existing_charge:
-        return {'success': False, 'reason': 'Charge already processed for this date'}
-
-    # Process the charge
     try:
-        with transaction.atomic():
-            wallet.debit(
-                amount=daily_charge,
-                description=f"Daily admission charge for {charge_date} - {admission.bed.ward.name}",
-                transaction_type="daily_admission_charge",
-                user=admission.attending_doctor,
-                admission=admission
-            )
-
-            return {
-                'success': True,
-                'amount': daily_charge,
-                'new_balance': wallet.balance,
-                'ward': admission.bed.ward.name
-            }
-
+        amount, reason = charge_admission_for_date(admission, charge_date)
     except Exception as e:
         logger.error(f'Failed to process daily charge for admission {admission.id}: {str(e)}')
         return {'success': False, 'error': str(e)}
+
+    if amount is None:
+        return {'success': False, 'reason': reason}
+
+    return {
+        'success': True,
+        'amount': amount,
+        'new_balance': admission.patient.wallet.balance,
+        'ward': admission.bed.ward.name,
+    }
 
 
 def get_processing_summary(target_date):
@@ -220,16 +178,20 @@ def get_processing_summary(target_date):
     daily_charges = WalletTransaction.objects.filter(
         transaction_type='daily_admission_charge',
         created_at__date=target_date
-    ).select_related('wallet__patient')
+    ).select_related('patient_wallet__patient', 'patient')
 
     total_amount = sum(txn.amount for txn in daily_charges)
     total_processed = daily_charges.count()
+
+    def patient_of(txn):
+        patient = txn.patient or (txn.patient_wallet.patient if txn.patient_wallet else None)
+        return patient.get_full_name() if patient else 'Unknown'
 
     return {
         'date': target_date.strftime('%Y-%m-%d'),
         'total_processed': total_processed,
         'total_amount': float(total_amount),
-        'affected_patients': list(set(txn.wallet.patient.get_full_name() for txn in daily_charges))
+        'affected_patients': sorted({patient_of(txn) for txn in daily_charges}),
     }
 
 

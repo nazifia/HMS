@@ -4,6 +4,8 @@ from django.db.models import Q
 User = get_user_model()
 from django.utils import timezone
 from .models import Appointment, AppointmentFollowUp, DoctorSchedule, DoctorLeave, SLOT_MINUTES
+# Booking rules are shared with the slot endpoint and the mobile API.
+from .services import BookingError, check_doctor_availability, resolve_authorization_code
 from patients.models import Patient
 from core.patient_search_forms import PatientSearchForm
 import datetime
@@ -167,42 +169,14 @@ class AppointmentForm(forms.ModelForm):
         patient = cleaned_data.get('patient')
         code_text = (cleaned_data.get('authorization_code') or '').strip()
         cleaned_data['authorization_code_obj'] = None
-        nhia_info = getattr(patient, 'nhia_info', None) if patient else None
-        if nhia_info and nhia_info.is_active:
+        if patient:
             existing = self.instance.authorization_code if self.instance.pk else None
-            if not code_text and existing:
-                # Editing without retyping the code keeps the one already attached.
-                cleaned_data['authorization_code_obj'] = existing
-            elif not code_text:
-                self.add_error(
-                    'authorization_code',
-                    'This is an NHIA patient. An authorization code from the '
-                    'desk office is required to book an appointment.'
+            try:
+                cleaned_data['authorization_code_obj'] = resolve_authorization_code(
+                    patient, code_text, existing
                 )
-            else:
-                from nhia.models import AuthorizationCode
-                auth_code = AuthorizationCode.objects.filter(
-                    code=code_text, patient=patient
-                ).first()
-                if auth_code is None:
-                    self.add_error(
-                        'authorization_code',
-                        'Invalid authorization code for this patient.'
-                    )
-                elif not auth_code.is_valid() and auth_code != existing:
-                    self.add_error(
-                        'authorization_code',
-                        f'This authorization code is {auth_code.get_status_display().lower()} '
-                        'and can no longer be used.'
-                    )
-                elif auth_code.service_type not in ('appointment', 'general'):
-                    self.add_error(
-                        'authorization_code',
-                        f'This code is for {auth_code.get_service_type_display()} '
-                        'services, not appointments.'
-                    )
-                else:
-                    cleaned_data['authorization_code_obj'] = auth_code
+            except BookingError as e:
+                self.add_error('authorization_code', str(e))
 
         # Confirming or completing requires the consultation fee paid.
         if (cleaned_data.get('status') in ('confirmed', 'completed') and self.instance.pk
@@ -240,98 +214,18 @@ class AppointmentForm(forms.ModelForm):
         if appointment_time and end_time and end_time <= appointment_time:
             raise forms.ValidationError("End time must be after appointment time.")
 
-        # Check if doctor is available on the selected date and time
+        # Doctor availability: leave, shift hours and overlapping bookings.
         if appointment_date and appointment_time and doctor:
-            # Check if doctor is on leave
-            # start_date/end_date are DateTimeFields; compare on the date part so a
-            # leave that starts mid-day still covers the whole day.
-            doctor_leaves = DoctorLeave.objects.filter(
-                doctor=doctor,
-                start_date__date__lte=appointment_date,
-                end_date__date__gte=appointment_date,
-                is_approved=True
-            )
-
-            if doctor_leaves.exists():
-                raise forms.ValidationError(f"{doctor.get_full_name()} is on leave on the selected date.")
-
-            # Check doctor's schedule for the day of the week
-            weekday = appointment_date.weekday()
-            doctor_schedule = DoctorSchedule.objects.filter(
-                doctor=doctor,
-                weekday=weekday,
-                is_available=True
-            ).first()
-
-            if not doctor_schedule:
-                # No schedule at all is a setup problem, not a busy day - say which.
-                if DoctorSchedule.objects.filter(doctor=doctor).exists():
-                    raise forms.ValidationError(
-                        f"{doctor.get_full_name()} does not work on "
-                        f"{appointment_date.strftime('%A')}s."
-                    )
-                raise forms.ValidationError(
-                    f"{doctor.get_full_name()} has no working hours set up yet. "
-                    f"Add a schedule under Appointments > Doctor Schedules first."
+            try:
+                check_doctor_availability(
+                    doctor,
+                    appointment_date,
+                    appointment_time,
+                    end_time,
+                    exclude_appointment_id=self.instance.id if self.instance else None,
                 )
-
-            # Check if appointment time is within doctor's schedule
-            # The slot must start within the shift and finish by the end of it.
-            slot_end = end_time or (
-                datetime.datetime.combine(appointment_date, appointment_time)
-                + datetime.timedelta(minutes=SLOT_MINUTES)
-            ).time()
-            if (appointment_time < doctor_schedule.start_time
-                    or appointment_time >= doctor_schedule.end_time
-                    or slot_end > doctor_schedule.end_time):
-                raise forms.ValidationError(
-                    f"{doctor.get_full_name()} is only available from "
-                    f"{doctor_schedule.start_time.strftime('%I:%M %p')} to "
-                    f"{doctor_schedule.end_time.strftime('%I:%M %p')} on this day."
-                )
-
-            # Check for overlapping appointments
-            # Get all appointments for this doctor on this date with scheduled/confirmed status
-            overlapping_appointments = Appointment.objects.filter(
-                doctor=doctor,
-                appointment_date__date=appointment_date,
-                status__in=['scheduled', 'confirmed']
-            ).exclude(id=self.instance.id if self.instance else None)
-
-            # Build new appointment datetime range
-            appointment_start = timezone.make_aware(
-                datetime.datetime.combine(appointment_date, appointment_time)
-            )
-            appointment_end = None
-            if end_time:
-                appointment_end = timezone.make_aware(
-                    datetime.datetime.combine(appointment_date, end_time)
-                )
-            else:
-                appointment_end = appointment_start + datetime.timedelta(minutes=SLOT_MINUTES)
-
-            for existing_appt in overlapping_appointments:
-                # Existing appointment start is stored as appointment_date (datetime)
-                existing_start = existing_appt.appointment_date
-
-                # Existing appointment end time - check if end_time field is set
-                if existing_appt.end_time:
-                    # existing_appt.appointment_date is a datetime, we need to combine its date with its end_time
-                    existing_end = timezone.make_aware(
-                        datetime.datetime.combine(
-                            existing_appt.appointment_date.date(),
-                            existing_appt.end_time
-                        )
-                    )
-                else:
-                    existing_end = existing_start + datetime.timedelta(minutes=SLOT_MINUTES)
-
-                # Check for overlap: A overlaps B if A.start < B.end AND A.end > B.start
-                if appointment_start < existing_end and appointment_end > existing_start:
-                    raise forms.ValidationError(
-                        f"This appointment overlaps with an existing appointment for "
-                        f"{doctor.get_full_name()} at {existing_appt.appointment_time.strftime('%I:%M %p')}."
-                    )
+            except BookingError as e:
+                raise forms.ValidationError(str(e))
 
         return cleaned_data
 

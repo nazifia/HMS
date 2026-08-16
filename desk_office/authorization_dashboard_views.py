@@ -17,6 +17,9 @@ from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
 from theatre.models import Surgery
 from nhia.models import AuthorizationCode
+from nhia.services import (
+    AuthorizationError, authorize, generate_code_string, referral_estimated_cost,
+)
 from patients.models import Patient
 from .forms import PatientSearchForm, AuthorizationCodeForm
 from core.models import InternalNotification
@@ -25,80 +28,19 @@ import string
 import random
 
 
-def generate_authorization_code_string():
-    """Generate a unique authorization code"""
-    date_str = timezone.now().strftime("%Y%m%d")
-    random_str = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    return f"AUTH-{date_str}-{random_str}"
+# Both now live in nhia.services, shared with the mobile API.
+generate_authorization_code_string = generate_code_string
+calculate_referral_estimated_cost = referral_estimated_cost
 
 
-def calculate_referral_estimated_cost(referral):
-    """
-    Calculate the estimated cost for a referral based on destination and type.
-
-    Args:
-        referral (Referral): The referral object to calculate cost for
-
-    Returns:
-        float: Estimated cost for the referral
-    """
-    # Base referral cost (same as used in bulk authorization)
-    base_cost = 10000.00
-
-    # Check if the referral has specific cost factors based on destination
-    if referral.referred_to_department:
-        # Department-specific pricing (can be expanded with actual pricing data)
-        department_name = referral.referred_to_department.name.lower()
-
-        # Specialty-specific pricing adjustments
-        if department_name in ["surgery", "theatre", "operating"]:
-            # Surgical referrals typically have higher costs
-            return 25000.00
-        elif department_name in ["radiology", "imaging", "x-ray"]:
-            # Imaging referrals
-            return 15000.00
-        elif department_name in ["laboratory", "lab", "pathology"]:
-            # Lab referrals
-            return 12000.00
-        elif department_name in ["physiotherapy", "rehabilitation"]:
-            # Physiotherapy referrals
-            return 8000.00
-        elif department_name in ["ophthalmic", "ophthalmology", "eye"]:
-            # Ophthalmic referrals
-            return 18000.00
-        elif department_name in ["dental", "oral"]:
-            # Dental referrals
-            return 10000.00
-        elif department_name in ["neurology", "neurosurgery"]:
-            # Neurology referrals
-            return 20000.00
-        elif department_name in ["oncology", "cancer"]:
-            # Oncology referrals
-            return 30000.00
-        elif department_name in ["cardiology", "heart"]:
-            # Cardiology referrals
-            return 22000.00
-        elif department_name in ["icu", "intensive", "critical"]:
-            # ICU referrals
-            return 35000.00
-        elif department_name in ["nhia", "national health insurance"]:
-            # NHIA referrals (shouldn't normally require auth, but if they do)
-            return 5000.00
-
-    # Check for specialty-specific referrals
-    if referral.referred_to_specialty:
-        specialty = referral.referred_to_specialty.lower()
-        if any(word in specialty for word in ["surgery", "surgical", "operative"]):
-            return 25000.00
-        elif any(word in specialty for word in ["cardiology", "heart"]):
-            return 22000.00
-        elif any(word in specialty for word in ["neurology", "neurosurgery", "brain"]):
-            return 20000.00
-        elif any(word in specialty for word in ["oncology", "cancer", "tumor"]):
-            return 30000.00
-
-    # Default base cost for general referrals
-    return base_cost
+def _manual_code(request):
+    """The code the desk office typed, when they chose to type one."""
+    if request.POST.get("code_type") != "manual":
+        return None
+    code = request.POST.get("manual_code", "").strip().upper()
+    if not code:
+        raise AuthorizationError("Please enter a manual authorization code.")
+    return code
 
 
 @login_required
@@ -529,79 +471,35 @@ def authorize_consultation(request, consultation_id):
         return redirect("desk_office:authorization_dashboard")
 
     if request.method == "POST":
-        # Get form data
-        amount = request.POST.get("amount", "0.00")
-        expiry_days = int(request.POST.get("expiry_days", "30"))
-        expiry_date = timezone.now().date() + timezone.timedelta(days=expiry_days)
-        notes = request.POST.get("notes", "")
-        code_type = request.POST.get("code_type", "auto")
-        manual_code = request.POST.get("manual_code", "").strip().upper()
-
-        # Determine service type based on consultation
-        service_type = "general"
-
-        # Handle code generation (auto or manual)
-        if code_type == "manual":
-            if not manual_code:
-                messages.error(request, "Please enter a manual authorization code.")
-                context = {
-                    "consultation": consultation,
-                    "page_title": f"Authorize Consultation #{consultation.id}",
-                    "active_nav": "desk_office",
-                    "form_data": request.POST,
-                }
-                return render(
-                    request, "desk_office/authorize_consultation.html", context
-                )
-
-            # Check if manual code already exists
-            if AuthorizationCode.objects.filter(code=manual_code).exists():
-                messages.error(
-                    request,
-                    f'Authorization code "{manual_code}" already exists. Please use a different code.',
-                )
-                context = {
-                    "consultation": consultation,
-                    "page_title": f"Authorize Consultation #{consultation.id}",
-                    "active_nav": "desk_office",
-                    "form_data": request.POST,
-                }
-                return render(
-                    request, "desk_office/authorize_consultation.html", context
-                )
-
-            code_str = manual_code
-            code_source = "Manual"
+        try:
+            auth_code = authorize(
+                "consultation",
+                consultation,
+                request.user,
+                amount=request.POST.get("amount"),
+                expiry_days=request.POST.get("expiry_days") or 30,
+                notes=(
+                    f"In {consultation.consulting_room}. "
+                    f"{request.POST.get('notes', '')}"
+                ),
+                code=_manual_code(request),
+            )
+        except AuthorizationError as e:
+            messages.error(request, str(e))
         else:
-            # Auto-generate authorization code
-            while True:
-                code_str = generate_authorization_code_string()
-                if not AuthorizationCode.objects.filter(code=code_str).exists():
-                    break
-            code_source = "System"
+            messages.success(
+                request,
+                f"Authorization code {auth_code.code} generated successfully for consultation #{consultation.id}.",
+            )
+            return redirect("desk_office:authorization_dashboard")
 
-        # Create authorization code
-        auth_code = AuthorizationCode.objects.create(
-            code=code_str,
-            patient=consultation.patient,
-            service_type=service_type,
-            amount=amount,
-            expiry_date=expiry_date,
-            status="active",
-            notes=f"{code_source}-generated for consultation #{consultation.id} in {consultation.consulting_room}. {notes}",
-            generated_by=request.user,
-        )
-
-        # Link authorization code to consultation
-        consultation.authorization_code = auth_code
-        consultation.authorization_status = "authorized"
-        consultation.save()
-
-        messages.success(
-            request,
-            f"Authorization code {auth_code.code} generated successfully for consultation #{consultation.id}.",
-        )
-        return redirect("desk_office:authorization_dashboard")
+        context = {
+            "consultation": consultation,
+            "page_title": f"Authorize Consultation #{consultation.id}",
+            "active_nav": "desk_office",
+            "form_data": request.POST,
+        }
+        return render(request, "desk_office/authorize_consultation.html", context)
 
     context = {
         "consultation": consultation,
@@ -623,75 +521,36 @@ def authorize_referral(request, referral_id):
         return redirect("desk_office:authorization_dashboard")
 
     if request.method == "POST":
-        # Get form data
-        amount = request.POST.get("amount", "0.00")
-        expiry_days = int(request.POST.get("expiry_days", "30"))
-        expiry_date = timezone.now().date() + timezone.timedelta(days=expiry_days)
-        notes = request.POST.get("notes", "")
-        code_type = request.POST.get("code_type", "auto")
-        manual_code = request.POST.get("manual_code", "").strip().upper()
-
-        # Determine service type
-        service_type = "general"
-
-        # Handle code generation (auto or manual)
-        if code_type == "manual":
-            if not manual_code:
-                messages.error(request, "Please enter a manual authorization code.")
-                context = {
-                    "referral": referral,
-                    "page_title": f"Authorize Referral #{referral.id}",
-                    "active_nav": "desk_office",
-                    "form_data": request.POST,
-                }
-                return render(request, "desk_office/authorize_referral.html", context)
-
-            # Check if manual code already exists
-            if AuthorizationCode.objects.filter(code=manual_code).exists():
-                messages.error(
-                    request,
-                    f'Authorization code "{manual_code}" already exists. Please use a different code.',
-                )
-                context = {
-                    "referral": referral,
-                    "page_title": f"Authorize Referral #{referral.id}",
-                    "active_nav": "desk_office",
-                    "form_data": request.POST,
-                }
-                return render(request, "desk_office/authorize_referral.html", context)
-
-            code_str = manual_code
-            code_source = "Manual"
+        try:
+            auth_code = authorize(
+                "referral",
+                referral,
+                request.user,
+                amount=request.POST.get("amount"),
+                expiry_days=request.POST.get("expiry_days") or 30,
+                notes=(
+                    f"To {referral.get_referral_destination()}. "
+                    f"{request.POST.get('notes', '')}"
+                ),
+                code=_manual_code(request),
+            )
+        except AuthorizationError as e:
+            messages.error(request, str(e))
         else:
-            # Auto-generate authorization code
-            while True:
-                code_str = generate_authorization_code_string()
-                if not AuthorizationCode.objects.filter(code=code_str).exists():
-                    break
-            code_source = "System"
+            messages.success(
+                request,
+                f"Authorization code {auth_code.code} generated successfully for referral #{referral.id}.",
+            )
+            return redirect("desk_office:authorization_dashboard")
 
-        # Create authorization code
-        auth_code = AuthorizationCode.objects.create(
-            code=code_str,
-            patient=referral.patient,
-            service_type=service_type,
-            amount=amount,
-            expiry_date=expiry_date,
-            status="active",
-            notes=f"{code_source}-generated for referral #{referral.id} to {referral.get_referral_destination()}. {notes}",
-            generated_by=request.user,
-        )
-
-        # Link authorization code to referral
-        referral.authorization_code = auth_code
-        referral.authorization_status = "authorized"
-        referral.save()
-
-        messages.success(
-            request,
-            f"Authorization code {auth_code.code} generated successfully for referral #{referral.id}.",
-        )
-        return redirect("desk_office:authorization_dashboard")
+        context = {
+            "referral": referral,
+            "page_title": f"Authorize Referral #{referral.id}",
+            "active_nav": "desk_office",
+            "form_data": request.POST,
+            "estimated_cost": calculate_referral_estimated_cost(referral),
+        }
+        return render(request, "desk_office/authorize_referral.html", context)
 
     # Calculate estimated cost for the referral
     estimated_cost = calculate_referral_estimated_cost(referral)
@@ -717,79 +576,32 @@ def authorize_prescription(request, prescription_id):
         return redirect("desk_office:authorization_dashboard")
 
     if request.method == "POST":
-        # Get form data
-        amount = request.POST.get("amount", "0.00")
-        expiry_days = int(request.POST.get("expiry_days", "30"))
-        expiry_date = timezone.now().date() + timezone.timedelta(days=expiry_days)
-        notes = request.POST.get("notes", "")
-        code_type = request.POST.get("code_type", "auto")
-        manual_code = request.POST.get("manual_code", "").strip().upper()
-
-        # Determine service type
-        service_type = "pharmacy"
-
-        # Handle code generation (auto or manual)
-        if code_type == "manual":
-            if not manual_code:
-                messages.error(request, "Please enter a manual authorization code.")
-                context = {
-                    "prescription": prescription,
-                    "page_title": f"Authorize Prescription #{prescription.id}",
-                    "active_nav": "desk_office",
-                    "form_data": request.POST,
-                }
-                return render(
-                    request, "desk_office/authorize_prescription.html", context
-                )
-
-            # Check if manual code already exists
-            if AuthorizationCode.objects.filter(code=manual_code).exists():
-                messages.error(
-                    request,
-                    f'Authorization code "{manual_code}" already exists. Please use a different code.',
-                )
-                context = {
-                    "prescription": prescription,
-                    "page_title": f"Authorize Prescription #{prescription.id}",
-                    "active_nav": "desk_office",
-                    "form_data": request.POST,
-                }
-                return render(
-                    request, "desk_office/authorize_prescription.html", context
-                )
-
-            code_str = manual_code
-            code_source = "Manual"
+        try:
+            auth_code = authorize(
+                "prescription",
+                prescription,
+                request.user,
+                amount=request.POST.get("amount"),
+                expiry_days=request.POST.get("expiry_days") or 30,
+                notes=request.POST.get("notes", ""),
+                code=_manual_code(request),
+            )
+        except AuthorizationError as e:
+            messages.error(request, str(e))
         else:
-            # Auto-generate authorization code
-            while True:
-                code_str = generate_authorization_code_string()
-                if not AuthorizationCode.objects.filter(code=code_str).exists():
-                    break
-            code_source = "System"
+            messages.success(
+                request,
+                f"Authorization code {auth_code.code} generated successfully for prescription #{prescription.id}.",
+            )
+            return redirect("desk_office:authorization_dashboard")
 
-        # Create authorization code
-        auth_code = AuthorizationCode.objects.create(
-            code=code_str,
-            patient=prescription.patient,
-            service_type=service_type,
-            amount=amount,
-            expiry_date=expiry_date,
-            status="active",
-            notes=f"{code_source}-generated for prescription #{prescription.id}. {notes}",
-            generated_by=request.user,
-        )
-
-        # Link authorization code to prescription
-        prescription.authorization_code = auth_code
-        prescription.authorization_status = "authorized"
-        prescription.save()
-
-        messages.success(
-            request,
-            f"Authorization code {auth_code.code} generated successfully for prescription #{prescription.id}.",
-        )
-        return redirect("desk_office:authorization_dashboard")
+        context = {
+            "prescription": prescription,
+            "page_title": f"Authorize Prescription #{prescription.id}",
+            "active_nav": "desk_office",
+            "form_data": request.POST,
+        }
+        return render(request, "desk_office/authorize_prescription.html", context)
 
     context = {
         "prescription": prescription,
@@ -944,31 +756,18 @@ def bulk_authorize_consultations(request):
         for consultation_id in consultation_ids:
             try:
                 consultation = Consultation.objects.get(id=consultation_id)
-
-                # Only authorize NHIA patients
-                if consultation.patient.patient_type == "nhia":
-                    # Create authorization code for each consultation
-                    date_str = timezone.now().strftime("%Y%m%d")
-                    random_str = "".join(
-                        random.choices(string.ascii_uppercase + string.digits, k=6)
-                    )
-                    code_str = f"AUTH-{date_str}-{random_str}"
-
-                    # Check for duplicate codes
-                    if not AuthorizationCode.objects.filter(code=code_str).exists():
-                        auth_code = AuthorizationCode.objects.create(
-                            code=code_str,
-                            patient=consultation.patient,
-                            service_type="consultation",
-                            amount=5000.00,  # Default consultation amount
-                            status="active",
-                            generated_by=request.user,
-                            notes=f"Auto-authorized consultation for {consultation.patient.get_full_name()}",
-                        )
-                        authorized_count += 1
-
             except Consultation.DoesNotExist:
                 continue
+            try:
+                # authorize() attaches the code; issuing one without linking it
+                # left the consultation sitting in the queue.
+                authorize(
+                    "consultation", consultation, request.user,
+                    notes="Bulk-authorized from the desk office.",
+                )
+            except AuthorizationError:
+                continue
+            authorized_count += 1
 
         if authorized_count > 0:
             messages.success(
@@ -997,31 +796,16 @@ def bulk_authorize_referrals(request):
         for referral_id in referral_ids:
             try:
                 referral = Referral.objects.get(id=referral_id)
-
-                # Only authorize NHIA patients
-                if referral.patient.patient_type == "nhia":
-                    # Create authorization code for each referral
-                    date_str = timezone.now().strftime("%Y%m%d")
-                    random_str = "".join(
-                        random.choices(string.ascii_uppercase + string.digits, k=6)
-                    )
-                    code_str = f"AUTH-{date_str}-{random_str}"
-
-                    # Check for duplicate codes
-                    if not AuthorizationCode.objects.filter(code=code_str).exists():
-                        auth_code = AuthorizationCode.objects.create(
-                            code=code_str,
-                            patient=referral.patient,
-                            service_type="referral",
-                            amount=10000.00,  # Default referral amount
-                            status="active",
-                            generated_by=request.user,
-                            notes=f"Auto-authorized referral for {referral.patient.get_full_name()} to {referral.get_referral_destination()}",
-                        )
-                        authorized_count += 1
-
             except Referral.DoesNotExist:
                 continue
+            try:
+                authorize(
+                    "referral", referral, request.user,
+                    notes="Bulk-authorized from the desk office.",
+                )
+            except AuthorizationError:
+                continue
+            authorized_count += 1
 
         if authorized_count > 0:
             messages.success(

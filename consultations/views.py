@@ -9,6 +9,12 @@ from django.db import transaction
 from django.db.models import Count, Q, Max, F
 from django.core.paginator import Paginator
 from .models import Consultation, ConsultationNote, Referral, SOAPNote, ConsultationOrder, ConsultingRoom, WaitingList, CLINIC_TYPE_CHOICES
+# Workflow rules are shared with the mobile API.
+from .services import (
+    ConsultationActionError,
+    update_consultation_status as update_consultation_status_service,
+    update_referral_status as update_referral_status_service,
+)
 from .forms import QuickLabOrderForm, QuickRadiologyOrderForm, QuickPrescriptionForm, ConsultingRoomForm, WaitingListForm, ReferralForm, ConsultationForm, VitalsSelectionForm
 from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
@@ -225,57 +231,30 @@ def bulk_start_consultations(request):
 def update_consultation_status(request, consultation_id):
     """AJAX view to update consultation status"""
     consultation = get_object_or_404(Consultation, id=consultation_id)
-    
-    # Check if user has permission to update this consultation
-    if not (request.user == consultation.doctor or request.user.is_staff or request.user.is_superuser):
-        return JsonResponse({
-            'success': False, 
-            'message': 'You don\'t have permission to update this consultation.'
-        })
-    
+    old_status = consultation.status
+
     try:
         data = json.loads(request.body)
-        new_status = data.get('status')
-        
-        # Validate status
-        valid_statuses = ['pending', 'in_progress', 'completed', 'cancelled']
-        if new_status not in valid_statuses:
-            return JsonResponse({
-                'success': False,
-                'message': 'Invalid status provided.'
-            })
-        
-        old_status = consultation.status
-        consultation.status = new_status
-        
-        # We could add custom fields here if needed, for now just update status
-        consultation.save()
-        
-        # Log the action
-        log_audit_action(
-            request.user, 
-            'update', 
-            consultation, 
-            f"Updated consultation status from {old_status} to {new_status}"
-        )
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Consultation status updated to {new_status}.',
-            'old_status': old_status,
-            'new_status': new_status
-        })
-        
     except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'message': 'Invalid JSON data.'
-        })
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data.'})
+
+    try:
+        update_consultation_status_service(
+            consultation, request.user, data.get('status')
+        )
+    except ConsultationActionError as e:
+        return JsonResponse({'success': False, 'message': str(e)})
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Error updating status: {str(e)}'
-        })
+        return JsonResponse(
+            {'success': False, 'message': f'Error updating status: {str(e)}'}
+        )
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Consultation status updated to {consultation.status}.',
+        'old_status': old_status,
+        'new_status': consultation.status,
+    })
 
 
 @login_required
@@ -1121,67 +1100,19 @@ def update_referral_status_detailed(request, referral_id):
     """Enhanced referral status update with notes and tracking"""
     referral = get_object_or_404(Referral, id=referral_id)
 
-    # Check permissions
-    can_update = False
-
-    if referral.referral_type in ['department', 'specialty', 'unit', 'theatre', 'ward']:
-        # Department/specialty/unit referral
-        can_update = (referral.can_be_accepted_by(request.user) or
-                     referral.referring_doctor == request.user or
-                     referral.assigned_doctor == request.user)
-
-    # Admin and superuser can always update
-    if request.user.is_superuser:
-        can_update = True
-
-    if not can_update:
-        messages.error(request, "You don't have permission to update this referral.")
-        return redirect('consultations:referral_tracking')
-
     if request.method == 'POST':
-        status = request.POST.get('status')
-        notes = request.POST.get('status_notes', '')
-        
-        if status in dict(Referral.STATUS_CHOICES):
-            # **AUTHORIZATION CHECK**: Prevent accepting referrals that require authorization
-            if status == 'accepted' and referral.requires_authorization:
-                if referral.authorization_status not in ['authorized', 'not_required']:
-                    messages.error(
-                        request,
-                        f"Cannot accept this referral. Authorization status is '{referral.get_authorization_status_display()}'. "
-                        f"This NHIA patient referral requires desk office authorization before it can be accepted. "
-                        f"Please contact the desk office to obtain authorization."
-                    )
-                    return redirect('consultations:referral_detail', referral_id=referral.id)
+        try:
+            update_referral_status_service(
+                referral,
+                request.user,
+                request.POST.get('status'),
+                request.POST.get('status_notes', ''),
+            )
+        except ConsultationActionError as e:
+            messages.error(request, str(e))
+            return redirect('consultations:referral_detail', referral_id=referral.id)
 
-            old_status = referral.status
-            referral.status = status
-
-            # Add status update notes
-            if notes:
-                if referral.notes:
-                    referral.notes += f"\n\n[{timezone.now().strftime('%Y-%m-%d %H:%M')} - {request.user.get_full_name()}] Status changed from {old_status} to {status}: {notes}"
-                else:
-                    referral.notes = f"[{timezone.now().strftime('%Y-%m-%d %H:%M')} - {request.user.get_full_name()}] Status changed from {old_status} to {status}: {notes}"
-
-            # If accepting a department/specialty/unit referral, assign the doctor
-            if status == 'accepted' and referral.referral_type in ['department', 'specialty', 'unit', 'theatre', 'ward']:
-                referral.assigned_doctor = request.user
-
-            referral.save()
-
-            # Create notification for the other party
-            if referral.referral_type in ['department', 'specialty', 'unit', 'theatre', 'ward'] and referral.can_be_accepted_by(request.user):
-                # Notify referring doctor
-                from core.models import InternalNotification
-                InternalNotification.objects.create(
-                    user=referral.referring_doctor,
-                    message=f"Referral for {referral.patient.get_full_name()} to {referral.get_referral_destination()} has been {status} by Dr. {request.user.get_full_name()}"
-                )
-
-            messages.success(request, f"Referral status updated to {status}.")
-        else:
-            messages.error(request, "Invalid status.")
+        messages.success(request, f"Referral status updated to {referral.status}.")
 
     return redirect('consultations:referral_detail', referral_id=referral.id)
 

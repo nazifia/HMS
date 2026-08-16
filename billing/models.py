@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 
 from django.db import models
 from saas.models import TenantModel
@@ -171,6 +172,30 @@ class Invoice(TenantModel):
 
     def is_paid(self):
         return self.amount_paid >= self.total_amount
+
+    def recalculate_from_items(self):
+        """Rebuild the money fields from this invoice's line items.
+
+        The HTML flow computes these from the item formset before saving;
+        anything that edits items directly (the API) calls this instead so the
+        totals cannot drift from the lines.
+        """
+        from django.db.models import DecimalField, F, Sum
+        from django.db.models.functions import Coalesce
+
+        totals = self.items.aggregate(
+            lines=Coalesce(
+                Sum(F("unit_price") * F("quantity"), output_field=DecimalField()),
+                Decimal("0.00"),
+            ),
+            tax=Coalesce(Sum("tax_amount"), Decimal("0.00")),
+            discount=Coalesce(Sum("discount_amount"), Decimal("0.00")),
+        )
+        self.subtotal = totals["lines"]
+        self.tax_amount = totals["tax"]
+        self.discount_amount = totals["discount"]
+        self.save()  # save() recomputes total_amount and the status
+        return self
 
     def save(self, *args, **kwargs):
         if not self.invoice_number:

@@ -11,6 +11,8 @@ from django.http import JsonResponse
 from datetime import datetime, timedelta
 from calendar import monthrange
 from .models import Appointment, AppointmentFollowUp, DoctorSchedule, DoctorLeave, SLOT_MINUTES
+# Slot maths is shared with the booking form and the mobile API.
+from .services import BookingError, available_slots, update_status
 from .forms import (
     AppointmentForm, AppointmentFollowUpForm, DoctorScheduleForm,
     DoctorLeaveForm, AppointmentSearchForm, doctor_queryset,
@@ -564,71 +566,14 @@ def get_available_slots(request):
     except (ValueError, CustomUser.DoesNotExist):
         return JsonResponse({'error': 'Invalid date or doctor'}, status=400)
 
-    # Check if doctor is on leave
-    is_on_leave = DoctorLeave.objects.filter(
-        doctor=doctor,
-        start_date__date__lte=selected_date,
-        end_date__date__gte=selected_date,
-        is_approved=True
-    ).exists()
-
-    if is_on_leave:
-        return JsonResponse({'available_slots': [], 'message': 'Doctor is on leave on this date'}, status=200)
-
-    # Get doctor's schedule for the selected date
-    weekday = selected_date.weekday()
-    schedule = DoctorSchedule.objects.filter(doctor=doctor, weekday=weekday).first()
-
-    if not schedule or not schedule.is_available:
-        # No schedule at all is a setup problem, not a busy day - say which.
-        message = (
-            f'Doctor does not work on {selected_date.strftime("%A")}s'
-            if DoctorSchedule.objects.filter(doctor=doctor).exists()
-            else 'Doctor has no working hours set up yet'
-        )
+    # When rescheduling, the appointment's own slot is not a conflict with itself.
+    slots, message = available_slots(
+        doctor, selected_date, request.GET.get('appointment_id')
+    )
+    if message:
         return JsonResponse({'available_slots': [], 'message': message}, status=200)
 
-    # Existing bookings as (start, end) datetimes so a slot overlapping a longer
-    # appointment is blocked too, not only one starting at the exact same minute.
-    booked = []
-    existing = Appointment.objects.filter(
-        doctor=doctor,
-        appointment_date__date=selected_date,
-        status__in=['scheduled', 'confirmed'],
-    ).only('appointment_date', 'end_time')
-
-    # When rescheduling, the appointment's own slot is not a conflict with itself.
-    exclude_id = request.GET.get('appointment_id')
-    if exclude_id:
-        existing = existing.exclude(id=exclude_id)
-
-    for appt in existing:
-        appt_start = datetime.combine(selected_date, appt.appointment_time)
-        appt_end = (
-            datetime.combine(selected_date, appt.end_time)
-            if appt.end_time else appt_start + timedelta(minutes=SLOT_MINUTES)
-        )
-        booked.append((appt_start, appt_end))
-
-    # Don't offer slots that have already started today.
-    now = timezone.localtime()
-    earliest = now.replace(tzinfo=None) if selected_date == now.date() else None
-
-    available_slots = []
-    shift_end = datetime.combine(selected_date, schedule.end_time)
-    slot_start = datetime.combine(selected_date, schedule.start_time)
-
-    while slot_start < shift_end:
-        slot_end = slot_start + timedelta(minutes=SLOT_MINUTES)
-        taken = any(slot_start < b_end and slot_end > b_start for b_start, b_end in booked)
-        if slot_end <= shift_end and not taken and (earliest is None or slot_start >= earliest):
-            available_slots.append({
-                'value': slot_start.strftime('%H:%M'),
-                'text': slot_start.strftime('%I:%M %p'),
-            })
-        slot_start = slot_end
-
-    return JsonResponse({'available_slots': available_slots}, status=200)
+    return JsonResponse({'available_slots': slots}, status=200)
 
 @login_required
 @permission_required('appointments.edit')
@@ -638,28 +583,10 @@ def update_appointment_status(request, appointment_id):
         return JsonResponse({'error': 'Only POST method is allowed'}, status=405)
 
     appointment = get_object_or_404(Appointment, id=appointment_id)
-    new_status = request.POST.get('status')
-
-    if new_status not in dict(Appointment.STATUS_CHOICES).keys():
-        return JsonResponse({'error': 'Invalid status'}, status=400)
-
-    # Completed/cancelled are terminal: reopening one would silently free the slot.
-    if appointment.status in ('completed', 'cancelled') and new_status != appointment.status:
-        return JsonResponse(
-            {'error': f'Cannot change a {appointment.get_status_display().lower()} appointment.'},
-            status=400,
-        )
-
-    # Confirming or completing requires the consultation fee settled first.
-    if new_status in ('confirmed', 'completed') and not appointment.consultation_payment_verified():
-        return JsonResponse(
-            {'error': 'Consultation fee has not been paid. The patient must pay before the appointment can be confirmed or completed.'},
-            status=400,
-        )
-
-    # Update appointment status
-    appointment.status = new_status
-    appointment.save()
+    try:
+        update_status(appointment, request.POST.get('status'))
+    except BookingError as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
     return JsonResponse({
         'success': True,

@@ -9,7 +9,21 @@ from django.contrib import messages
 from django.urls import resolve, reverse
 import logging
 
+from core.api_requests import json_error, wants_json
+
 logger = logging.getLogger(__name__)
+
+
+def _deny(request, message, route):
+    """Refuse a pharmacy request: JSON for API callers, redirect for browsers.
+
+    An API client cannot follow a redirect to an HTML page — it just sees a 200
+    full of markup — so it gets the reason as JSON instead.
+    """
+    if wants_json(request):
+        return json_error("Access denied", message)
+    messages.error(request, message)
+    return redirect(route)
 
 
 class PharmacyAccessMiddleware:
@@ -123,12 +137,13 @@ class PharmacyAccessMiddleware:
                 
                 for admin_path in admin_only_paths:
                     if request.path.startswith(admin_path):
-                        messages.error(
+                        return _deny(
                             request,
-                            "You don't have permission to access this pharmacy administration area. "
-                            "Only site administrators can manage Dispensaries."
+                            "You don't have permission to access this pharmacy "
+                            "administration area. Only site administrators can "
+                            "manage Dispensaries.",
+                            'dashboard:dashboard',
                         )
-                        return redirect('dashboard:dashboard')
 
                 # Pharmacists need to have an assigned dispensary
                 if not pharmacist_dispensary:
@@ -147,14 +162,19 @@ class PharmacyAccessMiddleware:
                             return self.get_response(request)
                         
                         # For other paths, redirect to dispensary selection
-                        return redirect('pharmacy:select_dispensary')
+                        return _deny(
+                            request,
+                            "Select a dispensary before using this page.",
+                            'pharmacy:select_dispensary',
+                        )
                     else:
-                        messages.error(
+                        return _deny(
                             request,
                             "You have not been assigned to any dispensary yet. "
-                            "Please contact an administrator to get assigned to a dispensary."
+                            "Please contact an administrator to get assigned to "
+                            "a dispensary.",
+                            'dashboard:dashboard',
                         )
-                        return redirect('dashboard:dashboard')
 
                 # If pharmacist has an assigned dispensary, check dispensary-specific access
                 if pharmacist_dispensary:
@@ -178,13 +198,15 @@ class PharmacyAccessMiddleware:
                             
                             # Check if pharmacist has access to the requested dispensary
                             if not request.user.can_access_dispensary(requested_dispensary):
-                                messages.error(
+                                # Stay in the pharmacy section rather than
+                                # bouncing out to the main dashboard.
+                                return _deny(
                                     request,
-                                    f"You don't have permission to access '{requested_dispensary.name}'. "
-                                    f"You are assigned to '{pharmacist_dispensary.name}'."
+                                    f"You don't have permission to access "
+                                    f"'{requested_dispensary.name}'. You are "
+                                    f"assigned to '{pharmacist_dispensary.name}'.",
+                                    'pharmacy:pharmacy_dashboard',
                                 )
-                                # Redirect to the pharmacy dashboard (not dashboard/dashboard) to stay in pharmacy section
-                                return redirect('pharmacy:pharmacy_dashboard')
                         except (Dispensary.DoesNotExist, ValueError, AttributeError):
                             # If dispensary doesn't exist or can't be resolved, allow access
                             # The view will handle the invalid dispensary
@@ -193,12 +215,12 @@ class PharmacyAccessMiddleware:
                 return self.get_response(request)
 
             # Deny access - user doesn't have required role
-            messages.error(
+            return _deny(
                 request,
                 "You don't have permission to access the Pharmacy module. "
-                "Only pharmacists and administrators can access this area."
+                "Only pharmacists and administrators can access this area.",
+                'dashboard:dashboard',
             )
-            return redirect('dashboard:dashboard')
 
         # Not a pharmacy URL, proceed normally
         return self.get_response(request)

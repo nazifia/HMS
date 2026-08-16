@@ -7,14 +7,59 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 from django.conf import settings
+from django.db.models import Q
 from .serializers import (
-    UserSerializer, 
+    UserSerializer,
     RoleSerializer,
     PermissionSerializer,
-    AuditLogSerializer
+    AuditLogSerializer,
+    StaffLookupSerializer,
 )
 from ..models import CustomUser, Role, AuditLog, CustomUserProfile
 import json
+
+class StaffLookupViewSet(viewsets.ReadOnlyModelViewSet):
+    """Find a colleague by name and role — the picker behind "choose a doctor".
+
+    UserViewSet is admin-only by design, so booking screens cannot use it: a
+    receptionist choosing a doctor would be refused. This is the read-only,
+    minimal-field alternative any signed-in staff member may call.
+    """
+
+    serializer_class = StaffLookupSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None  # a picker wants the whole (short) list
+
+    def get_queryset(self):
+        queryset = (
+            CustomUser.objects
+            .filter(is_active=True)
+            .select_related('profile', 'profile__department')
+            .prefetch_related('roles')
+            .order_by('first_name', 'last_name', 'username')
+        )
+        params = self.request.query_params
+
+        role = params.get('role')
+        if role:
+            # Roles live on the M2M; profile.role is the legacy fallback.
+            queryset = queryset.filter(
+                Q(roles__name__iexact=role) | Q(profile__role__iexact=role)
+            ).distinct()
+
+        department = params.get('department')
+        if department:
+            queryset = queryset.filter(profile__department_id=department)
+
+        search = params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(username__icontains=search)
+            )
+        return queryset[:100]
+
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all().select_related('profile')

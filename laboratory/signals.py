@@ -29,14 +29,12 @@ def update_revenue_on_test_result_save(sender, instance, created, **kwargs):
     for key in cache_keys_to_clear:
         cache.delete(key)
     
-    # Update test request status if all tests are completed
-    test_request = instance.test_request
-    total_tests = test_request.tests.count()
-    completed_results = TestResult.objects.filter(test_request=test_request).count()
-    
-    if completed_results >= total_tests and test_request.status != 'completed':
-        test_request.status = 'completed'
-        test_request.save()
+    # Keep the request's status in step with its results. Completion means
+    # every test has been *verified*, not merely resulted, so this no longer
+    # closes the request the moment a result is entered.
+    from .services import sync_request_completion
+
+    sync_request_completion(instance.test_request)
 
 
 @receiver(post_delete, sender=TestResult)
@@ -57,13 +55,10 @@ def update_revenue_on_test_result_delete(sender, instance, **kwargs):
     for key in cache_keys_to_clear:
         cache.delete(key)
     
-    # Update test request status if needed
-    test_request = instance.test_request
-    remaining_results = TestResult.objects.filter(test_request=test_request).count()
-    
-    if remaining_results == 0 and test_request.status == 'completed':
-        test_request.status = 'processing'
-        test_request.save()
+    # Removing a result can reopen a completed request.
+    from .services import sync_request_completion
+
+    sync_request_completion(instance.test_request)
 
 
 @receiver(post_save, sender=Payment)

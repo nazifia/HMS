@@ -22,6 +22,12 @@ from .models import (
     TestCategory, Test, TestParameter, TestRequest,
     TestResult, TestResultParameter
 )
+# Workflow rules live in services so the HTML views and the mobile API agree on
+# when a status may change, when results may be entered, and what verifying does.
+from .services import (
+    LabActionError, assert_can_enter_results, sync_request_completion,
+    update_status, verify_result,
+)
 from .forms import (
     TestCategoryForm, TestForm, TestParameterForm, TestRequestForm,
     TestResultForm, TestResultParameterForm, TestSearchForm, TestRequestSearchForm,
@@ -974,26 +980,15 @@ def update_test_request_status(request, request_id):
     test_request = get_object_or_404(TestRequest, id=request_id)
 
     if request.method == 'POST':
-        status = request.POST.get('status')
-        if status in dict(TestRequest.STATUS_CHOICES):
-            # Check authorization requirement before allowing status change to processing states
-            if status in ['sample_collected', 'processing']:
-                can_process, message = test_request.can_be_processed()
-                if not can_process:
-                    messages.error(request, message)
-                    return redirect('laboratory:test_request_detail', request_id=test_request.id)
-
-            # Add logic here: if status is moving to 'sample_collected' or 'processing',
-            # ensure payment is confirmed if it was 'awaiting_payment'.
-            if test_request.status == 'awaiting_payment' and status != 'cancelled':
-                messages.error(request, "Cannot proceed. Payment is still pending for this test request.")
-                return redirect('laboratory:test_request_detail', request_id=test_request.id)
-
-            test_request.status = status
-            test_request.save()
-            messages.success(request, f'Test request status updated to {test_request.get_status_display()}.')
+        try:
+            update_status(test_request, request.POST.get('status'))
+        except LabActionError as e:
+            messages.error(request, str(e))
         else:
-            messages.error(request, 'Invalid status.')
+            messages.success(
+                request,
+                f'Test request status updated to {test_request.get_status_display()}.',
+            )
 
         return redirect('laboratory:test_request_detail', request_id=test_request.id)
 
@@ -1005,14 +1000,11 @@ def create_test_result(request, request_id):
     """View for creating a new test result"""
     test_request = get_object_or_404(TestRequest, id=request_id)
 
-    # Check authorization requirement BEFORE allowing test processing
-    can_process, message = test_request.can_be_processed()
-    if not can_process:
-        messages.error(request, message)
-        return redirect('laboratory:test_request_detail', request_id=test_request.id)
-
-    if not test_request.is_payment_verified():
-        messages.error(request, "Cannot add results. Payment is pending for this test request.")
+    # Authorization and payment must both be settled before results go in.
+    try:
+        assert_can_enter_results(test_request)
+    except LabActionError as e:
+        messages.error(request, str(e))
         return redirect('laboratory:test_request_detail', request_id=test_request.id)
 
     # Get tests that don't have results yet
@@ -1200,19 +1192,8 @@ def edit_test_result(request, result_id):
             form.save()
             parameter_formset.save() # This will save changes to all TestResultParameter instances
 
-            # Update test request status if needed
-            test_request = result.test_request
-            if test_request.status in ['pending', 'sample_collected', 'processing', 'payment_confirmed']:
-                # Consider if all results for the request are in before changing to 'processing' or 'completed'
-                # This simple logic just updates if not already completed.
-                # A more complex check would see if all Test objects in test_request.tests.all() have a TestResult.
-                is_request_complete = not TestResult.objects.filter(test_request=test_request, verified_by__isnull=True).exists() and \
-                                      test_request.tests.count() == TestResult.objects.filter(test_request=test_request).count()
-                if is_request_complete and all(res.verified_by for res in test_request.results.all()):
-                    test_request.status = 'completed'
-                else:
-                    test_request.status = 'processing'
-                test_request.save()
+            # One rule decides this: complete once every test is verified.
+            sync_request_completion(result.test_request)
 
             messages.success(request, f'Test result for {result.test.name} has been updated successfully.')
             return redirect('laboratory:result_detail', result_id=result.id)
@@ -1535,37 +1516,16 @@ def verify_test_result(request, result_id):
     """View for verifying a test result"""
     result = get_object_or_404(TestResult, id=result_id)
 
-    # Check if result is already verified
-    if result.verified_by:
-        messages.info(request, f'This result has already been verified by {result.verified_by.get_full_name()} on {result.verified_date}.')
-        return redirect('laboratory:result_detail', result_id=result.id)
-
     if request.method == 'POST':
-        # Verify the result
-        result.verified_by = request.user
-        result.verified_date = timezone.now()
-        result.save()
-
-        # Update test request status if all results are verified
-        test_request = result.test_request
-        all_results_verified = True
-
-        # Check if all tests in the request have verified results
-        for test in test_request.tests.all():
-            try:
-                test_result = TestResult.objects.get(test_request=test_request, test=test)
-                if not test_result.verified_by:
-                    all_results_verified = False
-                    break
-            except TestResult.DoesNotExist:
-                all_results_verified = False
-                break
-
-        if all_results_verified:
-            test_request.status = 'completed'
-            test_request.save()
-
-        messages.success(request, f'Test result for {result.test.name} has been verified successfully.')
+        try:
+            verify_result(result, request.user)
+        except LabActionError as e:
+            messages.info(request, str(e))
+        else:
+            messages.success(
+                request,
+                f'Test result for {result.test.name} has been verified successfully.',
+            )
         return redirect('laboratory:result_detail', result_id=result.id)
 
     context = {

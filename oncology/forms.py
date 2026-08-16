@@ -3,6 +3,7 @@ from patients.models import Patient
 from .models import OncologyRecord, OncologyClinicalNote
 from core.medical_forms import MedicalRecordSearchForm
 from core.clinical_notes import CLERKING_FIELDS, CLERKING_LABELS, clerking_widgets
+from core.authorization_fields import limit_authorization_codes
 
 class OncologyRecordForm(forms.ModelForm):
     """Form for creating and editing oncology records with patient search"""
@@ -68,6 +69,9 @@ class OncologyRecordForm(forms.ModelForm):
         if self.instance and self.instance.pk and self.instance.patient:
             patient = self.instance.patient
             self.fields['patient_search'].initial = f"{patient.first_name} {patient.last_name} ({patient.patient_id})"
+
+        # The code is a link now, not free text: offer only this patient's.
+        limit_authorization_codes(self, service_type='oncology')
 
     def _format_patient_label(self, obj):
         """Format patient label with type information"""

@@ -240,6 +240,23 @@ class RadiologyOrder(TenantModel):
 
         return True, "Result can be added to this order"
 
+    def is_payment_verified(self):
+        """True if results may be entered: invoice fully paid, or NHIA-authorized.
+
+        Mirrors TestRequest.is_payment_verified — the two modules answer the
+        same question and should answer it the same way.
+        """
+        if self.requires_authorization and self.authorization_code:
+            return True
+        if self.invoice and self.invoice.is_paid():
+            return True
+        # ponytail: status is the fallback when no invoice row exists (legacy/manual flows)
+        return self.status in (
+            "payment_confirmed",
+            "scheduled",
+            "completed",
+        )
+
     @property
     def age_in_hours(self):
         """Calculate the age of the order in hours"""

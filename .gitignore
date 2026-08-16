@@ -51,3 +51,11 @@ backups/
 
 # django-compressor output bundles (regenerated at render time; hashed name per build)
 staticfiles/CACHE/
+
+# IDE
+.idea/
+*.iml
+
+# Flutter build artifacts
+frontend/build/
+frontend/.dart_tool/

@@ -267,6 +267,10 @@ class TestResult(TenantModel):
         blank=True,
         related_name="verified_tests",
     )
+    # The verification views already set and displayed this; it was never a
+    # field, so the timestamp was thrown away and reading it back raised
+    # AttributeError on an already-verified result.
+    verified_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -35,6 +35,7 @@ from accounts.permissions import (
     get_user_roles,
     ROLE_PERMISSIONS,
 )
+from core.api_requests import json_error, wants_json
 
 logger = logging.getLogger(__name__)
 
@@ -350,6 +351,14 @@ class StrictAccessControlMiddleware(MiddlewareMixin):
                     status=403,
                 )
 
+            # API clients cannot follow a redirect to an HTML login form.
+            if wants_json(request):
+                return json_error(
+                    "Authentication required",
+                    "You must be logged in to access this resource.",
+                    status=401,
+                )
+
             # Redirect to login for regular requests
             messages.warning(request, "Please log in to access this page.")
             return redirect(settings.LOGIN_URL)
@@ -373,15 +382,10 @@ class StrictAccessControlMiddleware(MiddlewareMixin):
                     status=403,
                 )
 
-            # For API requests
-            if path.startswith("/api/"):
-                return JsonResponse(
-                    {
-                        "error": "Permission denied",
-                        "detail": "You do not have the required permission to access this resource.",
-                    },
-                    status=403,
-                )
+            # For API requests — including app-scoped ones like
+            # /pharmacy/api/..., which do not start with /api/.
+            if wants_json(request):
+                return json_error("Permission denied", reason)
 
             # For regular requests, show permission denied page
             messages.error(

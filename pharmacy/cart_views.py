@@ -22,33 +22,22 @@ from billing.models import Invoice as PharmacyInvoice
 from pharmacy.billing_utils import create_pharmacy_invoice
 from core.audit_utils import log_audit_action
 
-
-def _cart_invoice_editable(cart):
-    """True when the cart's linked invoice (if any) has no payment yet."""
-    inv = cart.invoice
-    return not inv or not inv.amount_paid or inv.amount_paid == 0
-
-
-def sync_cart_invoice(cart):
-    """
-    Re-sync the cart's unpaid invoice to the current patient-payable total after
-    the cart items change (manual qty edit, item removal, recost). If nothing is
-    left to bill, void the invoice and reopen the cart. No-op if there is no
-    invoice or it already has a payment.
-    """
-    inv = cart.invoice
-    if not inv or (inv.amount_paid and inv.amount_paid > 0):
-        return
-    new_payable = cart.get_patient_payable()
-    if new_payable <= 0:
-        inv.status = "cancelled"
-        inv.save()
-        cart.invoice = None
-        cart.status = "active"
-        cart.save(update_fields=["invoice", "status"])
-    else:
-        inv.subtotal = new_payable
-        inv.save()  # save() recomputes total_amount + status
+# Cart rules live in cart_services so the HTML views and the mobile API share
+# one implementation of the money path.
+from .cart_services import (
+    CartActionError,
+    CartExistsError,
+    cart_invoice_editable as _cart_invoice_editable,
+    create_cart_for_prescription,
+    dispense_cart,
+    generate_cart_invoice,
+    pay_cart_from_wallet as pay_cart_from_wallet_service,
+    set_cart_dispensary,
+    set_cart_item_quantity,
+    substitute_cart_item as substitute_cart_item_service,
+    sync_cart_invoice,
+    undo_substitution,
+)
 
 
 @login_required
@@ -60,202 +49,33 @@ def create_cart_from_prescription(request, prescription_id):
     """
     prescription = get_object_or_404(Prescription, id=prescription_id)
 
-    # Check if prescription status allows cart creation (not cancelled/completed)
-    if prescription.status in ["cancelled", "completed"]:
-        messages.error(
-            request,
-            f"Cannot create cart for prescription with status: {prescription.get_status_display()}",
-        )
-        return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
-
-    # Check if there are items with remaining quantity to dispense
-    has_remaining_items = any(
-        item.remaining_quantity_to_dispense > 0 for item in prescription.items.all()
-    )
-    if not has_remaining_items:
-        messages.warning(
-            request,
-            "No items remaining to dispense. All items have been fully dispensed.",
-        )
-        return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
-
-    # Check if there's already any cart for this prescription (active, invoiced, paid)
-    # Note: We no longer block partially_dispensed carts - users can create new carts for remaining items
-    existing_cart = PrescriptionCart.objects.filter(
-        prescription=prescription,
-        status__in=["active", "invoiced", "paid"],
-    ).first()
-
-    if existing_cart:
-        messages.info(
-            request,
-            f"A {existing_cart.status} cart already exists for this prescription. Redirecting to existing cart.",
-        )
-        return redirect("pharmacy:view_cart", cart_id=existing_cart.id)
-
-    # Check for partially_dispensed cart - allow creating new cart for remaining items
-    partially_dispensed_cart = PrescriptionCart.objects.filter(
-        prescription=prescription,
-        status="partially_dispensed",
-    ).first()
-
-    if partially_dispensed_cart:
-        # Get items already in the partially_dispensed cart
-        cart_item_ids = set(
-            partially_dispensed_cart.items.values_list(
-                "prescription_item_id", flat=True
-            )
-        )
-
-        # Find prescription items not yet in cart (have remaining quantity)
-        items_not_in_cart = []
-        for p_item in prescription.items.all():
-            if (
-                p_item.id not in cart_item_ids
-                and p_item.remaining_quantity_to_dispense > 0
-            ):
-                items_not_in_cart.append(p_item)
-
-        if not items_not_in_cart:
-            # All remaining items are already in the partially_dispensed cart
-            messages.info(
-                request,
-                f"A partially_dispensed cart exists with remaining items. Redirecting to existing cart to continue dispensing.",
-            )
-            return redirect("pharmacy:view_cart", cart_id=partially_dispensed_cart.id)
-
-        # There are items not in cart - user can create new cart for them
-        messages.info(
-            request,
-            f"Found {len(items_not_in_cart)} item(s) not in existing partially_dispensed cart. Creating new cart for remaining items.",
-        )
-
-    # Get selected items from POST data
     selected_item_ids = []
     if request.method == "POST":
-        selected_item_ids = request.POST.getlist("selected_items")
-        # Convert to integers
         selected_item_ids = [
-            int(item_id) for item_id in selected_item_ids if item_id.isdigit()
+            int(item_id)
+            for item_id in request.POST.getlist("selected_items")
+            if item_id.isdigit()
         ]
 
-    # Get IDs of items already in any active cart (for filtering)
-    items_in_active_carts = set()
-    for cart in PrescriptionCart.objects.filter(
-        prescription=prescription,
-        status__in=["active", "invoiced", "paid", "partially_dispensed"],
-    ):
-        items_in_active_carts.update(
-            cart.items.values_list("prescription_item_id", flat=True)
-        )
-
     try:
-        with transaction.atomic():
-            # Create new cart
-            cart = PrescriptionCart.objects.create(
-                prescription=prescription, created_by=request.user
-            )
-
-            # Add prescription items to cart (include items with remaining quantities)
-            items_added = 0
-            if selected_item_ids:
-                # Add only selected items that have remaining quantities and not in other carts
-                for p_item in prescription.items.filter(id__in=selected_item_ids):
-                    if p_item.id in items_in_active_carts:
-                        continue
-                    remaining_qty = p_item.remaining_quantity_to_dispense
-                    if remaining_qty > 0:
-                        PrescriptionCartItem.objects.create(
-                            cart=cart,
-                            prescription_item=p_item,
-                            quantity=remaining_qty,
-                            unit_price=p_item.medication.price or Decimal("0.00"),
-                        )
-                        items_added += 1
-            else:
-                # Add all items with remaining quantities (fallback for GET requests)
-                for p_item in prescription.items.all():
-                    if p_item.id in items_in_active_carts:
-                        continue
-                    remaining_qty = p_item.remaining_quantity_to_dispense
-                    if remaining_qty > 0:
-                        PrescriptionCartItem.objects.create(
-                            cart=cart,
-                            prescription_item=p_item,
-                            quantity=remaining_qty,
-                            unit_price=p_item.medication.price or Decimal("0.00"),
-                        )
-                        items_added += 1
-
-            if items_added == 0:
-                cart.delete()
-                messages.warning(
-                    request,
-                    "No items to add to cart. All items have been fully dispensed.",
-                )
-                return redirect(
-                    "pharmacy:prescription_detail", prescription_id=prescription.id
-                )
-
-            # Log audit action
-            log_audit_action(
-                request.user,
-                "create",
-                cart,
-                f"Created prescription cart with {items_added} items",
-            )
-
-            messages.success(request, f"Cart created with {items_added} items.")
-
-            # Auto-generate pharmacy invoice after cart creation (links to cart)
-            # This uses pharmacy_billing.Invoice which is what the cart expects
-            try:
-                can_checkout, message = cart.can_generate_invoice()
-                if can_checkout:
-                    patient_payable = cart.get_patient_payable()
-
-                    # Use the utility function to create pharmacy invoice
-                    # This properly handles partial dispensing - creates new invoice if previous is paid
-                    invoice = create_pharmacy_invoice(
-                        request, cart.prescription, patient_payable, force_new=False
-                    )
-
-                    if invoice:
-                        cart.invoice = invoice
-                        cart.status = "invoiced"
-                        cart.save()
-
-                        log_audit_action(
-                            request.user,
-                            "update",
-                            cart,
-                            f"Generated pharmacy invoice #{invoice.id} from cart",
-                        )
-                        messages.success(
-                            request,
-                            f"Invoice #{invoice.id} created. Total: ₦{patient_payable:.2f} - Please proceed to billing office for payment.",
-                        )
-                    else:
-                        messages.warning(
-                            request, "Cart created but failed to generate invoice."
-                        )
-                else:
-                    messages.info(request, f"Cart created. {message}")
-            except Exception as e:
-                import logging
-
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error auto-generating invoice: {str(e)}")
-                messages.warning(
-                    request,
-                    f"Cart created but failed to auto-generate invoice: {str(e)}",
-                )
-
-            return redirect("pharmacy:view_cart", cart_id=cart.id)
-
+        cart, notes = create_cart_for_prescription(
+            prescription, request.user, selected_item_ids, request
+        )
+    except CartExistsError as e:
+        messages.info(request, f"{e} Redirecting to existing cart.")
+        return redirect("pharmacy:view_cart", cart_id=e.cart.id)
+    except CartActionError as e:
+        messages.error(request, str(e))
+        return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
     except Exception as e:
         messages.error(request, f"Error creating cart: {str(e)}")
         return redirect("pharmacy:prescription_detail", prescription_id=prescription.id)
+
+    messages.success(request, f"Cart created with {cart.items.count()} items.")
+    for note in notes:
+        messages.info(request, note)
+
+    return redirect("pharmacy:view_cart", cart_id=cart.id)
 
 
 @login_required
@@ -454,32 +274,14 @@ def update_cart_dispensary(request, cart_id):
         if dispensary_id:
             try:
                 dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
-
-                # Validate pharmacist access to the selected dispensary
-                if not request.user.is_superuser:
-                    if hasattr(request.user, "can_access_dispensary"):
-                        if not request.user.can_access_dispensary(dispensary):
-                            messages.error(
-                                request,
-                                f"You don't have permission to access '{dispensary.name}'. "
-                                f"Please select a dispensary you are assigned to.",
-                            )
-                            return redirect("pharmacy:view_cart", cart_id=cart.id)
-
-                cart.dispensary = dispensary
-                cart.save()
-
-                # Update stock availability for all items
-                for item in cart.items.all():
-                    item.update_available_stock()
-                    item.save()
-
+                set_cart_dispensary(cart, dispensary, request.user)
                 messages.success(request, f"Dispensary updated to {dispensary.name}")
             except Dispensary.DoesNotExist:
                 messages.error(request, "Invalid dispensary selected")
+            except CartActionError as e:
+                messages.error(request, str(e))
         else:
-            cart.dispensary = None
-            cart.save()
+            set_cart_dispensary(cart, None, request.user)
             messages.info(request, "Dispensary cleared")
 
     return redirect("pharmacy:view_cart", cart_id=cart.id)
@@ -502,44 +304,10 @@ def update_cart_item_quantity(request, item_id):
             item = get_object_or_404(PrescriptionCartItem, id=item_id)
             cart = item.cart
 
-            # Editable while active, or invoiced with an unpaid invoice.
-            if cart.status not in ("active", "invoiced") or not _cart_invoice_editable(
-                cart
-            ):
-                return JsonResponse(
-                    {
-                        "success": False,
-                        "error": "Quantities can only be edited before the invoice is paid.",
-                    },
-                    status=400,
-                )
-
-            # Validate quantity
-            if quantity <= 0:
-                return JsonResponse(
-                    {"success": False, "error": "Quantity must be greater than zero"},
-                    status=400,
-                )
-
-            # Validate against available stock (prescription limit removed)
-            item.update_available_stock()  # Refresh stock info
-            available_stock = item.available_stock
-
-            if quantity > available_stock:
-                return JsonResponse(
-                    {
-                        "success": False,
-                        "error": f"Quantity exceeds available stock. Only {available_stock} available in selected dispensary.",
-                    },
-                    status=400,
-                )
-
-            with transaction.atomic():
-                # Update quantity
-                item.quantity = quantity
-                item.save()
-                # Keep the linked unpaid invoice in step with the new total.
-                sync_cart_invoice(cart)
+            try:
+                set_cart_item_quantity(item, quantity)
+            except CartActionError as e:
+                return JsonResponse({"success": False, "error": str(e)}, status=400)
 
             cart.refresh_from_db()
             invoice_balance = (
@@ -652,8 +420,7 @@ def remove_cart_item(request, item_id):
 def generate_invoice_from_cart(request, cart_id):
     """
     Generate invoice from cart.
-    Creates pharmacy_billing.Invoice and updates cart status.
-    Only generates invoice for items with sufficient stock (selected in UI).
+    Creates billing invoice and updates cart status.
     """
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
 
@@ -663,31 +430,17 @@ def generate_invoice_from_cart(request, cart_id):
             if not request.user.can_access_dispensary(cart.dispensary):
                 messages.error(
                     request,
-                    f"You don't have permission to generate invoice for '{cart.dispensary.name}'. "
-                    f"This cart is assigned to a dispensary you're not authorized to access.",
+                    f"You don't have permission to generate an invoice for "
+                    f"'{cart.dispensary.name}'.",
                 )
                 return redirect("pharmacy:cart_list")
 
-    # Check if invoice can be generated
-    can_checkout, message = cart.can_generate_invoice()
-    if not can_checkout:
-        messages.error(request, f"Cannot generate invoice: {message}")
-        return redirect("pharmacy:view_cart", cart_id=cart.id)
-
-    # Enforce NHIA authorization before billing
-    auth_ok, auth_message = cart.prescription.check_nhia_authorization()
-    if not auth_ok:
-        messages.error(request, f"Cannot generate invoice: {auth_message}")
-        return redirect("pharmacy:view_cart", cart_id=cart.id)
-
-    # Validate that user selected items (sent via POST)
-    # Note: For now, we'll generate invoice for all available items
-    # but log which items were checked in the UI for reference
     selected_items = request.POST.getlist("selected_item")
     if not selected_items:
         messages.warning(
             request,
-            "⚠️ No specific items were selected in the UI. All items with sufficient stock will be included in the invoice.",
+            "⚠️ No specific items were selected in the UI. All items with "
+            "sufficient stock will be included in the invoice.",
         )
     else:
         messages.info(
@@ -696,44 +449,16 @@ def generate_invoice_from_cart(request, cart_id):
         )
 
     try:
-        with transaction.atomic():
-            # Calculate patient payable amount
-            patient_payable = cart.get_patient_payable()
-
-            # Get cart items count
-            cart_items_count = cart.items.count()
-
-            # Create invoice
-            invoice = create_pharmacy_invoice(
-                request, cart.prescription, patient_payable
-            )
-
-            if not invoice:
-                messages.error(request, "Failed to create invoice")
-                return redirect("pharmacy:view_cart", cart_id=cart.id)
-
-            # Update cart
-            cart.invoice = invoice
-            cart.status = "invoiced"
-            cart.save()
-
-            # Log audit action
-            log_audit_action(
-                request.user,
-                "create",
-                cart,
-                f"Generated invoice from cart with {cart_items_count} items",
-            )
-
-            messages.success(
-                request, f"Invoice generated with {cart_items_count} items."
-            )
-
-            return redirect("pharmacy:view_cart", cart_id=cart.id)
-
+        generate_cart_invoice(cart, request.user, request)
+    except CartActionError as e:
+        messages.error(request, f"Cannot generate invoice: {e}")
+        return redirect("pharmacy:view_cart", cart_id=cart.id)
     except Exception as e:
         messages.error(request, f"Error generating invoice: {str(e)}")
         return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+    messages.success(request, f"Invoice generated with {cart.items.count()} items.")
+    return redirect("pharmacy:view_cart", cart_id=cart.id)
 
 
 @login_required
@@ -744,127 +469,33 @@ def pay_cart_from_wallet(request, cart_id):
     Auto-generates the invoice first if the cart is active and ready.
     On success the cart is marked 'paid' and ready for dispensing.
     """
-    from billing.models import Payment as PharmacyPayment
-    from patients.models import PatientWallet
-    from core.models import InternalNotification
-
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
-
-    # Validate pharmacist access to cart's dispensary
-    if not request.user.is_superuser and cart.dispensary:
-        if hasattr(request.user, "can_access_dispensary"):
-            if not request.user.can_access_dispensary(cart.dispensary):
-                messages.error(
-                    request,
-                    f"You don't have permission to process payment for '{cart.dispensary.name}'. "
-                    f"This cart is assigned to a dispensary you're not authorized to access.",
-                )
-                return redirect("pharmacy:cart_list")
 
     if request.method != "POST":
         return redirect("pharmacy:view_cart", cart_id=cart.id)
 
     try:
-        with transaction.atomic():
-            # Ensure there is an invoice to pay; auto-generate if cart is active & ready
-            invoice = cart.invoice
-            if invoice is None:
-                can_checkout, message = cart.can_generate_invoice()
-                if not can_checkout:
-                    messages.error(request, f"Cannot process payment: {message}")
-                    return redirect("pharmacy:view_cart", cart_id=cart.id)
-
-                auth_ok, auth_message = cart.prescription.check_nhia_authorization()
-                if not auth_ok:
-                    messages.error(request, f"Cannot process payment: {auth_message}")
-                    return redirect("pharmacy:view_cart", cart_id=cart.id)
-
-                invoice = create_pharmacy_invoice(
-                    request, cart.prescription, cart.get_patient_payable(), force_new=False
-                )
-                if not invoice:
-                    messages.error(request, "Failed to create invoice for payment.")
-                    return redirect("pharmacy:view_cart", cart_id=cart.id)
-
-                cart.invoice = invoice
-                cart.status = "invoiced"
-                cart.save(update_fields=["invoice", "status"])
-
-            # Already paid?
-            if invoice.status == "paid":
-                if cart.status in ["active", "invoiced"]:
-                    cart.status = "paid"
-                    cart.save(update_fields=["status"])
-                messages.info(request, "This invoice has already been paid.")
-                return redirect("pharmacy:view_cart", cart_id=cart.id)
-
-            amount = invoice.get_balance()
-            if amount <= 0:
-                messages.info(request, "Nothing to pay on this invoice.")
-                return redirect("pharmacy:view_cart", cart_id=cart.id)
-
-            # Get/create patient wallet
-            patient = cart.prescription.patient
-            wallet, _ = PatientWallet.objects.get_or_create(
-                patient=patient, defaults={"balance": Decimal("0.00")}
-            )
-
-            # Block if insufficient balance unless explicitly allowed (wallet may go negative)
-            allow_negative = request.POST.get("allow_negative") == "true"
-            if wallet.balance < amount and not allow_negative:
-                messages.error(
-                    request,
-                    f"Insufficient wallet balance. Available: ₦{wallet.balance:.2f}, "
-                    f"required: ₦{amount:.2f}. Top up the wallet or allow an overdraft.",
-                )
-                return redirect("pharmacy:view_cart", cart_id=cart.id)
-
-            # Record payment. billing signals handle the rest: a wallet-method
-            # payment debits the patient wallet once, and invoice.amount_paid +
-            # status are recomputed from the sum of payments. Doing those here
-            # too would double-debit the wallet.
-            payment = PharmacyPayment.objects.create(
-                invoice=invoice,
-                amount=amount,
-                payment_method="wallet",
-                received_by=request.user,
-                notes=(
-                    f"Payment for prescription #{cart.prescription.id} "
-                    f"(Cart #{cart.id})"
-                ),
-            )
-            invoice.refresh_from_db()
-
-            # Update cart + prescription
-            cart.status = "paid"
-            cart.save(update_fields=["status"])
-
-            prescription = cart.prescription
-            if hasattr(prescription, "payment_status"):
-                prescription.payment_status = "paid"
-                prescription.save(update_fields=["payment_status"])
-
-            log_audit_action(
-                request.user,
-                "create",
-                payment,
-                f"Wallet payment of ₦{amount:.2f} for cart #{cart.id} "
-                f"(prescription #{prescription.id})",
-            )
-
-            if prescription.doctor:
-                InternalNotification.objects.create(
-                    user=prescription.doctor,
-                    message=f"Wallet payment of ₦{amount:.2f} recorded for prescription #{prescription.id}",
-                )
-
-        messages.success(
-            request,
-            f"✅ Paid ₦{amount:.2f} from patient wallet. Cart is ready for dispensing.",
+        payment, amount = pay_cart_from_wallet_service(
+            cart,
+            request.user,
+            allow_negative=request.POST.get("allow_negative") == "true",
+            request=request,
         )
+    except CartActionError as e:
+        messages.error(request, f"Cannot process payment: {e}")
+        return redirect("pharmacy:view_cart", cart_id=cart.id)
     except Exception as e:
         messages.error(request, f"Error processing wallet payment: {str(e)}")
+        return redirect("pharmacy:view_cart", cart_id=cart.id)
 
+    if payment is None:
+        messages.info(request, "Nothing to pay on this invoice.")
+    else:
+        messages.success(
+            request,
+            f"✅ Paid ₦{amount:.2f} from patient wallet. "
+            f"Cart is ready for dispensing.",
+        )
     return redirect("pharmacy:view_cart", cart_id=cart.id)
 
 
@@ -877,303 +508,45 @@ def complete_dispensing_from_cart(request, cart_id):
     """
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
 
-    # Validate pharmacist access to cart's dispensary
-    if not request.user.is_superuser and cart.dispensary:
-        if hasattr(request.user, "can_access_dispensary"):
-            if not request.user.can_access_dispensary(cart.dispensary):
-                messages.error(
-                    request,
-                    f"You don't have permission to dispense from '{cart.dispensary.name}'. "
-                    f"This cart is assigned to a dispensary you're not authorized to access.",
-                )
-                return redirect("pharmacy:cart_list")
-
-    # Check if dispensing can be completed
-    can_complete, message = cart.can_complete_dispensing()
-    if not can_complete:
-        messages.error(request, f"Cannot complete dispensing: {message}")
-        return redirect("pharmacy:view_cart", cart_id=cart.id)
-
-    # Enforce NHIA authorization before dispensing
-    auth_ok, auth_message = cart.prescription.check_nhia_authorization()
-    if not auth_ok:
-        messages.error(request, f"Cannot complete dispensing: {auth_message}")
-        return redirect("pharmacy:view_cart", cart_id=cart.id)
+    # Per-item quantities the pharmacist typed on the cart page.
+    quantities = {}
+    for key, value in request.POST.items():
+        if key.startswith("dispense_qty_") and value:
+            item_id = key.removeprefix("dispense_qty_")
+            if item_id.isdigit():
+                quantities[int(item_id)] = value
 
     try:
-        with transaction.atomic():
-            # Lock the cart row so a double-submit (or two pharmacists on the
-            # same cart) serialize: the second txn blocks here, then re-reads the
-            # updated quantity_dispensed below and skips already-dispensed items.
-            cart = (
-                PrescriptionCart.objects.select_for_update()
-                .get(id=cart.id)
-            )
-
-            dispensed_count = 0
-            partially_dispensed_count = 0
-            skipped_count = 0
-
-            for cart_item in cart.items.all():
-                p_item = cart_item.prescription_item
-                # Use substitute medication if present, otherwise use prescribed medication
-                medication = cart_item.get_effective_medication()
-                dispensary = cart.dispensary
-
-                # Get remaining quantity to dispense
-                remaining_qty = cart_item.get_remaining_quantity()
-
-                if remaining_qty <= 0:
-                    # Already fully dispensed
-                    continue
-
-                # Check if pharmacist specified a custom quantity
-                custom_qty_key = f"dispense_qty_{cart_item.id}"
-                custom_quantity = request.POST.get(custom_qty_key)
-
-                if custom_quantity:
-                    # Pharmacist specified a custom quantity
-                    try:
-                        quantity_to_dispense = int(custom_quantity)
-
-                        # Validate the custom quantity
-                        available_to_dispense = (
-                            cart_item.get_available_to_dispense_now()
-                        )
-
-                        if quantity_to_dispense <= 0:
-                            # Skip items with 0 quantity
-                            continue
-
-                        if quantity_to_dispense > available_to_dispense:
-                            messages.error(
-                                request,
-                                f"Cannot dispense {quantity_to_dispense} of {medication.name}. Only {available_to_dispense} available.",
-                            )
-                            return redirect("pharmacy:view_cart", cart_id=cart.id)
-
-                    except (ValueError, TypeError):
-                        messages.error(
-                            request, f"Invalid quantity for {medication.name}."
-                        )
-                        return redirect("pharmacy:view_cart", cart_id=cart.id)
-                else:
-                    # No custom quantity specified, use automatic logic
-                    # Get available quantity to dispense now
-                    available_to_dispense = cart_item.get_available_to_dispense_now()
-
-                    if available_to_dispense <= 0:
-                        # No stock available, skip this item
-                        messages.warning(
-                            request,
-                            f"No stock available for {medication.name}. Will dispense when stock arrives.",
-                        )
-                        skipped_count += 1
-                        continue
-
-                    # Determine quantity to dispense (may be partial)
-                    quantity_to_dispense = available_to_dispense
-
-                # Create dispensing log
-                unit_price = cart_item.unit_price
-                total_price = Decimal(str(quantity_to_dispense)) * unit_price
-
-                DispensingLog.objects.create(
-                    prescription_item=p_item,
-                    dispensed_by=request.user,
-                    dispensed_quantity=quantity_to_dispense,
-                    unit_price_at_dispense=unit_price,
-                    total_price_for_this_log=total_price,
-                    dispensary=dispensary,
-                )
-
-                # Update inventory
-                # Try ActiveStoreInventory first
-                inventory_updated = False
-
-                if hasattr(dispensary, "active_store"):
-                    try:
-                        active_store = dispensary.active_store
-                        # Find any inventory with sufficient stock (or enough to meet the request).
-                        # select_for_update locks the row for the txn so a concurrent
-                        # dispense of the same stock can't oversell (lost update).
-                        inventory_items = ActiveStoreInventory.objects.select_for_update().filter(
-                            medication=medication,
-                            active_store=active_store,
-                            stock_quantity__gt=0,  # Get any item with stock
-                        ).first()
-
-                        if inventory_items:
-                            # Check if this inventory has enough stock
-                            if inventory_items.stock_quantity >= quantity_to_dispense:
-                                inventory_items.stock_quantity -= quantity_to_dispense
-                                inventory_items.save()
-                                inventory_updated = True
-                            else:
-                                # Not enough stock in this single item - try to find another with enough
-                                # First, try to find an item with exactly the required quantity
-                                exact_match = ActiveStoreInventory.objects.select_for_update().filter(
-                                    medication=medication,
-                                    active_store=active_store,
-                                    stock_quantity=quantity_to_dispense,
-                                ).first()
-
-                                if exact_match:
-                                    exact_match.stock_quantity -= (
-                                        quantity_to_dispense  # This will make it 0
-                                    )
-                                    exact_match.save()
-                                    inventory_updated = True
-                                else:
-                                    # Find any items with sufficient stock using aggregation
-                                    from django.db.models import (
-                                        Sum,
-                                        F,
-                                        Case,
-                                        When,
-                                        IntegerField,
-                                    )
-
-                                    inventory_summary = (
-                                        ActiveStoreInventory.objects.filter(
-                                            medication=medication,
-                                            active_store=active_store,
-                                            stock_quantity__gt=0,
-                                        ).aggregate(
-                                            total_stock=Sum("stock_quantity"),
-                                            count=Count("id"),
-                                        )
-                                    )
-
-                                    if (
-                                        inventory_summary["total_stock"]
-                                        >= quantity_to_dispense
-                                    ):
-                                        # We have enough stock across multiple items
-                                        # Deduct from inventory items in FIFO order (oldest batch first)
-                                        remaining_to_deduct = quantity_to_dispense
-                                        items_to_update = (
-                                            ActiveStoreInventory.objects.select_for_update()
-                                            .filter(
-                                                medication=medication,
-                                                active_store=active_store,
-                                                stock_quantity__gt=0,
-                                            )
-                                            .order_by("id")
-                                        )  # FIFO - oldest first
-
-                                        for inv_item in items_to_update:
-                                            if remaining_to_deduct <= 0:
-                                                break
-
-                                            if (
-                                                inv_item.stock_quantity
-                                                >= remaining_to_deduct
-                                            ):
-                                                inv_item.stock_quantity -= (
-                                                    remaining_to_deduct
-                                                )
-                                                inv_item.save()
-                                                inventory_updated = True
-                                                break
-                                            else:
-                                                # Deduct full amount and continue to next item
-                                                remaining_to_deduct -= (
-                                                    inv_item.stock_quantity
-                                                )
-                                                inv_item.stock_quantity = 0
-                                                inv_item.save()
-
-                    except Exception as e:
-                        # Log error but continue to try legacy inventory
-                        import logging
-
-                        logger = logging.getLogger(__name__)
-                        logger.warning(f"Error updating active store inventory: {e}")
-
-                # Update prescription item
-                p_item.quantity_dispensed_so_far += quantity_to_dispense
-                if p_item.quantity_dispensed_so_far >= p_item.quantity:
-                    p_item.is_dispensed = True
-                    p_item.dispensed_at = timezone.now()
-                p_item.save()
-
-                # Update cart item
-                cart_item.quantity_dispensed += quantity_to_dispense
-                cart_item.save()
-
-                # Track dispensing status
-                if quantity_to_dispense < remaining_qty:
-                    partially_dispensed_count += 1
-                    messages.info(
-                        request,
-                        f"Partially dispensed {medication.name}: {quantity_to_dispense} of {remaining_qty} remaining",
-                    )
-                else:
-                    dispensed_count += 1
-
-            # Update prescription status
-            prescription = cart.prescription
-            total_items = prescription.items.count()
-            fully_dispensed = prescription.items.filter(is_dispensed=True).count()
-
-            if fully_dispensed == total_items:
-                prescription.status = "dispensed"
-            elif fully_dispensed > 0:
-                prescription.status = "partially_dispensed"
-
-            prescription.save()
-
-            # Update cart status based on dispensing progress
-            if cart.is_fully_dispensed():
-                cart.status = "completed"
-                cart.save()
-
-                # Log audit action
-                log_audit_action(
-                    request.user,
-                    "update",
-                    cart,
-                    f"Completed full dispensing of all items from cart",
-                )
-
-                messages.success(
-                    request, f"✅ Successfully dispensed all items! Cart completed."
-                )
-                return redirect(
-                    "pharmacy:prescription_detail", prescription_id=prescription.id
-                )
-            else:
-                cart.status = "partially_dispensed"
-                cart.save()
-
-                # Log audit action
-                log_audit_action(
-                    request.user,
-                    "update",
-                    cart,
-                    f"Partial dispensing: {dispensed_count} fully dispensed, {partially_dispensed_count} partially dispensed, {skipped_count} skipped",
-                )
-
-                # Show detailed message
-                progress = cart.get_dispensing_progress()
-                messages.success(
-                    request,
-                    f"✅ Dispensed {dispensed_count + partially_dispensed_count} items. "
-                    f"Progress: {progress['percentage']}% complete. "
-                    f"{progress['remaining_quantity']} items still pending.",
-                )
-                messages.info(
-                    request,
-                    f"ℹ️ Cart remains active for pending items. You can dispense remaining items when stock becomes available.",
-                )
-
-                # Stay on cart page to show progress
-                return redirect("pharmacy:view_cart", cart_id=cart.id)
-
+        result = dispense_cart(cart, request.user, quantities)
+    except CartActionError as e:
+        messages.error(request, f"Cannot complete dispensing: {e}")
+        return redirect("pharmacy:view_cart", cart_id=cart.id)
     except Exception as e:
         messages.error(request, f"Error completing dispensing: {str(e)}")
         return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+    for note in result["notes"]:
+        messages.info(request, note)
+
+    if result["completed"]:
+        messages.success(request, "✅ Successfully dispensed all items! Cart completed.")
+        return redirect(
+            "pharmacy:prescription_detail", prescription_id=cart.prescription_id
+        )
+
+    progress = result["progress"]
+    messages.success(
+        request,
+        f"✅ Dispensed {result['dispensed'] + result['partial']} items. "
+        f"Progress: {progress['percentage']}% complete. "
+        f"{progress['remaining_quantity']} items still pending.",
+    )
+    messages.info(
+        request,
+        "ℹ️ Cart remains active for pending items. You can dispense remaining "
+        "items when stock becomes available.",
+    )
+    return redirect("pharmacy:view_cart", cart_id=cart.id)
 
 
 @login_required
@@ -1555,78 +928,37 @@ def substitute_cart_item(request, item_id):
     cart_item = get_object_or_404(PrescriptionCartItem, id=item_id)
     cart = cart_item.cart
 
-    # Validate pharmacist access to cart's dispensary
-    if not request.user.is_superuser and cart.dispensary:
-        if hasattr(request.user, "can_access_dispensary"):
-            if not request.user.can_access_dispensary(cart.dispensary):
-                messages.error(
-                    request,
-                    f"You don't have permission to substitute items for '{cart.dispensary.name}'. "
-                    f"This cart is assigned to a dispensary you're not authorized to access.",
-                )
-                return redirect("pharmacy:cart_list")
-
-    # Check if substitution is allowed
-    can_sub, message = cart_item.can_substitute()
-    if not can_sub:
-        messages.error(request, f"Cannot substitute: {message}")
-        return redirect("pharmacy:view_cart", cart_id=cart.id)
-
     if request.method == "POST":
         substitute_med_id = request.POST.get("substitute_medication_id")
         reason = request.POST.get("reason", "").strip()
 
-        # Validate inputs
         if not substitute_med_id:
             messages.error(request, "Please select a substitute medication")
-            return redirect("pharmacy:view_cart", cart_id=cart.id)
-
-        if not reason:
-            messages.error(request, "Please provide a reason for substitution")
             return redirect("pharmacy:view_cart", cart_id=cart.id)
 
         try:
             from pharmacy.models import Medication
 
             substitute_med = Medication.objects.get(id=substitute_med_id)
-
-            # Perform substitution
-            with transaction.atomic():
-                cart_item.substitute_with(substitute_med, reason, request.user)
-
-                # Log audit action
-                log_audit_action(
-                    request.user,
-                    "update",
-                    cart_item,
-                    f"Substituted {cart_item.prescription_item.medication.name} with {substitute_med.name}. Reason: {reason}",
-                )
-
-                messages.success(
-                    request,
-                    f"✅ Successfully substituted {cart_item.prescription_item.medication.name} "
-                    f"with {substitute_med.name} ({substitute_med.strength or ''} {substitute_med.dosage_form or ''})",
-                )
-
-                # Check if substitution resolved stock issues
-                cart_item.update_available_stock()
-                if cart_item.available_stock >= cart_item.quantity:
-                    messages.info(
-                        request,
-                        f"✓ {substitute_med.name} has sufficient stock ({cart_item.available_stock} units available)",
-                    )
-                else:
-                    messages.warning(
-                        request,
-                        f"⚠️ Only {cart_item.available_stock} units of {substitute_med.name} available (need {cart_item.quantity})",
-                    )
-
+            note = substitute_cart_item_service(
+                cart_item, substitute_med, reason, request.user
+            )
         except Medication.DoesNotExist:
             messages.error(request, "Invalid substitute medication selected")
-        except ValidationError as e:
-            messages.error(request, f"Substitution failed: {str(e)}")
+            return redirect("pharmacy:view_cart", cart_id=cart.id)
+        except CartActionError as e:
+            messages.error(request, f"Cannot substitute: {e}")
+            return redirect("pharmacy:view_cart", cart_id=cart.id)
         except Exception as e:
             messages.error(request, f"Error during substitution: {str(e)}")
+            return redirect("pharmacy:view_cart", cart_id=cart.id)
+
+        messages.success(
+            request,
+            f"✅ Successfully substituted "
+            f"{cart_item.prescription_item.medication.name} with {substitute_med.name}",
+        )
+        messages.info(request, note)
 
     return redirect("pharmacy:view_cart", cart_id=cart.id)
 
@@ -1640,43 +972,12 @@ def remove_substitution(request, item_id):
     cart_item = get_object_or_404(PrescriptionCartItem, id=item_id)
     cart = cart_item.cart
 
-    # Validate pharmacist access to cart's dispensary
-    if not request.user.is_superuser and cart.dispensary:
-        if hasattr(request.user, "can_access_dispensary"):
-            if not request.user.can_access_dispensary(cart.dispensary):
-                messages.error(
-                    request,
-                    f"You don't have permission to remove substitutions for '{cart.dispensary.name}'. "
-                    f"This cart is assigned to a dispensary you're not authorized to access.",
-                )
-                return redirect("pharmacy:cart_list")
-
-    if not cart_item.is_substituted():
-        messages.warning(request, "This item is not substituted")
-        return redirect("pharmacy:view_cart", cart_id=cart.id)
-
     try:
-        with transaction.atomic():
-            original_med = cart_item.prescription_item.medication
-            substitute_med = cart_item.substitute_medication
-
-            cart_item.remove_substitution()
-
-            # Log audit action
-            log_audit_action(
-                request.user,
-                "update",
-                cart_item,
-                f"Removed substitution of {substitute_med.name}, reverted to {original_med.name}",
-            )
-
-            messages.success(
-                request,
-                f"✅ Reverted to original medication: {original_med.name} "
-                f"({original_med.strength or ''} {original_med.dosage_form or ''})",
-            )
-
+        messages.success(request, undo_substitution(cart_item, request.user))
+    except CartActionError as e:
+        messages.warning(request, str(e))
     except Exception as e:
         messages.error(request, f"Error removing substitution: {str(e)}")
 
     return redirect("pharmacy:view_cart", cart_id=cart.id)
+

@@ -14,6 +14,7 @@ from django.db.models.signals import post_save, pre_delete, m2m_changed
 from django.contrib.auth.models import Permission
 from django.utils.translation import gettext_lazy as _
 from saas.models import TenantModel
+from core.background_writer import submit
 import json
 import logging
 
@@ -536,26 +537,20 @@ class ActivityLogMiddleware:
                 success=response.status_code < 400,
                 level='info',
             )
-            import threading
-            threading.Thread(
-                target=self._write_log,
-                args=(log_kwargs,),
-                daemon=True,
-            ).start()
+            # One shared worker persists these, so the writes serialise rather
+            # than racing each other (and the request) for the database.
+            submit(self._write_log, log_kwargs)
 
         return response
 
     @staticmethod
     def _write_log(log_kwargs):
-        """Persist the activity log off the request thread, closing the
-        thread-local DB connection afterwards to avoid leaking connections."""
-        from django.db import connection
-        try:
-            ActivityLog.log_activity(**log_kwargs)
-        except Exception as e:
-            logger.error(f"Background activity log write failed: {e}")
-        finally:
-            connection.close()
+        """Persist one activity log entry.
+
+        Error handling and connection cleanup belong to the writer, so this is
+        the same unit of work whether it runs inline or on the worker.
+        """
+        ActivityLog.log_activity(**log_kwargs)
     
     def _categorize_request(self, request):
         """Categorize the request based on URL path"""

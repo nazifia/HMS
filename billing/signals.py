@@ -134,6 +134,11 @@ def handle_admission_wallet_debit(sender, instance, created, **kwargs):
     """Automatically deduct admission fees from patient's wallet when created or updated."""
     if kwargs.get('raw'):  # fixture loading: wallet state comes from the fixture
         return
+    # inpatient.services.admit_patient charges the admission fee itself, against
+    # the service the ward chose. Charging here as well billed the patient twice
+    # for the same admission.
+    if created and getattr(instance, '_charge_handled', False):
+        return
     # Only process admitted patients with a bed
     if instance.status != 'admitted' or not instance.bed:
         return

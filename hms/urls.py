@@ -20,6 +20,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponse
 from core.views import home_view
+from core.api.dashboard import dashboard as api_dashboard
 
 
 def empty_sw(request):
@@ -37,6 +38,8 @@ urlpatterns = [
     path('saas/', include('saas.urls')),
     path('accounts/', include('accounts.urls')),
     path('api/accounts/', include('accounts.api.urls')),  # User management API
+    path('api/specialty/', include('core.api.urls')),  # The 18 specialty modules
+    path('api/dashboard/', api_dashboard, name='api_dashboard'),  # Mobile home screen
     path('dashboard/', include('dashboard.urls')),
     path('patients/', include('patients.urls')),
     path('doctors/', include('doctors.urls')),

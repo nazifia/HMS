@@ -1254,14 +1254,17 @@ class PatientWallet(TenantModel):
                 user=user,
             )
 
-            # Link the transactions
+            # Link the transactions. Order by id as well as created_at: the
+            # clock resolution is coarser than these writes, so two transfers
+            # of the same amount can share a timestamp and latest() would then
+            # pick an arbitrary one of them.
             sender_transaction = self.transactions.filter(
                 transaction_type="transfer_out", amount=amount
-            ).latest("created_at")
+            ).order_by("-created_at", "-id").first()
 
             recipient_transaction = recipient_wallet.transactions.filter(
                 transaction_type="transfer_in", amount=amount
-            ).latest("created_at")
+            ).order_by("-created_at", "-id").first()
 
             # Update transfer relationships
             sender_transaction.transfer_to_wallet = recipient_wallet

@@ -85,6 +85,23 @@ _CLERKING_ROWS = {
 }
 
 
+def clerking_schema():
+    """The proforma as data: name, label, placeholder and size per section.
+
+    Lets clients (the mobile app) render the same 13 sections, in the same
+    clinical order, without a second copy of the labels going stale.
+    """
+    return [
+        {
+            'name': name,
+            'label': CLERKING_LABELS[name],
+            'placeholder': _CLERKING_PLACEHOLDERS[name],
+            'rows': _CLERKING_ROWS.get(name, 2),
+        }
+        for name in CLERKING_FIELDS
+    ]
+
+
 def clerking_widgets():
     """Return Bootstrap textarea widgets for every clerking field."""
     return {

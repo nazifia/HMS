@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 
 from .models import TestRequest, TestResult, Test, TestParameter, TestResultParameter
+from .services import sync_request_completion
 from .enhanced_forms import ManualResultEntryForm
 from patients.models import Patient
 
@@ -124,18 +125,15 @@ def handle_manual_result_submission(request, test_request, lab_staff):
                 action = request.POST.get('action', 'save_draft')
                 
                 if action == 'submit_result':
-                    # Mark as completed and update test request status
+                    # Submitting is a sign-off, so stamp who and when, then let
+                    # the shared rule decide whether the request is complete.
                     test_result.verified_by = request.user
+                    test_result.verified_date = timezone.now()
                     test_result.save()
-                    
-                    # Check if all tests in the request have results
-                    total_tests = test_request.tests.count()
-                    completed_tests = TestResult.objects.filter(test_request=test_request).count()
-                    
-                    if completed_tests >= total_tests:
-                        test_request.status = 'completed'
-                        test_request.save()
-                    
+
+                    sync_request_completion(test_request)
+
+
                     messages.success(
                         request,
                         f'Result submitted successfully for {form.cleaned_data["test"].name}. '

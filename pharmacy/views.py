@@ -48,6 +48,17 @@ from .models import (
 )
 from accounts.models import CustomUser
 from patients.models import Patient
+
+# Procurement rules live in purchase_services so the HTML views and the mobile
+# API share one implementation of the money path.
+from .purchase_services import (
+    PurchaseActionError,
+    approve_purchase as approve_purchase_service,
+    receive_delivery,
+    record_payment,
+    reject_purchase as reject_purchase_service,
+    submit_for_approval,
+)
 from .forms import (
     MedicationForm,
     MedicationCategoryForm,
@@ -4562,118 +4573,39 @@ from pharmacy.models import Patient, Prescription, PrescriptionItem, Purchase
 @permission_required("pharmacy.edit")
 def process_purchase_payment(request, purchase_id):
     """View for processing purchase payment"""
-    from django.db import transaction
-    from django.utils import timezone
-    from django.contrib import messages
-
     purchase = get_object_or_404(Purchase, id=purchase_id)
 
-    # Check permissions
-    if not (
-        request.user.is_superuser
-        or request.user.has_perm("pharmacy.can_process_payments")
-    ):
-        messages.error(request, "You do not have permission to process payments.")
+    if request.method != "POST":
         return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
-    # Check if purchase can be paid
-    if purchase.approval_status != "approved":
-        messages.error(request, "Only approved purchases can be paid.")
+    try:
+        payment, purchase = record_payment(
+            purchase,
+            request.user,
+            request.POST.get("payment_amount"),
+            request.POST.get("payment_method"),
+            reference=request.POST.get("payment_reference", ""),
+            notes=request.POST.get("payment_notes", ""),
+        )
+    except PurchaseActionError as e:
+        messages.error(request, str(e))
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
+    except Exception as e:
+        messages.error(request, f"Error processing payment: {str(e)}")
         return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     if purchase.payment_status == "paid":
-        messages.warning(request, "This purchase has already been paid.")
-        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
-    if purchase.delivery_status == "pending":
-        messages.error(
+        messages.success(
             request,
-            "Payment is only allowed after goods have been received. "
-            "Record a delivery for this purchase first.",
+            f"Payment of ₦{payment.amount:,.2f} processed. "
+            f"Purchase #{purchase.invoice_number} fully paid.",
         )
-        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
-    if request.method == "POST":
-        payment_amount = request.POST.get("payment_amount")
-        payment_method = request.POST.get("payment_method")
-        payment_reference = request.POST.get("payment_reference", "")
-        payment_notes = request.POST.get("payment_notes", "")
-
-        try:
-            from decimal import Decimal, InvalidOperation
-
-            try:
-                payment_amount = Decimal(payment_amount).quantize(Decimal("0.01"))
-            except (InvalidOperation, TypeError):
-                raise ValueError("Invalid payment amount.")
-
-            # Validate payment amount
-            if payment_amount <= 0:
-                messages.error(request, "Payment amount must be greater than zero.")
-                return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
-            with transaction.atomic():
-                # Lock the row so concurrent payments can't both pass the
-                # outstanding-balance check and overpay.
-                purchase = Purchase.objects.select_for_update().get(id=purchase_id)
-
-                if purchase.payment_status == "paid":
-                    messages.warning(request, "This purchase has already been paid.")
-                    return redirect(
-                        "pharmacy:purchase_detail", purchase_id=purchase.id
-                    )
-
-                outstanding = purchase.get_outstanding_amount()
-                if payment_amount > outstanding:
-                    messages.error(
-                        request,
-                        f"Payment amount exceeds outstanding balance (₦{outstanding}).",
-                    )
-                    return redirect(
-                        "pharmacy:purchase_detail", purchase_id=purchase.id
-                    )
-
-                # Create payment record
-                from .models import PurchasePayment
-
-                PurchasePayment.objects.create(
-                    purchase=purchase,
-                    amount=payment_amount,
-                    payment_method=payment_method,
-                    transaction_id=payment_reference,
-                    notes=payment_notes,
-                    received_by=request.user,
-                    payment_date=timezone.now(),
-                )
-
-                # Update purchase payment status based on total paid
-                if payment_amount >= outstanding:
-                    purchase.payment_status = "paid"
-                    purchase.payment_date = timezone.now()
-                else:
-                    purchase.payment_status = "partial"
-                purchase.save(update_fields=["payment_status", "payment_date"])
-
-                if purchase.payment_status == "paid":
-                    messages.success(
-                        request,
-                        f"Payment of ₦{payment_amount:,.2f} processed. Purchase #{purchase.invoice_number} fully paid.",
-                    )
-                else:
-                    messages.success(
-                        request,
-                        f"Partial payment of ₦{payment_amount:,.2f} recorded. Outstanding: ₦{purchase.get_outstanding_amount():,.2f}.",
-                    )
-                return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
-        except ValueError:
-            messages.error(request, "Invalid payment amount.")
-            return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-        except Exception as e:
-            messages.error(request, f"Error processing payment: {str(e)}")
-            return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
-    # GET request - should not happen as we use modal
+    else:
+        messages.success(
+            request,
+            f"Partial payment of ₦{payment.amount:,.2f} recorded. "
+            f"Outstanding: ₦{purchase.get_outstanding_amount():,.2f}.",
+        )
     return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
 
@@ -4923,63 +4855,38 @@ def delete_purchase_item(request, item_id):
 @permission_required("pharmacy.edit")
 def submit_purchase_for_approval(request, purchase_id):
     """View for submitting purchase for approval"""
-    from django.db import transaction
-    from django.utils import timezone
-
     purchase = get_object_or_404(Purchase, id=purchase_id)
 
-    # Check if purchase can be submitted
-    if purchase.approval_status != "draft":
-        messages.error(
-            request, "This purchase has already been submitted or processed."
-        )
-        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
-    if not purchase.items.exists():
-        messages.error(request, "Cannot submit purchase without items.")
-        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
-    if purchase.total_amount <= 0:
-        messages.error(request, "Cannot submit purchase with zero total amount.")
-        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
     if request.method == "POST":
+        expected = request.POST.get("expected_delivery_date")
+        if expected:
+            from datetime import datetime
+
+            try:
+                expected = datetime.strptime(expected, "%Y-%m-%d").date()
+            except ValueError:
+                expected = None  # Invalid date format, skip
+
         try:
-            with transaction.atomic():
-                # Get form data
-                approval_notes = request.POST.get("approval_notes", "").strip()
-                priority_level = request.POST.get("priority_level", "normal")
-                expected_delivery_date = request.POST.get("expected_delivery_date")
-
-                # Update purchase
-                purchase.approval_status = "pending"
-                purchase.approval_updated_at = timezone.now()
-                purchase.submitted_for_approval_at = timezone.now()
-                purchase.approval_notes = approval_notes
-                purchase.priority_level = priority_level
-
-                # Set expected delivery date if provided
-                if expected_delivery_date:
-                    from datetime import datetime
-
-                    try:
-                        purchase.expected_delivery_date = datetime.strptime(
-                            expected_delivery_date, "%Y-%m-%d"
-                        ).date()
-                    except ValueError:
-                        pass  # Invalid date format, skip
-
-                purchase.save()
-
-                messages.success(
-                    request,
-                    f"Purchase #{purchase.invoice_number} submitted for approval successfully.",
-                )
-                return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
+            submit_for_approval(
+                purchase,
+                request.user,
+                notes=request.POST.get("approval_notes", "").strip(),
+                priority_level=request.POST.get("priority_level", "normal"),
+                expected_delivery_date=expected,
+            )
+        except PurchaseActionError as e:
+            messages.error(request, str(e))
+            return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
         except Exception as e:
             messages.error(request, f"Error submitting purchase: {str(e)}")
             return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
+
+        messages.success(
+            request,
+            f"Purchase #{purchase.invoice_number} submitted for approval successfully.",
+        )
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     # GET request - show confirmation page
     context = {
@@ -4997,71 +4904,26 @@ def submit_purchase_for_approval(request, purchase_id):
 @permission_required("pharmacy.edit")
 def approve_purchase(request, purchase_id):
     """View for approving a purchase"""
-    from django.db import transaction
-    from django.utils import timezone
-
     purchase = get_object_or_404(Purchase, id=purchase_id)
 
-    # Check permissions
-    if not (
-        request.user.is_superuser
-        or request.user.has_perm("pharmacy.can_approve_purchases")
-    ):
-        messages.error(request, "You do not have permission to approve purchases.")
-        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
-    # Check if purchase can be approved
-    if not purchase.can_be_approved():
-        messages.error(
-            request, "This purchase cannot be approved in its current status."
-        )
-        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
     if request.method == "POST":
-        approval_notes = request.POST.get("approval_notes", "")
-
         try:
-            with transaction.atomic():
-                # Lock the row and re-check status so two concurrent approvers
-                # cannot both approve the same purchase.
-                purchase = Purchase.objects.select_for_update().get(id=purchase_id)
-                if not purchase.can_be_approved():
-                    messages.error(
-                        request,
-                        "This purchase cannot be approved in its current status.",
-                    )
-                    return redirect(
-                        "pharmacy:purchase_detail", purchase_id=purchase.id
-                    )
-
-                purchase.approval_status = "approved"
-                purchase.current_approver = request.user
-                purchase.approval_notes = approval_notes
-                purchase.approval_updated_at = timezone.now()
-                purchase.save()
-
-                # Create approval record
-                from .models import PurchaseApproval
-
-                PurchaseApproval.objects.create(
-                    purchase=purchase,
-                    approver=request.user,
-                    status="approved",
-                    comments=approval_notes,
-                    decided_at=timezone.now(),
-                    step_order=1,
-                )
-
-                messages.success(
-                    request,
-                    f"Purchase #{purchase.invoice_number} approved. "
-                    "Stock will be added when the delivery is received.",
-                )
-                return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
+            approve_purchase_service(
+                purchase, request.user, request.POST.get("approval_notes", "")
+            )
+        except PurchaseActionError as e:
+            messages.error(request, str(e))
+            return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
         except Exception as e:
             messages.error(request, f"Error approving purchase: {str(e)}")
             return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
+
+        messages.success(
+            request,
+            f"Purchase #{purchase.invoice_number} approved. "
+            "Stock will be added when the delivery is received.",
+        )
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     # GET request - show confirmation page
     context = {
@@ -5077,61 +4939,22 @@ def approve_purchase(request, purchase_id):
 @permission_required("pharmacy.edit")
 def reject_purchase(request, purchase_id):
     """View for rejecting a purchase"""
-    from django.db import transaction
-    from django.utils import timezone
-
     purchase = get_object_or_404(Purchase, id=purchase_id)
 
-    # Check permissions
-    if not (
-        request.user.is_superuser
-        or request.user.has_perm("pharmacy.can_approve_purchases")
-    ):
-        messages.error(request, "You do not have permission to reject purchases.")
-        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
-    # Check if purchase can be rejected
-    if purchase.approval_status not in ["pending", "draft"]:
-        messages.error(
-            request, "This purchase cannot be rejected in its current status."
-        )
-        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
     if request.method == "POST":
-        rejection_reason = request.POST.get("rejection_reason", "")
-
-        if not rejection_reason:
-            messages.error(request, "Please provide a reason for rejection.")
-            return redirect("pharmacy:reject_purchase", purchase_id=purchase.id)
-
         try:
-            with transaction.atomic():
-                purchase.approval_status = "rejected"
-                purchase.current_approver = request.user
-                purchase.approval_notes = rejection_reason
-                purchase.approval_updated_at = timezone.now()
-                purchase.save()
-
-                # Create approval record
-                from .models import PurchaseApproval
-
-                PurchaseApproval.objects.create(
-                    purchase=purchase,
-                    approver=request.user,
-                    status="rejected",
-                    comments=rejection_reason,
-                    decided_at=timezone.now(),
-                    step_order=1,
-                )
-
-                messages.success(
-                    request, f"Purchase #{purchase.invoice_number} rejected."
-                )
-                return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
+            reject_purchase_service(
+                purchase, request.user, request.POST.get("rejection_reason", "")
+            )
+        except PurchaseActionError as e:
+            messages.error(request, str(e))
+            return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
         except Exception as e:
             messages.error(request, f"Error rejecting purchase: {str(e)}")
             return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
+
+        messages.success(request, f"Purchase #{purchase.invoice_number} rejected.")
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     # GET request - show confirmation page
     context = {
@@ -5148,67 +4971,16 @@ def reject_purchase(request, purchase_id):
 def receive_purchase_delivery(request, purchase_id):
     """Record goods received against an approved purchase (supports partial
     deliveries). Stock enters the bulk store here, not at approval."""
-    from django.db import transaction
-    from .models import Purchase
-
     purchase = get_object_or_404(Purchase, id=purchase_id)
 
-    if not purchase.can_receive_delivery():
-        messages.error(
-            request,
-            "Deliveries can only be received for approved purchases that are "
-            "not yet fully received.",
-        )
-        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
     if request.method == "POST":
+        quantities = {
+            item.id: request.POST.get(f"received_qty_{item.id}", "").strip()
+            for item in purchase.items.all()
+        }
         try:
-            with transaction.atomic():
-                # Lock the row so concurrent receipts can't double-add stock.
-                purchase = Purchase.objects.select_for_update().get(id=purchase_id)
-                if not purchase.can_receive_delivery():
-                    messages.error(
-                        request, "This purchase can no longer receive deliveries."
-                    )
-                    return redirect(
-                        "pharmacy:purchase_detail", purchase_id=purchase.id
-                    )
-
-                received_quantities = {}
-                for item in purchase.items.all():
-                    raw = request.POST.get(f"received_qty_{item.id}", "").strip()
-                    if raw == "":
-                        continue
-                    try:
-                        received_quantities[item.id] = int(raw)
-                    except ValueError:
-                        raise ValueError(
-                            f"{item.medication.name}: invalid quantity '{raw}'."
-                        )
-
-                if not any(qty > 0 for qty in received_quantities.values()):
-                    messages.error(
-                        request, "Enter a received quantity for at least one item."
-                    )
-                    return redirect(
-                        "pharmacy:receive_purchase_delivery", purchase_id=purchase.id
-                    )
-
-                purchase.receive_items(received_quantities)
-
-            if purchase.delivery_status == "received":
-                messages.success(
-                    request,
-                    f"Purchase #{purchase.invoice_number} fully received into stock.",
-                )
-            else:
-                messages.success(
-                    request,
-                    f"Partial delivery recorded for Purchase #{purchase.invoice_number}.",
-                )
-            return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
-
-        except ValueError as e:
+            purchase = receive_delivery(purchase, quantities)
+        except PurchaseActionError as e:
             messages.error(request, str(e))
             return redirect(
                 "pharmacy:receive_purchase_delivery", purchase_id=purchase.id
@@ -5216,6 +4988,18 @@ def receive_purchase_delivery(request, purchase_id):
         except Exception as e:
             messages.error(request, f"Error receiving delivery: {str(e)}")
             return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
+
+        if purchase.delivery_status == "received":
+            messages.success(
+                request,
+                f"Purchase #{purchase.invoice_number} fully received into stock.",
+            )
+        else:
+            messages.success(
+                request,
+                f"Partial delivery recorded for Purchase #{purchase.invoice_number}.",
+            )
+        return redirect("pharmacy:purchase_detail", purchase_id=purchase.id)
 
     # GET - show receive form with outstanding quantities
     items = purchase.items.select_related("medication")

@@ -16,6 +16,12 @@ from django.views.decorators.http import require_http_methods
 from django.db import models
 from .models import Ward, Bed, Admission, DailyRound, NursingNote, ClinicalRecord, BedTransfer, WardTransfer
 from .forms import WardForm, BedForm, AdmissionForm, DischargeForm, DailyRoundForm, NursingNoteForm, AdmissionSearchForm, ClinicalRecordForm, PatientTransferForm
+from .services import (
+    InpatientActionError,
+    admit_patient,
+    discharge_patient as discharge_service,
+    transfer_patient as transfer_service,
+)
 from patients.models import Patient, PatientWallet, WalletTransaction, ClinicalNote
 from accounts.permissions import permission_required
 
@@ -528,8 +534,6 @@ def admission_detail(request, pk):
 @permission_required('inpatient.create')
 def create_admission(request):
     """View for creating a new admission"""
-    from django.db import transaction
-    from decimal import Decimal
     # Pre-fill patient_id if provided in GET parameters
     patient_id = request.GET.get('patient_id')
     initial_data = {}
@@ -569,157 +573,42 @@ def create_admission(request):
             messages.error(request, 'Please correct the errors below.')
         if form.is_valid():
             bed = form.cleaned_data['bed']
-            # Ensure bed is available and active at the time of admission
-            if not bed.is_active or bed.is_occupied:
-                messages.error(request, f'Selected bed {bed.bed_number} in {bed.ward.name} is not available. Please choose another bed.')
+            authorization_code = form.cleaned_data.get('authorization_code')
+            try:
+                admission, invoice = admit_patient(
+                    patient=form.cleaned_data['patient'],
+                    bed=bed,
+                    attending_doctor=form.cleaned_data['attending_doctor'],
+                    diagnosis=form.cleaned_data['diagnosis'],
+                    reason_for_admission=form.cleaned_data['reason_for_admission'],
+                    user=request.user,
+                    admission_notes=form.cleaned_data.get('admission_notes') or '',
+                    admission_date=form.cleaned_data.get('admission_date'),
+                    admission_service=form.cleaned_data.get('admission_service'),
+                    authorization_code=authorization_code,
+                )
+            except InpatientActionError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f'An error occurred during admission creation: {e}')
+                logger.exception('Error during admission creation.')
             else:
-                # Get authorization code if provided
-                authorization_code_id = request.POST.get('authorization_code')
-                authorization_code = None
-                if authorization_code_id:
-                    try:
-                        from nhia.models import AuthorizationCode
-                        authorization_code = AuthorizationCode.objects.get(id=authorization_code_id)
-                        # Verify the authorization code is valid
-                        if not authorization_code.is_valid():
-                            messages.error(request, "The provided authorization code is not valid.")
-                            return redirect('inpatient:create_admission')
-                        # Verify the authorization code is for this patient
-                        if authorization_code.patient != form.cleaned_data['patient']:
-                            messages.error(request, "The provided authorization code is not for this patient.")
-                            return redirect('inpatient:create_admission')
-                    except AuthorizationCode.DoesNotExist:
-                        messages.error(request, "The provided authorization code does not exist.")
-                        return redirect('inpatient:create_admission')
-                
-                admission = form.save(commit=False)
-                admission.authorization_code = authorization_code
-                try:
-                    with transaction.atomic():
-                        # admission = form.save(commit=False)  # already done above
-                        # Set default status if not present in form
-                        if not hasattr(admission, 'status') or not admission.status:
-                            admission.status = 'admitted'
-                        admission.save()
-                        # Update bed status
-                        bed.is_occupied = True
-                        bed.save()
-
-                        # Create and process admission charge
-                        logger.info(f"Attempting to process admission charge for patient: {admission.patient.get_full_name()}")
-
-                        try:
-                            admission_service = form.cleaned_data.get('admission_service')
-                            if not admission_service:
-                                messages.success(request, 'Admission created successfully. No Admission Fee service configured — no charge applied.')
-                                return redirect('inpatient:admission_detail', pk=admission.pk)
-                            logger.info(f'Found admission service: {admission_service.name} with price {admission_service.price}')
-                            
-                            # If authorization code is provided, mark as paid
-                            invoice_status = 'paid' if authorization_code else 'pending'
-                            payment_method = 'insurance' if authorization_code else None
-                            payment_date = timezone.now() if authorization_code else None
-                            amount_paid = admission_service.price if authorization_code else Decimal('0.00')
-                            
-                            # Create Invoice
-                            invoice = Invoice.objects.create(
-                                patient=admission.patient,
-                                invoice_date=timezone.now(),
-                                due_date=timezone.now() + timedelta(days=7), # Example: due in 7 days
-                                notes=form.cleaned_data['admission_notes'],
-                                subtotal=admission_service.price,
-                                tax_amount=0,
-                                discount_amount=0,
-                                total_amount=admission_service.price,
-                                amount_paid=amount_paid,
-                                payment_method=payment_method,
-                                payment_date=payment_date,
-                                status=invoice_status,
-                                admission=admission, # Link invoice to admission
-                                source_app='inpatient',
-                                created_by=request.user
-                            ) 
-                            # Create InvoiceItem
-                            InvoiceItem.objects.create(
-                                invoice=invoice,
-                                service=admission_service,
-                                quantity=1,
-                                unit_price=admission_service.price,
-                                total_amount=admission_service.price
-                            )
-                            
-                            # If authorization code is provided, don't deduct from wallet
-                            if not authorization_code:
-                                # Get or create wallet for the patient
-                                wallet, wallet_created = PatientWallet.objects.get_or_create(
-                                    patient=admission.patient,
-                                    defaults={'balance': Decimal('0.00'), 'is_active': True}
-                                )
-                                
-                                if wallet_created:
-                                    logger.info(f'Created new wallet for patient {admission.patient.get_full_name()}')
-                                else:
-                                    logger.info(f'Found existing wallet for patient {wallet.patient.get_full_name()} with balance {wallet.balance}')
-                                
-                                logger.info('Proceeding with wallet transaction (negative balance allowed).')
-                                
-                                # Deduct admission fee from wallet (allowing negative balance)
-                                wallet.debit(
-                                    amount=admission_service.price,
-                                    description=f'Admission fee for {admission.patient.get_full_name()} - {bed.ward.name}',
-                                    transaction_type='admission_fee',
-                                    user=request.user,
-                                    invoice=invoice,
-                                    admission=admission
-                                )
-                                logger.info(f'Deducted ₦{admission_service.price} from wallet. New balance: ₦{wallet.balance}')
-                                
-                                # Check if balance is negative and warn
-                                if wallet.balance < 0:
-                                    messages.warning(
-                                        request,
-                                        f'Patient wallet balance is now negative: ₦{wallet.balance}. '
-                                        f'Please add funds to avoid service interruptions. Daily charges will '
-                                        f'be automatically deducted at 12:00 AM.'
-                                    )
-                                else:
-                                    messages.info(
-                                        request,
-                                        f'Daily admission charges (₦{bed.ward.charge_per_day}) will be '
-                                        f'automatically deducted from the patient wallet at 12:00 AM each day.'
-                                    )
-                            
-                            # If authorization code was used, mark it as used
-                            if authorization_code:
-                                authorization_code.mark_as_used(f"Admission #{admission.id}")
-                                messages.success(
-                                    request,
-                                    f'Admission created successfully! Invoice #{invoice.invoice_number} '
-                                    f'generated and paid via NHIA authorization code. No daily charges will apply.'
-                                )
-                            else:
-                                messages.success(
-                                    request,
-                                    f'Admission created successfully! Invoice #{invoice.invoice_number} '
-                                    f'generated and admission fee deducted from wallet. Daily charges of '
-                                    f'₦{bed.ward.charge_per_day} will be automatically deducted at 12:00 AM.'
-                                )
-                            
-                            return redirect('inpatient:admission_detail', pk=admission.pk)
-
-                        except Service.DoesNotExist:
-                            messages.error(request, 'Admission Fee service not found. Please configure it in the billing settings.')
-                            logger.error('Admission Fee service not found.')
-                        except PatientWallet.DoesNotExist:
-                            messages.error(request, 'Patient wallet not found. Please create a wallet for the patient.')
-                            logger.error(f'Patient wallet not found for patient: {admission.patient.get_full_name()}')
-                        except Exception as e:
-                            messages.error(request, f'An error occurred during admission charge processing: {e}')
-                            logger.exception('Error during admission charge processing.')
-
-                except Exception as e:
-                    messages.error(request, f'An error occurred during admission creation: {e}')
-                    logger.exception('Error during admission creation.')
+                if invoice is None:
+                    messages.success(request, 'Admission created successfully. No Admission Fee service configured — no charge applied.')
+                elif authorization_code:
+                    messages.success(
+                        request,
+                        f'Admission created successfully! Invoice #{invoice.invoice_number} '
+                        f'generated and paid via NHIA authorization code. No daily charges will apply.'
+                    )
+                else:
+                    messages.success(
+                        request,
+                        f'Admission created successfully! Invoice #{invoice.invoice_number} '
+                        f'generated and admission fee deducted from wallet. Daily charges of '
+                        f'₦{bed.ward.charge_per_day} will be automatically deducted at 12:00 AM.'
+                    )
+                return redirect('inpatient:admission_detail', pk=admission.pk)
     else:
         # Pre-select the 'Admission Fee' service if it exists
         try:
@@ -771,53 +660,29 @@ def edit_admission(request, admission_id):
 
 @login_required
 @permission_required('inpatient.edit')
-@require_http_methods(["GET"])
 def transfer_patient(request, admission_id):
     """Handles both bed and ward transfers for a patient."""
     admission = get_object_or_404(Admission, id=admission_id, status='admitted')
-    
+
     if request.method == 'POST':
         form = PatientTransferForm(request.POST, current_bed=admission.bed)
         if form.is_valid():
-            new_bed = form.cleaned_data['new_bed']
-            transfer_type = form.cleaned_data['transfer_type']
-            notes = form.cleaned_data['notes']
-            
-            # Check if the new bed is available
-            if new_bed.is_occupied:
-                messages.error(request, f"Bed {new_bed.bed_number} is already occupied.")
-                return redirect('inpatient:transfer_patient', admission_id=admission.id)
-
-            # Create a transfer record
-            if transfer_type == 'bed':
-                BedTransfer.objects.create(
-                    admission=admission,
-                    old_bed=admission.bed,
-                    new_bed=new_bed,
-                    notes=notes
+            to_bed = form.cleaned_data['to_bed']
+            from_bed = admission.bed
+            try:
+                transfer_service(
+                    admission, to_bed,
+                    user=request.user,
+                    notes=form.cleaned_data.get('notes') or '',
                 )
-                messages.success(request, f"Patient transferred from bed {admission.bed.bed_number} to {new_bed.bed_number}.")
-            elif transfer_type == 'ward':
-                WardTransfer.objects.create(
-                    admission=admission,
-                    old_ward=admission.bed.ward,
-                    new_ward=new_bed.ward,
-                    notes=notes
-                )
-                messages.success(request, f"Patient transferred from ward {admission.bed.ward.name} to {new_bed.ward.name}.")
-
-            # Update admission and bed statuses
-            old_bed = admission.bed
-            old_bed.is_occupied = False
-            old_bed.save()
-            
-            new_bed.is_occupied = True
-            new_bed.save()
-            
-            admission.bed = new_bed
-            admission.save()
-            
-            return redirect('inpatient:admission_detail', pk=admission.id)
+            except InpatientActionError as e:
+                messages.error(request, str(e))
+            else:
+                if from_bed and from_bed.ward_id != to_bed.ward_id:
+                    messages.success(request, f"Patient transferred from ward {from_bed.ward.name} to {to_bed.ward.name}.")
+                else:
+                    messages.success(request, f"Patient transferred to bed {to_bed.bed_number}.")
+                return redirect('inpatient:admission_detail', pk=admission.id)
     else:
         form = PatientTransferForm(current_bed=admission.bed)
 
@@ -837,22 +702,23 @@ def discharge_patient(request, admission_id):
     admission = get_object_or_404(Admission, id=admission_id)
 
     if request.method == 'POST':
-        form = DischargeForm(request.POST, instance=admission)
+        # Bind to a separate copy: validation writes the POSTed status onto the
+        # instance, and the service needs to see the admission as it stands.
+        form = DischargeForm(request.POST, instance=Admission.objects.get(pk=admission.pk))
         if form.is_valid():
-            admission = form.save(commit=False)
-            admission.status = 'discharged'
-            admission.discharge_date = timezone.now()
-            admission.save()
-            logger.info(f"Admission {admission.id} status after save: {admission.status}")
-
-            # Update bed status
-            if admission.bed:
-                admission.bed.is_occupied = False
-                admission.bed.save()
-                logger.info(f"Bed {admission.bed.id} occupied status after save: {admission.bed.is_occupied}")
-
-            messages.success(request, f'Patient {admission.patient.get_full_name()} has been discharged successfully.')
-            return redirect('inpatient:admission_detail', pk=admission.id)
+            try:
+                discharge_service(
+                    admission,
+                    user=request.user,
+                    status=form.cleaned_data['status'],
+                    discharge_date=form.cleaned_data.get('discharge_date'),
+                    discharge_notes=form.cleaned_data.get('discharge_notes') or '',
+                )
+            except InpatientActionError as e:
+                messages.error(request, str(e))
+            else:
+                messages.success(request, f'Patient {admission.patient.get_full_name()} has been discharged successfully.')
+                return redirect('inpatient:admission_detail', pk=admission.id)
     else:
         form = DischargeForm(instance=admission)
 

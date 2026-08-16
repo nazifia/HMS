@@ -1,6 +1,7 @@
-from django.urls import path
+from django.urls import include, path
 from . import views
 from . import views_ajax
+from .api import urls as api_urls
 from .views_shared_wallets import (
     shared_wallet_list, create_shared_wallet, shared_wallet_detail,
     add_member_to_wallet, remove_member_from_wallet, add_funds_to_shared_wallet,
@@ -10,6 +11,7 @@ from .views_shared_wallets import (
 app_name = 'patients'
 
 urlpatterns = [
+    path('api/', include(api_urls)),
     path('', views.patient_list, name='list'),
     path('list/', views.patient_list, name='patient_list'),
     path('register/', views.register_patient, name='register'),

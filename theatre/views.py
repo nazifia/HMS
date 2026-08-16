@@ -111,6 +111,7 @@ from .forms import (
     SurgeryFilterForm,
     PreOperativeChecklistForm,
 )
+from .services import TheatreActionError, finalize_scheduling
 
 
 # Operation Theatre Views
@@ -578,108 +579,47 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form, team_formset, equipment_formset):
         from decimal import Decimal
-        from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
-        from datetime import timedelta
 
-        # Get authorization code if provided
-        authorization_code_id = self.request.POST.get("authorization_code")
         authorization_code = None
+        authorization_code_id = self.request.POST.get("authorization_code")
         if authorization_code_id:
-            try:
-                from nhia.models import AuthorizationCode
+            from nhia.models import AuthorizationCode
 
-                authorization_code = AuthorizationCode.objects.get(
-                    id=authorization_code_id
-                )
-                # Verify the authorization code is valid
-                if not authorization_code.is_valid():
-                    messages.error(
-                        self.request, "The provided authorization code is not valid."
-                    )
-                    return self.form_invalid(form, team_formset, equipment_formset)
-                # Verify the authorization code is for this patient
-                if authorization_code.patient != form.cleaned_data["patient"]:
-                    messages.error(
-                        self.request,
-                        "The provided authorization code is not for this patient.",
-                    )
-                    return self.form_invalid(form, team_formset, equipment_formset)
-            except AuthorizationCode.DoesNotExist:
+            authorization_code = AuthorizationCode.objects.filter(
+                id=authorization_code_id
+            ).first()
+            if authorization_code is None:
                 messages.error(
                     self.request, "The provided authorization code does not exist."
                 )
                 return self.form_invalid(form, team_formset, equipment_formset)
 
-        with transaction.atomic():
-            self.object = form.save()
-            team_formset.instance = self.object
-            team_formset.save()
-            equipment_formset.instance = self.object
-            equipment_formset.save()
+        source_referral = self._get_source_referral()
 
-            # Create an invoice for this surgery
-            # Get surgery fee from surgery type
-            surgery_fee = Decimal(str(self.object.surgery_type.fee))
-
-            # NHIA patients use authorization code (no fee charged to patient)
-            # Regular patients pay full surgery fee
-            if self.object.patient.patient_type == "nhia":
-                # NHIA patients: Surgery covered by authorization, no fee charged
-                patient_payable_fee = Decimal("0.00")
-                invoice_description = (
-                    f"Theatre Procedure: {self.object.surgery_type.name} (NHIA Covered)"
+        try:
+            with transaction.atomic():
+                # The invoice, the NHIA rule and the referral link live in
+                # theatre.services, shared with the API.
+                self.object, invoice = finalize_scheduling(
+                    form.save(commit=False),
+                    self.request.user,
+                    authorization_code=authorization_code,
+                    source_referral=source_referral,
+                    status=form.cleaned_data.get("status"),
                 )
-            else:
-                # Regular patients: Pay full surgery fee
-                patient_payable_fee = surgery_fee
-                invoice_description = (
-                    f"Theatre Procedure: {self.object.surgery_type.name}"
-                )
+                form.save_m2m()
+                team_formset.instance = self.object
+                team_formset.save()
+                equipment_formset.instance = self.object
+                equipment_formset.save()
 
-            subtotal = patient_payable_fee
-            tax_amount = Decimal("0.00")
-            total_amount = subtotal + tax_amount
-            due_date = self.object.scheduled_date.date() + timedelta(
-                days=7
-            )  # Example: due in 7 days
-
-            invoice = Invoice(
-                patient=self.object.patient,
-                invoice_date=self.object.scheduled_date,
-                due_date=due_date,
-                status="pending",
-                subtotal=subtotal,
-                tax_amount=tax_amount,
-                total_amount=total_amount,
-                amount_paid=Decimal("0.00"),
-                created_by=self.request.user,
-                source_app="theatre",
-            )
-            # NHIA patients pay nothing — auto-pay zero-amount invoice
-            if total_amount == Decimal("0.00"):
-                invoice._auto_pay_zero_amount = True
-            invoice.save()
-
-            # Update surgery with invoice and authorization code
-            self.object.invoice = invoice
-            self.object.authorization_code = authorization_code
-            # Only NHIA patients require authorization. An NHIA surgery is
-            # "pending" until an authorization code is supplied; regular
-            # patients never need one, so honor the status chosen on the form.
-            if self.object.patient.patient_type == "nhia":
-                self.object.status = "scheduled" if authorization_code else "pending"
-            else:
-                self.object.status = form.cleaned_data.get("status") or "scheduled"
-
-            # Link to the originating theatre referral and mark it handled
-            source_referral = self._get_source_referral()
-            if source_referral:
-                self.object.source_referral = source_referral
-                if source_referral.status in ("pending", "accepted"):
+                if source_referral and source_referral.status in ("pending", "accepted"):
                     source_referral.status = "accepted"
                     if not source_referral.assigned_doctor:
                         source_referral.assigned_doctor = self.request.user
-                    source_referral.save(update_fields=["status", "assigned_doctor", "updated_at"])
+                    source_referral.save(
+                        update_fields=["status", "assigned_doctor", "updated_at"]
+                    )
                     try:
                         from core.models import InternalNotification
 
@@ -692,40 +632,14 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
                         )
                     except Exception:
                         pass
-
-            self.object.save()
-
-            # Create a generic InvoiceItem for the surgery
-            theatre_service_category, _ = ServiceCategory.objects.get_or_create(
-                name="Theatre Services"
-            )
-            service, _ = Service.objects.get_or_create(
-                name=f"Theatre Procedure: {self.object.surgery_type.name}",
-                category=theatre_service_category,
-                defaults={
-                    "price": surgery_fee,
-                    "description": f"Theatre procedure: {self.object.surgery_type.name}",
-                },
-            )
-
-            InvoiceItem.objects.create(
-                invoice=invoice,
-                service=service,
-                description=invoice_description,
-                quantity=1,
-                unit_price=patient_payable_fee,
-                tax_percentage=service.tax_percentage,
-                tax_amount=Decimal("0.00"),
-                total_amount=patient_payable_fee,
-            )
-
-            # If authorization code was used, mark it as used
-            if authorization_code:
-                authorization_code.mark_as_used(f"Surgery #{self.object.id}")
+        except TheatreActionError as e:
+            messages.error(self.request, str(e))
+            return self.form_invalid(form, team_formset, equipment_formset)
 
         messages.success(
             self.request,
-            f"Surgery created successfully. Invoice #{invoice.invoice_number} generated and is {'ready (NHIA covered)' if total_amount == Decimal('0.00') else 'pending payment'}.",
+            f"Surgery created successfully. Invoice #{invoice.invoice_number} generated and is "
+            f"{'ready (NHIA covered)' if invoice.total_amount == Decimal('0.00') else 'pending payment'}.",
         )
         return redirect(self.get_success_url())
 

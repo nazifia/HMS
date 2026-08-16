@@ -48,8 +48,25 @@ class CardiologyRecord(TenantModel):
     follow_up_required = models.BooleanField(default=False)
     follow_up_date = models.DateField(blank=True, null=True)
     
-    # Authorization Code
-    authorization_code = models.CharField(max_length=50, blank=True, null=True, help_text="Authorization code from desk office")
+    # NHIA Authorization fields
+    requires_authorization = models.BooleanField(
+        default=False,
+        help_text="True if this NHIA patient cardiology record requires desk office authorization"
+    )
+    AUTHORIZATION_STATUS_CHOICES = (
+        ('not_required', 'Not Required'),
+        ('required', 'Required'),
+        ('pending', 'Pending Authorization'),
+        ('authorized', 'Authorized'),
+        ('rejected', 'Rejected'),
+    )
+    authorization_status = models.CharField(
+        max_length=20,
+        choices=AUTHORIZATION_STATUS_CHOICES,
+        default='not_required',
+        help_text="Status of authorization for this cardiology record"
+    )
+    authorization_code = models.ForeignKey('nhia.AuthorizationCode', on_delete=models.SET_NULL, null=True, blank=True, related_name='cardiology_records')
     
     notes = models.TextField(blank=True, null=True)
 

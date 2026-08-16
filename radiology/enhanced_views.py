@@ -6,6 +6,12 @@ from django.db import transaction
 from django.http import JsonResponse
 from .models import RadiologyOrder, RadiologyResult
 from .enhanced_forms import EnhancedRadiologyResultForm, RadiologyResultVerificationForm
+from .services import (
+    RadiologyActionError,
+    assert_can_add_result,
+    finalize_result as finalize_result_service,
+    verify_result as verify_result_service,
+)
 from patients.models import Patient
 
 
@@ -14,10 +20,11 @@ def enhanced_add_result(request, order_id):
     """Enhanced view for adding/editing radiology test results"""
     order = get_object_or_404(RadiologyOrder, pk=order_id)
 
-    # Check if result can be added to this order
-    can_add, message = order.can_add_result()
-    if not can_add:
-        messages.error(request, message)
+    # Same gate the API uses: authorization settled and payment made.
+    try:
+        assert_can_add_result(order)
+    except RadiologyActionError as e:
+        messages.error(request, str(e))
         return redirect('radiology:order_detail', order_id=order.id)
 
     # Check if result already exists
@@ -151,21 +158,17 @@ def verify_result(request, result_id):
     if request.method == 'POST':
         form = RadiologyResultVerificationForm(request.POST, instance=result)
         if form.is_valid():
-            with transaction.atomic():
-                result_obj = form.save(commit=False)
-                result_obj.result_status = 'verified'
-                result_obj.verified_date = timezone.now()
-                result_obj.save()
-                
-                # Add verification notes if provided
-                verification_notes = form.cleaned_data.get('verification_notes')
-                if verification_notes:
-                    if result_obj.verification_notes:
-                        result_obj.verification_notes += f"\n\n--- Verification on {timezone.now().strftime('%Y-%m-%d %H:%M')} ---\n{verification_notes}"
-                    else:
-                        result_obj.verification_notes = verification_notes
-                    result_obj.save()
-                
+            # Reload: validation writes the posted fields onto `result`, and the
+            # service needs the report as it stands.
+            try:
+                verify_result_service(
+                    RadiologyResult.objects.get(pk=result.pk),
+                    request.user,
+                    notes=form.cleaned_data.get('verification_notes') or '',
+                )
+            except RadiologyActionError as e:
+                messages.error(request, str(e))
+            else:
                 messages.success(request, 'Result verified successfully.')
                 return redirect('radiology:order_detail', order_id=result.order.id)
     else:
@@ -197,10 +200,12 @@ def finalize_result(request, result_id):
         return redirect('radiology:order_detail', order_id=result.order.id)
     
     if request.method == 'POST':
-        # Finalize the result
-        result.result_status = 'finalized'
-        result.save()
-        messages.success(request, 'Result finalized successfully.')
+        try:
+            finalize_result_service(result, request.user)
+        except RadiologyActionError as e:
+            messages.error(request, str(e))
+        else:
+            messages.success(request, 'Result finalized successfully.')
         return redirect('radiology:order_detail', order_id=result.order.id)
     
     context = {

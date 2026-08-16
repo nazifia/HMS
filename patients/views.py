@@ -802,22 +802,12 @@ def add_funds_to_wallet(request, patient_id):
     wallet, created = PatientWallet.objects.get_or_create(patient=patient)
 
     # Calculate outstanding amounts for display
-    from inpatient.models import Admission
-    from billing.models import Invoice
+    from .outstanding import patient_outstanding
 
-    active_admissions = Admission.objects.filter(patient=patient, status="admitted")
-
-    admission_outstanding = sum(
-        admission.get_outstanding_admission_cost() for admission in active_admissions
-    )
-
-    outstanding_invoices = Invoice.objects.filter(
-        patient=patient, status__in=["pending", "partially_paid"]
-    )
-
-    invoice_outstanding = sum(invoice.get_balance() for invoice in outstanding_invoices)
-
-    total_outstanding = admission_outstanding + invoice_outstanding
+    outstanding = patient_outstanding(patient)
+    admission_outstanding = outstanding["admissions"]
+    invoice_outstanding = outstanding["invoices"]
+    total_outstanding = outstanding["total"]
 
     if request.method == "POST":
         form = AddFundsForm(request.POST)

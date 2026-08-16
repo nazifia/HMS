@@ -141,11 +141,27 @@ STRICT_ACCESS_CONTROL = (
 
 # URLs that don't require any permission checks (public access)
 PUBLIC_URLS = [
+    # Token login for the mobile client: AllowAny by design, and the caller has
+    # no session yet so strict access control would bounce it to the login page.
+    "/api/accounts/login/",
+    # Staff picker ("choose a doctor"). Booking is done by reception, nurses
+    # and doctors, none of whom hold users.view, so the module-level gate would
+    # block the very people who need it. The endpoint still requires a signed-in
+    # user and returns only names, roles and departments of active staff.
+    "/api/accounts/staff/",
     # Add any custom public URLs here
 ]
 
 # Enable permission audit logging
 PERMISSION_AUDIT_ENABLED = True
+
+# Write activity logs on a background worker thread. Off under tests, where a
+# second thread writing to the test database races the test's own transaction
+# (on SQLite: "database table is locked"). Logging still happens — inline.
+TESTING = "test" in sys.argv or "PYTEST_CURRENT_TEST" in os.environ
+ACTIVITY_LOG_ASYNC = (
+    os.environ.get("ACTIVITY_LOG_ASYNC", "True") == "True" and not TESTING
+)
 
 # Debug permission checks (verbose logging)
 DEBUG_PERMISSIONS = DEBUG
@@ -176,6 +192,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.humanize",
     # Third-party apps
+    "rest_framework.authtoken",  # Token model for the mobile client
     "widget_tweaks",
     "crispy_forms",
     "crispy_bootstrap5",
@@ -242,6 +259,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Resolve DRF token auth into request.user before the permission middleware
+    # runs, so token clients are subject to the same access control as sessions.
+    "accounts.middleware.TokenAuthUserMiddleware",
     # Slides session expiry without a per-request session write (replaces
     # SESSION_SAVE_EVERY_REQUEST). Must run inside SessionMiddleware.
     "accounts.middleware.SlidingSessionMiddleware",

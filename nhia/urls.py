@@ -1,9 +1,11 @@
-from django.urls import path
+from django.urls import include, path
 from . import views
+from .api import urls as api_urls
 
 app_name = 'nhia'
 
 urlpatterns = [
+    path('api/', include(api_urls)),
     path('', views.nhia_dashboard, name='dashboard'),
     path('patients/', views.nhia_patient_list, name='nhia_patient_list'),
     path('register-patient/', views.register_patient_for_nhia, name='register_patient_for_nhia'),

@@ -18,6 +18,12 @@ def create_admission_invoice_and_deduct_wallet(sender, instance, created, **kwar
     """
     if kwargs.get('raw'):  # fixture loading: invoices/wallets come from the fixture
         return
+    # inpatient.services.admit_patient raises the invoice itself, against the
+    # service the ward chose and honouring any NHIA authorization code. This
+    # receiver is the fallback for admissions created some other way (admin,
+    # a script); running both bills the patient twice.
+    if getattr(instance, '_charge_handled', False):
+        return
     if created:
         try:
             # Check if patient is NHIA - NHIA patients are exempt from admission fees

@@ -33,10 +33,11 @@ class WalletRoutingTestCase(TestCase):
         self.wallet.refresh_from_db()
         self.assertEqual(self.wallet.balance, Decimal("70.00"))
 
-        # balance_after recorded on the latest txn matches the wallet.
+        # balance_after recorded on the latest txn matches the wallet. Both
+        # transactions can land in the same clock tick, so break the tie on id.
         latest = WalletTransaction.objects.filter(
             patient_wallet=self.wallet
-        ).latest("created_at")
+        ).order_by("-created_at", "-id").first()
         self.assertEqual(latest.balance_after, Decimal("70.00"))
 
     def test_credit_routes_to_shared_wallet(self):

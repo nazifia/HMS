@@ -865,6 +865,20 @@ class MedicationTransfer(TenantModel):
         """Check if transfer can be marked as delivered"""
         return self.status == "completed"
 
+    def approve_transfer(self, approving_user):
+        """Approve the transfer so it can be executed.
+
+        ponytail: the older bulk-store views set these three fields inline; they
+        still work and are left alone. New callers use this.
+        """
+        if not self.can_approve():
+            raise ValueError("Transfer cannot be approved in current status")
+
+        self.status = "in_transit"
+        self.approved_by = approving_user
+        self.approved_at = timezone.now()
+        self.save(update_fields=["status", "approved_by", "approved_at"])
+
     def execute_transfer(self, user):
         """Execute the transfer by moving stock from bulk store to active store with FIFO tracking"""
         if not self.can_execute():

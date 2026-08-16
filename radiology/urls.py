@@ -1,11 +1,13 @@
-from django.urls import path
+from django.urls import include, path
 from . import views
 from . import payment_views
 from . import enhanced_views
+from .api import urls as api_urls
 
 app_name = "radiology"
 
 urlpatterns = [
+    path("api/", include(api_urls)),
     # Add your radiology URLs here
     path("", views.index, name="index"),
     path("order/", views.order_radiology, name="order_general"),

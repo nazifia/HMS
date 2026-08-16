@@ -1,9 +1,11 @@
-from django.urls import path
+from django.urls import include, path
 from . import views
+from .api import urls as api_urls
 
 app_name = 'appointments'
 
 urlpatterns = [
+    path('api/', include(api_urls)),
     path('', views.appointment_list, name='list'),
     path('create/', views.create_appointment, name='create'),
     path('<int:appointment_id>/', views.appointment_detail, name='detail'),

@@ -15,6 +15,7 @@ from django.db import transaction
 from datetime import datetime, timedelta
 
 from inpatient.models import Admission
+from inpatient.services import charge_admission_for_date
 from patients.models import PatientWallet
 from billing.models import Invoice, InvoiceItem, Service
 from core.utils import send_notification_email
@@ -182,98 +183,15 @@ class Command(BaseCommand):
         Process daily charge for a single admission.
         Returns the charge amount if successful, None if skipped.
         """
-        # Check if patient is NHIA - NHIA patients are exempt from admission fees
-        if admission.patient.is_nhia_patient():
-            logger.info(f'Patient {admission.patient.get_full_name()} is NHIA - no daily charges applied.')
-            return None
-        
-        # Apply daily charges to all other patient types (regular, private pay, insurance, etc.)
-        # This ensures that admission charges are auto-deducted for all non-NHIA patients
-
-        # Apply daily charges to all other patient types (regular, private pay, insurance, etc.)
-        # This ensures that admission charges are auto-deducted for all non-NHIA patients
-
-        # Check if admission was active on the charge date
-        admission_date = admission.admission_date.date()
-        discharge_date = admission.discharge_date.date() if admission.discharge_date else None
-
-        # Skip if charge date is before admission
-        if charge_date < admission_date:
-            return None
-
-        # Skip if charge date is after discharge (if discharged)
-        if discharge_date and charge_date > discharge_date:
-            return None
-
-        # Calculate daily charge
-        if not admission.bed or not admission.bed.ward:
-            return None
-
-        daily_charge = admission.bed.ward.charge_per_day
-        if daily_charge <= 0:
-            return None
-
-        # Get or create patient wallet
-        wallet, created = PatientWallet.objects.get_or_create(
-            patient=admission.patient,
-            defaults={'balance': Decimal('0.00')}
+        amount, reason = charge_admission_for_date(
+            admission, charge_date, dry_run=dry_run
         )
-
-        if created and not dry_run:
-            logger.info(f'Created wallet for patient {admission.patient.get_full_name()}')
-
-        # Check if daily charge already exists for this date to prevent double deduction
-        from patients.models import WalletTransaction
-        existing_charge = WalletTransaction.objects.filter(
-            wallet=wallet,
-            admission=admission,
-            transaction_type='daily_admission_charge',
-            created_at__date=charge_date
-        ).exists()
-
-        if existing_charge and not dry_run:
-            logger.info(f'Daily charge already exists for {admission.patient.get_full_name()} on {charge_date} - skipping.')
-            return None
-
-        if dry_run:
-            return daily_charge
-
-        # Automatically deduct daily charge from patient wallet
-        with transaction.atomic():
-            try:
-                # Deduct from patient wallet
-                wallet.debit(
-                    amount=daily_charge,
-                    description=f"Daily admission charge for {charge_date} - {admission.bed.ward.name}",
-                    transaction_type="daily_admission_charge",
-                    user=admission.attending_doctor,
-                    admission=admission
-                )
-
-                logger.info(
-                    f'Daily charge of ₦{daily_charge} automatically deducted from wallet for '
-                    f'patient {admission.patient.get_full_name()} (Admission {admission.id}) on {charge_date}. '
-                    f'New wallet balance: ₦{wallet.balance}'
-                )
-
-                # Send notification if wallet balance is low or negative
-                if wallet.balance < 0:
-                    logger.warning(
-                        f'Patient {admission.patient.get_full_name()} wallet balance is now negative: ₦{wallet.balance}'
-                    )
-                elif wallet.balance < daily_charge:
-                    logger.warning(
-                        f'Patient {admission.patient.get_full_name()} wallet balance is low: ₦{wallet.balance}'
-                    )
-
-            except Exception as e:
-                logger.error(
-                    f'Failed to deduct daily charge for admission {admission.id}: {str(e)}'
-                )
-                # Continue processing other admissions even if one fails
-                return None
-
-        return daily_charge
+        if amount is None:
+            logger.info(
+                f'No daily charge for {admission.patient.get_full_name()} '
+                f'(Admission {admission.id}) on {charge_date}: {reason}'
+            )
+        return amount
 
     def process_outstanding_balance(self, admission, charge_date, recovery_strategy='balance_aware', max_daily_recovery=None, max_negative_balance=None, balance_threshold=None, dry_run=False):
         """

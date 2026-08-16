@@ -1,9 +1,11 @@
-from django.urls import path
+from django.urls import include, path
 from . import views, payment_views
+from .api import urls as api_urls
 
 app_name = "billing"
 
 urlpatterns = [
+    path("api/", include(api_urls)),
     path("", views.invoice_list, name="list"),
     path("create/", views.create_invoice, name="create"),
     path(

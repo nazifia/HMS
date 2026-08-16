@@ -54,6 +54,33 @@ class UserProfileSerializer(serializers.ModelSerializer):
             data = {**data, 'phone_number': normalize_nigerian_phone(data['phone_number'])}
         return super().to_internal_value(data)
 
+class StaffLookupSerializer(serializers.ModelSerializer):
+    """Just enough to pick a colleague from a list.
+
+    Deliberately narrow: this endpoint is open to any signed-in staff member,
+    so it carries no contact details, permissions or account flags.
+    """
+    full_name = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
+    department = serializers.CharField(
+        source='profile.department.name', read_only=True, default=''
+    )
+
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'first_name', 'last_name', 'full_name',
+                  'role', 'department']
+
+    def get_full_name(self, user):
+        return user.get_full_name() or user.username
+
+    def get_role(self, user):
+        role = user.roles.first()
+        if role:
+            return role.name
+        return getattr(getattr(user, 'profile', None), 'role', '') or ''
+
+
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(required=True)
     roles = RoleSerializer(many=True, read_only=True)

@@ -4,6 +4,7 @@ from core.medical_forms import MedicalRecordSearchForm
 from patients.models import Patient
 from doctors.models import Doctor
 from core.clinical_notes import CLERKING_FIELDS, CLERKING_LABELS, clerking_widgets
+from core.authorization_fields import limit_authorization_codes
 
 class AncRecordForm(forms.ModelForm):
     class Meta:
@@ -47,6 +48,9 @@ class AncRecordForm(forms.ModelForm):
         
         # Get all doctors
         self.fields['doctor'].queryset = Doctor.objects.select_related('user').all().order_by('user__first_name', 'user__last_name')
+
+        # The code is a link now, not free text: offer only this patient's.
+        limit_authorization_codes(self)
     
     def _format_patient_label(self, obj):
         """Format patient label with type information"""

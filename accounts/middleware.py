@@ -4,11 +4,11 @@ User Activity Monitoring Middleware
 
 import time
 import logging
-import threading
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.http import JsonResponse
 from django.conf import settings
+from core.background_writer import submit
 from .models import UserActivity, ActivityAlert, UserSession
 
 User = get_user_model()
@@ -20,6 +20,33 @@ from .strict_access_control import (
     PermissionAuditMiddleware,
     exempt_from_access_control,
 )
+
+
+class TokenAuthUserMiddleware:
+    """Resolve `Authorization: Token <key>` into request.user.
+
+    DRF authenticates inside the view, which is too late: StrictAccessControl
+    runs in process_view and would see AnonymousUser and redirect the API caller
+    to the HTML login page. Resolving the token here means token clients go
+    through the exact same permission checks as session users.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        header = request.META.get("HTTP_AUTHORIZATION", "")
+        if header.startswith("Token ") and not request.user.is_authenticated:
+            from rest_framework.authentication import TokenAuthentication
+            from rest_framework.exceptions import AuthenticationFailed
+
+            try:
+                result = TokenAuthentication().authenticate(request)
+            except AuthenticationFailed:
+                result = None
+            if result:
+                request.user = result[0]
+        return self.get_response(request)
 
 
 class SlidingSessionMiddleware:
@@ -103,25 +130,17 @@ class UserActivityMiddleware:
             self._touch_session(request)
             return response
 
-        # Log activity and check suspicious patterns in background to avoid blocking the response
-        threading.Thread(
-            target=self._log_and_check,
-            args=(request, response, response_time),
-            daemon=True,
-        ).start()
+        # Log activity and check suspicious patterns off the request thread so
+        # the response is not held up. One shared worker drains these, so the
+        # writes serialise instead of fighting each other for the database.
+        submit(self._log_and_check, request, response, response_time)
 
         return response
 
     def _log_and_check(self, request, response, response_time):
-        """Run activity logging and suspicious-activity checks off the request thread."""
-        from django.db import connection
-        try:
-            self.log_user_activity(request, response, response_time)
-            self.check_suspicious_activity(request, response)
-        except Exception as e:
-            logger.error(f"Background activity logging error: {e}")
-        finally:
-            connection.close()
+        """Activity logging and suspicious-activity checks, as one unit of work."""
+        self.log_user_activity(request, response, response_time)
+        self.check_suspicious_activity(request, response)
 
     def should_skip_tracking(self, request):
         """Check if URL should be skipped from tracking"""
@@ -359,36 +378,29 @@ class UserActivityMiddleware:
         user_id = request.user.pk
         ip_address = self.get_client_ip(request)
         user_agent = request.META.get("HTTP_USER_AGENT", "")
-        threading.Thread(
-            target=self._do_touch_session,
-            args=(user_id, session_key, ip_address, user_agent),
-            daemon=True,
-        ).start()
+        submit(self._do_touch_session, user_id, session_key, ip_address, user_agent)
 
     @staticmethod
     def _do_touch_session(user_id, session_key, ip_address, user_agent):
-        from django.db import connection
+        # Errors and connection cleanup are the writer's job (see
+        # accounts.activity_writer), so this runs the same either way.
         from django.db.models import F
-        try:
-            updated = UserSession.objects.filter(session_key=session_key).update(
-                last_activity=timezone.now(),
-                is_active=True,
-                page_views=F("page_views") + 1,
-                total_requests=F("total_requests") + 1,
+
+        updated = UserSession.objects.filter(session_key=session_key).update(
+            last_activity=timezone.now(),
+            is_active=True,
+            page_views=F("page_views") + 1,
+            total_requests=F("total_requests") + 1,
+        )
+        if not updated:
+            UserSession.objects.get_or_create(
+                session_key=session_key,
+                defaults={
+                    "user_id": user_id,
+                    "ip_address": ip_address,
+                    "user_agent": user_agent,
+                },
             )
-            if not updated:
-                UserSession.objects.get_or_create(
-                    session_key=session_key,
-                    defaults={
-                        "user_id": user_id,
-                        "ip_address": ip_address,
-                        "user_agent": user_agent,
-                    },
-                )
-        except Exception as e:
-            logger.error(f"Error touching user session: {e}")
-        finally:
-            connection.close()
 
     def update_user_session(self, user, session_key, ip_address, request):
         """Update user session tracking"""

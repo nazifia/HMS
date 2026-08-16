@@ -1,10 +1,12 @@
-from django.urls import path
+from django.urls import include, path
 from . import views
 from . import payment_views
+from .api import urls as api_urls
 
 app_name = 'inpatient'
 
 urlpatterns = [
+    path('api/', include(api_urls)),
     path('wards/', views.ward_list, name='wards'),
     path('wards/add/', views.add_ward, name='add_ward'),
     path('wards/<int:ward_id>/', views.ward_detail, name='ward_detail'),

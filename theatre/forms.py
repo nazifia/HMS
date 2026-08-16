@@ -383,32 +383,13 @@ class SurgeryForm(forms.ModelForm):
         return cleaned_data
 
     def _check_scheduling_conflicts(self, theatre, scheduled_date, expected_duration):
-        """Check for scheduling conflicts with other surgeries"""
-        from django.db.models import Q
-        from datetime import timedelta
+        """Clashes in the same theatre — shared with the API via theatre.services."""
+        from .services import theatre_conflicts
 
-        conflicts = []
-
-        # Calculate end time
-        end_time = scheduled_date + expected_duration
-
-        # Find overlapping surgeries in the same theatre
-        overlapping = Surgery.objects.filter(
-            theatre=theatre,
-            status__in=["scheduled", "in_progress"],
-            scheduled_date__lt=end_time,
-        ).exclude(pk=self.instance.pk if self.instance else None)
-
-        for surgery in overlapping:
-            surgery_end = surgery.scheduled_date + surgery.expected_duration
-            if surgery_end > scheduled_date:
-                conflicts.append(
-                    f"{surgery.surgery_type.name} for {surgery.patient} "
-                    f"({surgery.scheduled_date.strftime('%Y-%m-%d %H:%M')} - "
-                    f"{surgery_end.strftime('%H:%M')})"
-                )
-
-        return conflicts
+        return theatre_conflicts(
+            theatre, scheduled_date, expected_duration,
+            exclude_surgery_id=self.instance.pk if self.instance else None,
+        )
 
 
 class SurgicalTeamForm(forms.ModelForm):
