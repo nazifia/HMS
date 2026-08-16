@@ -784,9 +784,8 @@ STAFF_SESSION_TIMEOUT = int(
     os.environ.get("STAFF_SESSION_TIMEOUT", "3600")
 )  # 1 hour for staff
 
-# Session security
-SESSION_COOKIE_SAMESITE = "Lax"
-SESSION_COOKIE_PATH = "/"
+# Session security: SESSION_COOKIE_SAMESITE is set from the environment above,
+# next to CSRF_COOKIE_SAMESITE. SESSION_COOKIE_PATH keeps Django's default "/".
 
 # Custom session variables
 SESSION_TIMEOUT_WARNING = int(

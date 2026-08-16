@@ -59,3 +59,6 @@ staticfiles/CACHE/
 # Flutter build artifacts
 frontend/build/
 frontend/.dart_tool/
+
+# Firebase hosting deploy cache
+frontend/.firebase/
