@@ -1,0 +1,45 @@
+{% load static %}
+{% load compress %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Hospital Management System{% endblock %}</title>
+
+    <link rel="icon" href="{% static 'img/favicon.ico' %}" sizes="32x32">
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
+    <meta name="theme-color" content="#18416f">
+
+    {% compress css %}
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
+    {% endcompress %}
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% if messages %}
+    <div class="container pt-3">
+      {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+
+    <footer class="text-center text-muted small py-4">
+      Need help? WhatsApp
+      <a href="https://wa.me/2348032194090" class="text-decoration-none">
+        <i class="fab fa-whatsapp text-success"></i> 08032194090
+      </a>
+    </footer>
+
+    <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

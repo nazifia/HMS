@@ -19,6 +19,8 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponse
+from django.templatetags.static import static as static_url
+from django.views.generic.base import RedirectView
 from core.views import home_view
 from core.api.dashboard import dashboard as api_dashboard
 
@@ -33,6 +35,7 @@ admin.site.index_title = 'Hospital Management System Administration'
 
 urlpatterns = [
     path('sw.js', empty_sw, name='service_worker'),
+    path('favicon.ico', RedirectView.as_view(url=static_url('img/favicon.ico'), permanent=True)),
     path('admin/', admin.site.urls),
     path('', home_view, name='home'),
     path('saas/', include('saas.urls')),

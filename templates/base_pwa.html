@@ -1,4 +1,5 @@
 {% load custom_filters %}
+{% load static %}
 {# templates/base_pwa.html #}
 <!DOCTYPE html>
 <html lang="en">
@@ -6,6 +7,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Hospital Management System{% endblock %}</title>
+    <link rel="icon" href="{% static 'img/favicon.ico' %}" sizes="32x32">
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
+    <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'img/icon-192.png' %}">
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <meta name="theme-color" content="#18416f">
     <!-- PWA functionality disabled -->
     <!-- <link rel="manifest" href="/pwa-manifest.json"> -->
     <!-- <meta name="theme-color" content="#1976d2"> -->

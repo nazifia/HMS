@@ -92,7 +92,8 @@ def revenue_point_dashboard(request):
         # Get comparison with previous period
         previous_start, previous_end = _get_previous_period(start_date, end_date)
         comparison_analyzer = RevenueComparisonAnalyzer(
-            start_date, end_date, previous_start, previous_end
+            start_date, end_date, previous_start, previous_end,
+            current_calculator=dept_calculator
         )
         comparison_data = comparison_analyzer.get_period_comparison()
         

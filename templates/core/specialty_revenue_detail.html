@@ -8,10 +8,9 @@
 
     {% if detail_data %}
         <div class="row mb-3">
-            <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-muted">Total Revenue</h6><h4>{{ detail_data.total_revenue|default:0 }}</h4></div></div></div>
-            <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-muted">Invoice Revenue</h6><h4>{{ detail_data.invoice_revenue|default:0 }}</h4></div></div></div>
-            <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-muted">Wallet Revenue</h6><h4>{{ detail_data.wallet_revenue|default:0 }}</h4></div></div></div>
-            <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-muted">Total Records</h6><h4>{{ detail_data.total_records|default:0 }}</h4></div></div></div>
+            <div class="col-md-4"><div class="card"><div class="card-body"><h6 class="text-muted">Total Revenue</h6><h4>{{ detail_data.total_revenue|default:0 }}</h4></div></div></div>
+            <div class="col-md-4"><div class="card"><div class="card-body"><h6 class="text-muted">Payments</h6><h4>{{ detail_data.total_payments|default:0 }}</h4></div></div></div>
+            <div class="col-md-4"><div class="card"><div class="card-body"><h6 class="text-muted">Total Records</h6><h4>{{ detail_data.total_records|default:0 }}</h4></div></div></div>
         </div>
 
         {% if detail_data.top_services %}

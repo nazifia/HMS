@@ -4,6 +4,8 @@ Provides specialized revenue calculation methods for each department
 while maintaining integration with existing revenue logic.
 """
 
+from functools import wraps
+
 from django.db.models import Sum, Count, Q, Avg, F
 from django.utils import timezone
 from decimal import Decimal
@@ -37,15 +39,32 @@ except ImportError:
     pass
 
 
+def _memoize_zeroarg(method):
+    """Cache a zero-arg (self-only) method result on the instance.
+
+    The calculator is immutable after __init__ (fixed start_date/end_date), so
+    these methods are deterministic — caching returns byte-identical results.
+    """
+    @wraps(method)
+    def wrapper(self):
+        cache = self.__dict__.setdefault("_deptmemo", {})
+        name = method.__name__
+        if name not in cache:
+            cache[name] = method(self)
+        return cache[name]
+    return wrapper
+
+
 class DepartmentRevenueCalculator:
     """
     Specialized calculator for department-specific revenue analysis
     """
-    
+
     def __init__(self, start_date, end_date):
         self.start_date = start_date
         self.end_date = end_date
-    
+
+    @_memoize_zeroarg
     def get_pharmacy_detailed_revenue(self):
         """
         Enhanced pharmacy revenue calculation with medication breakdown
@@ -124,6 +143,7 @@ class DepartmentRevenueCalculator:
                 'error': str(e)
             }
     
+    @_memoize_zeroarg
     def get_laboratory_detailed_revenue(self):
         """
         Enhanced laboratory revenue calculation with test breakdown
@@ -207,6 +227,7 @@ class DepartmentRevenueCalculator:
                 'error': str(e)
             }
     
+    @_memoize_zeroarg
     def get_consultation_detailed_revenue(self):
         """
         Enhanced consultation revenue calculation with doctor breakdown
@@ -265,6 +286,7 @@ class DepartmentRevenueCalculator:
                 'error': str(e)
             }
     
+    @_memoize_zeroarg
     def get_theatre_detailed_revenue(self):
         """
         Enhanced theatre revenue calculation with surgery breakdown
@@ -346,6 +368,7 @@ class DepartmentRevenueCalculator:
                 'error': str(e)
             }
     
+    @_memoize_zeroarg
     def get_inpatient_detailed_revenue(self):
         """
         Enhanced inpatient revenue calculation with ward breakdown
@@ -491,15 +514,13 @@ class DepartmentRevenueCalculator:
                 total_payments=Count('id')
             )
             
-            # Wallet transactions
-            dept_wallet = WalletTransaction.objects.filter(
-                created_at__date__range=[self.start_date, self.end_date],
-                description__icontains=department
-            ).aggregate(
-                wallet_amount=Sum('amount'),
-                wallet_transactions=Count('id')
-            )
-            
+            # Wallet transactions are intentionally not added here. Paying an
+            # invoice from a wallet already records a BillingPayment with
+            # payment_method='wallet' against that invoice, so adding the
+            # WalletTransaction on top double-counts it. (The previous
+            # `description__icontains=department` match also produced pure
+            # false positives -- "ent" matches "Payment", "Treatment".)
+
             # Record statistics
             try:
                 model_class = globals().get(config['model'])
@@ -536,17 +557,13 @@ class DepartmentRevenueCalculator:
                 total_quantity=Sum('quantity')
             ).order_by('-total_revenue')[:5]
             
-            total_revenue = (
-                (dept_payments['total_amount'] or Decimal('0.00')) +
-                (dept_wallet['wallet_amount'] or Decimal('0.00'))
-            )
-            
+            total_revenue = dept_payments['total_amount'] or Decimal('0.00')
+
             return {
                 'department_name': config['display_name'],
                 'total_revenue': total_revenue,
-                'invoice_revenue': dept_payments['total_amount'] or Decimal('0.00'),
-                'wallet_revenue': dept_wallet['wallet_amount'] or Decimal('0.00'),
-                'total_payments': (dept_payments['total_payments'] or 0) + (dept_wallet['wallet_transactions'] or 0),
+                'invoice_revenue': total_revenue,
+                'total_payments': dept_payments['total_payments'] or 0,
                 'total_records': record_stats['total_records'],
                 'monthly_records': list(monthly_records),
                 'top_services': list(service_analysis),
@@ -627,8 +644,12 @@ class RevenueComparisonAnalyzer:
     Analyzer for comparing revenue across different periods and departments
     """
     
-    def __init__(self, current_start, current_end, previous_start, previous_end):
-        self.current_period = DepartmentRevenueCalculator(current_start, current_end)
+    def __init__(self, current_start, current_end, previous_start, previous_end,
+                 current_calculator=None):
+        # ponytail: callers that already built a calculator for the current
+        # period can pass it in so its memoized results are reused instead of
+        # re-running the same 12 aggregates.
+        self.current_period = current_calculator or DepartmentRevenueCalculator(current_start, current_end)
         self.previous_period = DepartmentRevenueCalculator(previous_start, previous_end)
     
     def get_period_comparison(self):

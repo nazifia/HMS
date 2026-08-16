@@ -5,6 +5,7 @@ while maintaining backward compatibility with existing systems.
 """
 
 from functools import wraps
+from django.apps import apps
 from django.db.models import Sum, Count, Q, Avg
 from django.utils import timezone
 from decimal import Decimal
@@ -21,23 +22,20 @@ from patients.models import WalletTransaction
 # Import existing service to maintain compatibility
 from pharmacy.revenue_service import RevenueAggregationService, MonthFilterHelper
 
-try:
-    # Import specialty department models if they exist
-    from anc.models import AncRecord
-    from dental.models import DentalRecord
-    from ent.models import EntRecord
-    from family_planning.models import FamilyPlanningRecord
-    from gynae_emergency.models import GynaeEmergencyRecord
-    from icu.models import IcuRecord
-    from labor.models import LaborRecord
-    from oncology.models import OncologyRecord
-    from ophthalmic.models import OphthalmicRecord
-    from scbu.models import ScbuRecord
-    from theatre.models import Surgery
-    from radiology.models import RadiologyOrder
-except ImportError:
-    # Handle missing models gracefully
-    pass
+# Specialty apps whose record model is resolved lazily as
+# "<app_label.capitalize()>Record" (AncRecord, Family_planningRecord, ...).
+SPECIALTY_DEPARTMENTS = [
+    'anc',
+    'dental',
+    'ent',
+    'family_planning',
+    'gynae_emergency',
+    'icu',
+    'labor',
+    'oncology',
+    'ophthalmic',
+    'scbu',
+]
 
 
 def _memoize_zeroarg(method):
@@ -306,98 +304,87 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
         """
         Detailed breakdown of specialty department revenue
         """
+        invoice_revenue = self._get_specialty_invoice_revenue()
+        record_counts = self._get_specialty_record_counts()
+
         specialty_breakdown = {}
-        
-        specialty_departments = [
-            ('anc', 'AncRecord'),
-            ('dental', 'DentalRecord'),
-            ('ent', 'EntRecord'),
-            ('family_planning', 'FamilyPlanningRecord'),
-            ('gynae_emergency', 'GynaeEmergencyRecord'),
-            ('icu', 'IcuRecord'),
-            ('labor', 'LaborRecord'),
-            ('oncology', 'OncologyRecord'),
-            ('ophthalmic', 'OphthalmicRecord'),
-            ('scbu', 'ScbuRecord')
-        ]
-        
-        for dept_name, model_name in specialty_departments:
-            dept_data = self._get_specialty_revenue(dept_name, model_name)
-            specialty_breakdown[dept_name] = {
-                'revenue': dept_data['total_revenue'],
-                'transactions': dept_data['total_payments'],
+
+        for department in SPECIALTY_DEPARTMENTS:
+            total_revenue, total_payments = invoice_revenue.get(department, (Decimal('0.00'), 0))
+
+            dept_data = {
+                'total_revenue': total_revenue,
+                'total_payments': total_payments,
+                'total_records': record_counts.get(department, 0),
+                'invoice_revenue': total_revenue
+            }
+
+            specialty_breakdown[department] = {
+                'revenue': total_revenue,
+                'transactions': total_payments,
                 'records': dept_data['total_records'],
-                'avg_transaction': self._calculate_average(
-                    dept_data['total_revenue'], 
-                    dept_data['total_payments']
-                ),
+                'avg_transaction': self._calculate_average(total_revenue, total_payments),
                 'details': dept_data
             }
-        
+
         return specialty_breakdown
-    
-    def _get_specialty_revenue(self, department, model_name):
+
+    def _get_specialty_invoice_revenue(self):
         """
-        Calculate revenue for specialty departments
+        Invoice-payment revenue for every specialty department in one grouped query.
+
+        `invoice__source_app` is the only link used. Wallet transactions are
+        deliberately not added on top: paying an invoice from a wallet already
+        records a BillingPayment with payment_method='wallet' against that
+        invoice, so counting the WalletTransaction as well double-counts it.
+
+        Returns:
+            dict: {department: (amount, payment_count)}
         """
         try:
-            # Get revenue from invoices linked to department
-            dept_payments = BillingPayment.objects.filter(
+            rows = BillingPayment.objects.filter(
                 payment_date__date__range=[self.start_date, self.end_date],
-                invoice__source_app=department
-            ).aggregate(
+                invoice__source_app__in=SPECIALTY_DEPARTMENTS
+            ).values('invoice__source_app').annotate(
                 total_amount=Sum('amount'),
                 total_payments=Count('id')
             )
-            
-            # Get record count if model exists
-            record_count = 0
+
+            return {
+                row['invoice__source_app']: (
+                    row['total_amount'] or Decimal('0.00'),
+                    row['total_payments'] or 0
+                )
+                for row in rows
+            }
+        except Exception:
+            return {}
+
+    def _get_specialty_record_counts(self):
+        """
+        Count clinical records per specialty department.
+
+        Stays one query per department because each department has its own
+        table. Models are resolved through the app registry so a renamed or
+        missing model degrades to zero for that department only.
+
+        Returns:
+            dict: {department: record_count}
+        """
+        record_counts = {}
+
+        for department in SPECIALTY_DEPARTMENTS:
             try:
-                model_class = globals().get(model_name)
-                if model_class:
-                    record_count = model_class.objects.filter(
-                        created_at__date__range=[self.start_date, self.end_date]
-                    ).count()
-            except:
-                pass
-            
-            # Get wallet transactions for department
-            dept_wallet = WalletTransaction.objects.filter(
-                created_at__date__range=[self.start_date, self.end_date],
-                description__icontains=department
-            ).aggregate(
-                wallet_amount=Sum('amount'),
-                wallet_transactions=Count('id')
-            )
-            
-            total_revenue = (
-                (dept_payments['total_amount'] or Decimal('0.00')) +
-                (dept_wallet['wallet_amount'] or Decimal('0.00'))
-            )
-            
-            total_payments = (
-                (dept_payments['total_payments'] or 0) +
-                (dept_wallet['wallet_transactions'] or 0)
-            )
-            
-            return {
-                'total_revenue': total_revenue,
-                'total_payments': total_payments,
-                'total_records': record_count,
-                'invoice_revenue': dept_payments['total_amount'] or Decimal('0.00'),
-                'wallet_revenue': dept_wallet['wallet_amount'] or Decimal('0.00')
-            }
-            
-        except Exception as e:
-            return {
-                'total_revenue': Decimal('0.00'),
-                'total_payments': 0,
-                'total_records': 0,
-                'invoice_revenue': Decimal('0.00'),
-                'wallet_revenue': Decimal('0.00'),
-                'error': str(e)
-            }
-    
+                model_class = apps.get_model(department, f'{department.capitalize()}Record')
+                record_counts[department] = model_class.objects.filter(
+                    created_at__date__range=[self.start_date, self.end_date]
+                ).count()
+            except Exception:
+                record_counts[department] = 0
+
+        return record_counts
+
+
     def _get_radiology_revenue(self):
         """
         Calculate radiology revenue
@@ -655,7 +642,10 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
         """
         Get revenue trends by point over specified months
         """
+        from django.core.cache import cache
+
         trends = {}
+        today = timezone.now().date()
 
         for i in range(months):
             # Calculate date range for each month
@@ -666,12 +656,23 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
             else:
                 end_date = end_date.replace(month=end_date.month + 1, day=1) - timedelta(days=1)
 
+            month_key = start_date.strftime('%Y-%m')
+
+            # Per-month results are cached: completed months are immutable for
+            # reporting purposes (6h TTL), current month refreshes every 5 min.
+            # ponytail: cache instead of rewriting 6 full breakdowns as grouped
+            # queries — same numbers, ~60 queries per month saved on warm cache.
+            cache_key = f"rev_point_trends_month:{month_key}"
+            cached_entry = cache.get(cache_key)
+            if cached_entry is not None:
+                trends[month_key] = cached_entry
+                continue
+
             # Create analyzer for this month
             month_analyzer = RevenuePointBreakdownAnalyzer(start_date, end_date)
             monthly_data = month_analyzer.get_revenue_point_breakdown(include_trends=False)
 
-            month_key = start_date.strftime('%Y-%m')
-            trends[month_key] = {
+            entry = {
                 'date': start_date,
                 'clinical_total': sum([s['revenue'] for s in monthly_data['clinical_services'].values()]),
                 'support_total': sum([s['revenue'] for s in monthly_data['support_services'].values()]),
@@ -679,6 +680,8 @@ class RevenuePointBreakdownAnalyzer(RevenueAggregationService):
                 'specialty_total': sum([s['revenue'] for s in monthly_data['specialty_departments'].values()]),
                 'grand_total': monthly_data['total_revenue']
             }
+            cache.set(cache_key, entry, 21600 if end_date < today else 300)
+            trends[month_key] = entry
 
         return OrderedDict(sorted(trends.items()))
 
