@@ -75,9 +75,11 @@ class DoctorAdminForm(forms.ModelForm):
 class DoctorForm(forms.ModelForm):
     specialization = forms.ModelChoiceField(queryset=Specialization.objects.all(), widget=forms.Select(attrs={'class': 'form-select'}), required=False)
     department = forms.ModelChoiceField(queryset=Department.objects.all(), widget=forms.Select(attrs={'class': 'form-select'}), required=False)
-    license_number = forms.CharField(max_length=100, required=False)
-    experience = forms.ChoiceField(choices=Doctor.EXPERIENCE_CHOICES, widget=forms.Select(attrs={'class': 'form-select'}), required=False)
-    qualification = forms.CharField(max_length=255, required=False)
+    # ponytail: license_number, experience and qualification have no override —
+    # they are non-blank on the model, so ModelForm builds them required with the
+    # model's own max_length/choices. Declaring them required=False here made
+    # ModelForm skip validation and save '' (for license_number, unique, that
+    # meant an IntegrityError instead of a form error).
     consultation_fee = forms.DecimalField(max_digits=10, decimal_places=2, required=False)
     bio = forms.CharField(widget=forms.Textarea(attrs={'rows': 4}), required=False)
     available_for_appointments = forms.BooleanField(required=False)
