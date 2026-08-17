@@ -809,6 +809,14 @@ def add_funds_to_wallet(request, patient_id):
     invoice_outstanding = outstanding["invoices"]
     total_outstanding = outstanding["total"]
 
+    # Same filters patient_outstanding() sums over, for the breakdown tables
+    from inpatient.models import Admission
+
+    active_admissions = Admission.objects.filter(patient=patient, status="admitted")
+    outstanding_invoices = Invoice.objects.filter(
+        patient=patient, status__in=["pending", "partially_paid"]
+    ).prefetch_related("items__service")
+
     if request.method == "POST":
         form = AddFundsForm(request.POST)
         if form.is_valid():
