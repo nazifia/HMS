@@ -1,5 +1,6 @@
 import logging
 import json
+import datetime
 from urllib.parse import quote
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -2138,14 +2139,21 @@ def audit_logs(request):
     if action_filter:
         logs = logs.filter(action=action_filter)
 
-    # Filter by user
-    user_filter = request.GET.get("user")
-    if user_filter:
-        logs = logs.filter(user_id=user_filter)
+    # Filter by user. Junk values are ignored rather than raising - this is a
+    # hand-editable URL, and a bad param should not 500 the page.
+    user_filter = request.GET.get("user", "")
+    if user_filter.isdigit():
+        logs = logs.filter(user_id=int(user_filter))
 
     # Filter by date range
-    date_from = request.GET.get("date_from")
-    date_to = request.GET.get("date_to")
+    def iso_date(value):
+        try:
+            return datetime.date.fromisoformat(value)
+        except (TypeError, ValueError):
+            return None
+
+    date_from = iso_date(request.GET.get("date_from"))
+    date_to = iso_date(request.GET.get("date_to"))
     if date_from:
         logs = logs.filter(timestamp__date__gte=date_from)
     if date_to:

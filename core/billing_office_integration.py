@@ -10,6 +10,7 @@ of patients, while maintaining the existing patient wallet functionality.
 
 from django.db import transaction
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from decimal import Decimal
 from typing import Dict, Tuple, Optional, Any

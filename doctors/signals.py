@@ -29,7 +29,7 @@ def handle_doctor_delete(sender, instance, **kwargs):
             doctor_role = Role.objects.get(name='doctor')
             if doctor_role in instance.user.roles.all():
                 instance.user.roles.remove(doctor_role)
-    except User.DoesNotExist:
+    except CustomUser.DoesNotExist:
         # User was already deleted
         pass
     except Role.DoesNotExist:

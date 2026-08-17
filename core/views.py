@@ -426,7 +426,7 @@ def request_nhia_authorization(request):
             return JsonResponse(
                 {
                     "success": False,
-                    "message": f'An authorization request for this {module_name} record is already pending. Request sent on {existing_notification.created_at | date:"M d, Y H:i"}.',
+                    "message": f'An authorization request for this {module_name} record is already pending. Request sent on {existing_notification.created_at.strftime("%b %d, %Y %H:%M")}.',
                 },
                 status=400,
             )
@@ -449,7 +449,7 @@ def request_nhia_authorization(request):
                 return JsonResponse(
                     {
                         "success": False,
-                        "message": f'An authorization request for this {module_name} record is already pending. Request sent on {final_check.created_at | date:"M d, Y H:i"}.',
+                        "message": f'An authorization request for this {module_name} record is already pending. Request sent on {final_check.created_at.strftime("%b %d, %Y %H:%M")}.',
                     },
                     status=400,
                 )

@@ -883,7 +883,7 @@ def create_test_request(request):
 
         except Patient.DoesNotExist:
             messages.error(request, "Selected patient not found.")
-        except User.DoesNotExist:
+        except CustomUser.DoesNotExist:
             messages.error(request, "Selected doctor not found.")
         except Test.DoesNotExist:
             messages.error(request, "One or more selected tests not found.")

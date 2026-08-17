@@ -28,36 +28,25 @@ class Command(BaseCommand):
         ).select_related('medication', 'active_store__dispensary')
 
         # Prepare alert message
-        alert_message = "Pharmacy Inventory Alerts
-
-"
+        alert_message = "Pharmacy Inventory Alerts\n\n"
 
         if low_stock_items:
-            alert_message += "Low Stock Items:
-"
+            alert_message += "Low Stock Items:\n"
             for item in low_stock_items:
-                alert_message += f"- {item.medication.name} ({item.medication.strength}) at {item.active_store.dispensary.name}: {item.stock_quantity} units (Reorder level: {item.reorder_level})
-"
-            alert_message += "
-"
+                alert_message += f"- {item.medication.name} ({item.medication.strength}) at {item.active_store.dispensary.name}: {item.stock_quantity} units (Reorder level: {item.reorder_level})\n"
+            alert_message += "\n"
 
         if expired_items:
-            alert_message += "Expired Items:
-"
+            alert_message += "Expired Items:\n"
             for item in expired_items:
-                alert_message += f"- {item.medication.name} ({item.medication.strength}) at {item.active_store.dispensary.name}: Expired on {item.expiry_date}
-"
-            alert_message += "
-"
+                alert_message += f"- {item.medication.name} ({item.medication.strength}) at {item.active_store.dispensary.name}: Expired on {item.expiry_date}\n"
+            alert_message += "\n"
 
         if near_expiry_items:
-            alert_message += "Items Expiring Within 90 Days:
-"
+            alert_message += "Items Expiring Within 90 Days:\n"
             for item in near_expiry_items:
-                alert_message += f"- {item.medication.name} ({item.medication.strength}) at {item.active_store.dispensary.name}: Expires on {item.expiry_date} ({item.days_until_expiry()} days)
-"
-            alert_message += "
-"
+                alert_message += f"- {item.medication.name} ({item.medication.strength}) at {item.active_store.dispensary.name}: Expires on {item.expiry_date} ({item.days_until_expiry()} days)\n"
+            alert_message += "\n"
 
         # Send email if there are alerts
         if low_stock_items or expired_items or near_expiry_items:

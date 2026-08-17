@@ -715,6 +715,7 @@ def surgery_billing(request, surgery_id):
     from patients.models import PatientWallet
     from .forms import PaymentForm
     from decimal import Decimal
+    from django.db import transaction
 
     surgery = get_object_or_404(Surgery, id=surgery_id)
 

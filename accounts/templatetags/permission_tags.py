@@ -21,6 +21,11 @@ from accounts.permissions import (
     PERMISSION_DEFINITIONS,
     get_permission_info,
     can_perform_action,
+    check_patient_access,
+    check_medical_record_access,
+    check_billing_access,
+    check_pharmacy_access,
+    check_user_management_access,
 )
 
 register = template.Library()

@@ -96,7 +96,7 @@ class Command(BaseCommand):
     def output_text_report(self, start_date, end_date, total_medications_dispensed, 
                           total_sales, unique_patients, unique_medications, 
                           top_medications, top_dispensaries):
-        \"\"\"Output report in text format\"\"\"
+        """Output report in text format"""
         self.stdout.write('\n' + '='*60)
         self.stdout.write('PHARMACY SALES AND DISPENSING REPORT')
         self.stdout.write('='*60)
@@ -114,9 +114,9 @@ class Command(BaseCommand):
         self.stdout.write('-' * 60)
         for med in top_medications:
             self.stdout.write(
-                f'  {med[\"prescription_item__medication__name\"][:28]:<28} '
-                f'{med[\"total_quantity\"]:>15,} '
-                f'₦{med[\"total_sales\"]:>13,.2f}'
+                f'  {med["prescription_item__medication__name"][:28]:<28} '
+                f'{med["total_quantity"]:>15,} '
+                f'₦{med["total_sales"]:>13,.2f}'
             )
         
         self.stdout.write(f'\nTOP 10 DISPENSARIES BY SALES:')
@@ -124,9 +124,9 @@ class Command(BaseCommand):
         self.stdout.write('-' * 60)
         for disp in top_dispensaries:
             self.stdout.write(
-                f'  {disp[\"dispensary__name\"][:28]:<28} '
-                f'₦{disp[\"total_sales\"]:>13,.2f} '
-                f'{disp[\"total_items\"]:>15,}'
+                f'  {disp["dispensary__name"][:28]:<28} '
+                f'₦{disp["total_sales"]:>13,.2f} '
+                f'{disp["total_items"]:>15,}'
             )
         
         self.stdout.write('\n' + '='*60)
@@ -134,7 +134,7 @@ class Command(BaseCommand):
         self.stdout.write('='*60)
 
     def output_csv_report(self, dispensing_logs):
-        \"\"\"Output detailed report in CSV format\"\"\"
+        """Output detailed report in CSV format"""
         import csv
         from django.http import HttpResponse
         from io import StringIO
