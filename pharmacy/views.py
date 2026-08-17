@@ -527,181 +527,6 @@ def manage_categories(request):
     return render(request, "pharmacy/manage_categories.html", context)
 
 
-@login_required
-@permission_required("prescriptions.view")
-def patient_prescriptions(request, patient_id):
-    """View for listing prescriptions for a patient"""
-    # Get the patient
-    patient = get_object_or_404(Patient, id=patient_id)
-
-    # Get prescriptions for this patient
-    prescriptions = (
-        Prescription.objects.filter(patient=patient)
-        .select_related("doctor")
-        .order_by("-prescription_date")
-    )
-
-    # Pagination
-    paginator = Paginator(prescriptions, 10)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    context = {
-        "patient": patient,
-        "page_obj": page_obj,
-        "page_title": f"Prescriptions for {patient.get_full_name()}",
-        "active_nav": "pharmacy",
-    }
-
-    return render(request, "pharmacy/prescription_list.html", context)
-
-
-@login_required
-@permission_required("prescriptions.create")
-@no_doctor_prescribing
-def create_prescription(request, patient_id=None):
-    """View for creating a prescription"""
-    if request.method == "POST":
-        # Handle patient context ID from form submission
-        patient_context_id = request.POST.get("patient_context_id")
-
-        # If patient context ID is provided, use it to preselect patient
-        if patient_context_id:
-            try:
-                preselected_patient = Patient.objects.get(id=patient_context_id)
-                form = PrescriptionForm(
-                    request.POST,
-                    request=request,
-                    preselected_patient=preselected_patient,
-                )
-            except Patient.DoesNotExist:
-                form = PrescriptionForm(request.POST, request=request)
-        else:
-            form = PrescriptionForm(request.POST, request=request)
-
-        if form.is_valid():
-            prescription = form.save(commit=False)
-            # Set the current user as the doctor/prescriber if not already set
-            if not prescription.doctor:
-                prescription.doctor = request.user
-            prescription.save()
-            form.save_m2m()  # Save many-to-many relationships if any
-            messages.success(
-                request, f"Prescription #{prescription.id} created successfully."
-            )
-            return redirect(
-                "pharmacy:prescription_detail", prescription_id=prescription.id
-            )
-    else:
-        # Preselect patient from multiple sources with priority:
-        # 1. URL parameter (patient_id)
-        # 2. Current patient context from session
-        # 3. None (user will select manually)
-        preselected_patient = None
-
-        # First check URL parameter
-        if patient_id:
-            try:
-                preselected_patient = Patient.objects.get(id=patient_id)
-            except Patient.DoesNotExist:
-                preselected_patient = None
-
-        # If no URL parameter, check current patient context from session
-        elif hasattr(request, "current_patient") and request.current_patient:
-            try:
-                preselected_patient = Patient.objects.get(
-                    id=request.current_patient["id"]
-                )
-            except (Patient.DoesNotExist, KeyError):
-                preselected_patient = None
-
-        form = PrescriptionForm(
-            request=request, preselected_patient=preselected_patient
-        )
-
-    context = {
-        "form": form,
-        "title": "Create Prescription",
-        "active_nav": "pharmacy",
-        "current_patient": getattr(request, "current_patient", None),
-        "has_current_patient": hasattr(request, "has_current_patient")
-        and request.has_current_patient,
-    }
-
-    return render(request, "pharmacy/prescription_form.html", context)
-
-
-@login_required
-@permission_required("prescriptions.create")
-@no_doctor_prescribing
-def pharmacy_create_prescription(request, patient_id=None):
-    """View for pharmacy creating a prescription"""
-    # This is the same as create_prescription but might have different permissions or workflow
-    if request.method == "POST":
-        # Handle patient context ID from form submission
-        patient_context_id = request.POST.get("patient_context_id")
-
-        # If patient context ID is provided, use it to preselect patient
-        if patient_context_id:
-            try:
-                preselected_patient = Patient.objects.get(id=patient_context_id)
-                form = PrescriptionForm(
-                    request.POST,
-                    request=request,
-                    preselected_patient=preselected_patient,
-                )
-            except Patient.DoesNotExist:
-                form = PrescriptionForm(request.POST, request=request)
-        else:
-            form = PrescriptionForm(request.POST, request=request)
-
-        if form.is_valid():
-            prescription = form.save()
-            messages.success(
-                request, f"Prescription #{prescription.id} created successfully."
-            )
-            return redirect(
-                "pharmacy:prescription_detail", prescription_id=prescription.id
-            )
-    else:
-        # Preselect patient from multiple sources with priority:
-        # 1. URL parameter (patient_id)
-        # 2. Current patient context from session
-        # 3. None (user will select manually)
-        preselected_patient = None
-
-        # First check URL parameter
-        if patient_id:
-            try:
-                preselected_patient = Patient.objects.get(id=patient_id)
-            except Patient.DoesNotExist:
-                preselected_patient = None
-
-        # If no URL parameter, check current patient context from session
-        elif hasattr(request, "current_patient") and request.current_patient:
-            try:
-                preselected_patient = Patient.objects.get(
-                    id=request.current_patient["id"]
-                )
-            except (Patient.DoesNotExist, KeyError):
-                preselected_patient = None
-
-        form = PrescriptionForm(
-            request=request, preselected_patient=preselected_patient
-        )
-
-    context = {
-        "form": form,
-        "title": "Create Prescription (Pharmacy)",
-        "active_nav": "pharmacy",
-        "patient": preselected_patient,  # Add patient to context for template
-        "selected_patient": preselected_patient,  # Also add selected_patient for template compatibility
-        "current_patient": getattr(request, "current_patient", None),
-        "has_current_patient": hasattr(request, "has_current_patient")
-        and request.has_current_patient,
-    }
-
-    return render(request, "pharmacy/pharmacy_create_prescription.html", context)
 
 
 @login_required
@@ -1843,69 +1668,6 @@ def test_revenue_charts_public(request):
     return render(request, "pharmacy/simple_revenue_statistics.html", context)
 
 
-@login_required
-def _add_pack_to_patient_billing(patient, pack_order, source_context="pharmacy"):
-    """Helper function to add pack costs to patient billing"""
-
-    # Create or get invoice for patient
-    invoice, created = Invoice.objects.get_or_create(
-        patient=patient,
-        status="pending",
-        source_app="pharmacy",  # Using pharmacy as the source for pack orders
-        defaults={
-            "invoice_date": timezone.now().date(),
-            "due_date": timezone.now().date() + timezone.timedelta(days=7),
-            "subtotal": Decimal("0.00"),
-            "tax_amount": Decimal("0.00"),
-            "total_amount": Decimal("0.00"),
-            "created_by": pack_order.ordered_by,
-        },
-    )
-
-    # Create or get medical pack service category
-    pack_service_category, _ = ServiceCategory.objects.get_or_create(
-        name="Medical Packs",
-        defaults={"description": "Pre-packaged medical supplies and medications"},
-    )
-
-    # Create or get service for this specific pack
-    service, _ = Service.objects.get_or_create(
-        name=f"Medical Pack: {pack_order.pack.name}",
-        category=pack_service_category,
-        defaults={
-            "price": pack_order.pack.get_total_cost(),
-            "description": f"Medical pack for {pack_order.pack.get_pack_type_display()}: {pack_order.pack.name}",
-            "tax_percentage": Decimal("0.00"),  # Assuming no tax on medical packs
-        },
-    )
-
-    # Add invoice item for the pack
-    pack_cost = pack_order.pack.get_total_cost()
-    invoice_item = InvoiceItem.objects.create(
-        invoice=invoice,
-        service=service,
-        description=f"Medical Pack: {pack_order.pack.name} (Order #{pack_order.id}) - {source_context.title()}",
-        quantity=1,
-        unit_price=pack_cost,
-        tax_percentage=Decimal("0.00"),
-        tax_amount=Decimal("0.00"),
-        discount_amount=Decimal("0.00"),
-        total_amount=pack_cost,
-    )
-
-    # Update invoice totals
-    invoice.subtotal = invoice.items.aggregate(total=models.Sum("total_amount"))[
-        "total"
-    ] or Decimal("0.00")
-    invoice.tax_amount = invoice.items.aggregate(total=models.Sum("tax_amount"))[
-        "total"
-    ] or Decimal("0.00")
-    invoice.total_amount = (
-        invoice.subtotal + invoice.tax_amount - invoice.discount_amount
-    )
-    invoice.save()
-
-    return invoice_item
 
 
 def _notify_pharmacy_of_pack_order(pack_order, ordered_by):
@@ -5258,6 +5020,11 @@ def patient_prescriptions(request, patient_id):
 @no_doctor_prescribing
 def create_prescription(request, patient_id=None):
     """View for creating a prescription"""
+    # The template shows the patient's name, so resolve the object, not the id.
+    preselected_patient = (
+        Patient.objects.filter(id=patient_id).first() if patient_id else None
+    )
+
     if request.method == "POST":
         form = PrescriptionForm(request.POST, request=request)
         if form.is_valid():
@@ -5269,19 +5036,15 @@ def create_prescription(request, patient_id=None):
                 "pharmacy:prescription_detail", prescription_id=prescription.id
             )
     else:
-        # Preselect patient if patient_id is provided
-        initial_data = {}
-        if patient_id:
-            initial_data["patient"] = patient_id
+        initial_data = {"patient": preselected_patient} if preselected_patient else {}
         form = PrescriptionForm(request=request, initial=initial_data)
 
     context = {
         "form": form,
         "title": "Create Prescription",
         "active_nav": "pharmacy",
-        # Ensure templates have access to the patient when preselected
-        "selected_patient": getattr(form.fields.get("patient"), "initial", None),
-        "patient": getattr(form.fields.get("patient"), "initial", None),
+        "selected_patient": preselected_patient,
+        "patient": preselected_patient,
     }
 
     return render(request, "pharmacy/prescription_form.html", context)

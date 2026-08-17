@@ -34,6 +34,8 @@ register = template.Library()
 @register.filter
 def has_permission(user, permission):
     """Check if user has specific permission."""
+    if not user or isinstance(user, AnonymousUser):
+        return False
     return user_has_permission(user, permission)
 
 
@@ -58,6 +60,8 @@ def has_all_permissions(user, permissions):
 @register.filter
 def in_role(user, roles):
     """Check if user has specific role(s)."""
+    if not user or isinstance(user, AnonymousUser):
+        return False
     if isinstance(roles, str):
         roles = roles.split(',')
         roles = [r.strip() for r in roles]
@@ -296,45 +300,6 @@ def user_in_all_roles(user, role_names):
 # ============================================================================
 # Additional comprehensive template tags (new in reorganization)
 # ============================================================================
-
-@register.simple_tag
-def has_permission(user, permission_key):
-    """
-    Check if user has a specific permission.
-
-    Usage:
-        {% has_permission user 'patients.view' as can_view_patient %}
-        {% if can_view_patient %}
-            <!-- Show patient data -->
-        {% endif %}
-    """
-    if not user or isinstance(user, AnonymousUser):
-        return False
-    return user_has_permission(user, permission_key)
-
-
-@register.simple_tag
-def in_role(user, role_name):
-    """
-    Check if user has a specific role (or any of multiple roles).
-
-    Usage:
-        {% in_role user 'doctor' as is_doctor %}
-        {% if is_doctor %}
-            <!-- Doctor-specific content -->
-        {% endif %}
-
-    Multiple roles:
-        {% in_role user 'admin,doctor' as is_medical_staff %}
-    """
-    if not user or isinstance(user, AnonymousUser):
-        return False
-    if isinstance(role_name, str) and ',' in role_name:
-        role_names = [r.strip() for r in role_name.split(',')]
-    else:
-        role_names = role_name
-    return user_in_role(user, role_names)
-
 
 @register.simple_tag(takes_context=True)
 def can_edit_object(context, obj):

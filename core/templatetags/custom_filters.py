@@ -570,29 +570,6 @@ def multiply(value, arg):
 
 
 @register.filter
-def div(value, arg):
-    """
-    Divide value by arg.
-
-    Usage: {{ total|div:count }}
-
-    Args:
-        value: Dividend
-        arg: Divisor
-
-    Returns:
-        Result of division, or 0 if division by zero
-    """
-    try:
-        divisor = float(arg or 0)
-        if divisor == 0:
-            return 0
-        return float(value or 0) / divisor
-    except (ValueError, TypeError):
-        return 0
-
-
-@register.filter
 def percentage(value, total):
     """
     Calculate percentage of value relative to total.

@@ -493,31 +493,6 @@ Please generate an authorization code for this patient to proceed with treatment
         )
 
 
-@login_required
-def mark_notification_read(request, notification_id):
-    """
-    Mark notification as read and return JSON response
-    """
-    try:
-        notification = get_object_or_404(InternalNotification, id=notification_id)
-
-        if not notification.is_read:
-            notification.mark_as_read()
-
-        return JsonResponse(
-            {"success": True, "message": "Notification marked as read."}
-        )
-
-    except Exception as e:
-        return JsonResponse(
-            {
-                "success": False,
-                "message": f"Error marking notification as read: {str(e)}",
-            },
-            status=500,
-        )
-
-
 def _stream_and_delete(path, chunk_size=1024 * 1024):
     """Yield a file in chunks, deleting it when done (or aborted)."""
     import os

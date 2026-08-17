@@ -290,21 +290,6 @@ def edit_ent_record(request, record_id):
     return render(request, 'ent/ent_record_form.html', context)
 
 @login_required
-def delete_ent_record(request, record_id):
-    """View to delete a ent record"""
-    record = get_object_or_404(EntRecord, id=record_id)
-    
-    if request.method == 'POST':
-        record.delete()
-        messages.success(request, 'ENT record deleted successfully.')
-        return redirect('ent:ent_records_list')
-    
-    context = {
-        'record': record
-    }
-    return render(request, 'ent/ent_record_confirm_delete.html', context)
-
-@login_required
 def search_ent_patients(request):
     """AJAX view for searching patients in ENT module"""
     search_term = request.GET.get('term', '')

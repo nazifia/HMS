@@ -269,7 +269,7 @@ def result_detail(request, result_id):
         ),
         id=result_id
     )
-    parameters = result.parameters.select_related('parameter').all()
+    parameters = result.parameters.select_related('parameter').order_by('parameter__order')
 
     context = {
         'result': result,
@@ -277,30 +277,6 @@ def result_detail(request, result_id):
         'title': f'Result for {result.test.name}'
     }
     return render(request, 'laboratory/result_detail.html', context)
-
-@login_required
-@permission_required('lab.edit')
-def edit_test_result(request, result_id):
-    """View for editing a test result"""
-    result = get_object_or_404(TestResult.objects.select_related('test_request'), id=result_id)
-    test_request = result.test_request
-
-    if request.method == 'POST':
-        form = TestResultForm(request.POST, request.FILES, instance=result)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Test result updated successfully.')
-            return redirect('laboratory:result_detail', result_id=result.id)
-    else:
-        form = TestResultForm(instance=result)
-
-    context = {
-        'form': form,
-        'result': result,
-        'test_request': test_request,
-        'title': 'Edit Test Result'
-    }
-    return render(request, 'laboratory/test_result_form.html', context)
 
 # Test Management Views
 @login_required
@@ -1144,37 +1120,6 @@ def create_test_result(request, request_id):
         return render(request, 'laboratory/test_result_form_modal.html', context)
 
     return render(request, 'laboratory/test_result_form.html', context)
-
-@login_required
-@permission_required('lab.view')
-def result_list(request):
-    """View for listing all test results"""
-    results = TestResult.objects.all().order_by('-result_date')
-
-    # Pagination
-    paginator = Paginator(results, 10)  # Show 10 results per page
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    context = {
-        'page_obj': page_obj,
-    }
-
-    return render(request, 'laboratory/result_list.html', context)
-
-@login_required
-@permission_required('lab.view')
-def result_detail(request, result_id):
-    """View for displaying test result details"""
-    result = get_object_or_404(TestResult, id=result_id)
-    parameters = result.parameters.all().order_by('parameter__order')
-
-    context = {
-        'result': result,
-        'parameters': parameters,
-    }
-
-    return render(request, 'laboratory/result_detail.html', context)
 
 @login_required
 @permission_required('lab.edit')
