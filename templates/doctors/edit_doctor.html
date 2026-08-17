@@ -68,13 +68,13 @@
                         {% endif %}
                     </div>
                     
-                    {% comment %} <div class="col-md-4 mb-3">
+                    <div class="col-md-4 mb-3">
                         <label for="{{ doctor_form.license_number.id_for_label }}" class="form-label">License Number *</label>
                         {{ doctor_form.license_number|add_class:"form-control" }}
                         {% if doctor_form.license_number.errors %}
                             <div class="text-danger">{{ doctor_form.license_number.errors }}</div>
                         {% endif %}
-                    </div> {% endcomment %}
+                    </div>
                     
                     <div class="col-md-4 mb-3">
                         <label for="{{ doctor_form.experience.id_for_label }}" class="form-label">Experience</label>

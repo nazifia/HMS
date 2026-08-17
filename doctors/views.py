@@ -248,6 +248,8 @@ def add_doctor(request):
                 request, f"Doctor {doctor.get_full_name()} has been added successfully."
             )
             return redirect("doctors:manage_doctors")
+        else:
+            messages.error(request, "Please correct the errors below.")
     else:
         user_form = DoctorUserCreationForm()
         doctor_form = DoctorForm()
@@ -290,6 +292,8 @@ def edit_doctor(request, doctor_id):
                 f"Doctor {doctor.get_full_name()} has been updated successfully.",
             )
             return redirect("doctors:manage_doctors")
+        else:
+            messages.error(request, "Please correct the errors below.")
     else:
         doctor_form = DoctorForm(instance=doctor)
 
