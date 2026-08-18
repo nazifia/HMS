@@ -223,6 +223,17 @@ SPECIALTY_TO_DEPARTMENT_MAP = {
     'Internal Medicine': 'General Medicine',
     'Family Medicine': 'General Medicine',
     'Emergency Medicine': 'Emergency Medicine',
+    'Geriatrics': 'General Medicine',
+    'Infectious Diseases': 'General Medicine',
+
+    # Internal medicine subspecialties (all consult under General Medicine).
+    # Exact keys matter: the partial-match fallback below mis-routes some of
+    # these (e.g. 'Gastroenterology' contains 'ent' -> ENT).
+    'Pulmonology': 'General Medicine',
+    'Gastroenterology': 'General Medicine',
+    'Nephrology': 'General Medicine',
+    'Endocrinology': 'General Medicine',
+    'Rheumatology': 'General Medicine',
     
     # Pediatric specialties
     'Pediatrics': 'Pediatrics',

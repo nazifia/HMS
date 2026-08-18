@@ -136,3 +136,31 @@ class EditDoctorViewTests(TestCase):
         self.assertContains(response, "Please correct the errors below.")
         self.doctor.refresh_from_db()
         self.assertEqual(self.doctor.license_number, "LIC-3")
+
+
+class SpecialtySeedTests(TestCase):
+    """Seeded specialties must be idempotent and routable to a department."""
+
+    def test_seed_is_idempotent_and_routable(self):
+        from consultations.referral_mappings import get_department_for_specialty
+        from doctors.specialty_seed import SPECIALTIES, seed_specialties_for
+        from doctors.models import Specialization
+        from saas.models import Hospital
+
+        hospital = Hospital.objects.create(name="Seed H", subdomain="seedh")
+        seed_specialties_for(hospital)
+        seed_specialties_for(hospital)
+
+        names = set(
+            Specialization.all_objects.filter(hospital=hospital).values_list(
+                "name", flat=True
+            )
+        )
+        self.assertEqual(len(names), len(SPECIALTIES))
+        self.assertEqual(
+            Specialization.all_objects.filter(hospital=hospital).count(),
+            len(SPECIALTIES),
+        )
+
+        unroutable = [n for n, _ in SPECIALTIES if not get_department_for_specialty(n)]
+        self.assertEqual(unroutable, [])
