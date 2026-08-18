@@ -19,7 +19,8 @@ CLINIC_TYPE_CHOICES = (
 
 class ConsultingRoom(TenantModel):
     """Model for hospital consulting rooms"""
-    room_number = models.CharField(max_length=20, unique=True)
+    # unique per-hospital, not globally (see Meta.unique_together)
+    room_number = models.CharField(max_length=20)
     floor = models.CharField(max_length=20)
     department = models.ForeignKey('accounts.Department', on_delete=models.SET_NULL, null=True, related_name='consulting_rooms')
     description = models.TextField(blank=True, null=True)
@@ -32,6 +33,16 @@ class ConsultingRoom(TenantModel):
 
     class Meta:
         ordering = ['room_number']
+        unique_together = (("hospital", "room_number"),)
+        constraints = [
+            # SQL treats NULL hospital as distinct, so unique_together alone
+            # would let duplicate tenant-less rows in.
+            models.UniqueConstraint(
+                fields=["room_number"],
+                condition=models.Q(hospital__isnull=True),
+                name="uniq_consulting_room_number_when_no_hospital",
+            ),
+        ]
 
 
 class WaitingList(TenantModel):

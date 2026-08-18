@@ -84,7 +84,7 @@
                             Patient context automatically loaded from current session. Focus on adding medications and prescription details.
                         </small>
                         <div class="mt-2">
-                            <a href="/patients/{{ current_patient.id }}/" class="btn btn-sm btn-outline-primary">
+                            <a href="{% url 'patients:detail' current_patient.id %}" class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-eye"></i> View Patient Details
                             </a>
                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearPatientContext()">

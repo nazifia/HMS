@@ -38,8 +38,15 @@ from core.models import AuditLog, InternalNotification
 from accounts.permissions import permission_required as hms_permission_required
 
 # Helper functions
-def execute_report(report, parameters_json=None):
-    """Execute a report and return the results"""
+def execute_report(report, parameters_json=None, user=None):
+    """Execute a report and return the results.
+
+    `report.query` is raw SQL run outside tenant scoping, so only a platform
+    superuser may trigger it; everyone else gets an empty result set.
+    """
+    empty = {'columns': [], 'rows': [], 'data': []}
+    if report is not None and report.query and not getattr(user, 'is_superuser', False):
+        return empty
     try:
         # Check if report is None
         if report is None:
@@ -208,7 +215,7 @@ def dashboard(request):
                 widget.error = 'No report assigned to this widget'
                 widget.result = {'columns': [], 'rows': [], 'data': []}
                 continue
-            widget.result = execute_report(widget.report, widget.parameters)
+            widget.result = execute_report(widget.report, widget.parameters, user=request.user)
             if widget.widget_type in ['bar', 'line', 'pie', 'donut']:
                 widget.chart = generate_chart(widget.result, widget.widget_type)
         except Exception as e:
@@ -893,7 +900,7 @@ def view_report(request, report_id):
             parameters = form.cleaned_data.get('parameters')
             try:
                 # Execute the report with the provided parameters
-                result = execute_report(report, parameters)
+                result = execute_report(report, parameters, user=request.user)
 
                 # Store the result in the session for potential export
                 request.session['report_result'] = result

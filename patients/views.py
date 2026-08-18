@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q, Sum
 from django.core.paginator import Paginator
 from django.http import JsonResponse
@@ -179,7 +180,23 @@ def register_patient(request):
         form = PatientForm(request.POST, request.FILES)
         if form.is_valid():
             from django.db import transaction
+
             from billing.fee_utils import create_registration_fee
+            from saas.models import enforce_limit
+
+            try:
+                enforce_limit(getattr(request, "hospital", None), Patient, "max_patients")
+            except DjangoValidationError as exc:
+                messages.error(request, exc.messages[0])
+                return render(
+                    request,
+                    "patients/register.html",
+                    {
+                        "form": form,
+                        "page_title": "Register Patient",
+                        "active_nav": "patients",
+                    },
+                )
 
             with transaction.atomic():
                 patient = form.save()

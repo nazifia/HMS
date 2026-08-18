@@ -88,7 +88,8 @@ class Purchase(TenantModel):
         Supplier, on_delete=models.CASCADE, related_name="purchases"
     )
     purchase_date = models.DateTimeField()
-    invoice_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
+    # unique per-hospital, not globally (see Meta.unique_together)
+    invoice_number = models.CharField(max_length=50, blank=True, null=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_status = models.CharField(
         max_length=20,
@@ -267,6 +268,17 @@ class Purchase(TenantModel):
             ("can_approve_purchases", "Can approve purchase orders"),
             ("can_process_payments", "Can process purchase payments"),
         ]
+        unique_together = (("hospital", "invoice_number"),)
+        constraints = [
+            # SQL treats NULL hospital as distinct, so unique_together alone
+            # would let duplicate tenant-less rows in.
+            models.UniqueConstraint(
+                fields=["invoice_number"],
+                condition=models.Q(hospital__isnull=True),
+                name="uniq_purchase_invoice_number_when_no_hospital",
+            ),
+        ]
+
 
 
 class PurchaseApproval(TenantModel):
@@ -471,7 +483,8 @@ class PharmacistDispensaryAssignment(TenantModel):
 class Dispensary(TenantModel):
     """Model representing a pharmacy dispensary location"""
 
-    name = models.CharField(max_length=100, unique=True)
+    # unique per-hospital, not globally (see Meta.unique_together)
+    name = models.CharField(max_length=100)
     location = models.CharField(max_length=200, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     manager = models.ForeignKey(
@@ -501,6 +514,17 @@ class Dispensary(TenantModel):
     class Meta:
         verbose_name_plural = "Dispensaries"
         ordering = ["name"]
+        unique_together = (("hospital", "name"),)
+        constraints = [
+            # SQL treats NULL hospital as distinct, so unique_together alone
+            # would let duplicate tenant-less rows in.
+            models.UniqueConstraint(
+                fields=["name"],
+                condition=models.Q(hospital__isnull=True),
+                name="uniq_dispensary_name_when_no_hospital",
+            ),
+        ]
+
         # Backs @permission_required('pharmacy.manage_pharmacists') in
         # assignment_views. Without a real Permission row the check could only
         # ever pass for superusers and the role editor had nothing to grant.
@@ -552,7 +576,8 @@ class Dispensary(TenantModel):
 class BulkStore(TenantModel):
     """Model representing the central bulk storage facility"""
 
-    name = models.CharField(max_length=100, unique=True)
+    # unique per-hospital, not globally (see Meta.unique_together)
+    name = models.CharField(max_length=100)
     location = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)
     manager = models.ForeignKey(
@@ -584,6 +609,16 @@ class BulkStore(TenantModel):
 
     class Meta:
         ordering = ["name"]
+        unique_together = (("hospital", "name"),)
+        constraints = [
+            # SQL treats NULL hospital as distinct, so unique_together alone
+            # would let duplicate tenant-less rows in.
+            models.UniqueConstraint(
+                fields=["name"],
+                condition=models.Q(hospital__isnull=True),
+                name="uniq_bulkstore_name_when_no_hospital",
+            ),
+        ]
 
 
 class ActiveStore(TenantModel):

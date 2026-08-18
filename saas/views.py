@@ -5,7 +5,9 @@ import urllib.request
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, login
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect, render
@@ -39,23 +41,33 @@ def signup(request):
     subdomain = slugify(request.POST.get("subdomain") or name)[:63]
     if not subdomain or Hospital.objects.filter(subdomain=subdomain).exists():
         return HttpResponseBadRequest("Subdomain unavailable.")
-    if User.objects.filter(username=username).exists():
-        return HttpResponseBadRequest("Username taken.")
     if User.objects.filter(phone_number=phone_number).exists():
         return HttpResponseBadRequest("Phone number already registered.")
 
     plan = Plan.objects.filter(pk=plan_id, is_active=True).first()
     if not plan:
         return HttpResponseBadRequest("Invalid plan.")
+    try:
+        validate_password(password)
+    except ValidationError as exc:
+        return HttpResponseBadRequest(" ".join(exc.messages))
 
     # Owner is the tenant admin: staff + 'admin' profile role, scoped to the
     # hospital (NOT a superuser — superusers are platform-level/cross-tenant).
+    # is_staff is this app's "tenant admin" flag (user management, activity
+    # views gate on it); TenantMiddleware keeps such users out of /admin/.
+    # Hospital first: the owner's username is unique per hospital, so the row
+    # needs its tenant set before the INSERT.
+    hospital = Hospital.objects.create(name=name, subdomain=subdomain)
     owner = User.objects.create_user(
-        phone_number=phone_number, username=username, password=password, is_staff=True
+        phone_number=phone_number,
+        username=username,
+        password=password,
+        is_staff=True,
+        hospital=hospital,
     )
-    hospital = Hospital.objects.create(name=name, subdomain=subdomain, owner=owner)
-    owner.hospital = hospital
-    owner.save(update_fields=["hospital"])
+    hospital.owner = owner
+    hospital.save(update_fields=["owner"])
     # Profile is auto-created by signal; mark it admin so the owner can manage.
     profile = getattr(owner, "profile", None)
     if profile is not None:
@@ -77,6 +89,9 @@ def signup(request):
     seed_departments_for(hospital)
     seed_lab_catalog_for(hospital)
     seed_specialties_for(hospital)
+    # Log the owner straight in — they just proved the password. Backend is
+    # explicit because several are configured.
+    login(request, owner, backend="accounts.backends.PhoneNumberBackend")
     return render(request, "saas/signup_done.html", {"hospital": hospital})
 
 

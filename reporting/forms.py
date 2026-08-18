@@ -116,11 +116,13 @@ class FinancialReportForm(forms.Form):
 class ReportForm(forms.ModelForm):
     class Meta:
         model = Report
-        fields = ['name', 'description', 'query', 'parameters', 'category', 'is_active']
+        # `query` is raw SQL executed unscoped, so it is NOT tenant-editable:
+        # any staff member could otherwise read (or write) every hospital's
+        # rows. Superusers author it in the Django admin.
+        fields = ['name', 'description', 'parameters', 'category', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'query': forms.Textarea(attrs={'class': 'form-control', 'rows': 10}),
             'parameters': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
             'category': forms.Select(attrs={'class': 'form-select'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),

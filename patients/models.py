@@ -378,7 +378,9 @@ class Patient(TenantModel):
                 # Regular patient ID: 10 digits, starting with 0
                 new_id = "0" + "".join([str(random.randint(0, 9)) for _ in range(9)])
 
-            if not Patient.objects.filter(patient_id=new_id).exists():
+            # all_objects: patient_id is unique platform-wide, so the check
+            # must see other tenants' ids or the INSERT hits IntegrityError.
+            if not Patient.all_objects.filter(patient_id=new_id).exists():
                 return new_id
 
             attempts += 1

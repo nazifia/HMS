@@ -70,16 +70,23 @@ class AdminBackend(ModelBackend):
 
         is_admin_request = bool(request and '/admin' in request.path)
 
-        try:
-            # Accept either username or phone number for admin login.
-            user = CustomUser.objects.get(
-                Q(username=username) | Q(phone_number=username)
-            )
-        except CustomUser.DoesNotExist:
+        # Accept either username or phone number for admin login. Phone numbers
+        # are globally unique; usernames are unique per hospital only, so the
+        # tenant on the request disambiguates them.
+        matches = CustomUser.objects.filter(
+            Q(username=username) | Q(phone_number=username)
+        )
+        req_hospital = getattr(request, "hospital", None)
+        if req_hospital is not None and matches.count() > 1:
+            matches = matches.filter(hospital=req_hospital)
+        user = matches.first() if matches.count() == 1 else None
+        if user is None:
+            # Either nothing matched, or the same username exists in several
+            # hospitals and the request carries no tenant to pick one. Fall back
+            # to the globally unique phone number.
+            user = CustomUser.objects.filter(phone_number=username).first()
+        if user is None:
             return None
-        except CustomUser.MultipleObjectsReturned:
-            # Same string is one user's username and another's phone: prefer username.
-            user = CustomUser.objects.get(username=username)
 
         if not user.check_password(password) or not user.is_active:
             return None

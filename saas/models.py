@@ -204,9 +204,45 @@ class TenantModel(models.Model):
     def save(self, *args, **kwargs):
         if self.hospital_id is None:
             current = get_current_hospital()
-            if current is not None:
-                self.hospital = current
+            self.hospital_id = (
+                current.id if current is not None else self._hospital_id_from_parent()
+            )
         super().save(*args, **kwargs)
+
+    def _hospital_id_from_parent(self):
+        """Borrow the tenant from an already-set FK (patient, admission, ...).
+
+        Rows written outside a request — management commands, signals, celery —
+        see no current hospital, and a NULL hospital is invisible to every
+        tenant-scoped query, so wallet transactions and charges created by the
+        nightly commands would silently vanish from the tenant's books. A row's
+        parents always live in one tenant, so borrowing is safe.
+
+        ponytail: first parent wins, one small query per lookup, and only on
+        the offline path (a request already has the current hospital).
+        """
+        for field in self._meta.concrete_fields:
+            if not field.is_relation or field.name == "hospital":
+                continue
+            parent_id = getattr(self, field.attname, None)
+            if parent_id is None:
+                continue
+            related = field.related_model
+            if not any(f.name == "hospital" for f in related._meta.local_fields):
+                continue
+            parent = field.get_cached_value(self, default=None)
+            if parent is not None:
+                if parent.hospital_id:
+                    return parent.hospital_id
+                continue
+            hospital_id = (
+                related._base_manager.filter(pk=parent_id)
+                .values_list("hospital_id", flat=True)
+                .first()
+            )
+            if hospital_id:
+                return hospital_id
+        return None
 
 
 def enforce_limit(hospital, model, count_attr):
@@ -218,7 +254,9 @@ def enforce_limit(hospital, model, count_attr):
     if not plan:
         return
     cap = getattr(plan, count_attr, 0)
-    if cap and model.all_objects.filter(hospital=hospital).count() >= cap:
+    # _base_manager: unscoped like all_objects, and it exists on every model
+    # (CustomUser carries a hospital FK but keeps its own manager).
+    if cap and model._base_manager.filter(hospital=hospital).count() >= cap:
         raise ValidationError(
             f"Plan '{plan.name}' limit reached for {model.__name__} ({cap})."
         )

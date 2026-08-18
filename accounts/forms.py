@@ -132,6 +132,25 @@ class CustomUserCreationForm(UserCreationForm):
         return user
 
 
+def _validate_username_in_tenant(username, instance=None):
+    """Usernames are unique per hospital, so validate inside the current tenant.
+
+    ModelForm cannot do it for us: `hospital` is not a form field, and Django
+    skips constraints that reference excluded fields.
+    """
+    from saas.current import get_current_hospital
+
+    if not username:
+        return username
+    hospital = get_current_hospital()
+    taken = User.objects.filter(username=username, hospital=hospital)
+    if instance is not None and instance.pk:
+        taken = taken.exclude(pk=instance.pk)
+    if taken.exists():
+        raise ValidationError("A user with that username already exists.")
+    return username
+
+
 class UserRegistrationForm(CustomUserCreationForm):
     """
     Specific registration form, can inherit from CustomUserCreationForm
@@ -163,6 +182,11 @@ class UserRegistrationForm(CustomUserCreationForm):
         label="Module",
         help_text="Select the module this user will be registered for.",
     )
+
+    def clean_username(self):
+        return _validate_username_in_tenant(
+            self.cleaned_data.get("username"), self.instance
+        )
 
     class Meta(CustomUserCreationForm.Meta):  # Inherit Meta from CustomUserCreationForm
         model = User
@@ -725,6 +749,11 @@ class StaffCreationForm(
         if phone and not phone.isdigit():
             raise ValidationError("Phone number must contain only digits.")
         return phone
+
+    def clean_username(self):
+        return _validate_username_in_tenant(
+            self.cleaned_data.get("username"), self.instance
+        )
 
     def save(self, commit=True):
         user = super().save(commit=False)

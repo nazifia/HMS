@@ -433,7 +433,7 @@
                                         {% endif %}
                                     </div>
                                     <div class="btn-group btn-group-sm ms-3" role="group">
-                                        <a href="/patients/{{ current_patient.id }}/" class="btn btn-outline-primary btn-sm" title="View Patient">
+                                        <a href="{% url 'patients:detail' current_patient.id %}" class="btn btn-outline-primary btn-sm" title="View Patient">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         <button type="button" class="btn btn-outline-danger btn-sm" title="Clear Patient Context" onclick="clearPatientContext()">

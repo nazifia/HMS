@@ -150,9 +150,10 @@ class CustomUserManager(BaseUserManager):
 
 class CustomUser(AbstractUser):
     phone_number = NigerianPhoneField(max_length=15, unique=True)
-    # username is inherited from AbstractUser, but we redefine it here to ensure it's present
-    # (though AbstractUser already has it). If we want different constraints, this is the place.
-    username = models.CharField(max_length=150, unique=True)
+    # Phone number is the login ID and stays globally unique. Username is a
+    # display/records handle and is unique per hospital only, so two tenants can
+    # both employ an "admin" or a "jdoe" (see Meta.constraints).
+    username = models.CharField(max_length=150)
 
     # Tenant ownership. NOT a TenantModel: auth lookups run before/around tenant
     # resolution, so auto-scoping would break login. Enforced manually via the
@@ -206,6 +207,34 @@ class CustomUser(AbstractUser):
         help_text="Specific permissions for this user.",
         verbose_name="user permissions",
     )
+
+    class Meta(AbstractUser.Meta):
+        constraints = [
+            models.UniqueConstraint(
+                fields=["hospital", "username"],
+                name="uniq_username_per_hospital",
+            ),
+            # SQL treats NULL hospital as distinct, so the constraint above does
+            # not cover platform-level users.
+            models.UniqueConstraint(
+                fields=["username"],
+                condition=models.Q(hospital__isnull=True),
+                name="uniq_username_when_no_hospital",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        # Stamp the tenant on creation. CustomUser is not a TenantModel (auth
+        # lookups must run unscoped), but a user created inside a tenant request
+        # belongs to that tenant, and the username constraints need the hospital
+        # set before the INSERT.
+        if self._state.adding and self.hospital_id is None:
+            from saas.current import get_current_hospital
+
+            current = get_current_hospital()
+            if current is not None:
+                self.hospital_id = current.id
+        super().save(*args, **kwargs)
 
     def get_full_name(self):
         """

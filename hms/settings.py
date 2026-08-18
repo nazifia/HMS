@@ -480,7 +480,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = "static/"
+# Absolute: a relative STATIC_URL picks up the tenant script prefix, so tenant
+# pages would ask for /t/<sub>/static/... which WhiteNoise (ahead of
+# TenantMiddleware) never matches.
+STATIC_URL = "/static/"
 
 # Email Configuration
 EMAIL_BACKEND = os.environ.get(

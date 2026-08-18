@@ -291,11 +291,13 @@ class Invoice(TenantModel):
         max_attempts = 100
         for attempt in range(max_attempts):
             # Count existing invoices for today and add attempt number
-            count = Invoice.objects.filter(invoice_date=today).count() + 1 + attempt
+            count = Invoice.all_objects.filter(invoice_date=today).count() + 1 + attempt
             invoice_number = f"{prefix}{date_str}{str(count).zfill(4)}"
 
             # Check if this invoice number already exists
-            if not Invoice.objects.filter(invoice_number=invoice_number).exists():
+            # all_objects: invoice_number is unique platform-wide; a per-tenant
+            # count would keep colliding with another hospital's numbers.
+            if not Invoice.all_objects.filter(invoice_number=invoice_number).exists():
                 return invoice_number
 
         # If we couldn't generate a unique number after max_attempts, use timestamp

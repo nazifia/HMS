@@ -427,6 +427,23 @@ def send_staff_onboarding_task_to_mcp(user):
     # messages.info(None, f"[Taskmaster/MCP] Staff onboarding task sent for {user.username} via MCP/Taskmaster.")
 
 
+
+def _plan_user_cap_message(request):
+    """Return the plan-limit error for adding one more staff user, else None.
+
+    The tenant's plan caps how many staff accounts it may hold; without this
+    every tier is effectively unlimited.
+    """
+    from django.core.exceptions import ValidationError
+
+    from saas.models import enforce_limit
+
+    try:
+        enforce_limit(getattr(request, "hospital", None), CustomUser, "max_users")
+    except ValidationError as exc:
+        return exc.messages[0]
+    return None
+
 @login_required
 @user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def add_staff(request):
@@ -434,6 +451,13 @@ def add_staff(request):
     if request.method == "POST":
         form = StaffCreationForm(request.POST)
         if form.is_valid():
+            capped = _plan_user_cap_message(request)
+            if capped:
+                messages.error(request, capped)
+                return render(
+                    request, "accounts/staff_form.html",
+                    {"form": form, "title": "Add Staff Member"},
+                )
             user = form.save()
             if getattr(request, "hospital", None) is not None:
                 user.hospital = request.hospital
@@ -596,6 +620,10 @@ def register(request):
     if request.method == "POST":
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
+            capped = _plan_user_cap_message(request)
+            if capped:
+                messages.error(request, capped)
+                return render(request, "accounts/register.html", {"form": form})
             user = form.save()
             if getattr(request, "hospital", None) is not None:
                 user.hospital = request.hospital
@@ -1258,7 +1286,11 @@ def role_management(request):
 
 
 @login_required
+# Role rows are global: one Role serves every hospital, so a tenant admin
+# editing one would rewrite permissions platform-wide. Mutating roles is a
+# platform-superuser power; tenants keep read access via "roles.view".
 @permission_required("roles.create")
+@user_passes_test(lambda u: u.is_superuser)
 def create_role(request):
     """View for creating a new role"""
     if request.method == "POST":
@@ -1296,7 +1328,11 @@ def create_role(request):
 
 
 @login_required
+# Role rows are global: one Role serves every hospital, so a tenant admin
+# editing one would rewrite permissions platform-wide. Mutating roles is a
+# platform-superuser power; tenants keep read access via "roles.view".
 @permission_required("roles.edit")
+@user_passes_test(lambda u: u.is_superuser)
 def edit_role(request, role_id):
     """View for editing an existing role"""
     role = get_object_or_404(Role, id=role_id)
@@ -1371,7 +1407,11 @@ def edit_role(request, role_id):
 
 
 @login_required
+# Role rows are global: one Role serves every hospital, so a tenant admin
+# editing one would rewrite permissions platform-wide. Mutating roles is a
+# platform-superuser power; tenants keep read access via "roles.view".
 @permission_required("roles.edit")
+@user_passes_test(lambda u: u.is_superuser)
 def clone_role(request, role_id):
     """View for cloning an existing role"""
     original_role = get_object_or_404(Role, id=role_id)
@@ -1480,7 +1520,11 @@ def compare_roles(request):
 
 
 @login_required
+# Role rows are global: one Role serves every hospital, so a tenant admin
+# editing one would rewrite permissions platform-wide. Mutating roles is a
+# platform-superuser power; tenants keep read access via "roles.view".
 @permission_required("roles.edit")
+@user_passes_test(lambda u: u.is_superuser)
 def delete_role(request, role_id):
     """View for deleting a role"""
     role = get_object_or_404(Role, id=role_id)
@@ -3409,7 +3453,11 @@ def ajax_assign_role(request):
 
 
 @login_required
+# Role rows are global: one Role serves every hospital, so a tenant admin
+# editing one would rewrite permissions platform-wide. Mutating roles is a
+# platform-superuser power; tenants keep read access via "roles.view".
 @permission_required("roles.edit")
+@user_passes_test(lambda u: u.is_superuser)
 def ajax_update_role_permissions(request):
     """
     AJAX endpoint for quick permission updates on roles

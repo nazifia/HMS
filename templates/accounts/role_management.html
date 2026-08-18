@@ -189,7 +189,7 @@
             <a href="{% url 'accounts:compare_roles' %}" class="btn btn-outline-info">
                 <i class="fas fa-balance-scale me-2"></i>Compare Roles
             </a>
-            {% if user|can_create:"role" %}
+            {% if user.is_superuser and user|can_create:"role" %}
             <a href="{% url 'accounts:create_role' %}" class="btn btn-primary">
                 <i class="fas fa-plus me-2"></i>Create New Role
             </a>
@@ -239,7 +239,7 @@
         {% endwith %}
 
         {% if roles|length == 0 %}
-            <p class="text-muted">No roles created yet. <a href="{% url 'accounts:create_role' %}">Create your first role</a>.</p>
+            <p class="text-muted">No roles created yet.{% if user.is_superuser %} <a href="{% url 'accounts:create_role' %}">Create your first role</a>.{% endif %}</p>
         {% endif %}
     </div>
 
@@ -269,7 +269,7 @@
                             <h5 class="mb-0">{{ role.name }}</h5>
                         </label>
                     </div>
-                    {% if user|can_edit:"role" %}
+                    {% if user.is_superuser and user|can_edit:"role" %}
                     <div class="role-actions">
                         <a href="{% url 'accounts:clone_role' role.id %}" class="btn btn-sm btn-outline-success clone-btn me-1" title="Clone Role" onclick="event.stopPropagation()">
                             <i class="fas fa-copy"></i>
@@ -350,7 +350,7 @@
         <div class="col-12">
             <div class="alert alert-info text-center">
                 <i class="fas fa-info-circle me-2"></i>
-                No roles found. <a href="{% url 'accounts:create_role' %}">Create your first role</a>.
+                No roles found.{% if user.is_superuser %} <a href="{% url 'accounts:create_role' %}">Create your first role</a>.{% endif %}
             </div>
         </div>
         {% endfor %}

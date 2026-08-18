@@ -32,7 +32,9 @@ class AuthorizationCode(TenantModel):
         ('cancelled', 'Cancelled'),
     )
     
-    code = models.CharField(max_length=50, unique=True, help_text="Unique authorization code")
+    # Unique per-hospital, not globally: one tenant's code must not block or
+    # leak into another's (see Meta.unique_together).
+    code = models.CharField(max_length=50, help_text="Authorization code, unique per hospital")
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='authorization_codes')
     # Link to billing service (optional - allows both service-based and manual amount entry)
     service = models.ForeignKey(
@@ -101,3 +103,13 @@ class AuthorizationCode(TenantModel):
         verbose_name = "Authorization Code"
         verbose_name_plural = "Authorization Codes"
         ordering = ['-generated_at']
+        unique_together = (("hospital", "code"),)
+        constraints = [
+            # SQL treats NULL hospital as distinct, so unique_together alone
+            # would let duplicate tenant-less rows in.
+            models.UniqueConstraint(
+                fields=["code"],
+                condition=models.Q(hospital__isnull=True),
+                name="uniq_authorization_code_when_no_hospital",
+            ),
+        ]
