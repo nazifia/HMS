@@ -61,7 +61,7 @@
 </head>
 <body>
     <!-- Print Button (only visible on screen) -->
-    <button class="btn btn-primary print-button no-print" onclick="window.print()">
+    <button class="btn btn-primary print-button no-print" onclick="hmsPrint()">
         <i class="fas fa-print"></i> Print
     </button>
     
@@ -69,6 +69,7 @@
     
     <!-- Bootstrap JS Bundle with Popper (self-hosted) -->
     <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'js/print.js' %}"></script>
     
     {% block extra_js %}{% endblock %}
     

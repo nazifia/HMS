@@ -161,7 +161,19 @@ def dashboard(request):
     revenue_days = [range_start + timedelta(days=i) for i in range(range_days)]
     label_fmt = '%a %d' if range_days == 7 else '%d %b'
     appointment_url = reverse('appointments:list')
+
+    # Chart data: patients registered per day over the same range (single query)
+    reg_rows = Patient.objects.filter(
+        registration_date__gte=range_start_dt, registration_date__lte=today_end
+    ).annotate(day=TruncDate('registration_date')).values('day').annotate(
+        total=CountFunc('id')
+    ).order_by('day')
+    registrations_by_day = {row['day']: row['total'] for row in reg_rows}
+
     chart_data = {
+        'registration_labels': [d.strftime(label_fmt) for d in revenue_days],
+        'registration_values': [registrations_by_day.get(d, 0) for d in revenue_days],
+        'registration_url': reverse('patients:list'),
         'revenue_labels': [d.strftime(label_fmt) for d in revenue_days],
         'revenue_values': [revenue_by_day.get(d, 0) for d in revenue_days],
         'revenue_url': reverse('core:revenue_trends_view'),

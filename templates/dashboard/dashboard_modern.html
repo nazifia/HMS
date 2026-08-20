@@ -393,6 +393,18 @@
         <div class="col-12">
             <div class="panel">
                 <div class="panel-header">
+                    <span class="panel-title"><i class="fas fa-user-plus text-primary me-2"></i>Patients Registered — Last {{ chart_range }} Days</span>
+                </div>
+                <div class="panel-body" style="padding:1rem 1.25rem;">
+                    <div style="position:relative;height:240px;">
+                        <canvas id="registrationChart" role="img" aria-label="Bar chart of patients registered per day"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="panel">
+                <div class="panel-header">
                     <span class="panel-title"><i class="fas fa-chart-bar text-primary me-2"></i>Department Records</span>
                 </div>
                 <div class="panel-body" style="padding:1rem 1.25rem;">
@@ -720,6 +732,38 @@
                 }
             }
         });
+    }
+
+    // Patients registered per day — bar
+    const regEl = document.getElementById('registrationChart');
+    if (regEl && data.registration_values && data.registration_values.some(v => v)) {
+        new Chart(regEl, {
+            type: 'bar',
+            data: {
+                labels: data.registration_labels,
+                datasets: [{
+                    label: 'Patients registered',
+                    data: data.registration_values,
+                    backgroundColor: '#0891b2',
+                    borderRadius: 4,
+                    maxBarThickness: 42,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                ...drilldown(data.registration_url),
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: gridColor }, ticks: { precision: 0 } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    } else if (regEl) {
+        regEl.parentElement.innerHTML =
+            '<div class="panel-empty" style="padding-top:4rem;">' +
+            '<i class="fas fa-user-plus"></i>No patients registered in this period</div>';
     }
 
     // Department records — bar

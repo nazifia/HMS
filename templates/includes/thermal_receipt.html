@@ -1,0 +1,82 @@
+{% load static %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        /* Thermal roll. 80mm default; ?width=58 for narrow rolls. */
+        :root { --roll: {{ roll_width|default:"80" }}mm; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "Courier New", monospace;
+            font-size: 12px; line-height: 1.35; color: #000; background: #fff;
+            width: var(--roll); margin: 0 auto; padding: 4px 6px;
+        }
+        .center { text-align: center; }
+        .bold { font-weight: bold; }
+        .small { font-size: 10px; }
+        .hr { border-top: 1px dashed #000; margin: 4px 0; }
+        .name { font-size: 14px; font-weight: bold; }
+        .row { display: flex; justify-content: space-between; gap: 6px; }
+        .row .val { text-align: right; }
+        .item-name { font-weight: bold; word-break: break-word; }
+        .total-row { font-weight: bold; font-size: 13px; }
+        .no-print { margin: 8px 0; text-align: center; }
+        @media print {
+            @page { size: var(--roll) auto; margin: 0; }
+            body { width: var(--roll); }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body data-roll-width="{{ roll_width }}"{% if auto_print %} data-auto-print="1"{% endif %}>
+    <div class="no-print">
+        <button onclick="hmsPrint()">Print</button>
+        {% if roll_width == "80" %}<a href="?format=thermal&amp;width=58">58mm</a>{% else %}<a href="?format=thermal">80mm</a>{% endif %}
+        <a href="?">Full page</a>
+    </div>
+
+    <div class="center">
+        {% for line in header_lines %}
+        <div class="{% if forloop.first %}name{% else %}small{% endif %}">{{ line }}</div>
+        {% endfor %}
+        <div class="bold" style="margin-top:3px;">{{ title }}</div>
+    </div>
+
+    <div class="hr"></div>
+
+    {% for label, value in meta %}
+    <div class="row"><span>{{ label }}:</span><span class="val">{{ value }}</span></div>
+    {% endfor %}
+
+    <div class="hr"></div>
+
+    {% for item in items %}
+    <div class="item-name">{{ item.name }}</div>
+    <div class="row">
+        <span>{% if item.qty %}{{ item.qty }} x {% endif %}{{ item.unit|currency }}</span>
+        <span class="val">{{ item.amount|currency }}</span>
+    </div>
+    {% if item.note %}<div class="small">{{ item.note }}</div>{% endif %}
+    {% endfor %}
+
+    <div class="hr"></div>
+
+    {% for label, value, bold in totals %}
+    <div class="row{% if bold %} total-row{% endif %}"><span>{{ label }}</span><span class="val">{{ value|currency }}</span></div>
+    {% endfor %}
+
+    <div class="hr"></div>
+    <div class="center small">
+        {% for line in footer_lines %}<div>{{ line }}</div>{% endfor %}
+        <div>Powered by: Nazz Tech - 08032194090</div>
+    </div>
+
+    <!-- Plain 32/48-column body; the webview bridge feeds this to ESC/POS printers. -->
+    <pre id="receipt-text" hidden>{{ receipt_text }}</pre>
+    <script src="{% static 'js/print.js' %}"></script>
+</body>
+</html>

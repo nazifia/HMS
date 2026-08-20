@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from core.receipts import payment_receipt_response
 from nhia.utils import NHIA_PATIENT_RATE, NHIA_COVERED_RATE
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
@@ -8061,7 +8062,7 @@ def pharmacy_payment_receipt(request, payment_id):
         "now": timezone.now(),
     }
 
-    return render(request, "payments/payment_receipt.html", context)
+    return payment_receipt_response(request, context)
 
 
 @login_required
@@ -8111,7 +8112,7 @@ def laboratory_payment_receipt(request, payment_id):
         "now": timezone.now(),
     }
 
-    return render(request, "payments/payment_receipt.html", context)
+    return payment_receipt_response(request, context)
 
 
 @login_required
@@ -8161,7 +8162,7 @@ def consultation_payment_receipt(request, payment_id):
         "now": timezone.now(),
     }
 
-    return render(request, "payments/payment_receipt.html", context)
+    return payment_receipt_response(request, context)
 
 
 @login_required
@@ -8210,7 +8211,7 @@ def admission_payment_receipt(request, payment_id):
         "now": timezone.now(),
     }
 
-    return render(request, "payments/payment_receipt.html", context)
+    return payment_receipt_response(request, context)
 
 
 @login_required

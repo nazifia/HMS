@@ -693,15 +693,7 @@ def cart_receipt(request, cart_id):
         )
 
     if output == "thermal":
-        # 80mm default; allow ?width=58 for narrow rolls.
-        roll_width = "58" if request.GET.get("width") == "58" else "80"
-        context = {
-            "cart": cart,
-            "now": timezone.now(),
-            "roll_width": roll_width,
-            "auto_print": request.GET.get("auto") == "1",
-        }
-        return render(request, "pharmacy/cart/cart_receipt_thermal.html", context)
+        return _cart_receipt_thermal(request, cart)
 
     context = {
         "cart": cart,
@@ -710,6 +702,62 @@ def cart_receipt(request, cart_id):
     }
 
     return render(request, "pharmacy/cart/cart_receipt.html", context)
+
+
+def _cart_receipt_thermal(request, cart):
+    """80mm/58mm roll version of the cart receipt (?format=thermal[&width=58])."""
+    from core.receipts import render_thermal, fmt_dt
+
+    patient = cart.prescription.patient
+    is_nhia = patient.is_nhia_patient()
+
+    items = []
+    for item in cart.items.all():
+        med = item.prescription_item.medication
+        items.append(
+            {
+                "name": f"{med.name} {med.strength}",
+                "qty": item.quantity,
+                "unit": item.unit_price,
+                "amount": item.get_subtotal(),
+                "note": (
+                    f"Pt 10%: {item.get_patient_pays():,.2f} / "
+                    f"NHIA: {item.get_nhia_covers():,.2f}"
+                )
+                if is_nhia
+                else "",
+            }
+        )
+
+    totals = [("Subtotal", cart.get_subtotal(), False)]
+    if is_nhia:
+        totals.append(("NHIA 90%", cart.get_nhia_coverage(), False))
+    totals.append(
+        ("Pt Pays" if is_nhia else "TOTAL", cart.get_patient_payable(), True)
+    )
+
+    return render_thermal(
+        request,
+        title="CART RECEIPT",
+        meta=[
+            ("Cart", f"#{cart.id}"),
+            ("Date", fmt_dt(cart.created_at)),
+            ("By", cart.created_by.get_full_name()),
+            ("Disp", cart.dispensary.name if cart.dispensary else ""),
+            ("Patient", patient.get_full_name()),
+            ("Patient ID", patient.patient_id),
+            ("Rx", f"#{cart.prescription.id}"),
+            ("NHIA", "patient 10% / NHIA 90%" if is_nhia else ""),
+            (
+                "Invoice",
+                f"#{cart.invoice.id} ({cart.invoice.get_status_display()})"
+                if cart.invoice
+                else "",
+            ),
+        ],
+        items=items,
+        totals=totals,
+    )
 
 
 def _cart_receipt_pdf(cart, hospital_name, hospital_address, hospital_phone):

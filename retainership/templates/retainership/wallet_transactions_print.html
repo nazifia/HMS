@@ -341,7 +341,7 @@
             </form>
         </div>
         
-        <button class="print-button" onclick="window.print()">
+        <button class="print-button" onclick="hmsPrint()">
             <i class="fas fa-print"></i> Print Report
         </button>
         <a href="{% url 'retainership:print_wallet_transactions' wallet.id %}{% if from_date or to_date %}?{% endif %}{% if from_date %}from_date={{ from_date }}{% endif %}{% if from_date and to_date %}&{% endif %}{% if to_date %}to_date={{ to_date }}{% endif %}" class="print-button" style="background: #28a745;">
@@ -509,5 +509,6 @@
         // Auto-print after page load (optional)
         // window.onload = function() { window.print(); };
     </script>
+    <script src="{% static 'js/print.js' %}"></script>
 </body>
 </html>

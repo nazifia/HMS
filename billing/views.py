@@ -25,6 +25,7 @@ from laboratory.models import TestRequest
 from pharmacy.models import Prescription
 from inpatient.models import Admission
 from core.audit_utils import log_audit_action
+from core.receipts import wants_thermal, render_thermal, fmt_dt
 from core.models import InternalNotification, send_notification_email
 from core.billing_office_integration import BillingOfficePaymentProcessor
 from core.patient_search_utils import (
@@ -353,6 +354,38 @@ def print_invoice(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id)
     invoice_items = invoice.items.all()
     payments = invoice.payments.all().order_by("-payment_date")
+
+    if wants_thermal(request):
+        return render_thermal(
+            request,
+            title="INVOICE",
+            meta=[
+                ("Invoice", invoice.invoice_number),
+                ("Date", fmt_dt(invoice.invoice_date)),
+                ("Due", fmt_dt(invoice.due_date)),
+                ("Patient", invoice.patient.get_full_name()),
+                ("Patient ID", invoice.patient.patient_id),
+                ("Status", invoice.get_status_display()),
+            ],
+            items=[
+                {
+                    "name": item.description or (item.service.name if item.service else "Item"),
+                    "qty": item.quantity,
+                    "unit": item.unit_price,
+                    "amount": item.total_amount,
+                }
+                for item in invoice_items
+            ],
+            totals=[
+                ("Subtotal", invoice.subtotal, False),
+                ("Tax", invoice.tax_amount, False),
+                ("Discount", invoice.discount_amount, False),
+                ("TOTAL", invoice.total_amount, True),
+                ("Paid", invoice.amount_paid, False),
+                ("Balance", invoice.get_balance(), True),
+            ],
+            footer=["Computer-generated invoice", "Thank you!"],
+        )
 
     context = {
         "invoice": invoice,

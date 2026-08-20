@@ -6,6 +6,11 @@
 
 {% block content %}
 <div class="container mt-5 mb-5">
+    <div class="no-print text-center mb-3">
+        <button onclick="hmsPrint()" class="btn btn-primary btn-sm"><i class="fas fa-print me-1"></i>Print</button>
+        <a href="?format=thermal&amp;auto=1" class="btn btn-outline-secondary btn-sm" target="_blank"><i class="fas fa-receipt me-1"></i>Thermal 80mm</a>
+        <a href="?format=thermal&amp;width=58&amp;auto=1" class="btn btn-outline-secondary btn-sm" target="_blank">58mm</a>
+    </div>
     <div class="row">
         <div class="col-md-12">
             <div class="card">
