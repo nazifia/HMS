@@ -62,3 +62,6 @@ frontend/.dart_tool/
 
 # Firebase hosting deploy cache
 frontend/.firebase/
+
+# Local Claude tooling scratch
+claude/
