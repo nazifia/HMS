@@ -950,6 +950,48 @@ def wallet_transactions(request, patient_id):
 
 
 @login_required
+@permission_required("billing.print_receipt")
+def wallet_transaction_receipt(request, transaction_id):
+    """Roll receipt for one wallet transaction - funding, refund, withdrawal or
+    a wallet-paid service.
+
+    ponytail: thermal only. There is no A4 wallet-slip design to render, and
+    the roll page prints fine from a desktop browser too.
+    """
+    from core.receipts import render_thermal, fmt_dt
+
+    txn = get_object_or_404(
+        WalletTransaction.objects.select_related(
+            "patient", "patient_wallet__patient", "invoice", "created_by"
+        ),
+        id=transaction_id,
+    )
+    patient = txn.patient or (txn.patient_wallet.patient if txn.patient_wallet else None)
+
+    return render_thermal(
+        request,
+        title=txn.get_transaction_type_display().upper(),
+        meta=[
+            ("Ref", txn.reference_number or txn.id),
+            ("Date", fmt_dt(txn.created_at)),
+            ("Patient", patient.get_full_name() if patient else ""),
+            ("Patient ID", getattr(patient, "patient_id", "")),
+            ("Invoice", txn.invoice.invoice_number if txn.invoice_id else ""),
+            ("Status", txn.get_status_display()),
+            ("By", txn.created_by.get_full_name() if txn.created_by_id else ""),
+        ],
+        items=[
+            {
+                "name": txn.description or txn.get_transaction_type_display(),
+                "unit": txn.amount,
+                "amount": txn.amount,
+            }
+        ],
+        totals=[("AMOUNT", txn.amount, True), ("Wallet Balance", txn.balance_after, False)],
+    )
+
+
+@login_required
 @permission_required("wallet.manage")
 def wallet_withdrawal(request, patient_id):
     """View for patient wallet withdrawal"""

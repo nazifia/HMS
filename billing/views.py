@@ -25,7 +25,12 @@ from laboratory.models import TestRequest
 from pharmacy.models import Prescription
 from inpatient.models import Admission
 from core.audit_utils import log_audit_action
-from core.receipts import wants_thermal, render_thermal, fmt_dt
+from core.receipts import (
+    wants_thermal,
+    render_thermal,
+    fmt_dt,
+    payment_receipt_response,
+)
 from core.models import InternalNotification, send_notification_email
 from core.billing_office_integration import BillingOfficePaymentProcessor
 from core.patient_search_utils import (
@@ -395,6 +400,84 @@ def print_invoice(request, invoice_id):
     }
 
     return render(request, "billing/print_invoice.html", context)
+
+
+# Receipt-number prefixes per source app, so the numbers modules printed before
+# (PH-12, LAB-12) stay stable now that one view serves every service.
+RECEIPT_PREFIXES = {
+    "pharmacy": "PH",
+    "laboratory": "LAB",
+    "radiology": "RAD",
+    "consultation": "CONS",
+    "theatre": "THT",
+    "appointment": "APPT",
+    "registration": "REG",
+}
+
+
+def receipt_items(invoice):
+    """Receipt lines: the invoice's own items, or - for a pharmacy invoice,
+    which carries a prescription instead of items - the prescribed drugs."""
+    items = [
+        {
+            "description": item.description
+            or (item.service.name if item.service else "Item"),
+            "quantity": item.quantity,
+            "unit_price": item.unit_price,
+            "total": item.total_amount,
+        }
+        for item in invoice.items.select_related("service")
+    ]
+    if items or not invoice.prescription_id:
+        return items
+
+    rate = NHIA_PATIENT_RATE if invoice.patient.is_nhia_patient() else Decimal("1")
+    for item in invoice.prescription.items.select_related("medication"):
+        unit_price = item.medication.price * rate
+        items.append(
+            {
+                "description": f"{item.medication.name} ({item.medication.strength})",
+                "quantity": item.quantity,
+                "unit_price": unit_price,
+                "total": unit_price * item.quantity,
+            }
+        )
+    return items
+
+
+@login_required
+@permission_required("billing.print_receipt")
+def payment_receipt(request, payment_id):
+    """Printable receipt for ANY payment, whatever service it came from.
+
+    A4 by default, thermal roll on ?format=thermal[&width=58][&auto=1].
+
+    Granted to every role that stands where money changes hands (billing
+    office, cashier/accountant, front desk, records, pharmacy, lab, radiology,
+    theatre) - see ROLE_PERMISSIONS - not to clinical roles that never hand a
+    patient a slip.
+    """
+    payment = get_object_or_404(
+        Payment.objects.select_related(
+            "invoice", "invoice__patient", "invoice__prescription", "received_by"
+        ),
+        id=payment_id,
+    )
+    invoice = payment.invoice
+    context = {
+        "payment": payment,
+        "invoice": invoice,
+        "patient": invoice.patient,
+        "items": receipt_items(invoice),
+        "service_type": invoice.get_source_app_display()
+        if invoice.source_app
+        else "Medical Service",
+        "service_description": invoice.get_service_details() or "",
+        "receipt_number": "%s-%s"
+        % (RECEIPT_PREFIXES.get(invoice.source_app, "RCP"), payment.id),
+        "now": timezone.now(),
+    }
+    return payment_receipt_response(request, context)
 
 
 @login_required

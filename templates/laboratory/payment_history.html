@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load custom_filters %}
+{% load permission_tags %}
 
 {% block title %}Laboratory Payment History{% endblock %}
 
@@ -140,10 +141,12 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <a href="{% url 'pharmacy:laboratory_payment_receipt' payment.id %}"
+                                        {% if user|has_permission:"billing.print_receipt" %}
+                                        <a href="{% url 'billing:payment_receipt' payment.id %}"
                                            class="btn btn-sm btn-info" target="_blank">
                                             <i class="fas fa-receipt"></i> Receipt
                                         </a>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -152,7 +155,7 @@
                                 <tr class="table-info">
                                     <td><strong>Total Paid:</strong></td>
                                     <td class="text-success font-weight-bold">{{ total_paid|currency }}</td>
-                                    <td colspan="5"></td>
+                                    <td colspan="6"></td>
                                 </tr>
                             </tfoot>
                         </table>

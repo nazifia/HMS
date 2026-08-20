@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load permission_tags %}
 
 {% block title %}Consultation Payment{% endblock %}
 
@@ -54,7 +55,7 @@
             <div class="table-responsive">
                 <table class="table table-bordered table-sm">
                     <thead>
-                        <tr><th>Date</th><th>Amount (₦)</th><th>Method</th></tr>
+                        <tr><th>Date</th><th>Amount (₦)</th><th>Method</th><th>Receipt</th></tr>
                     </thead>
                     <tbody>
                         {% for payment in payments %}
@@ -62,6 +63,11 @@
                             <td>{{ payment.payment_date|date:"M d, Y" }}</td>
                             <td>{{ payment.amount }}</td>
                             <td>{{ payment.get_payment_method_display }}</td>
+                            <td>
+                                {% if user|has_permission:"billing.print_receipt" %}
+                                <a href="{% url 'billing:payment_receipt' payment.id %}" class="btn btn-sm btn-info" target="_blank" title="Print receipt"><i class="fas fa-receipt"></i></a>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

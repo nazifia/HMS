@@ -224,6 +224,14 @@ class StrictAccessControlMiddleware(MiddlewareMixin):
         if request.path.startswith("/pharmacy/prescriptions/"):
             return "prescriptions.view"
 
+        # Receipts are printed by pharmacy, lab, radiology, theatre, records and
+        # front-desk staff who hold no billing.view - the rest of /billing/ is
+        # still theirs to stay out of. The view enforces billing.print_receipt.
+        if request.path.startswith("/billing/payments/") and request.path.endswith(
+            "/receipt/"
+        ):
+            return "billing.print_receipt"
+
         try:
             resolved = self._resolve(request)
             namespace = resolved.namespace if resolved is not None else None

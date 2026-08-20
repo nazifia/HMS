@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
 {% load form_tags %}
+{% load permission_tags %}
 
 {% block title %}{{ title|default:"Payment History" }} - Hospital Management System{% endblock %}
 
@@ -169,6 +170,7 @@
                                 <th>Received By</th>
                                 <th>Notes</th>
                                 <th>Status</th>
+                                <th>Receipt</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -212,6 +214,14 @@
                                 </td>
                                 <td>
                                     <span class="badge bg-success">Completed</span>
+                                </td>
+                                <td>
+                                    {% if user|has_permission:"billing.print_receipt" %}
+                                    <a href="{% url 'billing:payment_receipt' payment.id %}"
+                                       class="btn btn-sm btn-info" target="_blank">
+                                        <i class="fas fa-receipt"></i> Receipt
+                                    </a>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}

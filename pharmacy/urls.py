@@ -363,27 +363,6 @@ urlpatterns = [
         views.check_medication_availability,
         name="check_medication_availability",
     ),
-    # Payment Receipts
-    path(
-        "payments/<int:payment_id>/receipt/",
-        views.pharmacy_payment_receipt,
-        name="pharmacy_payment_receipt",
-    ),
-    path(
-        "payments/laboratory/<int:payment_id>/receipt/",
-        views.laboratory_payment_receipt,
-        name="laboratory_payment_receipt",
-    ),
-    path(
-        "payments/consultation/<int:payment_id>/receipt/",
-        views.consultation_payment_receipt,
-        name="consultation_payment_receipt",
-    ),
-    path(
-        "payments/admission/<int:payment_id>/receipt/",
-        views.admission_payment_receipt,
-        name="admission_payment_receipt",
-    ),
     # API Endpoints
     path("api/medications-legacy/", views.medication_api, name="medication_api"),
     path("api/", include(api_urls)),

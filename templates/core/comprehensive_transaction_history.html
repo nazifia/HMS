@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
+{% load permission_tags %}
 
 {% block title %}{{ title }} - Hospital Management System{% endblock %}
 
@@ -186,6 +187,7 @@
                             <th>Reference</th>
                             <th>Status</th>
                             <th>Created By</th>
+                            <th>Receipt</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -228,6 +230,13 @@
                                     {{ transaction.created_by.get_full_name }}
                                 {% else %}
                                     <em class="text-muted">System</em>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user|has_permission:"billing.print_receipt" %}
+                                <a href="{{ transaction.receipt_url }}" class="btn btn-sm btn-info" target="_blank" title="Print receipt">
+                                    <i class="fas fa-receipt"></i>
+                                </a>
                                 {% endif %}
                             </td>
                         </tr>

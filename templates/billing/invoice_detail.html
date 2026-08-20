@@ -2,6 +2,7 @@
 {% load custom_filters %}
 {% load billing_tags %}
 {% load form_tags %}
+{% load permission_tags %}
 
 {% block title %}Invoice #{{ invoice.invoice_number }} - Hospital Management System{% endblock %}
 
@@ -456,6 +457,7 @@
                                         <th>Reference #</th>
                                         <th>Received By</th>
                                         <th>Notes</th>
+                                        <th>Receipt</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -473,6 +475,14 @@
                                             {% endif %}
                                         </td>
                                         <td>{{ payment.notes|default:"-" }}</td>
+                                        <td>
+                                            {% if user|has_permission:"billing.print_receipt" %}
+                                            <a href="{% url 'billing:payment_receipt' payment.id %}"
+                                               class="btn btn-sm btn-info" target="_blank">
+                                                <i class="fas fa-receipt"></i> Receipt
+                                            </a>
+                                            {% endif %}
+                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -480,6 +490,7 @@
                                     <tr>
                                         <th colspan="5" class="text-end">Total Paid:</th>
                                         <th class="amount-display fw-bold text-success">{{ invoice.amount_paid|currency }}</th>
+                                        <th></th>
                                     </tr>
                                 </tfoot>
                             </table>

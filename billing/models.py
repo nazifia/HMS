@@ -426,4 +426,5 @@ class Payment(TenantModel):
             # only present in prod as a hand-created row, so a fresh deploy locked
             # payment views to superusers regardless of role grants.
             ("process_payment", "Can process payments"),
+            ("print_paymentreceipt", "Can print payment receipts"),
         ]

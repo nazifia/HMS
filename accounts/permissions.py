@@ -381,6 +381,13 @@ PERMISSION_DEFINITIONS = {
         "model": "Payment",
         "is_custom": True,
     },
+    "billing.print_receipt": {
+        "django_codename": "billing.print_paymentreceipt",
+        "category": "billing",
+        "description": "Can print payment and wallet receipts",
+        "model": "Payment",
+        "is_custom": True,
+    },
     # --------------------------------------------------------------------------
     # Wallet & Transactions (patients app)
     # --------------------------------------------------------------------------
@@ -1664,6 +1671,7 @@ ROLE_PERMISSIONS = {
             # Reports & Analytics
             "reports.view",
             "reports.generate",
+            "billing.print_receipt",
         ],
     },
     "doctor": {
@@ -1775,6 +1783,7 @@ ROLE_PERMISSIONS = {
             "retainership.view",
             "patients.nhia_manage",
             "reports.view",
+            "billing.print_receipt",
         ],
     },
     "pharmacist": {
@@ -1790,6 +1799,7 @@ ROLE_PERMISSIONS = {
             "prescriptions.view",
             "prescriptions.edit",
             "reports.view",
+            "billing.print_receipt",
         ],
     },
     "lab_technician": {
@@ -1804,6 +1814,7 @@ ROLE_PERMISSIONS = {
             "enter_lab_results",
             "prescriptions.view",
             "reports.view",
+            "billing.print_receipt",
         ],
     },
     "medical_lab_scientist": {
@@ -1820,6 +1831,7 @@ ROLE_PERMISSIONS = {
             "enter_lab_results",
             "prescriptions.view",
             "reports.view",
+            "billing.print_receipt",
         ],
     },
     "accountant": {
@@ -1836,6 +1848,7 @@ ROLE_PERMISSIONS = {
             "wallet.transactions",
             "wallet.manage",
             "reports.view",
+            "billing.print_receipt",
         ],
     },
     "health_record_officer": {
@@ -1860,6 +1873,7 @@ ROLE_PERMISSIONS = {
             "appointments.create",
             "appointments.edit",
             "reports.view",
+            "billing.print_receipt",
         ],
     },
     "radiology_staff": {
@@ -1871,6 +1885,7 @@ ROLE_PERMISSIONS = {
             "radiology.create",
             "radiology.edit",
             "reports.view",
+            "billing.print_receipt",
         ],
     },
     "desk_officer": {
@@ -1971,6 +1986,7 @@ ROLE_PERMISSIONS = {
             # NHIA Billing
             "nhia.view",
             "nhia.billing",
+            "billing.print_receipt",
         ],
     },
     "theatre_staff": {
@@ -1982,6 +1998,7 @@ ROLE_PERMISSIONS = {
             # Theatre URLs are gated on inpatient.view in the access-control middleware
             "inpatient.view",
             "reports.view",
+            "billing.print_receipt",
         ],
     },
 }

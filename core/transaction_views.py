@@ -1,3 +1,4 @@
+from django.urls import reverse
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Sum, Count
@@ -71,6 +72,7 @@ def comprehensive_transaction_history(request, patient_id=None):
             'status': wt.get_status_display(),
             'source': 'wallet',
             'invoice': wt.invoice,
+            'receipt_url': reverse('patients:wallet_transaction_receipt', args=[wt.id]),
         })
 
     # 2. Billing Payments (covers all invoice sources: billing, pharmacy, inpatient, ...)
@@ -105,6 +107,7 @@ def comprehensive_transaction_history(request, patient_id=None):
             'status': 'Completed',
             'source': source,
             'invoice': bp.invoice,
+            'receipt_url': reverse('billing:payment_receipt', args=[bp.id]),
         })
 
     # Filter by transaction type

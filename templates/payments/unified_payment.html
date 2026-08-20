@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
 {% load form_tags %}
+{% load permission_tags %}
 
 {% block title %}{{ title|default:"Payment Processing" }} - Hospital Management System{% endblock %}
 
@@ -207,7 +208,10 @@
                             <span class="badge bg-success">{{ payment.get_payment_method_display }}</span>
                         </div>
                         <div class="text-end">
-                            <strong>{{ payment.amount|currency }}</strong>
+                            <strong>{{ payment.amount|currency }}</strong><br>
+                            {% if user|has_permission:"billing.print_receipt" %}
+                            <a href="{% url 'billing:payment_receipt' payment.id %}" class="btn btn-sm btn-info" target="_blank" title="Print receipt"><i class="fas fa-receipt"></i></a>
+                            {% endif %}
                         </div>
                     </div>
                     {% if not forloop.last %}<hr>{% endif %}
