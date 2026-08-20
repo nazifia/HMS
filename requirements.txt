@@ -33,3 +33,6 @@ django-celery-beat==2.5.0
 django-compressor==4.5.1
 rcssmin==1.1.2
 rjsmin==1.2.2
+
+# Optional: only needed when REDIS_URL is set (cache + sessions).
+redis==5.0.8

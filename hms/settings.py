@@ -765,7 +765,18 @@ else:
     }
 
 # Session Configuration
-SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+# cached_db only pays off with a real cache. Layered over DatabaseCache it caches
+# the DB in the DB (no win) and adds a way to lose a session: DatabaseCache
+# swallows write errors silently, so the empty {} that login's cycle_key() writes
+# under the new key can survive as the cached value while the real session sits in
+# django_session. The request then reads {} -> AnonymousUser -> bounce to
+# /accounts/login/?next=... on a perfectly valid session (~2-3% of requests here).
+# LocMemCache is per-process, so it goes stale across workers instead.
+SESSION_ENGINE = (
+    "django.contrib.sessions.backends.cached_db"
+    if _REDIS_URL
+    else "django.contrib.sessions.backends.db"
+)
 SESSION_CACHE_ALIAS = "default"
 SESSION_COOKIE_AGE = int(
     os.environ.get("SESSION_COOKIE_AGE", "3600")
