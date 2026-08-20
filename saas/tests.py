@@ -393,7 +393,8 @@ class BrandingUploadTests(TestCase):
 
         return client.post(
             "/t/brand/saas/branding/",
-            {"logo": SimpleUploadedFile("mark.gif", self.GIF, content_type="image/gif")},
+            {"only": "logo",
+             "logo": SimpleUploadedFile("mark.gif", self.GIF, content_type="image/gif")},
         )
 
     def test_admin_upload_saves_logo(self):
@@ -403,6 +404,49 @@ class BrandingUploadTests(TestCase):
         self.h.refresh_from_db()
         self.addCleanup(self.h.logo.delete)
         self.assertIn("hospital_logos/", self.h.logo.name)
+
+    def _save(self, client, field, value):
+        return client.post("/t/brand/saas/branding/", {"only": field, field: value})
+
+    def test_admin_saves_letterhead_details(self):
+        c = Client()
+        c.force_login(self.admin)
+        for field, value in (
+            ("address", "12 Ring Road, Ibadan"),
+            ("phone", "08012345678"),
+            ("email", "info@brand.test"),
+        ):
+            self.assertEqual(self._save(c, field, value).status_code, 302)
+        self.h.refresh_from_db()
+        self.assertEqual(self.h.address, "12 Ring Road, Ibadan")
+        self.assertEqual(self.h.phone, "08012345678")
+        self.assertEqual(self.h.email, "info@brand.test")
+
+    def test_saving_one_field_leaves_the_others(self):
+        """Per-field saves: an untouched box must not be wiped."""
+        Hospital.objects.filter(pk=self.h.pk).update(phone="08012345678", email="a@b.test")
+        c = Client()
+        c.force_login(self.admin)
+        self.assertEqual(self._save(c, "address", "New Road").status_code, 302)
+        self.h.refresh_from_db()
+        self.assertEqual(self.h.address, "New Road")
+        self.assertEqual(self.h.phone, "08012345678")
+        self.assertEqual(self.h.email, "a@b.test")
+
+    def test_bad_phone_rejected(self):
+        c = Client()
+        c.force_login(self.admin)
+        self._save(c, "phone", "call me")
+        self.h.refresh_from_db()
+        self.assertEqual(self.h.phone, "")
+
+    def test_unknown_field_rejected(self):
+        c = Client()
+        c.force_login(self.admin)
+        resp = self._save(c, "subdomain", "hijacked")
+        self.assertEqual(resp.status_code, 400)
+        self.h.refresh_from_db()
+        self.assertEqual(self.h.subdomain, "brand")
 
     def test_non_admin_cannot_upload(self):
         from django.contrib.auth import get_user_model
@@ -415,3 +459,33 @@ class BrandingUploadTests(TestCase):
         self.assertEqual(self._upload(c).status_code, 302)  # bounced to login
         self.h.refresh_from_db()
         self.assertFalse(self.h.logo)
+
+
+class HospitalAdminAddressTests(TestCase):
+    """A platform superuser must be able to edit the letterhead in /admin/."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        self.h = Hospital.objects.create(name="Addr Clinic", subdomain="addr")
+        self.su = get_user_model().objects.create_superuser(
+            phone_number="08060000001", username="platform", password="pw",
+        )
+        self.addCleanup(clear_current_hospital)
+
+    def test_superuser_updates_address(self):
+        c = Client()
+        c.force_login(self.su)
+        url = f"/admin/saas/hospital/{self.h.pk}/change/"
+        self.assertEqual(c.get(url).status_code, 200)
+        resp = c.post(url, {
+            "name": self.h.name,
+            "subdomain": self.h.subdomain,
+            "is_active": "on",
+            "address": "12 Ring Road, Ibadan",
+            "phone": "08012345678",
+            "email": "info@addr.test",
+        })
+        self.assertEqual(resp.status_code, 302)
+        self.h.refresh_from_db()
+        self.assertEqual(self.h.address, "12 Ring Road, Ibadan")

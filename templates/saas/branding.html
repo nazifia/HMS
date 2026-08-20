@@ -25,14 +25,27 @@
         <p class="text-muted fst-italic">No logo uploaded yet.</p>
       {% endif %}
 
-      <form method="post" enctype="multipart/form-data">
+      <form method="post" enctype="multipart/form-data" class="mb-4">
         {% csrf_token %}
+        <input type="hidden" name="only" value="logo">
         <label class="form-label" for="{{ form.logo.id_for_label }}">Upload a new logo</label>
         {{ form.logo }}
-        {% if form.logo.errors %}<div class="text-danger small mt-1">{{ form.logo.errors|striptags }}</div>{% endif %}
-        <div class="form-text mb-3">PNG or JPG. A wide, transparent-background image around 400&times;150px prints best.</div>
+        <div class="form-text mb-2">PNG or JPG. A wide, transparent-background image around 400&times;150px prints best.</div>
         <button type="submit" class="btn btn-primary">Save logo</button>
       </form>
+
+      {% for field in form %}{% if field.name != 'logo' %}
+      <form method="post" class="mb-3">
+        {% csrf_token %}
+        <input type="hidden" name="only" value="{{ field.name }}">
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        <div class="input-group">
+          {{ field }}
+          <button type="submit" class="btn btn-outline-primary">Save</button>
+        </div>
+      </form>
+      {% endif %}{% endfor %}
+      <div class="form-text mb-3">Each box saves on its own, so one blank field can&rsquo;t wipe the others.</div>
 
       <hr>
       <p class="text-muted small mb-0">

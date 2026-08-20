@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from django.db import transaction
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect, render
@@ -211,29 +212,59 @@ def paystack_webhook(request):
     return JsonResponse({"ok": True})
 
 
-class LogoForm(forms.ModelForm):
-    """ModelForm purely for the ImageField validation (real image, not any upload)."""
+BRANDING_FIELDS = ("logo", "address", "phone", "email")
+
+
+class BrandingForm(forms.ModelForm):
+    """The letterhead block: logo plus the address/phone/email printed under it.
+
+    `only` trims the form to a single field so each Save button writes just
+    that one — a blank box elsewhere on the page can't wipe a stored value.
+    """
+
+    phone = forms.CharField(
+        required=False,
+        max_length=30,
+        validators=[RegexValidator(r"^[0-9+()\-\s]{7,30}$", "Use digits and + - ( ) only, 7-30 characters.")],
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
 
     class Meta:
         model = Hospital
-        fields = ["logo"]
-        widgets = {"logo": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "image/*"})}
+        fields = list(BRANDING_FIELDS)
+        widgets = {
+            "logo": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "image/*"}),
+            "address": forms.TextInput(attrs={"class": "form-control"}),
+            "email": forms.EmailInput(attrs={"class": "form-control"}),
+        }
+
+    def __init__(self, *args, only=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if only:
+            for name in [f for f in self.fields if f != only]:
+                del self.fields[name]
 
 
 @user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def branding(request):
-    """Let a tenant admin upload the logo that heads every receipt/printout."""
+    """Let a tenant admin set the letterhead heading every receipt/printout."""
     hospital = getattr(request, "hospital", None)
     if hospital is None:
         messages.error(request, "No tenant in context. Open this page from your hospital subdomain.")
         return render(request, "saas/branding.html", {"hospital": None})
 
     if request.method == "POST":
-        form = LogoForm(request.POST, request.FILES, instance=hospital)
+        only = request.POST.get("only")
+        if only not in BRANDING_FIELDS:
+            return HttpResponseBadRequest("Unknown branding field.")
+        form = BrandingForm(request.POST, request.FILES, instance=hospital, only=only)
         if form.is_valid():
             form.save()
-            messages.success(request, "Logo updated. It now appears on receipts and printouts.")
-            return redirect(reverse("saas:branding"))
-    else:
-        form = LogoForm(instance=hospital)
-    return render(request, "saas/branding.html", {"hospital": hospital, "form": form})
+            messages.success(request, f"{form.fields[only].label or only} updated.")
+        else:
+            # ponytail: report the error and re-render blank rather than
+            # threading a part-bound form through the per-field template loop.
+            messages.error(request, form.errors.get(only, form.errors).as_text().lstrip("* "))
+        return redirect(reverse("saas:branding"))
+
+    return render(request, "saas/branding.html", {"hospital": hospital, "form": BrandingForm(instance=hospital)})

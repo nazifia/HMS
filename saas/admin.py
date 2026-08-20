@@ -11,9 +11,20 @@ class PlanAdmin(admin.ModelAdmin):
 
 @admin.register(Hospital)
 class HospitalAdmin(admin.ModelAdmin):
-    list_display = ("name", "subdomain", "owner", "is_active", "created_at")
-    search_fields = ("name", "subdomain")
+    list_display = ("name", "subdomain", "address", "phone", "is_active", "created_at")
+    list_editable = ("address", "phone")
+    search_fields = ("name", "subdomain", "address")
     readonly_fields = ("logo_preview",)
+    fieldsets = (
+        (None, {"fields": ("name", "subdomain", "owner", "is_active")}),
+        (
+            "Letterhead",
+            {
+                "fields": ("address", "phone", "email", "logo", "logo_preview"),
+                "description": "Printed on invoices, receipts and result sheets.",
+            },
+        ),
+    )
 
     @admin.display(description="Current logo")
     def logo_preview(self, obj):
