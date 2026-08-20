@@ -6,6 +6,7 @@ import urllib.request
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
+from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -16,6 +17,8 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+
+from django import forms
 
 from .models import Hospital, Plan, Subscription
 
@@ -206,3 +209,31 @@ def paystack_webhook(request):
         sub.status = "past_due"
     sub.save()
     return JsonResponse({"ok": True})
+
+
+class LogoForm(forms.ModelForm):
+    """ModelForm purely for the ImageField validation (real image, not any upload)."""
+
+    class Meta:
+        model = Hospital
+        fields = ["logo"]
+        widgets = {"logo": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "image/*"})}
+
+
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+def branding(request):
+    """Let a tenant admin upload the logo that heads every receipt/printout."""
+    hospital = getattr(request, "hospital", None)
+    if hospital is None:
+        messages.error(request, "No tenant in context. Open this page from your hospital subdomain.")
+        return render(request, "saas/branding.html", {"hospital": None})
+
+    if request.method == "POST":
+        form = LogoForm(request.POST, request.FILES, instance=hospital)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Logo updated. It now appears on receipts and printouts.")
+            return redirect(reverse("saas:branding"))
+    else:
+        form = LogoForm(instance=hospital)
+    return render(request, "saas/branding.html", {"hospital": hospital, "form": form})

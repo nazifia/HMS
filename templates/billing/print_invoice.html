@@ -22,8 +22,13 @@
                             <p class="text-muted">Date: {{ invoice.created_at|date:"F d, Y" }}</p>
                         </div>
                         <div class="col-md-6 text-end">
-                            <h3>Hospital Management System</h3>
-                            <p>123 Hospital Street<br>City, State 12345<br>Phone: (123) 456-7890<br>Email: info@hospital.com</p>
+                            {% if hospital_logo %}<img src="{{ hospital_logo }}" alt="" class="mb-2" style="max-height:70px">{% endif %}
+                            <h3>{{ hospital_name }}</h3>
+                            <p>
+                                {% if hospital_address %}{{ hospital_address }}<br>{% endif %}
+                                {% if hospital_phone %}Phone: {{ hospital_phone }}<br>{% endif %}
+                                {% if hospital_email %}Email: {{ hospital_email }}{% endif %}
+                            </p>
                         </div>
                     </div>
 

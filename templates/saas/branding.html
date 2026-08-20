@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Hospital Branding{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width: 640px;">
+  <h1 class="h4 fw-bold mb-4">Hospital Branding</h1>
+
+  {% if messages %}
+    {% for m in messages %}
+      <div class="alert alert-{{ m.tags|default:'info' }}">{{ m }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% if hospital %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <div class="text-muted small">Hospital</div>
+      <div class="h5">{{ hospital.name }}</div>
+      <hr>
+
+      <div class="text-muted small mb-2">Current logo</div>
+      {% if hospital.logo %}
+        <img src="{{ hospital.logo.url }}" alt="" class="mb-3 border rounded p-2" style="max-height:100px">
+      {% else %}
+        <p class="text-muted fst-italic">No logo uploaded yet.</p>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label class="form-label" for="{{ form.logo.id_for_label }}">Upload a new logo</label>
+        {{ form.logo }}
+        {% if form.logo.errors %}<div class="text-danger small mt-1">{{ form.logo.errors|striptags }}</div>{% endif %}
+        <div class="form-text mb-3">PNG or JPG. A wide, transparent-background image around 400&times;150px prints best.</div>
+        <button type="submit" class="btn btn-primary">Save logo</button>
+      </form>
+
+      <hr>
+      <p class="text-muted small mb-0">
+        Appears on payment receipts, invoices, prescriptions, lab and radiology results,
+        thermal receipts and the sidebar.
+      </p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

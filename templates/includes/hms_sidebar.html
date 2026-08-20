@@ -706,6 +706,7 @@
                     <a class="collapse-item {% if 'admin' in request.path %}active{% endif %}" href="{% url 'core:admin_dashboard' %}">Admin Dashboard</a>
                     <a class="collapse-item {% if 'activity_log' in request.path %}active{% endif %}" href="{% url 'core:activity_log' %}">Activity Log</a>
                     <a class="collapse-item {% if 'security_overview' in request.path %}active{% endif %}" href="{% url 'core:security_overview' %}">Security Overview</a>
+                    <a class="collapse-item {% if 'branding' in request.path %}active{% endif %}" href="{% url 'saas:branding' %}">Hospital Branding</a>
                 </div>
             </div>
         </li>

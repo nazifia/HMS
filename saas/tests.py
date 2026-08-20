@@ -362,3 +362,56 @@ class HospitalLogoTests(TestCase):
         h.logo.save("mark.gif", SimpleUploadedFile("mark.gif", gif), save=True)
         self.addCleanup(h.logo.delete)
         self.assertIn("hospital_logos/", self._ctx(h)["hospital_logo"])
+
+
+class BrandingUploadTests(TestCase):
+    """The in-app upload page must store the logo on the *request's* tenant."""
+
+    GIF = (
+        b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!"
+        b"\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00"
+        b"\x00\x02\x02D\x01\x00;"
+    )
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        self.h = Hospital.objects.create(name="Brand Clinic", subdomain="brand")
+        plan = Plan.objects.create(name="Free", price=0)
+        Subscription.objects.create(
+            hospital=self.h, plan=plan, status="active",
+            current_period_end=timezone.now() + timedelta(days=30),
+        )
+        self.admin = get_user_model().objects.create_user(
+            phone_number="08050000001", username="brandadmin", password="pw",
+            is_staff=True, hospital=self.h,
+        )
+        self.addCleanup(clear_current_hospital)
+
+    def _upload(self, client):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        return client.post(
+            "/t/brand/saas/branding/",
+            {"logo": SimpleUploadedFile("mark.gif", self.GIF, content_type="image/gif")},
+        )
+
+    def test_admin_upload_saves_logo(self):
+        c = Client()
+        c.force_login(self.admin)
+        self.assertEqual(self._upload(c).status_code, 302)
+        self.h.refresh_from_db()
+        self.addCleanup(self.h.logo.delete)
+        self.assertIn("hospital_logos/", self.h.logo.name)
+
+    def test_non_admin_cannot_upload(self):
+        from django.contrib.auth import get_user_model
+
+        nurse = get_user_model().objects.create_user(
+            phone_number="08050000002", username="nurse", password="pw", hospital=self.h,
+        )
+        c = Client()
+        c.force_login(nurse)
+        self.assertEqual(self._upload(c).status_code, 302)  # bounced to login
+        self.h.refresh_from_db()
+        self.assertFalse(self.h.logo)
