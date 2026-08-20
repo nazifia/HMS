@@ -21,6 +21,9 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("pharmacy", "0036_alter_bulkstore_name_alter_dispensary_name_and_more"),
+        # The patient__hospital lookup needs Patient.hospital to exist first;
+        # without this a fresh database can order 0023 after us and blow up.
+        ("patients", "0023_patient_hospital"),
     ]
 
     operations = [

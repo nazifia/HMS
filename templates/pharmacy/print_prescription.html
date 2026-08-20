@@ -46,6 +46,7 @@
 <div class="container mt-4 mb-5">
     <div class="row">
         <div class="col-12 text-center mb-4">
+            {% if hospital_logo %}<img src="{{ hospital_logo }}" alt="" class="mb-2" style="max-height:70px">{% endif %}
             <h2 class="mb-0">{{ hospital_name }}</h2>
             {% if hospital_address %}<p class="mb-0">{{ hospital_address }}</p>{% endif %}
             {% if hospital_phone or hospital_email %}<p class="mb-0">{% if hospital_phone %}Phone: {{ hospital_phone }}{% endif %}{% if hospital_phone and hospital_email %} | {% endif %}{% if hospital_email %}Email: {{ hospital_email }}{% endif %}</p>{% endif %}

@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import format_html
 
 from .models import Hospital, Plan, Subscription
 
@@ -12,6 +13,13 @@ class PlanAdmin(admin.ModelAdmin):
 class HospitalAdmin(admin.ModelAdmin):
     list_display = ("name", "subdomain", "owner", "is_active", "created_at")
     search_fields = ("name", "subdomain")
+    readonly_fields = ("logo_preview",)
+
+    @admin.display(description="Current logo")
+    def logo_preview(self, obj):
+        if not obj.logo:
+            return "No logo uploaded"
+        return format_html('<img src="{}" style="max-height:80px">', obj.logo.url)
 
 
 @admin.register(Subscription)

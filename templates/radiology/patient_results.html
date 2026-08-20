@@ -81,6 +81,7 @@
 {% block content %}
 <!-- Print Header (only visible when printing) -->
 <div class="print-header">
+    {% if hospital_logo %}<img src="{{ hospital_logo }}" alt="" style="max-height:70px;margin-bottom:6px">{% endif %}
     <h2>{{ hospital_name }}</h2>
     {% if hospital_address %}<p>{{ hospital_address }}</p>{% endif %}
     {% if hospital_phone or hospital_email %}<p>{% if hospital_phone %}Phone: {{ hospital_phone }}{% endif %}{% if hospital_phone and hospital_email %} | {% endif %}{% if hospital_email %}Email: {{ hospital_email }}{% endif %}</p>{% endif %}

@@ -104,6 +104,7 @@
 </head>
 <body>
     <div class="header">
+        {% if hospital_logo %}<img src="{{ hospital_logo }}" alt="" style="max-height:70px;margin-bottom:6px">{% endif %}
         <div class="hospital-name">{{ hospital_name }}</div>
         {% if hospital_address %}<div class="hospital-info">{{ hospital_address }}</div>{% endif %}
         {% if hospital_phone or hospital_email %}<div class="hospital-info">{% if hospital_phone %}Phone: {{ hospital_phone }}{% endif %}{% if hospital_phone and hospital_email %} | {% endif %}{% if hospital_email %}Email: {{ hospital_email }}{% endif %}</div>{% endif %}

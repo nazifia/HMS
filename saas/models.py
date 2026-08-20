@@ -88,6 +88,8 @@ class Hospital(models.Model):
     address = models.CharField(max_length=255, blank=True)
     phone = models.CharField(max_length=30, blank=True)
     email = models.EmailField(blank=True)
+    # Letterhead logo, uploaded from the Django admin.
+    logo = models.ImageField(upload_to="hospital_logos/", blank=True)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

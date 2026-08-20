@@ -8,19 +8,24 @@
 // template changes.
 //
 // Payload handed to the shell (JSON):
-//   {title, html, text, width}
+//   {title, html, text, logo, width}
 //     html  - full document, for the system print / PDF path
 //     text  - plain 32/48-column receipt body, ready for ESC/POS (thermal pages)
+//     logo  - base64 ESC/POS raster (GS v 0) of the hospital logo, already
+//             centred and fed; write these bytes before `text`. "" when the
+//             tenant uploaded no logo.
 //     width - roll width in mm ("58"/"80"); empty on A4 pages
 (function () {
     var nativePrint = window.print ? window.print.bind(window) : null;
 
     function payload() {
         var t = document.getElementById('receipt-text');
+        var l = document.getElementById('receipt-logo');
         return {
             title: document.title,
             html: '<!DOCTYPE html>' + document.documentElement.outerHTML,
             text: t ? t.textContent : '',
+            logo: l ? l.textContent.trim() : '',
             width: document.body.getAttribute('data-roll-width') || ''
         };
     }

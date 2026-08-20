@@ -172,6 +172,7 @@
     </div>
     <!-- Receipt Header -->
     <div class="receipt-header">
+        {% if hospital_logo %}<img src="{{ hospital_logo }}" alt="" style="max-height:70px;margin-bottom:6px">{% endif %}
         <h1>{{ hospital_name }}</h1>
         <div class="hospital-info">
             {% if hospital_address %}<p>{{ hospital_address }}</p>{% endif %}

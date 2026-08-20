@@ -14,10 +14,12 @@ def hospital_details(request):
             "hospital_address": h.address,
             "hospital_phone": h.phone,
             "hospital_email": h.email,
+            "hospital_logo": h.logo.url if h.logo else "",
         }
     return {
         "hospital_name": settings.HOSPITAL_NAME,
         "hospital_address": settings.HOSPITAL_ADDRESS,
         "hospital_phone": settings.HOSPITAL_PHONE,
         "hospital_email": settings.HOSPITAL_EMAIL,
+        "hospital_logo": "",
     }

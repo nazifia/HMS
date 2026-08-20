@@ -18,11 +18,16 @@ page for the webview print bridge to feed straight to an ESC/POS printer
 (see static/js/print.js).
 """
 
+import base64
 import textwrap
 from django.shortcuts import render
 
 # 58mm rolls fit 32 characters at font A, 80mm rolls fit 48.
 COLUMNS = {"58": 32, "80": 48}
+# ...and 384 / 576 printable dots across, which is what a logo is scaled to.
+DOTS = {"58": 384, "80": 576}
+# Tall logos eat roll; nothing sensible needs more than ~25mm of paper.
+MAX_LOGO_DOTS = 200
 
 
 def wants_thermal(request):
@@ -31,6 +36,51 @@ def wants_thermal(request):
 
 def roll_width(request):
     return "58" if request.GET.get("width") == "58" else "80"
+
+
+def escpos_logo(logo, width):
+    """The hospital logo as a base64 ESC/POS raster block, or "" if there is none.
+
+    A thermal printer cannot render the <img> in the HTML page, so the bitmap
+    is encoded here as `GS v 0` (centred, one trailing feed) and handed to the
+    native shell alongside the text body - it writes the bytes, then the text.
+    """
+    if not logo:
+        return ""
+    try:
+        from PIL import Image
+    except ImportError:  # Pillow is a hard dep of ImageField, but stay quiet.
+        return ""
+    try:
+        with logo.open("rb") as fh:
+            img = Image.open(fh)
+            img.load()
+    except Exception:
+        # A missing or corrupt upload must not cost the customer their receipt.
+        return ""
+
+    dots = DOTS[width]
+    scale = min(dots / img.width, MAX_LOGO_DOTS / img.height, 1)
+    img = img.convert("L").resize(
+        (max(1, int(img.width * scale)), max(1, int(img.height * scale)))
+    )
+    # Pad to a whole byte: mode "1" pads short rows with 0 bits, which invert
+    # into a black bar down the right-hand edge.
+    padded = Image.new("L", ((img.width + 7) // 8 * 8, img.height), 255)
+    padded.paste(img, (0, 0))
+    bitmap = padded.convert("1")
+    row_bytes = bitmap.width // 8
+    # "1" packs 8 px/byte MSB-first, 1 = white; ESC/POS wants 1 = burn a dot.
+    data = bytes(b ^ 0xFF for b in bitmap.tobytes())
+
+    raster = (
+        b"\x1b\x61\x01"  # centre
+        + b"\x1d\x76\x30\x00"
+        + bytes((row_bytes % 256, row_bytes // 256, bitmap.height % 256, bitmap.height // 256))
+        + data
+        + b"\n\x1b\x61\x00"  # feed, back to left-align
+    )
+    return base64.b64encode(raster).decode()
 
 
 def money(value):
@@ -100,6 +150,8 @@ def render_thermal(request, title, meta, items, totals, footer=None):
     from saas.context_processors import hospital_details
 
     details = hospital_details(request)
+    hospital = getattr(request, "hospital", None)
+    logo = hospital.logo if hospital and hospital.logo else None
     width = roll_width(request)
     cols = COLUMNS[width]
     header = [
@@ -120,6 +172,8 @@ def render_thermal(request, title, meta, items, totals, footer=None):
             "items": items,
             "totals": totals,
             "header_lines": [h for h in header if h],
+            "logo_url": details["hospital_logo"],
+            "logo_escpos": escpos_logo(logo, width),
             "footer_lines": footer,
             "roll_width": width,
             "auto_print": request.GET.get("auto") == "1",

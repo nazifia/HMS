@@ -334,3 +334,31 @@ class PlanCapTests(TestCase):
         )
         with self.assertRaises(ValidationError):
             enforce_limit(self.h, User, "max_users")
+
+
+class HospitalLogoTests(TestCase):
+    """The letterhead context processor must expose the uploaded logo's URL."""
+
+    def _ctx(self, hospital):
+        from types import SimpleNamespace
+
+        from .context_processors import hospital_details
+
+        return hospital_details(SimpleNamespace(hospital=hospital))
+
+    def test_logo_url_exposed_and_blank_when_unset(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        # 1x1 GIF - smallest thing ImageField will accept.
+        gif = (
+            b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!"
+            b"\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00"
+            b"\x00\x02\x02D\x01\x00;"
+        )
+        h = Hospital.objects.create(name="Logo Clinic", subdomain="logoclinic")
+        self.assertEqual(self._ctx(h)["hospital_logo"], "")
+        self.assertEqual(self._ctx(None)["hospital_logo"], "")
+
+        h.logo.save("mark.gif", SimpleUploadedFile("mark.gif", gif), save=True)
+        self.addCleanup(h.logo.delete)
+        self.assertIn("hospital_logos/", self._ctx(h)["hospital_logo"])

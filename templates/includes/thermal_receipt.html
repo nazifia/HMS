@@ -20,6 +20,7 @@
         .small { font-size: 10px; }
         .hr { border-top: 1px dashed #000; margin: 4px 0; }
         .name { font-size: 14px; font-weight: bold; }
+        .logo { max-width: 100%; max-height: 25mm; margin-bottom: 3px; }
         .row { display: flex; justify-content: space-between; gap: 6px; }
         .row .val { text-align: right; }
         .item-name { font-weight: bold; word-break: break-word; }
@@ -40,6 +41,7 @@
     </div>
 
     <div class="center">
+        {% if logo_url %}<img class="logo" src="{{ logo_url }}" alt="">{% endif %}
         {% for line in header_lines %}
         <div class="{% if forloop.first %}name{% else %}small{% endif %}">{{ line }}</div>
         {% endfor %}
@@ -75,8 +77,10 @@
         <div>Powered by: Nazz Tech - 08032194090</div>
     </div>
 
-    <!-- Plain 32/48-column body; the webview bridge feeds this to ESC/POS printers. -->
+    <!-- Plain 32/48-column body; the webview bridge feeds this to ESC/POS printers,
+         preceded by the logo raster (base64 GS v 0) when the tenant has one. -->
     <pre id="receipt-text" hidden>{{ receipt_text }}</pre>
+    <pre id="receipt-logo" hidden>{{ logo_escpos }}</pre>
     <script src="{% static 'js/print.js' %}"></script>
 </body>
 </html>

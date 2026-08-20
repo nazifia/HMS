@@ -685,11 +685,13 @@ def cart_receipt(request, cart_id):
     output = (request.GET.get("format") or "").lower()
 
     if output == "pdf":
+        hospital = getattr(request, "hospital", None)
         return _cart_receipt_pdf(
             cart,
             details["hospital_name"],
             details["hospital_address"],
             details["hospital_phone"],
+            hospital.logo if hospital and hospital.logo else None,
         )
 
     if output == "thermal":
@@ -760,7 +762,7 @@ def _cart_receipt_thermal(request, cart):
     )
 
 
-def _cart_receipt_pdf(cart, hospital_name, hospital_address, hospital_phone):
+def _cart_receipt_pdf(cart, hospital_name, hospital_address, hospital_phone, logo=None):
     """Render an A4 PDF of the cart receipt using ReportLab.
 
     Helvetica has no Naira (NGN) glyph, so amounts are prefixed "NGN " to
@@ -774,6 +776,7 @@ def _cart_receipt_pdf(cart, hospital_name, hospital_address, hospital_phone):
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.platypus import (
         SimpleDocTemplate,
+        Image,
         Paragraph,
         Spacer,
         Table,
@@ -815,6 +818,17 @@ def _cart_receipt_pdf(cart, hospital_name, hospital_address, hospital_phone):
     )
 
     elements = []
+    if logo:
+        # A bad/missing upload must not take the whole receipt down with it.
+        try:
+            with logo.open("rb") as fh:
+                img = Image(BytesIO(fh.read()))
+            img.drawWidth = img.imageWidth * (18 * mm) / img.imageHeight
+            img.drawHeight = 18 * mm
+            img.hAlign = "CENTER"
+            elements.append(img)
+        except Exception:
+            pass
     elements.append(Paragraph(hospital_name or "Hospital Management System", title_style))
     if hospital_address:
         elements.append(Paragraph(hospital_address, sub_style))
