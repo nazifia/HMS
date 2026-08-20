@@ -66,4 +66,37 @@
     if (document.body && document.body.getAttribute('data-auto-print') === '1') {
         window.addEventListener('load', function () { setTimeout(hmsPrint, 150); });
     }
+
+    // Print a receipt without leaving the page: a hidden iframe loads it and
+    // its own data-auto-print fires. A new tab would arrive without a session
+    // inside the Flutter web shell, where the browser keeps our cookie in the
+    // shell origin's partition and the receipt lands on the login page.
+    function hmsPrintUrl(url) {
+        var old = document.getElementById('hms-print-frame');
+        if (old) old.parentNode.removeChild(old);
+        var f = document.createElement('iframe');
+        f.id = 'hms-print-frame';
+        f.style.cssText = 'position:fixed;left:-9999px;width:1px;height:1px;border:0';
+        f.src = url;
+        document.body.appendChild(f);
+    }
+
+    window.hmsPrintUrl = hmsPrintUrl;
+
+    // One delegated handler instead of an onclick in every receipt template.
+    document.addEventListener('click', function (e) {
+        var a = e.target && e.target.closest && e.target.closest('a[href]');
+        if (!a || a.host !== location.host) return;
+        if (/[?&]format=thermal/.test(a.href) && /[?&]auto=1/.test(a.href)) {
+            e.preventDefault();
+            hmsPrintUrl(a.href);
+        } else if (a.target === '_blank' && window.top !== window.self &&
+                   !/^\/(media|static)\//.test(a.pathname)) {
+            // Same reason: in the shell a new tab has no session, so keep our
+            // own pages (receipts, prints) inside this frame. Files under
+            // /media/ and /static/ need no session, so let them have the tab.
+            e.preventDefault();
+            location.href = a.href;
+        }
+    });
 })();
