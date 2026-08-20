@@ -1,0 +1,21 @@
+{% load permission_tags %}
+{% comment %}
+Receipt buttons for one payment: A4 sheet, or the thermal roll next to it.
+Callers set `receipt_url` (and optionally `label`), e.g.
+
+    {% url 'billing:payment_receipt' payment.id as receipt_url %}
+    {% include "includes/receipt_button.html" with label="Receipt" %}
+
+A receipt that only exists as a roll passes `thermal_only=1` to drop the
+second button.
+{% endcomment %}
+{% if user|has_permission:"billing.print_receipt" %}
+<div class="btn-group btn-group-sm" role="group">
+    <a href="{{ receipt_url }}" class="btn btn-info" target="_blank" title="Print receipt (full page)">
+        <i class="fas fa-receipt"></i>{% if label %} {{ label }}{% endif %}
+    </a>
+    {% if not thermal_only %}<a href="{{ receipt_url }}?format=thermal&amp;auto=1" class="btn btn-outline-info" target="_blank" title="Print on thermal roll (80mm)">
+        <i class="fas fa-print"></i>
+    </a>{% endif %}
+</div>
+{% endif %}

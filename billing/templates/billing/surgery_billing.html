@@ -158,9 +158,7 @@
                                         <td>{{ payment.amount|currency }}</td>
                                         <td>{{ payment.get_payment_method_display }}</td>
                                         <td>{{ payment.received_by.get_full_name }}</td>
-                                        <td>{% if user|has_permission:"billing.print_receipt" %}
-<a href="{% url 'billing:payment_receipt' payment.id %}" class="btn btn-sm btn-info" target="_blank" title="Print receipt"><i class="fas fa-receipt"></i></a>
-{% endif %}</td>
+                                        <td>{% url 'billing:payment_receipt' payment.id as receipt_url %}{% include "includes/receipt_button.html" %}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

@@ -73,6 +73,7 @@ def comprehensive_transaction_history(request, patient_id=None):
             'source': 'wallet',
             'invoice': wt.invoice,
             'receipt_url': reverse('patients:wallet_transaction_receipt', args=[wt.id]),
+            'receipt_thermal_only': True,  # wallet slips only exist as a roll
         })
 
     # 2. Billing Payments (covers all invoice sources: billing, pharmacy, inpatient, ...)

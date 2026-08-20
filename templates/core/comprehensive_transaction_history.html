@@ -233,11 +233,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if user|has_permission:"billing.print_receipt" %}
-                                <a href="{{ transaction.receipt_url }}" class="btn btn-sm btn-info" target="_blank" title="Print receipt">
-                                    <i class="fas fa-receipt"></i>
-                                </a>
-                                {% endif %}
+                                {% include "includes/receipt_button.html" with receipt_url=transaction.receipt_url thermal_only=transaction.receipt_thermal_only %}
                             </td>
                         </tr>
                         {% endfor %}

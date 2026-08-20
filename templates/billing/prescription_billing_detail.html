@@ -260,9 +260,7 @@
                             {% endif %}
                         </div>
                         <div class="small text-muted">By: {{ payment.received_by.get_full_name }}</div>
-                        {% if user|has_permission:"billing.print_receipt" %}
-                        <a href="{% url 'billing:payment_receipt' payment.id %}" class="btn btn-sm btn-info" target="_blank" title="Print receipt"><i class="fas fa-receipt"></i></a>
-                        {% endif %}
+                        {% url 'billing:payment_receipt' payment.id as receipt_url %}{% include "includes/receipt_button.html" %}
                     </div>
                     {% endfor %}
                 </div>

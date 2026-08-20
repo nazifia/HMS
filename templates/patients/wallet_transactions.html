@@ -226,12 +226,7 @@
                                         </span>
                                     </td>
                                     <td>
-                                        {% if user|has_permission:"billing.print_receipt" %}
-                                        <a href="{% url 'patients:wallet_transaction_receipt' transaction.id %}"
-                                           class="btn btn-sm btn-info" target="_blank" title="Print receipt">
-                                            <i class="fas fa-receipt"></i>
-                                        </a>
-                                        {% endif %}
+                                        {% url 'patients:wallet_transaction_receipt' transaction.id as receipt_url %}{% include "includes/receipt_button.html" with thermal_only=1 %}
                                     </td>
                                 </tr>
                                 {% endfor %}
