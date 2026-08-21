@@ -5742,10 +5742,7 @@ def process_outstanding_wallet_payment(request, prescription_id):
 
     # Check if user has permission to process wallet payments
     # Only billing staff and pharmacists should be able to process wallet payments
-    user_roles = [r.lower() for r in request.user.roles.values_list("name", flat=True)]
-    profile_role = getattr(getattr(request.user, "profile", None), "role", None)
-    if profile_role and profile_role.lower() not in user_roles:
-        user_roles.append(profile_role.lower())
+    user_roles = _user_role_names(request.user)
 
     can_process_wallet = (
         any(role in ["billing_staff", "pharmacist", "admin"] for role in user_roles)
@@ -6654,6 +6651,19 @@ def dispensed_items_export(request):
     return response
 
 
+def _user_role_names(user):
+    """Role names for a user, from both the Role M2M and the profile role.
+
+    A tenant admin created at signup only gets profile.role = 'admin' (no Role
+    rows), so checking the M2M alone locks them out of their own pharmacy.
+    """
+    names = [r.lower() for r in user.roles.values_list("name", flat=True)] if hasattr(user, "roles") else []
+    profile_role = getattr(getattr(user, "profile", None), "role", None)
+    if profile_role and profile_role.lower() not in names:
+        names.append(profile_role.lower())
+    return names
+
+
 def user_has_dispensary_edit_permission(user, dispensary=None):
     """Check if user has permission to edit dispensaries"""
     # Superusers and admins have full access
@@ -6667,11 +6677,7 @@ def user_has_dispensary_edit_permission(user, dispensary=None):
         return True
 
     # Check if user has admin role
-    user_roles = (
-        [r.lower() for r in user.roles.values_list("name", flat=True)]
-        if hasattr(user, "roles")
-        else []
-    )
+    user_roles = _user_role_names(user)
     if "admin" in user_roles:
         return True
 
@@ -6699,11 +6705,7 @@ def user_has_inventory_edit_permission(user, dispensary):
     if user.is_superuser:
         return True
 
-    user_roles = (
-        [r.lower() for r in user.roles.values_list("name", flat=True)]
-        if hasattr(user, "roles")
-        else []
-    )
+    user_roles = _user_role_names(user)
 
     if "admin" in user_roles:
         return True
@@ -6731,11 +6733,7 @@ def user_has_bulk_store_edit_permission(user, bulk_store=None):
     if user.is_superuser:
         return True
 
-    user_roles = (
-        [r.lower() for r in user.roles.values_list("name", flat=True)]
-        if hasattr(user, "roles")
-        else []
-    )
+    user_roles = _user_role_names(user)
 
     if "admin" in user_roles:
         return True

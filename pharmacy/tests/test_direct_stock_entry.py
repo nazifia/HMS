@@ -94,3 +94,19 @@ class DirectStockEntryTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.url)
         self.assertContains(response, self.dispensary.name)
+
+
+class TenantAdminInventoryPermissionTest(TestCase):
+    """A tenant admin has profile.role='admin' and no Role rows."""
+
+    def test_profile_role_admin_may_add_stock(self):
+        from pharmacy.views import user_has_inventory_edit_permission
+
+        user = User.objects.create_user(
+            phone_number="9876500022", username="tenantowner", password="testpass123"
+        )
+        user.profile.role = "admin"
+        user.profile.save(update_fields=["role"])
+        dispensary = Dispensary.objects.create(name="Tenant Dispensary")
+
+        self.assertTrue(user_has_inventory_edit_permission(user, dispensary))
