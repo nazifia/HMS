@@ -1,6 +1,7 @@
 from django import forms
 from .models import RetainershipPatient
 from patients.models import SharedWallet, Patient, WalletMembership
+from saas.fields import TenantChoiceField
 
 
 class RetainershipPatientForm(forms.ModelForm):
@@ -11,7 +12,7 @@ class RetainershipPatientForm(forms.ModelForm):
 
 
 class RetainershipWalletLinkForm(forms.Form):
-    wallet = forms.ModelChoiceField(
+    wallet = TenantChoiceField(
         queryset=SharedWallet.objects.filter(
             wallet_type="retainership", is_active=True
         ),
@@ -26,7 +27,7 @@ class RetainershipWalletLinkForm(forms.Form):
 class AddMemberToWalletForm(forms.Form):
     """Form for adding a patient to a retainership wallet"""
 
-    patient = forms.ModelChoiceField(
+    patient = TenantChoiceField(
         queryset=Patient.objects.filter(is_active=True),
         required=True,
         label="Select Patient",

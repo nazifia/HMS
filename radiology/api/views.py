@@ -1,3 +1,4 @@
+from saas.api import TenantScopedQuerysetMixin
 """Radiology endpoints for the mobile client.
 
 Structurally the twin of `/laboratory/api/`: a catalogue, orders that move
@@ -60,7 +61,7 @@ class RadiologyTestViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
 
-class RadiologyCategoryViewSet(viewsets.ReadOnlyModelViewSet):
+class RadiologyCategoryViewSet(TenantScopedQuerysetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = RadiologyCategory.objects.order_by('name')
     serializer_class = RadiologyCategorySerializer
     permission_classes = [permissions.IsAuthenticated]

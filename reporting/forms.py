@@ -7,6 +7,7 @@ from billing.models import Invoice
 from laboratory.models import Test
 from radiology.models import RadiologyTest
 from hr.models import StaffProfile, Department, Designation
+from saas.fields import TenantChoiceField
 
 class PatientReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
@@ -22,13 +23,13 @@ class PatientReportForm(forms.Form):
 class AppointmentReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    doctor = forms.ModelChoiceField(queryset=Doctor.objects.all(), required=False)
+    doctor = TenantChoiceField(queryset=Doctor.objects.all(), required=False)
     status = forms.ChoiceField(choices=[('', 'All')] + list(Appointment.STATUS_CHOICES), required=False)
 
 class BillingReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    patient = forms.ModelChoiceField(queryset=Doctor.objects.none(), required=False)
+    patient = TenantChoiceField(queryset=Doctor.objects.none(), required=False)
     payment_status = forms.ChoiceField(
         choices=[('', 'All'), ('paid', 'Paid'), ('pending', 'Pending'), ('partially_paid', 'Partially Paid'), ('overdue', 'Overdue'), ('cancelled', 'Cancelled')],
         required=False
@@ -43,7 +44,7 @@ class BillingReportForm(forms.Form):
 class PharmacySalesReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    patient = forms.ModelChoiceField(queryset=Doctor.objects.none(), required=False)
+    patient = TenantChoiceField(queryset=Doctor.objects.none(), required=False)
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -54,8 +55,8 @@ class PharmacySalesReportForm(forms.Form):
 class LaboratoryReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    patient = forms.ModelChoiceField(queryset=Doctor.objects.none(), required=False)
-    test_type = forms.ModelChoiceField(queryset=Test.objects.all(), required=False)
+    patient = TenantChoiceField(queryset=Doctor.objects.none(), required=False)
+    test_type = TenantChoiceField(queryset=Test.objects.all(), required=False)
     status = forms.ChoiceField(
         choices=[
             ('', 'All'),
@@ -74,8 +75,8 @@ class LaboratoryReportForm(forms.Form):
 class RadiologyReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    patient = forms.ModelChoiceField(queryset=Doctor.objects.none(), required=False)
-    test_type = forms.ModelChoiceField(queryset=RadiologyTest.objects.all(), required=False)
+    patient = TenantChoiceField(queryset=Doctor.objects.none(), required=False)
+    test_type = TenantChoiceField(queryset=RadiologyTest.objects.all(), required=False)
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -86,7 +87,7 @@ class RadiologyReportForm(forms.Form):
 class InpatientReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    patient = forms.ModelChoiceField(queryset=Doctor.objects.none(), required=False)
+    patient = TenantChoiceField(queryset=Doctor.objects.none(), required=False)
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -95,8 +96,8 @@ class InpatientReportForm(forms.Form):
         self.fields['patient'].queryset = Patient.objects.all().select_related('nhia_info', 'retainership_info')
 
 class HRReportForm(forms.Form):
-    department = forms.ModelChoiceField(queryset=Department.objects.all(), required=False)
-    designation = forms.ModelChoiceField(queryset=Designation.objects.all(), required=False)
+    department = TenantChoiceField(queryset=Department.objects.all(), required=False)
+    designation = TenantChoiceField(queryset=Designation.objects.all(), required=False)
 
 class MedicalStatsReportForm(forms.Form):
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))

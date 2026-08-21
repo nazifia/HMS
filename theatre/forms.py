@@ -17,6 +17,7 @@ from .models import (
 )
 from patients.models import Patient
 from accounts.models import CustomUser
+from saas.fields import TenantChoiceField, TenantMultipleChoiceField
 
 # Import AuthorizationCode, handle case where nhia app might not be available
 # Fixed UnboundLocalError issue
@@ -227,10 +228,10 @@ class SurgeryForm(forms.ModelForm):
             if selected_surgeon_id:
                 # Check if the user exists (may be inactive or deleted)
                 try:
-                    CustomUser.objects.get(pk=selected_surgeon_id)
+                    CustomUser.tenant_objects.get(pk=selected_surgeon_id)
                     # Include this user in the queryset
                     surgeon_qs = (
-                        (surgeon_qs | CustomUser.objects.filter(pk=selected_surgeon_id))
+                        (surgeon_qs | CustomUser.tenant_objects.filter(pk=selected_surgeon_id))
                         .distinct()
                         .order_by("first_name", "last_name")
                     )
@@ -276,11 +277,11 @@ class SurgeryForm(forms.ModelForm):
             # This prevents "user does not exist" errors when editing
             if selected_anesthetist_id:
                 try:
-                    CustomUser.objects.get(pk=selected_anesthetist_id)
+                    CustomUser.tenant_objects.get(pk=selected_anesthetist_id)
                     anesthetist_qs = (
                         (
                             anesthetist_qs
-                            | CustomUser.objects.filter(pk=selected_anesthetist_id)
+                            | CustomUser.tenant_objects.filter(pk=selected_anesthetist_id)
                         )
                         .distinct()
                         .order_by("first_name", "last_name")
@@ -420,9 +421,9 @@ class SurgicalTeamForm(forms.ModelForm):
 
             if selected_staff_id:
                 try:
-                    CustomUser.objects.get(pk=selected_staff_id)
+                    CustomUser.tenant_objects.get(pk=selected_staff_id)
                     base_qs = (
-                        base_qs | CustomUser.objects.filter(pk=selected_staff_id)
+                        base_qs | CustomUser.tenant_objects.filter(pk=selected_staff_id)
                     ).distinct().order_by("first_name", "last_name")
                 except CustomUser.DoesNotExist:
                     # Staff deleted — clear stale ID so field validates as None
@@ -439,13 +440,13 @@ class SurgicalTeamMultipleForm(forms.Form):
 
     ROLE_CHOICES = SurgicalTeam.ROLE_CHOICES
 
-    surgery = forms.ModelChoiceField(
+    surgery = TenantChoiceField(
         queryset=Surgery.objects.all().order_by("-scheduled_date"),
         required=True,
         label="Surgery",
         empty_label="Select Surgery",
     )
-    staff = forms.ModelMultipleChoiceField(
+    staff = TenantMultipleChoiceField(
         queryset=CustomUser.objects.filter(is_active=True).order_by(
             "first_name", "last_name"
         ),
@@ -535,7 +536,7 @@ class SurgicalTeamTemplateMemberForm(forms.ModelForm):
         # Keep an already-selected (possibly now-inactive) member in range.
         if self.instance and self.instance.pk and self.instance.staff_id:
             base_qs = (
-                base_qs | CustomUser.objects.filter(pk=self.instance.staff_id)
+                base_qs | CustomUser.tenant_objects.filter(pk=self.instance.staff_id)
             ).distinct().order_by("first_name", "last_name")
         self.fields["staff"].queryset = base_qs
 
@@ -695,7 +696,7 @@ class SurgeryFilterForm(forms.Form):
     start_date = forms.DateField(required=False, widget=DateInput(), label="Start Date")
     end_date = forms.DateField(required=False, widget=DateInput(), label="End Date")
     status = forms.ChoiceField(choices=STATUS_CHOICES, required=False, label="Status")
-    surgeon = forms.ModelChoiceField(
+    surgeon = TenantChoiceField(
         queryset=CustomUser.objects.filter(
             models.Q(profile__role="doctor")
             | models.Q(profile__specialization__icontains="surgeon")
@@ -707,10 +708,10 @@ class SurgeryFilterForm(forms.Form):
         label="Surgeon",
         empty_label="All Surgeons",
     )
-    theatre = forms.ModelChoiceField(
+    theatre = TenantChoiceField(
         queryset=OperationTheatre.objects.all(), required=False, label="Theatre"
     )
-    surgery_type = forms.ModelChoiceField(
+    surgery_type = TenantChoiceField(
         queryset=SurgeryType.objects.all(), required=False, label="Surgery Type"
     )
     patient_name = forms.CharField(required=False, label="Patient Name")

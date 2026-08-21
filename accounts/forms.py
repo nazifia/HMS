@@ -9,6 +9,7 @@ from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from .models import CustomUserProfile, Department, CustomUser, Role
+from saas.fields import TenantChoiceField, TenantMultipleChoiceField
 
 # Get the User model (CustomUser in this case)
 User = CustomUser
@@ -277,13 +278,13 @@ class UserProfileForm(forms.ModelForm):
         required=False,
     )
 
-    department = forms.ModelChoiceField(
+    department = TenantChoiceField(
         queryset=Department.objects.all(),
         required=False,
         empty_label="Select Primary Department",
         widget=forms.Select(attrs={"class": "form-control"}),
     )
-    departments = forms.ModelMultipleChoiceField(
+    departments = TenantMultipleChoiceField(
         queryset=Department.objects.all(),
         required=False,
         label="Additional Departments",
@@ -703,7 +704,7 @@ class StaffCreationForm(
         max_length=100, required=False, label="Department Name (Profile)"
     )  # Example, better to use ModelChoiceField
     # If you have a Department model and want to select from it:
-    department_profile = forms.ModelChoiceField(
+    department_profile = TenantChoiceField(
         queryset=Department.objects.all(),
         required=False,
         label="Department (Profile)",
@@ -1068,7 +1069,7 @@ class AdvancedUserSearchForm(forms.Form):
         widget=forms.Select(attrs={"class": "form-control"}),
         empty_label="All Roles",
     )
-    department = forms.ModelChoiceField(
+    department = TenantChoiceField(
         queryset=Department.objects.all(),
         required=False,
         widget=forms.Select(attrs={"class": "form-control"}),

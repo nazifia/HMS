@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from .models import TestResult, TestResultParameter, Test, TestRequest
+from saas.fields import TenantChoiceField
 
 User = get_user_model()
 
@@ -33,7 +34,7 @@ class EnhancedTestResultForm(forms.ModelForm):
             self.fields['test'].queryset = self.test_request.tests.all()
         
         # Filter users to lab staff
-        lab_staff = User.objects.filter(
+        lab_staff = User.tenant_objects.filter(
             is_active=True,
             groups__name__in=['Laboratory Staff', 'Lab Technicians', 'Medical Laboratory Scientists']
         ).distinct()
@@ -117,7 +118,7 @@ class TestResultParameterForm(forms.ModelForm):
 class BulkResultEntryForm(forms.Form):
     """Form for entering results for multiple tests at once"""
     
-    test_request = forms.ModelChoiceField(
+    test_request = TenantChoiceField(
         queryset=TestRequest.objects.filter(status='in_progress'),
         widget=forms.Select(attrs={'class': 'form-select'})
     )
@@ -126,7 +127,7 @@ class BulkResultEntryForm(forms.Form):
         widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
     )
     
-    performed_by = forms.ModelChoiceField(
+    performed_by = TenantChoiceField(
         queryset=User.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select'})
     )
@@ -144,7 +145,7 @@ class BulkResultEntryForm(forms.Form):
         self.fields['result_date'].initial = timezone.now().date()
         
         # Filter performed_by to lab staff
-        lab_staff = User.objects.filter(
+        lab_staff = User.tenant_objects.filter(
             is_active=True,
             groups__name__in=['Laboratory Staff', 'Lab Technicians', 'Medical Laboratory Scientists']
         ).distinct()
@@ -174,7 +175,7 @@ class ResultVerificationForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         # Filter to senior lab staff or pathologists
-        senior_staff = User.objects.filter(
+        senior_staff = User.tenant_objects.filter(
             is_active=True,
             groups__name__in=['Senior Lab Staff', 'Pathologists', 'Medical Laboratory Scientists']
         ).distinct()
@@ -192,7 +193,7 @@ class ResultSearchForm(forms.Form):
         })
     )
     
-    test = forms.ModelChoiceField(
+    test = TenantChoiceField(
         queryset=Test.objects.filter(is_active=True),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
@@ -219,7 +220,7 @@ class ResultSearchForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     
-    performed_by = forms.ModelChoiceField(
+    performed_by = TenantChoiceField(
         queryset=User.objects.filter(is_active=True),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
@@ -229,7 +230,7 @@ class ResultSearchForm(forms.Form):
 class QuickResultForm(forms.Form):
     """Quick form for simple test results"""
     
-    test = forms.ModelChoiceField(
+    test = TenantChoiceField(
         queryset=Test.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select'})
     )
@@ -269,7 +270,7 @@ class ResultTemplateForm(forms.Form):
         })
     )
 
-    test = forms.ModelChoiceField(
+    test = TenantChoiceField(
         queryset=Test.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select'})
     )
@@ -300,7 +301,7 @@ class ManualResultEntryForm(forms.Form):
     ]
 
     # Basic Information
-    test = forms.ModelChoiceField(
+    test = TenantChoiceField(
         queryset=Test.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select'}),
         empty_label="Choose a test..."
@@ -316,7 +317,7 @@ class ManualResultEntryForm(forms.Form):
         widget=forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'})
     )
 
-    sample_collected_by = forms.ModelChoiceField(
+    sample_collected_by = TenantChoiceField(
         queryset=User.objects.filter(is_active=True),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'}),
@@ -361,7 +362,7 @@ class ManualResultEntryForm(forms.Form):
     )
 
     # Quality Control
-    performed_by = forms.ModelChoiceField(
+    performed_by = TenantChoiceField(
         queryset=User.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select'}),
         empty_label="Select technician..."
@@ -382,7 +383,7 @@ class ManualResultEntryForm(forms.Form):
             self.fields['test'].queryset = self.test_request.tests.all()
 
         # Filter users to lab staff
-        lab_staff = User.objects.filter(
+        lab_staff = User.tenant_objects.filter(
             is_active=True,
             groups__name__in=['Laboratory Staff', 'Lab Technicians', 'Medical Laboratory Scientists']
         ).distinct()

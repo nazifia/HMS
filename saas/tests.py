@@ -7,7 +7,7 @@ from django.shortcuts import redirect
 from django.test import Client, TestCase
 from django.utils import timezone
 
-from patients.models import Patient
+from patients.models import Patient, Vitals
 
 from .current import clear_current_hospital, set_current_hospital
 from .models import Hospital, Plan, Subscription, enforce_limit
@@ -499,3 +499,56 @@ class HospitalAdminAddressTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.h.refresh_from_db()
         self.assertEqual(self.h.address, "12 Ring Road, Ibadan")
+
+
+class ImportTimeQuerysetScopingTests(TestCase):
+    """Querysets built at import time must still be scoped per request.
+
+    A form field declared in a class body, or a DRF viewset's class-level
+    `queryset`, is evaluated once at import, when no hospital is current — so
+    the plain manager freezes an unscoped queryset for the whole process.
+    """
+
+    def setUp(self):
+        self.h1 = Hospital.objects.create(name="H1", subdomain="h1")
+        self.h2 = Hospital.objects.create(name="H2", subdomain="h2")
+        self.addCleanup(clear_current_hospital)
+        set_current_hospital(self.h2)
+        self.other = _make_patient()  # belongs to h2
+        set_current_hospital(self.h1)
+        self.mine = _make_patient()
+
+    def test_field_hides_other_tenants_rows(self):
+        from laboratory.forms import TestRequestForm
+
+        choices = TestRequestForm().fields["patient"].queryset
+        self.assertEqual(list(choices), [self.mine])
+
+    def test_field_rejects_another_tenants_id(self):
+        from laboratory.forms import TestRequestForm
+
+        field = TestRequestForm().fields["patient"]
+        self.assertEqual(field.clean(str(self.mine.pk)), self.mine)
+        with self.assertRaises(ValidationError):
+            field.clean(str(self.other.pk))
+
+    def test_api_viewset_mixin_scopes_a_frozen_queryset(self):
+        from rest_framework import viewsets
+
+        from .api import TenantScopedQuerysetMixin
+
+        class _ViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+            queryset = Patient.all_objects.all()  # as if built at import time
+
+        self.assertEqual(list(_ViewSet().get_queryset()), [self.mine])
+
+    def test_modelform_fk_field_is_scoped(self):
+        """A ModelForm's auto-built FK field is created at import time too."""
+        from django import forms
+
+        class _Form(forms.ModelForm):
+            class Meta:
+                model = Vitals
+                fields = ["patient"]
+
+        self.assertEqual(list(_Form().fields["patient"].queryset), [self.mine])

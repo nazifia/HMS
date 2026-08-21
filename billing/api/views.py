@@ -1,3 +1,4 @@
+from saas.api import TenantScopedQuerysetMixin
 """Billing endpoints for the mobile client.
 
 Payments go through `BillingOfficePaymentProcessor`, the same processor the
@@ -247,7 +248,7 @@ class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
 
-class ServiceCategoryViewSet(viewsets.ReadOnlyModelViewSet):
+class ServiceCategoryViewSet(TenantScopedQuerysetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = ServiceCategory.objects.order_by('name')
     serializer_class = ServiceCategorySerializer
     permission_classes = [permissions.IsAuthenticated]

@@ -7,6 +7,7 @@ User = get_user_model()
 from doctors.models import Specialization, Doctor
 from accounts.models import Department # Import Department model
 from billing.models import Service # Import Service model
+from saas.fields import TenantChoiceField
 
 def get_specialization_choices():
     return [(s.id, s.name) for s in Specialization.objects.all()]
@@ -100,7 +101,7 @@ class AdmissionForm(forms.ModelForm):
             'admission_service': forms.Select(attrs={'class': 'form-select'}),
         }
 
-    admission_service = forms.ModelChoiceField(
+    admission_service = TenantChoiceField(
         queryset=Service.objects.filter(name='Admission Fee'),
         required=False,  # Make it optional to handle cases where no service exists
         empty_label="Select Admission Service",
@@ -287,7 +288,7 @@ class AdmissionSearchForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select select2'})
     )
     
-    ward = forms.ModelChoiceField(
+    ward = TenantChoiceField(
         required=False,
         queryset=Ward.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select'})
@@ -326,8 +327,8 @@ class ClinicalRecordForm(forms.ModelForm):
             self.initial['date_time'] = timezone.now().strftime('%Y-%m-%dT%H:%M')
 
 class PatientTransferForm(forms.Form):
-    to_ward = forms.ModelChoiceField(queryset=Ward.objects.filter(is_active=True), required=True, label="Transfer to Ward")
-    to_bed = forms.ModelChoiceField(queryset=Bed.objects.filter(is_active=True, is_occupied=False), required=True, label="Transfer to Bed")
+    to_ward = TenantChoiceField(queryset=Ward.objects.filter(is_active=True), required=True, label="Transfer to Ward")
+    to_bed = TenantChoiceField(queryset=Bed.objects.filter(is_active=True, is_occupied=False), required=True, label="Transfer to Bed")
     notes = forms.CharField(widget=forms.Textarea, required=False)
 
     def __init__(self, *args, **kwargs):

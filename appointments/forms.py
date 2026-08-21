@@ -9,6 +9,7 @@ from .services import BookingError, check_doctor_availability, resolve_authoriza
 from patients.models import Patient
 from core.patient_search_forms import PatientSearchForm
 import datetime
+from saas.fields import TenantChoiceField
 
 # ponytail: two role systems live side by side - legacy profile.role CharField
 # and the newer roles M2M. A doctor may be tagged in either, so match both.
@@ -36,7 +37,7 @@ class AppointmentForm(forms.ModelForm):
         help_text='Search for a patient by name, ID, or phone number'
     )
     
-    patient = forms.ModelChoiceField(
+    patient = TenantChoiceField(
         queryset=Patient.objects.all().order_by('last_name', 'first_name'),
         widget=forms.Select(attrs={'class': 'form-select select2 patient-select'}),
         empty_label="Select Patient"

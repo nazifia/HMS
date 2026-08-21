@@ -4,6 +4,7 @@ Forms for User Activity Monitoring
 from django import forms
 from django.contrib.auth import get_user_model
 from .models import UserActivity, ActivityAlert, UserSession
+from saas.fields import TenantChoiceField, TenantMultipleChoiceField
 
 User = get_user_model()
 
@@ -14,7 +15,7 @@ class ActivityFilterForm(forms.Form):
     ACTION_TYPES = [('', 'All')] + UserActivity.ACTION_TYPES
     ACTIVITY_LEVELS = [('', 'All')] + UserActivity.ACTIVITY_LEVELS
     
-    user = forms.ModelChoiceField(
+    user = TenantChoiceField(
         queryset=User.objects.filter(is_active=True).order_by('username'),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
@@ -74,7 +75,7 @@ class AlertFilterForm(forms.Form):
     ALERT_TYPES = [('', 'All')] + ActivityAlert.ALERT_TYPES
     SEVERITY_LEVELS = [('', 'All')] + ActivityAlert.SEVERITY_LEVELS
     
-    user = forms.ModelChoiceField(
+    user = TenantChoiceField(
         queryset=User.objects.filter(is_active=True).order_by('username'),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
@@ -120,7 +121,7 @@ class SessionFilterForm(forms.Form):
         ('all', 'All'),
     ]
     
-    user = forms.ModelChoiceField(
+    user = TenantChoiceField(
         queryset=User.objects.filter(is_active=True).order_by('username'),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
@@ -185,7 +186,7 @@ class ActivityReportForm(forms.Form):
         })
     )
     
-    users = forms.ModelMultipleChoiceField(
+    users = TenantMultipleChoiceField(
         queryset=User.objects.filter(is_active=True).order_by('username'),
         required=False,
         widget=forms.SelectMultiple(attrs={

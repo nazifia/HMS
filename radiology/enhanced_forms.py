@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.db import models
 from .models import RadiologyResult, RadiologyOrder
+from saas.fields import TenantChoiceField
 
 User = get_user_model()
 
@@ -109,28 +110,28 @@ class EnhancedRadiologyResultForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Filter users to radiology staff (try specific groups first)
-        radiology_staff = User.objects.filter(
+        radiology_staff = User.tenant_objects.filter(
             is_active=True,
             groups__name__in=['Radiology Staff', 'Radiologic Technologists', 'Radiologists']
         ).distinct()
 
         # Fallback to all active staff/superusers if no radiology groups exist
         if not radiology_staff.exists():
-            radiology_staff = User.objects.filter(
+            radiology_staff = User.tenant_objects.filter(
                 is_active=True
             ).filter(
                 models.Q(is_staff=True) | models.Q(is_superuser=True)
             ).distinct()
 
         # Try to get radiologists from specific groups
-        radiologists = User.objects.filter(
+        radiologists = User.tenant_objects.filter(
             is_active=True,
             groups__name__in=['Radiologists', 'Radiology Consultants']
         ).distinct()
 
         # Fallback to all active staff/superusers if no radiologist groups exist
         if not radiologists.exists():
-            radiologists = User.objects.filter(
+            radiologists = User.tenant_objects.filter(
                 is_active=True
             ).filter(
                 models.Q(is_staff=True) | models.Q(is_superuser=True)
@@ -173,7 +174,7 @@ class RadiologyResultVerificationForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         # Include admin/superusers and eligible roles for verification
-        eligible_users = User.objects.filter(
+        eligible_users = User.tenant_objects.filter(
             is_active=True
         ).filter(
             models.Q(groups__name__in=['Senior Radiologists', 'Radiology Consultants', 'Department Heads']) |
@@ -237,7 +238,7 @@ class RadiologyResultSearchForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     
-    radiologist = forms.ModelChoiceField(
+    radiologist = TenantChoiceField(
         queryset=User.objects.filter(is_active=True),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
@@ -253,7 +254,7 @@ class RadiologyResultSearchForm(forms.Form):
         self.fields['category'].queryset = RadiologyCategory.objects.all()
         
         # Filter radiologist to actual radiologists
-        radiologists = User.objects.filter(
+        radiologists = User.tenant_objects.filter(
             is_active=True,
             groups__name__in=['Radiologists', 'Radiology Consultants']
         ).distinct()

@@ -24,7 +24,7 @@ def manual_result_entry(request, test_request_id):
     test_request = get_object_or_404(TestRequest, id=test_request_id)
     
     # Get lab staff for dropdowns
-    lab_staff = User.objects.filter(
+    lab_staff = User.tenant_objects.filter(
         is_active=True,
         groups__name__in=['Laboratory Staff', 'Lab Technicians', 'Medical Laboratory Scientists']
     ).distinct()

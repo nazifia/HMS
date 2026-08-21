@@ -11,6 +11,8 @@ tenant-owned row carries a `hospital` FK and is auto-filtered per request.
 | `current.py` | thread-local current hospital |
 | `middleware.py` | `/t/<sub>/` path → hospital, sets current, gates lapsed subs to `/saas/billing` |
 | `views.py` | `signup`, `billing`, Paystack `webhook` (HMAC-verified) |
+| `fields.py` | `TenantChoiceField` / `TenantMultipleChoiceField` — form pickers that re-scope per request |
+| `api.py` | `TenantScopedQuerysetMixin` — re-scopes a DRF viewset's class-level `queryset` |
 
 ## Routing
 
@@ -47,6 +49,23 @@ unscoped `all_objects`, auto-stamp on save.
 - Query in a request → already scoped. `Thing.objects.all()` = this tenant only.
 - Need cross-tenant (admin/ops/migrations) → `Thing.all_objects`.
 - Enforce a plan cap before create → `enforce_limit(request.hospital, Thing, "max_patients")`.
+
+### Import-time querysets (the one trap)
+
+`TenantManager` filters when the queryset is *built*, not when it runs. Anything
+built at import time — a form field in a class body, a DRF viewset's class-level
+`queryset` — is built before any request, when no hospital is current, and so
+freezes an unfiltered queryset for the life of the process.
+
+- Form field in a class body → `TenantChoiceField` / `TenantMultipleChoiceField`
+  from `saas.fields` (re-filters on every read, so it also refuses another
+  tenant's id on submit).
+- Inside `__init__` or a view → plain `Thing.objects` is already scoped.
+- DRF viewset with a class-level `queryset` → add `TenantScopedQuerysetMixin`
+  from `saas.api`. A viewset that builds its queryset inside `get_queryset()`
+  needs nothing.
+- `CustomUser` is not a `TenantModel` (auth must look up unscoped): use
+  `CustomUser.tenant_objects` for staff lists and pickers, `objects` for auth.
 
 ### Backfill existing rows
 
@@ -90,10 +109,11 @@ unset to use the manual activation fallback above.
 
 ## Not built yet (add when needed)
 
-- Per-tenant unique constraints (e.g. `patient_id` is still globally unique).
-- Tenant-aware login routing (which `/t/<sub>/` a user lands on; session cookie is shared across all tenants on one host).
 - Recurring Paystack subscriptions (checkout does a one-off charge; webhook also
   handles `subscription.*` events if you create plans with `paystack_plan_code`).
 - Async/ASGI support (swap `current.py` thread-local for `contextvars`).
-- Retrofitting the other ~35 apps' models (mechanical; follow the pattern above).
+- Per-tenant roles: `accounts.Role`, `core.PermissionGroup` and `core.UIPermission`
+  are one platform-wide catalog (tenants may read them; only a superuser edits).
+- `accounts.CustomUserProfile` has no `hospital` of its own — it follows its
+  user. Filter staff lists by `user__hospital`, or query `CustomUser.tenant_objects`.
 ```

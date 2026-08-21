@@ -5,6 +5,7 @@ from patients.models import Patient
 from core.patient_search_utils import search_patients_by_query
 from django.utils import timezone
 from core.clinical_notes import CLERKING_FIELDS, CLERKING_LABELS, clerking_widgets
+from saas.fields import TenantChoiceField
 
 class DermatologyRecordForm(ModelForm):
     """Form for creating and updating dermatology records with patient search"""
@@ -121,7 +122,7 @@ class PatientSearchForm(forms.Form):
 
 class DermatologyPatientSelectionForm(forms.Form):
     """Form for selecting a patient with autocomplete"""
-    patient = forms.ModelChoiceField(
+    patient = TenantChoiceField(
         queryset=Patient.objects.none(),
         widget=forms.Select(attrs={'class': 'form-control'}),
         label='Patient'

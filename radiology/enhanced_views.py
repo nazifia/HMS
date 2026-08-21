@@ -99,12 +99,12 @@ def enhanced_add_result(request, order_id):
     
     # Get available radiologists for the form
     from accounts.models import CustomUser
-    radiologists = CustomUser.objects.filter(
+    radiologists = CustomUser.tenant_objects.filter(
         profile__specialization__icontains='radiology'
     ).order_by('first_name', 'last_name')
     
     # Get available technologists
-    technologists = CustomUser.objects.filter(
+    technologists = CustomUser.tenant_objects.filter(
         profile__specialization__icontains='radiology'
     ).order_by('first_name', 'last_name')
     

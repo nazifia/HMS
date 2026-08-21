@@ -8,6 +8,7 @@ from .models import (
     DoctorEducation, DoctorExperience, DoctorReview
 )
 from accounts.models import Department, CustomUser
+from saas.fields import TenantChoiceField
 
 class SpecializationForm(forms.ModelForm):
     """Form for creating and editing specializations"""
@@ -66,15 +67,15 @@ def get_specialization_choices():
     return [(s.id, s.name) for s in Specialization.objects.all()]
 
 class DoctorAdminForm(forms.ModelForm):
-    user = forms.ModelChoiceField(queryset=CustomUser.objects.all(), required=True)
+    user = TenantChoiceField(queryset=CustomUser.objects.all(), required=True)
 
     class Meta:
         model = Doctor
         fields = '__all__'
 
 class DoctorForm(forms.ModelForm):
-    specialization = forms.ModelChoiceField(queryset=Specialization.objects.all(), widget=forms.Select(attrs={'class': 'form-select'}), required=False)
-    department = forms.ModelChoiceField(queryset=Department.objects.all(), widget=forms.Select(attrs={'class': 'form-select'}), required=False)
+    specialization = TenantChoiceField(queryset=Specialization.objects.all(), widget=forms.Select(attrs={'class': 'form-select'}), required=False)
+    department = TenantChoiceField(queryset=Department.objects.all(), widget=forms.Select(attrs={'class': 'form-select'}), required=False)
     # ponytail: license_number, experience and qualification have no override —
     # they are non-blank on the model, so ModelForm builds them required with the
     # model's own max_length/choices. Declaring them required=False here made
@@ -185,13 +186,13 @@ class DoctorReviewForm(forms.ModelForm):
 class DoctorSearchForm(forms.Form):
     """Form for searching doctors"""
     name = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Doctor name'}))
-    specialization = forms.ModelChoiceField(
+    specialization = TenantChoiceField(
         queryset=Specialization.objects.all(),
         required=False,
         empty_label="All Specializations",
         widget=forms.Select(attrs={'class': 'form-select'})
     )
-    department = forms.ModelChoiceField(
+    department = TenantChoiceField(
         queryset=Department.objects.all(),
         required=False,
         empty_label="All Departments",

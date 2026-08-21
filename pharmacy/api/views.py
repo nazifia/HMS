@@ -17,6 +17,7 @@ from .serializers import (
     PrescriptionSerializer, PrescriptionItemSerializer, DispensarySerializer,
 )
 from ..inter_dispensary_forms import InterDispensaryTransferForm
+from saas.api import TenantScopedQuerysetMixin
 
 
 class PharmacyPagination(PageNumberPagination):
@@ -92,14 +93,14 @@ class MedicationViewSet(viewsets.ReadOnlyModelViewSet):
         ])
 
 
-class DispensaryViewSet(viewsets.ReadOnlyModelViewSet):
+class DispensaryViewSet(TenantScopedQuerysetMixin, viewsets.ReadOnlyModelViewSet):
     """API endpoint for viewing dispensaries."""
     queryset = Dispensary.objects.filter(is_active=True).order_by('name')
     serializer_class = DispensarySerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class MedicationCategoryViewSet(viewsets.ReadOnlyModelViewSet):
+class MedicationCategoryViewSet(TenantScopedQuerysetMixin, viewsets.ReadOnlyModelViewSet):
     """
     API endpoint for viewing medication categories.
     """
@@ -171,7 +172,7 @@ class PrescriptionViewSet(viewsets.ReadOnlyModelViewSet):
 
         return queryset
 
-class PrescriptionItemViewSet(viewsets.ReadOnlyModelViewSet):
+class PrescriptionItemViewSet(TenantScopedQuerysetMixin, viewsets.ReadOnlyModelViewSet):
     """
     API endpoint for viewing prescription items.
     """

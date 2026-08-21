@@ -10,6 +10,7 @@ from .models import (
 from patients.models import Patient
 from django.forms import inlineformset_factory, BaseInlineFormSet
 from core.patient_search_forms import PatientSearchForm
+from saas.fields import TenantChoiceField, TenantMultipleChoiceField
 
 class TestCategoryForm(forms.ModelForm):
     """Form for creating and editing test categories"""
@@ -57,7 +58,7 @@ class TestRequestForm(forms.ModelForm):
         help_text='Search for a patient by name, ID, or phone number'
     )
 
-    patient = forms.ModelChoiceField(
+    patient = TenantChoiceField(
         queryset=Patient.objects.all().order_by('last_name', 'first_name'),
         widget=forms.Select(attrs={'class': 'form-select select2 patient-select'}),
         empty_label="Select Patient"
@@ -86,7 +87,7 @@ class TestRequestForm(forms.ModelForm):
             
         return label
 
-    doctor = forms.ModelChoiceField(
+    doctor = TenantChoiceField(
         queryset=User.objects.filter(is_active=True).filter(
             Q(profile__role='doctor') | Q(profile__specialization__isnull=False)
             | Q(doctor_profile__isnull=False)
@@ -95,7 +96,7 @@ class TestRequestForm(forms.ModelForm):
         empty_label="Select Doctor"
     )
 
-    tests = forms.ModelMultipleChoiceField(
+    tests = TenantMultipleChoiceField(
         queryset=Test.objects.filter(is_active=True),
         widget=forms.SelectMultiple(attrs={'class': 'form-select select2'}),
         required=True
@@ -245,21 +246,21 @@ class TestResultForm(forms.ModelForm):
         required=False
     )
 
-    sample_collected_by = forms.ModelChoiceField(
+    sample_collected_by = TenantChoiceField(
         queryset=User.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         required=False,
         empty_label="Select Staff"
     )
 
-    performed_by = forms.ModelChoiceField(
+    performed_by = TenantChoiceField(
         queryset=User.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         required=True,
         empty_label="Select Staff"
     )
 
-    verified_by = forms.ModelChoiceField(
+    verified_by = TenantChoiceField(
         queryset=User.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         required=False,
@@ -375,7 +376,7 @@ class TestSearchForm(forms.Form):
         label='Search'
     )
 
-    category = forms.ModelChoiceField(
+    category = TenantChoiceField(
         queryset=TestCategory.objects.all(),
         required=False,
         empty_label="All Categories",
@@ -439,7 +440,7 @@ class TestRequestSearchForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-control'})
     )
 
-    doctor = forms.ModelChoiceField(
+    doctor = TenantChoiceField(
         queryset=User.objects.filter(is_active=True).filter(
             Q(profile__role='doctor') | Q(profile__specialization__isnull=False)
             | Q(doctor_profile__isnull=False)
@@ -490,7 +491,7 @@ class TestResultSearchForm(forms.Form):
         label='Test Name'
     )
 
-    test_category = forms.ModelChoiceField(
+    test_category = TenantChoiceField(
         queryset=TestCategory.objects.all(),
         required=False,
         empty_label="All Categories",
@@ -511,7 +512,7 @@ class TestResultSearchForm(forms.Form):
         label='Status'
     )
 
-    performed_by = forms.ModelChoiceField(
+    performed_by = TenantChoiceField(
         queryset=User.objects.filter(is_active=True),
         required=False,
         empty_label="All Staff",
@@ -519,7 +520,7 @@ class TestResultSearchForm(forms.Form):
         label='Performed By'
     )
 
-    verified_by = forms.ModelChoiceField(
+    verified_by = TenantChoiceField(
         queryset=User.objects.filter(is_active=True),
         required=False,
         empty_label="All Verifiers",

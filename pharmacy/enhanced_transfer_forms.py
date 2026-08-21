@@ -2,6 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from .models import InterDispensaryTransfer, Medication, Dispensary
 from django.forms import formset_factory
+from saas.fields import TenantChoiceField
 
 
 class EnhancedMedicationTransferForm(forms.Form):
@@ -19,19 +20,19 @@ class EnhancedMedicationTransferForm(forms.Form):
         if user and hasattr(user, 'profile') and hasattr(user.profile, 'dispensary'):
             self.fields['from_dispensary'].initial = user.profile.dispensary
     
-    medication = forms.ModelChoiceField(
+    medication = TenantChoiceField(
         queryset=Medication.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select medication-select', 'data-url': '/pharmacy/api/inventory-check/'}),
         label='Medication'
     )
     
-    from_dispensary = forms.ModelChoiceField(
+    from_dispensary = TenantChoiceField(
         queryset=Dispensary.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select source-dispensary'}),
         label='From Dispensary'
     )
     
-    to_dispensary = forms.ModelChoiceField(
+    to_dispensary = TenantChoiceField(
         queryset=Dispensary.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select destination-dispensary'}),
         label='To Dispensary'
@@ -97,14 +98,14 @@ class BulkMedicationTransferForm(forms.Form):
         if user and hasattr(user, 'profile') and hasattr(user.profile, 'dispensary'):
             self.fields['from_dispensary'].initial = user.profile.dispensary
     
-    from_dispensary = forms.ModelChoiceField(
+    from_dispensary = TenantChoiceField(
         queryset=Dispensary.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select source-dispensary'}),
         label='Source Dispensary',
         required=True
     )
     
-    to_dispensary = forms.ModelChoiceField(
+    to_dispensary = TenantChoiceField(
         queryset=Dispensary.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select destination-dispensary'}),
         label='Destination Dispensary',
@@ -125,7 +126,7 @@ class BulkMedicationTransferForm(forms.Form):
 class MedicationTransferItemForm(forms.Form):
     """Form for individual medication items in bulk transfer"""
     
-    medication = forms.ModelChoiceField(
+    medication = TenantChoiceField(
         queryset=Medication.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select medication-select-item'}),
         label='Medication',
@@ -187,14 +188,14 @@ class TransferSearchForm(forms.Form):
         label='Search'
     )
     
-    from_dispensary = forms.ModelChoiceField(
+    from_dispensary = TenantChoiceField(
         queryset=Dispensary.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select'}),
         label='From Dispensary',
         required=False
     )
     
-    to_dispensary = forms.ModelChoiceField(
+    to_dispensary = TenantChoiceField(
         queryset=Dispensary.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select'}),
         label='To Dispensary',

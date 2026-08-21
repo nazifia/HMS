@@ -738,7 +738,7 @@ def create_test_request(request):
 
         try:
             patient = Patient.objects.get(id=patient_id)
-            doctor = CustomUser.objects.get(id=doctor_id)
+            doctor = CustomUser.tenant_objects.get(id=doctor_id)
             selected_tests = Test.objects.filter(id__in=tests_ids)
             
             # Get authorization code if provided

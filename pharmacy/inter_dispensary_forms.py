@@ -1,6 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from .models import InterDispensaryTransfer, Medication, Dispensary
+from saas.fields import TenantChoiceField
 
 
 class InterDispensaryTransferForm(forms.ModelForm):
@@ -18,19 +19,19 @@ class InterDispensaryTransferForm(forms.ModelForm):
         if user and hasattr(user, 'profile') and hasattr(user.profile, 'dispensary'):
             self.fields['from_dispensary'].initial = user.profile.dispensary
     
-    medication = forms.ModelChoiceField(
+    medication = TenantChoiceField(
         queryset=Medication.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select medication-select'}),
         label='Medication'
     )
     
-    from_dispensary = forms.ModelChoiceField(
+    from_dispensary = TenantChoiceField(
         queryset=Dispensary.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select'}),
         label='From Dispensary'
     )
     
-    to_dispensary = forms.ModelChoiceField(
+    to_dispensary = TenantChoiceField(
         queryset=Dispensary.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select'}),
         label='To Dispensary'
@@ -103,21 +104,21 @@ class InterDispensaryTransferSearchForm(forms.Form):
     
     STATUS_CHOICES = [('', 'All Status')] + InterDispensaryTransfer.TRANSFER_STATUS_CHOICES
     
-    from_dispensary = forms.ModelChoiceField(
+    from_dispensary = TenantChoiceField(
         queryset=Dispensary.objects.filter(is_active=True),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'}),
         label='From Dispensary'
     )
     
-    to_dispensary = forms.ModelChoiceField(
+    to_dispensary = TenantChoiceField(
         queryset=Dispensary.objects.filter(is_active=True),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'}),
         label='To Dispensary'
     )
     
-    medication = forms.ModelChoiceField(
+    medication = TenantChoiceField(
         queryset=Medication.objects.filter(is_active=True),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'}),

@@ -32,7 +32,7 @@ class StaffLookupViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = (
-            CustomUser.objects
+            CustomUser.tenant_objects
             .filter(is_active=True)
             .select_related('profile', 'profile__department')
             .prefetch_related('roles')
@@ -67,8 +67,10 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     def get_queryset(self):
-        # Only show active users by default
-        queryset = super().get_queryset()
+        # tenant_objects, not the class-level `queryset`: that one is built at
+        # import time, when there is no current hospital, so it would return
+        # every tenant's staff.
+        queryset = CustomUser.tenant_objects.all().select_related('profile')
         if not self.request.query_params.get('show_inactive'):
             queryset = queryset.filter(profile__is_active=True)
         return queryset

@@ -1691,7 +1691,7 @@ def _notify_pharmacy_of_pack_order(pack_order, ordered_by):
 
     # Get all pharmacist users
     pharmacists = (
-        CustomUser.objects.filter(is_active=True)
+        CustomUser.tenant_objects.filter(is_active=True)
         .filter(
             models.Q(roles__name__iexact="pharmacist")
             | models.Q(profile__role__iexact="pharmacist")
@@ -4998,6 +4998,7 @@ from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 
 from .models import Patient, Prescription
+from saas.fields import TenantChoiceField
 
 
 @login_required
@@ -7254,8 +7255,8 @@ def add_medication_stock(request):
     from django import forms as dj_forms
 
     class AddStockForm(dj_forms.Form):
-        medication = dj_forms.ModelChoiceField(queryset=Medication.objects.filter(is_active=True).order_by("name"))
-        dispensary = dj_forms.ModelChoiceField(queryset=Dispensary.objects.filter(is_active=True).order_by("name"))
+        medication = TenantChoiceField(queryset=Medication.objects.filter(is_active=True).order_by("name"))
+        dispensary = TenantChoiceField(queryset=Dispensary.objects.filter(is_active=True).order_by("name"))
         stock_quantity = dj_forms.IntegerField(min_value=1)
         reorder_level = dj_forms.IntegerField(min_value=0, initial=10)
         unit_cost = dj_forms.DecimalField(min_value=0, decimal_places=2, initial=0)

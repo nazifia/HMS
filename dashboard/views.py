@@ -267,7 +267,7 @@ def system_overview(request):
     context = {'title': 'System Configuration Overview'}
 
     # Optimize: Accounts App - Get user stats in a single query
-    user_stats = CustomUser.objects.aggregate(
+    user_stats = CustomUser.tenant_objects.aggregate(
         total=CountFunc('id'),
         superusers=CountFunc('id', filter=Q(is_superuser=True)),
         staff=CountFunc('id', filter=Q(is_staff=True, is_superuser=False))

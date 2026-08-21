@@ -10,6 +10,7 @@ from nhia.utils import generate_nhia_reg_number
 from retainership.models import RetainershipPatient # Import RetainershipPatient
 from retainership.utils import generate_retainership_reg_number
 import datetime
+from saas.fields import TenantChoiceField
 
 
 class PatientForm(forms.ModelForm):
@@ -748,7 +749,7 @@ class WalletWithdrawalForm(forms.Form):
 
 
 class WalletTransferForm(forms.Form):
-    recipient_patient = forms.ModelChoiceField(
+    recipient_patient = TenantChoiceField(
         queryset=Patient.objects.filter(is_active=True),
         widget=forms.Select(attrs={
             'class': 'form-control',
@@ -1284,12 +1285,12 @@ class PhysiotherapyRequestForm(forms.ModelForm):
         # Filter users to only show doctors/physiotherapists
         from django.contrib.auth import get_user_model
         User = get_user_model()
-        self.fields['referring_doctor'].queryset = User.objects.filter(
+        self.fields['referring_doctor'].queryset = User.tenant_objects.filter(
             Q(profile__role__in=['Doctor', 'Physiotherapist']) |
             Q(is_staff=True)
         ).distinct()
         
-        self.fields['physiotherapist'].queryset = User.objects.filter(
+        self.fields['physiotherapist'].queryset = User.tenant_objects.filter(
             Q(profile__role__in=['Physiotherapist']) |
             Q(is_staff=True)
         ).distinct()
@@ -1405,7 +1406,7 @@ class TransferBetweenWalletsForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
-    recipient_wallet = forms.ModelChoiceField(
+    recipient_wallet = TenantChoiceField(
         queryset=SharedWallet.objects.all(),
         widget=forms.Select(attrs={'class': 'form-select'})
     )

@@ -26,6 +26,7 @@ from ..models import (
 )
 from .serializers import CartItemSerializer, CartSerializer
 from .views import PharmacyPagination
+from saas.api import TenantScopedQuerysetMixin
 
 
 def _error(exc, **extra):
@@ -177,7 +178,7 @@ class CartViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(CartSerializer(cart).data)
 
 
-class CartItemViewSet(viewsets.GenericViewSet):
+class CartItemViewSet(TenantScopedQuerysetMixin, viewsets.GenericViewSet):
     """Quantity edits and removals for a single cart item."""
 
     queryset = PrescriptionCartItem.objects.all()

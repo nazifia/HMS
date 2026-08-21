@@ -5,6 +5,7 @@ import string
 import random
 from nhia.models import AuthorizationCode
 from patients.models import Patient
+from saas.fields import TenantChoiceField
 
 class PatientSearchForm(forms.Form):
     """Form for searching NHIA patients"""
@@ -23,7 +24,7 @@ class PatientSearchForm(forms.Form):
 
 class AuthorizationCodeForm(forms.ModelForm):
     # We'll override the patient field to make it readonly after selection
-    patient = forms.ModelChoiceField(
+    patient = TenantChoiceField(
         queryset=Patient.objects.all().order_by('last_name', 'first_name'),
         widget=forms.Select(attrs={'class': 'form-control', 'readonly': True}),
         required=True

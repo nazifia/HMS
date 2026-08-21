@@ -45,7 +45,7 @@ def manage_pharmacist_assignments(request):
     # Get all pharmacists for comprehensive view
     all_pharmacists = None
     if view_mode == 'all':
-        all_pharmacists = CustomUser.objects.filter(
+        all_pharmacists = CustomUser.tenant_objects.filter(
             is_active=True
         ).filter(
             Q(roles__name__iexact='pharmacist') |  # New system
@@ -53,7 +53,7 @@ def manage_pharmacist_assignments(request):
         ).order_by('first_name', 'last_name').select_related('profile').distinct()
 
     # Get available pharmacists (users with pharmacist role)
-    available_pharmacists = CustomUser.objects.filter(
+    available_pharmacists = CustomUser.tenant_objects.filter(
         is_active=True
     ).filter(
         Q(roles__name__iexact='pharmacist') |  # New system
@@ -67,7 +67,7 @@ def manage_pharmacist_assignments(request):
     # If there are no available pharmacists, get all pharmacists regardless of assignment
     # (show assignments anyway, but don't filter for duplicates)
     if not available_pharmacists.exists():
-        available_pharmacists = CustomUser.objects.filter(
+        available_pharmacists = CustomUser.tenant_objects.filter(
             is_active=True
         ).filter(
             Q(roles__name__iexact='pharmacist') |  # New system
@@ -112,7 +112,7 @@ def manage_pharmacist_assignments(request):
     all_user_sessions = []
     if request.user.is_superuser:
         # Get all users with active pharmacy sessions
-        active_users = CustomUser.objects.filter(
+        active_users = CustomUser.tenant_objects.filter(
             is_active=True
         ).order_by('-last_login')
         

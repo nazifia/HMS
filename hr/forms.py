@@ -3,6 +3,7 @@ from django.utils import timezone
 from accounts.models import CustomUser
 from .models import Designation, Shift, StaffSchedule, Leave, Attendance, Payroll
 from accounts.models import Department
+from saas.fields import TenantChoiceField
 
 class DesignationForm(forms.ModelForm):
     class Meta:
@@ -285,7 +286,7 @@ class StaffSearchForm(forms.Form):
         'placeholder': 'Search by name or email'
     }))
     
-    department = forms.ModelChoiceField(
+    department = TenantChoiceField(
         required=False,
         queryset=Department.objects.all(),
         widget=forms.Select(attrs={'class': 'form-select'})
@@ -371,7 +372,7 @@ class AttendanceSearchForm(forms.Form):
         widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
     )
     
-    department = forms.ModelChoiceField(
+    department = TenantChoiceField(
         required=False,
         queryset=Department.objects.all(),
         widget=forms.Select(attrs={'class': 'form-select'})
@@ -417,7 +418,7 @@ class PayrollSearchForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     
-    department = forms.ModelChoiceField(
+    department = TenantChoiceField(
         required=False,
         queryset=Department.objects.all(),
         widget=forms.Select(attrs={'class': 'form-select'})

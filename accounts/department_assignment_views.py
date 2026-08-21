@@ -35,7 +35,7 @@ def manage_department_assignments(request):
 
     role_filter = request.GET.get("role", "")
     available_staff = (
-        CustomUser.objects.filter(is_active=True)
+        CustomUser.tenant_objects.filter(is_active=True)
         .select_related("profile")
         .order_by("first_name", "last_name")
     )

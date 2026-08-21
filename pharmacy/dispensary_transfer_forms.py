@@ -1,12 +1,13 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from .models import DispensaryTransfer, Medication, ActiveStore
+from saas.fields import TenantChoiceField
 
 
 class DispensaryTransferForm(forms.ModelForm):
     """Form for transferring medications from active store to dispensary"""
     
-    medication = forms.ModelChoiceField(
+    medication = TenantChoiceField(
         queryset=Medication.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_medication'}),
         label='Medication'

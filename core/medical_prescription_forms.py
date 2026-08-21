@@ -1,10 +1,11 @@
 from django import forms
 from pharmacy.models import Medication
+from saas.fields import TenantChoiceField
 
 class PrescriptionItemForm(forms.Form):
     """Form for adding prescription items in medical modules"""
     
-    medication = forms.ModelChoiceField(
+    medication = TenantChoiceField(
         queryset=Medication.objects.filter(is_active=True).order_by('name'),
         widget=forms.Select(attrs={
             'class': 'form-select select2',

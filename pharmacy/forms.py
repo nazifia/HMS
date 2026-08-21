@@ -28,6 +28,7 @@ from patients.models import Patient
 from django.contrib.auth import get_user_model
 from accounts.models import CustomUser
 from billing.models import Payment, Invoice
+from saas.fields import TenantChoiceField
 
 User = get_user_model()
 
@@ -161,7 +162,7 @@ class PurchaseItemForm(forms.ModelForm):
 class PrescriptionForm(forms.ModelForm):
     """Form for creating and editing prescriptions"""
 
-    patient = forms.ModelChoiceField(
+    patient = TenantChoiceField(
         queryset=Patient.objects.all().order_by("last_name", "first_name"),
         widget=forms.Select(attrs={"class": "form-select select2"}),
         empty_label="Select Patient",
@@ -194,7 +195,7 @@ class PrescriptionForm(forms.ModelForm):
 
         return label
 
-    doctor = forms.ModelChoiceField(
+    doctor = TenantChoiceField(
         queryset=CustomUser.objects.filter(
             is_active=True, roles__name="doctor"
         ).distinct(),
@@ -314,7 +315,7 @@ class PrescriptionForm(forms.ModelForm):
             from django.contrib.auth import get_user_model
 
             User = get_user_model()
-            self.fields["doctor"].queryset = User.objects.filter(id=current_user.id)
+            self.fields["doctor"].queryset = User.tenant_objects.filter(id=current_user.id)
             self.fields["doctor"].empty_label = None
 
     def clean_authorization_code_input(self):
@@ -382,7 +383,7 @@ class PrescriptionForm(forms.ModelForm):
 class PrescriptionItemForm(forms.ModelForm):
     """Form for creating and editing prescription items"""
 
-    medication = forms.ModelChoiceField(
+    medication = TenantChoiceField(
         queryset=Medication.objects.filter(is_active=True),
         widget=forms.Select(attrs={"class": "form-select select2"}),
         empty_label="Select Medication",
@@ -418,7 +419,7 @@ class MedicationSearchForm(forms.Form):
         label="Search",
     )
 
-    category = forms.ModelChoiceField(
+    category = TenantChoiceField(
         queryset=MedicationCategory.objects.all(),
         required=False,
         empty_label="All Categories",
@@ -491,7 +492,7 @@ class PrescriptionSearchForm(forms.Form):
         label="Payment Status",
     )
 
-    doctor = forms.ModelChoiceField(
+    doctor = TenantChoiceField(
         queryset=CustomUser.objects.filter(
             is_active=True, roles__name="doctor"
         ).distinct(),
@@ -551,7 +552,7 @@ class DispensedItemsSearchForm(forms.Form):
         help_text="Search by patient name",
     )
 
-    dispensed_by = forms.ModelChoiceField(
+    dispensed_by = TenantChoiceField(
         queryset=CustomUser.objects.filter(is_active=True).order_by(
             "first_name", "last_name"
         ),
@@ -561,7 +562,7 @@ class DispensedItemsSearchForm(forms.Form):
         help_text="Filter by staff member who dispensed",
     )
 
-    category = forms.ModelChoiceField(
+    category = TenantChoiceField(
         queryset=MedicationCategory.objects.all().order_by("name"),
         required=False,
         empty_label="All Categories",
@@ -640,7 +641,7 @@ class DispensaryForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["manager"].queryset = CustomUser.objects.filter(is_active=True)
+        self.fields["manager"].queryset = CustomUser.tenant_objects.filter(is_active=True)
         self.fields["manager"].empty_label = "Select Manager (Optional)"
 
 
@@ -676,7 +677,7 @@ class BulkStoreForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["manager"].queryset = CustomUser.objects.filter(is_active=True)
+        self.fields["manager"].queryset = CustomUser.tenant_objects.filter(is_active=True)
         self.fields["manager"].empty_label = "Select Manager (Optional)"
         self.fields[
             "manager"
@@ -1005,7 +1006,7 @@ class PharmacyDashboardSearchForm(forms.Form):
     )
 
     # Medication specific filters
-    medication_category = forms.ModelChoiceField(
+    medication_category = TenantChoiceField(
         queryset=MedicationCategory.objects.all(),
         required=False,
         empty_label="All Categories",
@@ -1054,7 +1055,7 @@ class PharmacyDashboardSearchForm(forms.Form):
 class BulkStoreTransferForm(forms.Form):
     """Form for bulk selecting and transferring multiple medications from bulk store to active store"""
 
-    bulk_store = forms.ModelChoiceField(
+    bulk_store = TenantChoiceField(
         queryset=BulkStore.objects.filter(is_active=True),
         widget=forms.Select(attrs={"class": "form-control"}),
         label="Source Bulk Store",
@@ -1082,7 +1083,7 @@ class DispensarySearchForm(forms.Form):
         label="Search",
     )
 
-    manager = forms.ModelChoiceField(
+    manager = TenantChoiceField(
         queryset=CustomUser.objects.filter(is_active=True).order_by(
             "first_name", "last_name"
         ),
@@ -1220,7 +1221,7 @@ class MedicalPackForm(forms.ModelForm):
 class PackItemForm(forms.ModelForm):
     """Form for creating and editing pack items (legacy Pack model)"""
 
-    medication = forms.ModelChoiceField(
+    medication = TenantChoiceField(
         queryset=Medication.objects.filter(is_active=True),
         widget=forms.Select(attrs={"class": "form-select select2"}),
         empty_label="Select Medication/Consumable",
@@ -1275,7 +1276,7 @@ class PackItemForm(forms.ModelForm):
 class MedicalPackItemForm(forms.ModelForm):
     """Form for creating and editing medical pack items"""
 
-    medication = forms.ModelChoiceField(
+    medication = TenantChoiceField(
         queryset=Medication.objects.filter(is_active=True),
         widget=forms.Select(attrs={"class": "form-select select2"}),
         empty_label="Select Medication/Consumable",
@@ -1330,13 +1331,13 @@ class MedicalPackItemForm(forms.ModelForm):
 class PackOrderForm(forms.ModelForm):
     """Form for creating pack orders"""
 
-    pack = forms.ModelChoiceField(
+    pack = TenantChoiceField(
         queryset=MedicalPack.objects.filter(is_active=True),
         widget=forms.Select(attrs={"class": "form-select select2"}),
         empty_label="Select Medical Pack",
     )
 
-    patient = forms.ModelChoiceField(
+    patient = TenantChoiceField(
         queryset=Patient.objects.all().order_by("last_name", "first_name"),
         widget=forms.Select(attrs={"class": "form-select select2"}),
         empty_label="Select Patient",

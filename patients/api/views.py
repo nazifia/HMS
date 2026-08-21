@@ -18,6 +18,7 @@ from .serializers import (
     MedicalHistorySerializer, PatientSerializer, VitalsSerializer,
     WalletSerializer, WalletTransactionSerializer,
 )
+from saas.api import TenantScopedQuerysetMixin
 
 WRITE_PERMISSIONS = [permissions.IsAuthenticated, permissions.DjangoModelPermissions]
 
@@ -145,7 +146,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         })
 
 
-class PatientChildViewSet(viewsets.ModelViewSet):
+class PatientChildViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     """Records that hang off a patient and are always read per patient."""
 
     permission_classes = WRITE_PERMISSIONS

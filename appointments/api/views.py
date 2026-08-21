@@ -160,7 +160,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         """
         try:
             date = datetime.strptime(request.query_params['date'], '%Y-%m-%d').date()
-            doctor = CustomUser.objects.get(id=request.query_params['doctor'])
+            doctor = CustomUser.tenant_objects.get(id=request.query_params['doctor'])
         except (KeyError, ValueError, CustomUser.DoesNotExist):
             return _error('A valid doctor and date are required.')
 

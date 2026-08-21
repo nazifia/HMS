@@ -27,6 +27,7 @@ from .serializers import (
     ClinicalRecordSerializer, DailyRoundSerializer,
     InpatientMedicationSerializer, NursingNoteSerializer, WardSerializer,
 )
+from saas.api import TenantScopedQuerysetMixin
 
 WRITE_PERMISSIONS = [permissions.IsAuthenticated, permissions.DjangoModelPermissions]
 
@@ -241,7 +242,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         return Response(AdmissionChargesSerializer(data).data)
 
 
-class _AdmissionChildViewSet(viewsets.ModelViewSet):
+class _AdmissionChildViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     """Rows that hang off one admission: rounds, notes, records, medications."""
 
     permission_classes = WRITE_PERMISSIONS

@@ -9,6 +9,7 @@ from pharmacy.models import Prescription
 from accounts.models import Department, CustomUser
 from patients.models import Patient, Vitals
 from appointments.models import Appointment
+from saas.fields import TenantChoiceField
 
 
 class ConsultingRoomForm(forms.ModelForm):
@@ -482,7 +483,7 @@ class ConsultationForm(forms.ModelForm):
 class VitalsSelectionForm(forms.Form):
     """Form for selecting vitals for a consultation"""
     
-    vitals = forms.ModelChoiceField(
+    vitals = TenantChoiceField(
         queryset=Vitals.objects.none(),  # Will be set in __init__
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         required=False,

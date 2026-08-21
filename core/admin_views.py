@@ -61,7 +61,7 @@ def admin_dashboard(request):
 
     # Optimize: Use aggregate to get user stats in a single query
     from django.db.models import Q, Count as CountFunc
-    user_stats = User.objects.aggregate(
+    user_stats = User.tenant_objects.aggregate(
         total=CountFunc('id'),
         active=CountFunc('id', filter=Q(is_active=True)),
         recent_logins=CountFunc('id', filter=Q(last_login__gte=timezone.now() - timedelta(days=1)))
@@ -227,7 +227,7 @@ def permission_management(request):
 def user_permissions_detail(request, user_id):
     """View and edit user permissions"""
     
-    user = get_object_or_404(User.objects.select_related('profile'), id=user_id)
+    user = get_object_or_404(User.tenant_objects.select_related('profile'), id=user_id)
     
     # Get user permissions using simplified logic
     from core.permissions import APP_PERMISSIONS
@@ -454,7 +454,7 @@ def api_user_permissions(request):
         return JsonResponse({'error': 'User ID required'}, status=400)
     
     try:
-        user = User.objects.get(id=user_id)
+        user = User.tenant_objects.get(id=user_id)
         
         # Get user permissions using simplified logic
         permissions = set()
@@ -495,7 +495,7 @@ def api_admin_users(request):
     if request.method == 'GET':
         # List users
         try:
-            users = User.objects.select_related('profile__department').prefetch_related('roles').all()
+            users = User.tenant_objects.select_related('profile__department').prefetch_related('roles').all()
             users_data = []
 
             for user in users:
@@ -602,7 +602,7 @@ def api_admin_user_detail(request, user_id):
     """API endpoint for individual user operations - update, delete"""
     
     try:
-        user = User.objects.get(id=user_id)
+        user = User.tenant_objects.get(id=user_id)
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'User not found'}, status=404)
     
@@ -726,8 +726,8 @@ def user_management_view(request):
     
     context = {
         'page_title': 'User Management',
-        'total_users': User.objects.count(),
-        'active_users': User.objects.filter(is_active=True).count(),
+        'total_users': User.tenant_objects.count(),
+        'active_users': User.tenant_objects.filter(is_active=True).count(),
     }
     
     return render(request, 'admin/user_management.html', context)

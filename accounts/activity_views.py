@@ -20,6 +20,7 @@ User = get_user_model()
 
 # Inline form classes to avoid import issues
 from django import forms
+from saas.fields import TenantChoiceField
 
 class ActivityFilterForm(forms.Form):
     """Form for filtering user activities"""
@@ -27,7 +28,7 @@ class ActivityFilterForm(forms.Form):
     ACTION_TYPES = [('', 'All')] + UserActivity.ACTION_TYPES
     ACTIVITY_LEVELS = [('', 'All')] + UserActivity.ACTIVITY_LEVELS
     
-    user = forms.ModelChoiceField(
+    user = TenantChoiceField(
         queryset=User.objects.filter(is_active=True).order_by('username'),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
@@ -81,7 +82,7 @@ class AlertFilterForm(forms.Form):
     ALERT_TYPES = [('', 'All')] + ActivityAlert.ALERT_TYPES
     SEVERITY_LEVELS = [('', 'All')] + ActivityAlert.SEVERITY_LEVELS
     
-    user = forms.ModelChoiceField(
+    user = TenantChoiceField(
         queryset=User.objects.filter(is_active=True).order_by('username'),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})

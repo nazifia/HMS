@@ -1,3 +1,4 @@
+from saas.api import TenantScopedQuerysetMixin
 """Laboratory endpoints for the mobile client.
 
 Thin JSON skin over `laboratory.services` — the workflow rules are shared with
@@ -60,7 +61,7 @@ class TestViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
 
-class TestCategoryViewSet(viewsets.ReadOnlyModelViewSet):
+class TestCategoryViewSet(TenantScopedQuerysetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = TestCategory.objects.order_by('name')
     serializer_class = TestCategorySerializer
     permission_classes = [permissions.IsAuthenticated]

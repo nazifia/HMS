@@ -72,6 +72,16 @@ python manage.py create_admission_service    # Create admission billing service
 - Role hierarchy system with permission inheritance
 - Activity monitoring and audit logging
 
+**saas** - Multi-tenant engine (one `Hospital` = one tenant, shared database)
+- Every tenant-owned model subclasses `saas.models.TenantModel`: `hospital` FK,
+  tenant-scoped `objects`, unscoped `all_objects`, auto-stamp on save
+- Tenant resolved from the `/t/<sub>/` path prefix by `saas.middleware`
+- Querysets built at import time (form fields in a class body, DRF class-level
+  `queryset`) are NOT scoped by the manager — use `saas.fields.TenantChoiceField`
+  and `saas.api.TenantScopedQuerysetMixin`. See `saas/README.md`
+- `CustomUser` is not a `TenantModel` (auth looks up unscoped): use
+  `CustomUser.tenant_objects` for staff lists and pickers
+
 **core** - Shared utilities, notifications, audit logs, SOAP notes
 - AuditLog for tracking all user actions
 - InternalNotification system
