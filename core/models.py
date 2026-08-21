@@ -191,8 +191,10 @@ class UIPermission(models.Model):
         if not user or not user.is_authenticated:
             return False
 
-        # Superusers can access everything
-        if user.is_superuser:
+        # Superusers and tenant admins can access everything
+        from accounts.permissions import is_tenant_admin
+
+        if is_tenant_admin(user):
             return True
 
         # Check if element is active

@@ -4,6 +4,7 @@ The cart is a money path (invoice totals, stock deduction, dispensing logs), so
 it gets exactly one implementation. `cart_views` renders it with messages and
 redirects; `api/cart_views` returns JSON. Neither owns the rules.
 """
+from accounts.permissions import is_tenant_admin
 import logging
 from decimal import Decimal
 
@@ -100,7 +101,7 @@ def remove_cart_item(item):
 
 def set_cart_dispensary(cart, dispensary, user):
     """Point the cart at a dispensary and refresh every item's stock figure."""
-    if dispensary is not None and not user.is_superuser:
+    if dispensary is not None and not is_tenant_admin(user):
         if hasattr(user, "can_access_dispensary") and not user.can_access_dispensary(
             dispensary
         ):
@@ -272,7 +273,7 @@ def pay_cart_from_wallet(cart, user, allow_negative=False, request=None):
     from core.models import InternalNotification
     from patients.models import PatientWallet
 
-    if not user.is_superuser and cart.dispensary:
+    if not is_tenant_admin(user) and cart.dispensary:
         if hasattr(user, "can_access_dispensary") and not user.can_access_dispensary(
             cart.dispensary
         ):
@@ -352,7 +353,7 @@ def pay_cart_from_wallet(cart, user, allow_negative=False, request=None):
 
 def substitute_cart_item(item, medication, reason, user):
     """Swap an item's medication for an alternative. Returns a note."""
-    if not user.is_superuser and item.cart.dispensary:
+    if not is_tenant_admin(user) and item.cart.dispensary:
         if hasattr(user, "can_access_dispensary") and not user.can_access_dispensary(
             item.cart.dispensary
         ):
@@ -420,7 +421,7 @@ def dispense_cart(cart, user, quantities=None):
     """
     quantities = quantities or {}
 
-    if not user.is_superuser and cart.dispensary:
+    if not is_tenant_admin(user) and cart.dispensary:
         if hasattr(user, "can_access_dispensary") and not user.can_access_dispensary(
             cart.dispensary
         ):

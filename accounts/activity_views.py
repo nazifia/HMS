@@ -1,6 +1,7 @@
 """
 User Activity Monitoring Views
 """
+from accounts.views import is_admin_or_staff
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import get_user_model
@@ -117,7 +118,7 @@ class AlertFilterForm(forms.Form):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def activity_dashboard(request):
     """Main activity monitoring dashboard"""
     
@@ -202,7 +203,7 @@ def activity_dashboard(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def user_activity_list(request):
     """List all user activities with filters"""
     
@@ -271,7 +272,7 @@ def user_activity_list(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def activity_detail(request, activity_id):
     """ detailed view of a specific activity"""
     
@@ -294,7 +295,7 @@ def activity_detail(request, activity_id):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def activity_alerts(request):
     """View and manage activity alerts"""
     
@@ -343,7 +344,7 @@ def activity_alerts(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def resolve_alert(request, alert_id):
     """Mark an alert as resolved"""
     
@@ -381,7 +382,7 @@ def resolve_alert(request, alert_id):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def user_sessions(request):
     """View active and historical user sessions"""
     
@@ -423,7 +424,7 @@ def user_sessions(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def session_detail(request, session_key):
     """Detailed view of a user session"""
     
@@ -445,7 +446,7 @@ def session_detail(request, session_key):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def activity_statistics(request):
     """Activity statistics and analytics"""
     
@@ -532,7 +533,7 @@ def activity_statistics(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def export_activities(request):
     """Export user activities as CSV"""
     import csv
@@ -595,7 +596,7 @@ def export_activities(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def live_activity_monitor(request):
     """Live activity monitoring with real-time updates"""
     
@@ -625,7 +626,7 @@ def live_activity_monitor(request):
 
 # API views for live updates
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def api_recent_activities(request):
     """API endpoint for recent activities"""
     
@@ -654,7 +655,7 @@ def api_recent_activities(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def api_system_status(request):
     """API endpoint for system status"""
     

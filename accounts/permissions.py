@@ -2118,6 +2118,24 @@ def get_user_roles(user):
     return result
 
 
+def is_tenant_admin(user):
+    """True for a hospital's own administrator (and for platform superusers).
+
+    A tenant admin runs every module of their own hospital, so every gate that
+    waves a superuser through waves them through too. Breadth of *function*
+    only: the rows they see are still limited to their hospital by
+    ``TenantManager``, so this never widens access across tenants.
+    """
+    if user is None or not getattr(user, "is_authenticated", False):
+        return False
+    cached = getattr(user, "_is_tenant_admin", None)
+    if cached is None:
+        checker = getattr(user, "is_hospital_admin", None)
+        cached = bool(user.is_superuser or (checker and checker()))
+        user._is_tenant_admin = cached
+    return cached
+
+
 def user_has_permission(user, permission):
     """Check if user has specific permission.
 
@@ -2133,8 +2151,8 @@ def user_has_permission(user, permission):
     if not user.is_authenticated:
         return False
 
-    # Superuser has all permissions
-    if user.is_superuser:
+    # Superuser and tenant admin have all permissions
+    if is_tenant_admin(user):
         return True
 
     # Check via Django permission system (includes RolePermissionBackend)

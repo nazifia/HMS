@@ -1,3 +1,4 @@
+from accounts.permissions import is_tenant_admin
 from django.shortcuts import render, get_object_or_404, redirect
 from nhia.utils import NHIA_PATIENT_RATE, NHIA_COVERED_RATE
 from django.contrib.auth.decorators import login_required
@@ -106,7 +107,7 @@ def no_doctor_prescribing(view_func):
 def select_dispensary(request):
     """View for pharmacists to select their working dispensary"""
     # Admins don't need to select dispensary
-    if request.user.is_superuser:
+    if is_tenant_admin(request.user):
         return redirect("pharmacy:pharmacy_dashboard")
 
     # Get user's assigned dispensaries
@@ -166,7 +167,7 @@ def set_dispensary(request):
         dispensary = Dispensary.objects.get(id=dispensary_id, is_active=True)
 
         # Verify pharmacist has access to this dispensary
-        if not request.user.is_superuser:
+        if not is_tenant_admin(request.user):
             if not request.user.can_access_dispensary(dispensary):
                 messages.error(
                     request, f"You don't have permission to access '{dispensary.name}'."
@@ -192,7 +193,7 @@ def set_dispensary(request):
 def pharmacy_dashboard(request):
     """View for the pharmacy dashboard"""
     # Check if user needs to select dispensary (pharmacists only)
-    if not request.user.is_superuser:
+    if not is_tenant_admin(request.user):
         if hasattr(request.user, "is_pharmacist") and request.user.is_pharmacist():
             selected_dispensary_id = request.session.get("selected_dispensary_id")
             if not selected_dispensary_id:
@@ -214,7 +215,7 @@ def pharmacy_dashboard(request):
     # Get selected dispensary for context
     selected_dispensary = None
     pharmacist_dispensary = None
-    if not request.user.is_superuser:
+    if not is_tenant_admin(request.user):
         selected_dispensary_id = request.session.get("selected_dispensary_id")
         if selected_dispensary_id:
             try:
@@ -6671,7 +6672,7 @@ def _user_role_names(user):
 def user_has_dispensary_edit_permission(user, dispensary=None):
     """Check if user has permission to edit dispensaries"""
     # Superusers and admins have full access
-    if user.is_superuser:
+    if is_tenant_admin(user):
         return True
 
     # Check for specific permission
@@ -6706,7 +6707,7 @@ def user_has_inventory_edit_permission(user, dispensary):
     - Users with specific pharmacy inventory permissions
     - The dispensary manager/incharge
     """
-    if user.is_superuser:
+    if is_tenant_admin(user):
         return True
 
     user_roles = _user_role_names(user)
@@ -6734,7 +6735,7 @@ def user_has_bulk_store_edit_permission(user, bulk_store=None):
     - Users with specific bulk store inventory permissions
     - The bulk store manager/incharge
     """
-    if user.is_superuser:
+    if is_tenant_admin(user):
         return True
 
     user_roles = _user_role_names(user)

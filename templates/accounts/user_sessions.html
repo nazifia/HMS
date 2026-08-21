@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permission_tags %}
 {% load static %}
 {% load custom_filters %}
 
@@ -259,7 +260,7 @@
                                     </a>
                                     {% endif %}
                                     
-                                    {% if session.is_active and request.user.is_superuser %}
+                                    {% if session.is_active and request.user|is_tenant_admin %}
                                         <button type="button" class="btn btn-outline-warning btn-sm" 
                                                 onclick="endSession('{{ session.session_key }}')">
                                             <i class="fas fa-sign-out-alt"></i> End

@@ -8,6 +8,7 @@ from django import template
 from django.contrib.auth import get_user_model
 from django.utils.safestring import mark_safe
 
+from accounts.permissions import is_tenant_admin
 from core.permissions import check_user_permission
 
 register = template.Library()
@@ -45,7 +46,7 @@ def has_permission(user, permission_name):
     if not user or not user.is_authenticated:
         return False
 
-    if user.is_superuser:
+    if is_tenant_admin(user):
         return True
 
     # Alias-aware RBAC check (maps custom keys like 'create_appointment'
@@ -62,7 +63,7 @@ def has_any_permission(user, permission_names):
     if not user or not user.is_authenticated:
         return False
 
-    if user.is_superuser:
+    if is_tenant_admin(user):
         return True
 
     # Split comma-separated permission names
@@ -119,7 +120,7 @@ def user_can_access(context, permission_list):
     if not user or not user.is_authenticated:
         return False
 
-    if user.is_superuser:
+    if is_tenant_admin(user):
         return True
 
     if isinstance(permission_list, str):

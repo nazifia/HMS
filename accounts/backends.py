@@ -185,3 +185,41 @@ class RolePermissionBackend(ModelBackend):
         except CustomUser.DoesNotExist:
             return None
 
+
+class TenantAdminBackend(BaseBackend):
+    """Grants every Django permission to a hospital's own admin.
+
+    Permission-only backend (``authenticate`` returns None) so it adds no
+    PBKDF2 cost to login. Having it here means DRF's model permissions,
+    ``PermissionRequiredMixin``, ``{{ perms }}`` in templates and every
+    ``user.has_perm()`` call agree with the in-app RBAC helpers: a tenant
+    admin can use every feature of their hospital. Rows stay tenant-scoped by
+    ``TenantManager``, and the Django admin site is still gated on
+    ``is_staff``, so this grants no cross-tenant or platform power.
+    """
+
+    def authenticate(self, request, username=None, password=None, **kwargs):
+        return None
+
+    def _is_admin(self, user_obj):
+        from accounts.permissions import is_tenant_admin
+
+        return bool(user_obj.is_active) and is_tenant_admin(user_obj)
+
+    def has_perm(self, user_obj, perm, obj=None):
+        return self._is_admin(user_obj)
+
+    def has_module_perms(self, user_obj, app_label):
+        return self._is_admin(user_obj)
+
+    def get_all_permissions(self, user_obj, obj=None):
+        if not self._is_admin(user_obj):
+            return set()
+        from django.contrib.auth.models import Permission
+
+        return {
+            f"{app_label}.{codename}"
+            for app_label, codename in Permission.objects.values_list(
+                "content_type__app_label", "codename"
+            )
+        }

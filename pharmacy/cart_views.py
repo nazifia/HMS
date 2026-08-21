@@ -4,6 +4,7 @@ Prescription Cart Views for HMS Pharmacy Module
 Handles cart operations: create, view, update, checkout, and complete dispensing.
 """
 
+from accounts.permissions import is_tenant_admin
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -88,7 +89,7 @@ def view_cart(request, cart_id):
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
 
     # Validate pharmacist access to cart's dispensary
-    if not request.user.is_superuser and cart.dispensary:
+    if not is_tenant_admin(request.user) and cart.dispensary:
         if hasattr(request.user, "can_access_dispensary"):
             if not request.user.can_access_dispensary(cart.dispensary):
                 messages.error(
@@ -128,7 +129,7 @@ def view_cart(request, cart_id):
         pass
 
     # Get all dispensaries - filter for pharmacists
-    if request.user.is_superuser:
+    if is_tenant_admin(request.user):
         dispensaries = Dispensary.objects.filter(is_active=True)
     else:
         if hasattr(request.user, "get_all_assigned_dispensaries"):
@@ -425,7 +426,7 @@ def generate_invoice_from_cart(request, cart_id):
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
 
     # Validate pharmacist access to cart's dispensary
-    if not request.user.is_superuser and cart.dispensary:
+    if not is_tenant_admin(request.user) and cart.dispensary:
         if hasattr(request.user, "can_access_dispensary"):
             if not request.user.can_access_dispensary(cart.dispensary):
                 messages.error(
@@ -556,7 +557,7 @@ def cancel_cart(request, cart_id):
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
 
     # Validate pharmacist access to cart's dispensary
-    if not request.user.is_superuser and cart.dispensary:
+    if not is_tenant_admin(request.user) and cart.dispensary:
         if hasattr(request.user, "can_access_dispensary"):
             if not request.user.can_access_dispensary(cart.dispensary):
                 messages.error(
@@ -599,7 +600,7 @@ def cart_list(request):
     ).order_by("-created_at")
 
     # Apply dispensary filter based on user role
-    if not request.user.is_superuser:
+    if not is_tenant_admin(request.user):
         pharmacist_dispensary_id = request.session.get("selected_dispensary_id")
         if pharmacist_dispensary_id:
             # Pharmacist: Only show carts for their assigned dispensary
@@ -632,7 +633,7 @@ def cart_list(request):
 
     # Get selected dispensary for display context
     selected_dispensary = None
-    if not request.user.is_superuser:
+    if not is_tenant_admin(request.user):
         selected_dispensary_id = request.session.get("selected_dispensary_id")
         if selected_dispensary_id:
             try:
@@ -667,7 +668,7 @@ def cart_receipt(request, cart_id):
     cart = get_object_or_404(PrescriptionCart, id=cart_id)
 
     # Validate pharmacist access to cart's dispensary
-    if not request.user.is_superuser and cart.dispensary:
+    if not is_tenant_admin(request.user) and cart.dispensary:
         if hasattr(request.user, "can_access_dispensary"):
             if not request.user.can_access_dispensary(cart.dispensary):
                 messages.error(

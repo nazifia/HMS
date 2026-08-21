@@ -1,3 +1,4 @@
+from accounts.permissions import is_tenant_admin
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -66,7 +67,7 @@ def enhanced_add_result(request, order_id):
         elif 'submit_and_verify' in request.POST:
             # This requires special permissions
             has_permission = (
-                request.user.is_superuser or 
+                is_tenant_admin(request.user) or 
                 request.user.is_staff or
                 request.user.groups.filter(name__in=['Senior Radiologists', 'Radiology Consultants', 'Department Heads']).exists()
             )
@@ -117,7 +118,7 @@ def enhanced_add_result(request, order_id):
     
     # Check if user has verification permissions
     can_verify = (
-        current_user.is_superuser or 
+        is_tenant_admin(current_user) or 
         current_user.is_staff or
         current_user.groups.filter(name__in=['Senior Radiologists', 'Radiology Consultants', 'Department Heads']).exists()
     )
@@ -146,7 +147,7 @@ def verify_result(request, result_id):
     
     # Check permissions - allow admin/superuser or users in specific groups
     has_permission = (
-        request.user.is_superuser or 
+        is_tenant_admin(request.user) or 
         request.user.is_staff or
         request.user.groups.filter(name__in=['Senior Radiologists', 'Radiology Consultants', 'Department Heads']).exists()
     )
@@ -190,7 +191,7 @@ def finalize_result(request, result_id):
     
     # Check permissions - allow admin/superuser or users in specific groups
     has_permission = (
-        request.user.is_superuser or 
+        is_tenant_admin(request.user) or 
         request.user.is_staff or
         request.user.groups.filter(name__in=['Senior Radiologists', 'Radiology Consultants', 'Department Heads']).exists()
     )

@@ -7,9 +7,11 @@ Provides user permissions and role information to all templates.
 from django.core.cache import cache
 
 from accounts.permissions import (
+    PERMISSION_DEFINITIONS,
     ROLE_PERMISSIONS,
     get_user_accessible_modules,
     get_user_roles,
+    is_tenant_admin,
 )
 
 # Empty context for anonymous users (no cache lookup, no DB hit).
@@ -62,10 +64,15 @@ def page_user_context(request):
     is_super = user.is_superuser
 
     perms = {}
-    for role_name in roles_lc:
-        if role_name in ROLE_PERMISSIONS:
-            for perm_key in ROLE_PERMISSIONS[role_name]['permissions']:
-                perms[perm_key] = True
+    if is_tenant_admin(user):
+        # Hospital admins run every module of their hospital, so templates that
+        # read user_permissions must agree with the view-level gates.
+        perms = {perm_key: True for perm_key in PERMISSION_DEFINITIONS}
+    else:
+        for role_name in roles_lc:
+            if role_name in ROLE_PERMISSIONS:
+                for perm_key in ROLE_PERMISSIONS[role_name]['permissions']:
+                    perms[perm_key] = True
 
     result = {
         # --- accounts.user_permissions ---

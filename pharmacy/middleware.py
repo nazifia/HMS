@@ -4,6 +4,7 @@ This ensures only admins and pharmacists can access pharmacy views.
 Also implements dispensary-specific access for pharmacists.
 """
 
+from accounts.permissions import is_tenant_admin
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.urls import resolve, reverse
@@ -46,8 +47,8 @@ class PharmacyAccessMiddleware:
             if not request.user.is_authenticated:
                 return self.get_response(request)
 
-            # Allow superusers full access
-            if request.user.is_superuser:
+            # Superusers and hospital admins get full access
+            if is_tenant_admin(request.user):
                 return self.get_response(request)
 
             # Prescribers (e.g. doctors) use the prescription pages under

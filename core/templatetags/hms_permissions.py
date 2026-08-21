@@ -3,6 +3,8 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.utils.safestring import mark_safe
 
+from accounts.permissions import is_tenant_admin
+
 register = template.Library()
 
 
@@ -17,7 +19,7 @@ def has_permission(user, permission_name):
         return False
 
     # Superusers have all permissions
-    if user.is_superuser:
+    if is_tenant_admin(user):
         return True
 
     # Use the accounts permission system which handles proper permission mapping
@@ -190,7 +192,7 @@ def can_show_ui(user, element_id):
         return False
 
     # Superusers can see everything
-    if user.is_superuser:
+    if is_tenant_admin(user):
         return True
 
     # Try to get from cache first for performance
@@ -235,7 +237,7 @@ def can_show_any_ui(user, element_ids):
     if not user or not user.is_authenticated:
         return False
 
-    if user.is_superuser:
+    if is_tenant_admin(user):
         return True
 
     element_list = [e.strip() for e in element_ids.split(",")]
@@ -263,7 +265,7 @@ def can_show_all_ui(user, element_ids):
     if not user or not user.is_authenticated:
         return False
 
-    if user.is_superuser:
+    if is_tenant_admin(user):
         return True
 
     element_list = [e.strip() for e in element_ids.split(",")]

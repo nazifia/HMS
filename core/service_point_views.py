@@ -9,6 +9,7 @@ Department heads may also manage points, but only within the department(s)
 they head: they cannot create hospital-wide points or touch other
 departments' points.
 """
+from accounts.permissions import is_tenant_admin
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -33,7 +34,7 @@ def require_service_point(request):
     is desk staff with assigned points but hasn't signed in at one, return a
     redirect to the selector (preserving the current URL as next); else None.
     """
-    if request.session.get('selected_service_point_id') or request.user.is_superuser:
+    if request.session.get('selected_service_point_id') or is_tenant_admin(request.user):
         return None
     role = getattr(getattr(request.user, 'profile', None), 'role', None)
     if role not in SERVICE_POINT_ROLES:
@@ -86,7 +87,7 @@ def select_service_point(request):
     GET: show assigned points (auto-select when exactly one).
     POST: store the chosen point in the session.
     """
-    if request.user.is_superuser:
+    if is_tenant_admin(request.user):
         points = ServicePoint.objects.filter(is_active=True)
     else:
         points = request.user.service_points.filter(is_active=True)

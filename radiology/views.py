@@ -1,3 +1,4 @@
+from accounts.permissions import is_tenant_admin
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -39,7 +40,7 @@ def index(request):
     user_department = get_user_department(request.user)
 
     # Superusers don't need department assignment warnings
-    if not user_department and not request.user.is_superuser:
+    if not user_department and not is_tenant_admin(request.user):
         messages.warning(
             request,
             "You are not assigned to a department. Some features may be limited.",

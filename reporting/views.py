@@ -1,3 +1,4 @@
+from accounts.permissions import is_tenant_admin
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -949,7 +950,7 @@ def edit_report(request, report_id):
     report = get_object_or_404(Report, id=report_id)
 
     # Only the creator or an admin can edit a report
-    if report.created_by != request.user and not request.user.is_superuser:
+    if report.created_by != request.user and not is_tenant_admin(request.user):
         messages.error(request, 'You do not have permission to edit this report.')
         return redirect('reporting:view_report', report_id=report.id)
 
@@ -976,7 +977,7 @@ def delete_report(request, report_id):
     report = get_object_or_404(Report, id=report_id)
 
     # Only the creator or an admin can delete a report
-    if report.created_by != request.user and not request.user.is_superuser:
+    if report.created_by != request.user and not is_tenant_admin(request.user):
         messages.error(request, 'You do not have permission to delete this report.')
         return redirect('reporting:view_report', report_id=report.id)
 

@@ -53,7 +53,10 @@ def is_admin(user):
 
 
 def is_admin_or_staff(user):
-    return user.is_authenticated and (user.is_superuser or user.is_staff)
+    """Staff-console gate: platform staff, or the hospital's own admin."""
+    from accounts.permissions import is_tenant_admin
+
+    return user.is_authenticated and (user.is_staff or is_tenant_admin(user))
 
 
 from django.conf import settings
@@ -390,7 +393,7 @@ def edit_profile(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def staff_list(request):
     """View for listing all staff members (admin only)"""
     staff = CustomUserProfile.objects.all().order_by("role", "user__phone_number")
@@ -445,7 +448,7 @@ def _plan_user_cap_message(request):
     return None
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def add_staff(request):
     """View for adding new staff member (admin only)"""
     if request.method == "POST":
@@ -473,7 +476,7 @@ def add_staff(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def edit_staff(request, staff_id):
     """View for editing staff member (admin only)"""
     user_profile = get_object_or_404(CustomUserProfile, id=staff_id)
@@ -495,7 +498,7 @@ def edit_staff(request, staff_id):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def delete_staff(request, staff_id):
     """View for deleting staff member (admin only)"""
     user_profile = get_object_or_404(CustomUserProfile, id=staff_id)
@@ -515,7 +518,7 @@ def delete_staff(request, staff_id):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def department_list(request):
     """View for listing all departments (admin only)"""
     departments = Department.objects.all().order_by("name")
@@ -524,7 +527,7 @@ def department_list(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def add_department(request):
     """View for adding new department (admin only)"""
     if request.method == "POST":
@@ -541,7 +544,7 @@ def add_department(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def edit_department(request, department_id):
     """View for editing department (admin only)"""
     department = get_object_or_404(Department, id=department_id)
@@ -564,7 +567,7 @@ def edit_department(request, department_id):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def delete_department(request, department_id):
     """View for deleting department (admin only)"""
     department = get_object_or_404(Department, id=department_id)
@@ -655,7 +658,9 @@ def register(request):
 
 def delete_user(request, user_id):
     """Delete a user account with proper validation and complete database removal."""
-    if not request.user.is_superuser:
+    from accounts.permissions import is_tenant_admin
+
+    if not is_tenant_admin(request.user):
         messages.error(request, "You don't have permission to delete users.")
         return redirect("accounts:user_dashboard")
 
@@ -770,7 +775,7 @@ def delete_user(request, user_id):
     return redirect("accounts:user_dashboard")
 
 
-# @user_passes_test(lambda u: u.is_superuser or u.is_staff)
+# @user_passes_test(is_admin_or_staff)
 # def user_dashboard(request):
 #     """Admin user management dashboard: filter, search, bulk actions, CSV export."""
 #     users = User.tenant_objects.all().select_related('profile')
@@ -1135,7 +1140,7 @@ def user_dashboard(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def role_management(request):
     """View for managing roles and permissions"""
     roles = (
@@ -1568,7 +1573,7 @@ def delete_role(request, role_id):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def user_privileges(request, user_id):
     """View for managing user privileges (role and permission assignments)"""
     from core.permissions import APP_PERMISSIONS
@@ -1665,7 +1670,7 @@ def user_privileges(request, user_id):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def bulk_user_actions(request):
     """View for performing bulk actions on users"""
     if request.method == "POST":
@@ -1873,7 +1878,7 @@ def permission_management(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def audit_logs(request):
     """View for displaying audit logs"""
     logs = AuditLog.objects.select_related("user", "target_user").order_by("-timestamp")
@@ -1923,7 +1928,7 @@ def audit_logs(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def role_demo(request):
     """Demo view showing the role system in action"""
     # Get all roles with user counts

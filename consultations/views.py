@@ -20,7 +20,7 @@ from laboratory.models import TestRequest
 from radiology.models import RadiologyOrder
 from pharmacy.models import Prescription
 from accounts.models import CustomUser, Department
-from accounts.permissions import permission_required, user_in_role
+from accounts.permissions import permission_required, user_in_role, is_tenant_admin
 from patients.models import Patient, Vitals, ClinicalNote
 from patients.utils import get_safe_vitals_for_patient, get_latest_safe_vitals_for_patient
 from appointments.models import Appointment
@@ -1944,7 +1944,7 @@ def department_referral_dashboard(request):
         user_department = request.user.profile.department
 
     # Superusers can view all referrals regardless of department assignment
-    is_superuser = request.user.is_superuser
+    is_superuser = is_tenant_admin(request.user)
     
     # Regular users must be assigned to a department
     if not user_department and not is_superuser:

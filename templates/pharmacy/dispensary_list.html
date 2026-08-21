@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load permission_tags %}
 {% load static %}
 {% load custom_filters %}
 
@@ -290,7 +291,7 @@
                                                     <span class="d-none d-sm-inline">Edit</span>
                                                     <span class="d-sm-none">Ed</span>
                                                 </a>
-                                                {% if current_user.id == dispensary.manager.id or current_user.is_superuser %}
+                                                {% if current_user.id == dispensary.manager.id or current_user|is_tenant_admin %}
                                                     <a href="{% url 'pharmacy:delete_dispensary' dispensary.id %}" 
                                                        class="btn btn-outline-danger btn-sm flex-fill"
                                                        onclick="return confirm('Are you sure you want to deactivate {{ dispensary.name }}?')">

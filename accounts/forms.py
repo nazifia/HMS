@@ -1,3 +1,4 @@
+from accounts.permissions import is_tenant_admin
 from django import forms
 from django.contrib.auth.forms import (
     UserCreationForm,
@@ -361,7 +362,7 @@ class UserProfileForm(forms.ModelForm):
             # Admin/Staff fields
             initial_data["is_active_user"] = getattr(user_instance, "is_active", True)
             if self.request_user and (
-                self.request_user.is_staff or self.request_user.is_superuser
+                self.request_user.is_staff or is_tenant_admin(self.request_user)
             ):
                 initial_data["roles"] = user_instance.roles.all()
 
@@ -424,7 +425,7 @@ class UserProfileForm(forms.ModelForm):
 
         # Conditionally show/hide roles field based on request_user permissions
         if self.request_user and (
-            self.request_user.is_staff or self.request_user.is_superuser
+            self.request_user.is_staff or is_tenant_admin(self.request_user)
         ):
             pass  # Roles field is always present, but its editability is controlled by this user
         else:
@@ -529,7 +530,7 @@ class UserProfileForm(forms.ModelForm):
             "roles" in self.cleaned_data
             and commit
             and self.request_user
-            and (self.request_user.is_staff or self.request_user.is_superuser)
+            and (self.request_user.is_staff or is_tenant_admin(self.request_user))
         ):
             user_instance.roles.set(self.cleaned_data["roles"])
 

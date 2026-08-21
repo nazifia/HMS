@@ -1,3 +1,4 @@
+from accounts.permissions import is_tenant_admin
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -60,7 +61,7 @@ def laboratory_dashboard(request):
     user_department = get_user_department(request.user)
 
     # Superusers can access all departments without assignment
-    if not user_department and not request.user.is_superuser:
+    if not user_department and not is_tenant_admin(request.user):
         messages.error(request, "You must be assigned to a department.")
         return redirect('dashboard:dashboard')
 
@@ -1324,7 +1325,7 @@ def manual_test_result_entry(request, request_id):
     Manual test result entry for laboratory staff - bypasses payment restrictions
     """
     # Check if user is authorized for manual entry
-    if not (request.user.is_staff or request.user.is_superuser):
+    if not (request.user.is_staff or is_tenant_admin(request.user)):
         messages.error(request, "You are not authorized to perform manual result entry.")
         return redirect('laboratory:test_request_detail', request_id=request_id)
 
@@ -1488,7 +1489,7 @@ def create_prescription_from_test(request, test_request_id):
     test_request = get_object_or_404(TestRequest, id=test_request_id)
     
     # Check if user has permission to create prescriptions
-    if not (request.user.is_staff or request.user.is_superuser or 
+    if not (request.user.is_staff or is_tenant_admin(request.user) or 
             hasattr(request.user, 'profile') and request.user.profile and request.user.profile.department == 'laboratory'):
         messages.error(request, "You don't have permission to create prescriptions.")
         return redirect('laboratory:test_request_detail', request_id=test_request.id)

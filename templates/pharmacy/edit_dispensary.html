@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load permission_tags %}
 {% load static %}
 {% load custom_filters %}
 {% load form_tags %}
@@ -145,7 +146,7 @@
                                     <i class="fas fa-phone me-1"></i>{{ dispensary.manager.phone_number }}
                                 {% endif %}
                             </p>
-                            {% if dispensary.manager != current_user and not current_user.is_superuser %}
+                            {% if dispensary.manager != current_user and not current_user|is_tenant_admin %}
                                 <div class="alert alert-warning mt-2 mb-0">
                                     <i class="fas fa-exclamation-triangle me-2"></i>
                                     You can only edit manager information if you are the assigned manager or a system administrator.
@@ -164,7 +165,7 @@
                                 <i class="fas fa-boxes me-2"></i>View Inventory
                             </a>
                         </div>
-                        {% if current_user == dispensary.manager or current_user.is_superuser %}
+                        {% if current_user == dispensary.manager or current_user|is_tenant_admin %}
                             <a href="{% url 'pharmacy:delete_dispensary' dispensary.id %}" 
                                class="btn btn-outline-danger"
                                onclick="return confirm('Are you sure you want to deactivate this dispensary? This action can be reversed by making the dispensary active again.')">

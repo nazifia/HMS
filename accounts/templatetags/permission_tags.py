@@ -26,6 +26,7 @@ from accounts.permissions import (
     check_billing_access,
     check_pharmacy_access,
     check_user_management_access,
+    is_tenant_admin,
 )
 
 register = template.Library()
@@ -258,6 +259,16 @@ def permission_denied_message(user, required_permission):
     }
 
 
+@register.filter(name='is_tenant_admin')
+def is_tenant_admin_filter(user):
+    """True for the hospital's own admin (and platform superusers).
+
+    Use for buttons that run a whole module ("approve leave", "end session"),
+    not for badges that state what a user *is* — see is_super_admin for that.
+    """
+    return is_tenant_admin(user)
+
+
 @register.filter
 def is_super_admin(user):
     """Check if user is super admin."""
@@ -320,7 +331,7 @@ def can_edit_object(context, obj):
     if not user.is_authenticated:
         return False
 
-    if user.is_superuser:
+    if is_tenant_admin(user):
         return True
 
     # Get model name from object
@@ -363,7 +374,7 @@ def can_view_object(context, obj):
     if not user.is_authenticated:
         return False
 
-    if user.is_superuser:
+    if is_tenant_admin(user):
         return True
 
     model_name = obj.__class__.__name__
@@ -404,7 +415,7 @@ def can_delete_object(context, obj):
     if not user.is_authenticated:
         return False
 
-    if user.is_superuser:
+    if is_tenant_admin(user):
         return True
 
     model_name = obj.__class__.__name__

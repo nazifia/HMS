@@ -255,7 +255,7 @@
                                 <a href="{% url 'accounts:user_privileges' user_item.id %}" class="btn btn-sm btn-outline-success" title="Manage Privileges">
                                     <i class="fas fa-user-cog"></i>
                                 </a>
-                                {% if user.is_superuser and user_item != user %}
+                                {% if user|is_tenant_admin and user_item != user %}
                                     <button type="button" class="btn btn-sm btn-outline-danger" title="Delete User" 
                                             onclick="confirmDeleteUser({{ user_item.id }}, '{{ user_item.username|escapejs }}')">
                                         <i class="fas fa-trash"></i>

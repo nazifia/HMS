@@ -1,3 +1,4 @@
+from accounts.permissions import is_tenant_admin
 from functools import wraps
 from nhia.utils import NHIA_PATIENT_RATE, NHIA_COVERED_RATE
 from django.shortcuts import render, get_object_or_404, redirect
@@ -43,7 +44,7 @@ def block_receptionists_and_hro(user):
     """Check if user is a receptionist or health record officer."""
     if not user.is_authenticated:
         return False
-    if user.is_superuser:
+    if is_tenant_admin(user):
         return False
     user_roles = list(user.roles.values_list("name", flat=True))
     profile_role = getattr(getattr(user, "profile", None), "role", None)
@@ -452,7 +453,7 @@ class SurgeryCreateView(LoginRequiredMixin, CreateView):
         if not request.user.is_authenticated:
             return super().dispatch(request, *args, **kwargs)
         # Block receptionists and health record officers from accessing surgery creation
-        if not request.user.is_superuser:
+        if not is_tenant_admin(request.user):
             user_roles = list(request.user.roles.values_list("name", flat=True))
             profile_role = getattr(getattr(request.user, "profile", None), "role", None)
             if profile_role and profile_role not in user_roles:
@@ -665,7 +666,7 @@ class SurgeryUpdateView(LoginRequiredMixin, UpdateView):
         # Block receptionists and health record officers from accessing surgery editing
         if not request.user.is_authenticated:
             return super().dispatch(request, *args, **kwargs)
-        if not request.user.is_superuser:
+        if not is_tenant_admin(request.user):
             user_roles = list(request.user.roles.values_list("name", flat=True))
             profile_role = getattr(getattr(request.user, "profile", None), "role", None)
             if profile_role and profile_role not in user_roles:
@@ -1133,7 +1134,7 @@ class BulkTeamCreateView(LoginRequiredMixin, ReceptionistHROAccessMixin, Templat
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return super().dispatch(request, *args, **kwargs)
-        if not request.user.is_superuser:
+        if not is_tenant_admin(request.user):
             user_roles = list(request.user.roles.values_list("name", flat=True))
             profile_role = getattr(getattr(request.user, "profile", None), "role", None)
             if profile_role and profile_role not in user_roles:

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load permission_tags %}
 {% load custom_filters %}
 
 {% block title %}{{ title }}{% endblock %}
@@ -46,7 +47,7 @@
                             <td>{{ leave.end_date }}</td>
                             <td><span class="badge badge-{{ leave.status|lower }}">{{ leave.get_status_display }}</span></td>
                             <td>
-                                {% if leave.status == 'pending' and request.user.is_superuser %}
+                                {% if leave.status == 'pending' and request.user|is_tenant_admin %}
                                 <a href="{% url 'hr:approve_leave' leave.id %}" class="btn btn-success btn-sm">Approve</a>
                                 <a href="{% url 'hr:reject_leave' leave.id %}" class="btn btn-danger btn-sm">Reject</a>
                                 {% endif %}

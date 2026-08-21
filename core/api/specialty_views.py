@@ -5,6 +5,7 @@ fields a module has; `/api/specialty/<kind>/records/` reads and writes them.
 The app renders any module from the schema, so adding a nineteenth specialty
 means adding one line to `SPECIALTY_MODULES`.
 """
+from accounts.permissions import is_tenant_admin
 from django.shortcuts import get_object_or_404
 from rest_framework import permissions, serializers, status
 from rest_framework.decorators import api_view, permission_classes
@@ -36,7 +37,7 @@ class IsClinicalStaff(permissions.BasePermission):
 
         if not request.user.is_authenticated:
             return False
-        if request.user.is_superuser:
+        if is_tenant_admin(request.user):
             return True
         roles = {role.lower() for role in get_user_roles(request.user)}
         return bool(roles & StrictAccessControlMiddleware.CLINICAL_ALLOWED_ROLES)

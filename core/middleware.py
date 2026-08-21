@@ -159,8 +159,10 @@ class RoleBasedAccessMiddleware:
             if url_pattern in request.path:
                 user_roles = request._cached_user_roles
 
-                # Allow superusers to access everything (application level)
-                if request.user.is_superuser:
+                # Superusers and tenant admins reach every module
+                from accounts.permissions import is_tenant_admin
+
+                if is_tenant_admin(request.user):
                     break
 
                 # Check if user has any of the required roles

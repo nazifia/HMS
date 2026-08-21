@@ -79,8 +79,10 @@ def get_user_departments(user):
     if not user or not user.is_authenticated:
         return Department.objects.none()
 
-    # Superusers have access to all departments
-    if user.is_superuser:
+    # Superusers and hospital admins reach every department
+    from accounts.permissions import is_tenant_admin
+
+    if is_tenant_admin(user):
         return Department.objects.all()
 
     departments = []
@@ -112,8 +114,10 @@ def verify_department_access(user, required_department_name):
     Returns:
         tuple: (has_access: bool, user_departments: list of Department or None)
     """
-    # Superusers have access to all departments
-    if user.is_superuser:
+    # Superusers and hospital admins reach every department
+    from accounts.permissions import is_tenant_admin
+
+    if is_tenant_admin(user):
         return True, []
 
     user_departments = list(get_user_departments(user))

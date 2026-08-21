@@ -33,6 +33,7 @@ from django.utils.deprecation import MiddlewareMixin
 from accounts.permissions import (
     user_has_permission,
     get_user_roles,
+    is_tenant_admin,
     ROLE_PERMISSIONS,
 )
 from core.api_requests import json_error, wants_json
@@ -283,9 +284,9 @@ class StrictAccessControlMiddleware(MiddlewareMixin):
         """
         user = request.user
 
-        # Superusers have full access
-        if user.is_superuser:
-            return True, "Superuser access granted"
+        # Superusers and tenant admins have full access
+        if is_tenant_admin(user):
+            return True, "Full access granted (superuser / hospital admin)"
 
         # Specialty clinical modules: restricted to clinical cadres + admin
         namespace = self._get_namespace(request)

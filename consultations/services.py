@@ -5,6 +5,7 @@ rules worth having in one place: accepting a referral moves a patient between
 clinical areas, and an unauthorized NHIA referral must not be accepted from any
 door.
 """
+from accounts.permissions import is_tenant_admin
 from django.utils import timezone
 
 from core.audit_utils import log_audit_action
@@ -20,7 +21,7 @@ def can_update_consultation(user, consultation):
     return (
         user == consultation.doctor
         or user.is_staff
-        or user.is_superuser
+        or is_tenant_admin(user)
     )
 
 
@@ -47,7 +48,7 @@ def update_consultation_status(consultation, user, new_status):
 
 def can_update_referral(user, referral):
     return (
-        user.is_superuser
+        is_tenant_admin(user)
         or referral.can_be_accepted_by(user)
         or referral.referring_doctor == user
         or referral.assigned_doctor == user

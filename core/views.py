@@ -1,3 +1,4 @@
+from accounts.permissions import is_tenant_admin
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -45,7 +46,7 @@ def mark_notification_read(request, notification_id):
     Mark notification as read - allows any staff member to mark authorization request notifications
     """
     # Get the notification - allow staff/superusers to mark any notification
-    if request.user.is_staff or request.user.is_superuser:
+    if request.user.is_staff or is_tenant_admin(request.user):
         notification = get_object_or_404(InternalNotification, id=notification_id)
     else:
         # Regular users can only mark their own notifications

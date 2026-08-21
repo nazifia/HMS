@@ -4,6 +4,8 @@ from django.contrib import messages
 from django.http import HttpResponseForbidden
 from django.core.cache import cache
 
+from accounts.permissions import is_tenant_admin
+
 
 def role_required(allowed_roles):
     """
@@ -28,7 +30,7 @@ def role_required(allowed_roles):
                 return redirect("accounts:login")
 
             # Allow superusers to access everything without role restrictions
-            if request.user.is_superuser:
+            if is_tenant_admin(request.user):
                 return view_func(request, *args, **kwargs)
 
             # Get user's roles from many-to-many and legacy profile field
@@ -165,7 +167,7 @@ def api_role_required(allowed_roles):
         @wraps(view_func)
         def _wrapped_view(request, *args, **kwargs):
             # Allow superusers to access everything
-            if request.user.is_superuser:
+            if is_tenant_admin(request.user):
                 return view_func(request, *args, **kwargs)
 
             # Check if user is authenticated
@@ -222,7 +224,7 @@ def department_access_required(department_name):
             ).first()
 
             # Allow superusers to access all departments
-            if request.user.is_superuser:
+            if is_tenant_admin(request.user):
                 return view_func(request, *args, **kwargs)
 
             # Get user's department(s)
@@ -347,7 +349,7 @@ def ui_permission_required(element_id, redirect_url="dashboard:dashboard"):
                 return redirect("accounts:login")
 
             # Allow superusers to access everything
-            if request.user.is_superuser:
+            if is_tenant_admin(request.user):
                 return view_func(request, *args, **kwargs)
 
             # Check cache first for performance
@@ -407,7 +409,7 @@ def api_ui_permission_required(element_id):
                 return HttpResponseForbidden("Authentication required")
 
             # Allow superusers to access everything
-            if request.user.is_superuser:
+            if is_tenant_admin(request.user):
                 return view_func(request, *args, **kwargs)
 
             # Check cache first for performance

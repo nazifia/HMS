@@ -1,3 +1,4 @@
+from accounts.permissions import is_tenant_admin
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -36,7 +37,7 @@ def ophthalmic_dashboard(request):
     user_department = get_user_department(request.user)
 
     # Superusers can access all departments without assignment
-    if not user_department and not request.user.is_superuser:
+    if not user_department and not is_tenant_admin(request.user):
         messages.error(request, "You must be assigned to a department.")
         return redirect('dashboard:dashboard')
 

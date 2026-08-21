@@ -526,6 +526,7 @@ AUTHENTICATION_BACKENDS = [
     "accounts.backends.AdminBackend",  # First: Handle admin/username logins
     "accounts.backends.PhoneNumberBackend",  # Second: Handle phone number logins
     "accounts.backends.RolePermissionBackend",  # Third: Role-based permissions (no auth)
+    "accounts.backends.TenantAdminBackend",  # Fourth: tenant admins get every permission (no auth)
     # NOTE: plain ModelBackend deliberately omitted. AdminBackend already
     # subclasses ModelBackend (covers username auth + default Django perms);
     # adding it back makes every login run an extra ~0.4s PBKDF2 dummy hash.

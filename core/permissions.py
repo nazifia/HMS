@@ -11,7 +11,7 @@ from django.shortcuts import redirect
 from django.contrib import messages
 from django.http import HttpRequest
 from accounts.models import CustomUser, Role
-from accounts.permissions import ROLE_PERMISSIONS
+from accounts.permissions import ROLE_PERMISSIONS, is_tenant_admin
 import logging
 
 logger = logging.getLogger(__name__)
@@ -116,8 +116,8 @@ def check_user_permission(user, permission_name):
     if not user.is_authenticated:
         return False
         
-    # Superusers have all permissions
-    if user.is_superuser:
+    # Superusers and tenant admins have all permissions
+    if is_tenant_admin(user):
         return True
     
     # Check direct user permissions
