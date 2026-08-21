@@ -50,8 +50,10 @@ def dashboard(request):
     if range_days not in (7, 30, 90):
         range_days = 7
 
-    # Create cache key based on user, date and chart range
-    cache_key = f'dashboard_data_{request.user.id}_{today}_{range_days}'
+    # Cache key carries the tenant: a platform user roaming between hospitals
+    # must not be served another hospital's numbers from their own key.
+    hospital = getattr(request, 'hospital', None)
+    cache_key = f'dashboard_data_{request.user.id}_{hospital.id if hospital else 0}_{today}_{range_days}'
     cached_data = cache.get(cache_key)
 
     if cached_data:
@@ -245,6 +247,8 @@ def dashboard(request):
         'recent_wallet_transactions': recent_wallet_transactions,
         'chart_data': chart_data,
         'chart_range': range_days,
+        'hospital': hospital,
+        'subscription': getattr(hospital, 'subscription', None) if hospital else None,
     }
 
     # Cache the context for 5 minutes (300 seconds)
@@ -259,12 +263,17 @@ def system_overview(request):
     from django.db.models import Q, Count as CountFunc
     from django.core.cache import cache
 
-    cache_key = 'system_overview_data'
+    hospital = getattr(request, 'hospital', None)
+    cache_key = f'system_overview_data_{hospital.id if hospital else 0}'
     cached = cache.get(cache_key)
     if cached:
         return render(request, 'dashboard/system_overview.html', cached)
 
-    context = {'title': 'System Configuration Overview'}
+    context = {
+        'title': 'System Configuration Overview',
+        'hospital': hospital,
+        'subscription': getattr(hospital, 'subscription', None) if hospital else None,
+    }
 
     # Optimize: Accounts App - Get user stats in a single query
     user_stats = CustomUser.tenant_objects.aggregate(
@@ -279,7 +288,11 @@ def system_overview(request):
     try:
         # Get role counts from the many-to-many relationship
         from accounts.models import Role
-        context['user_roles'] = Role.objects.annotate(count=Count('customuser_roles')).values('name', 'count').order_by('-count')
+        # Role is not tenant-owned; the user count behind it must still be.
+        role_filter = Q(customuser_roles__hospital=hospital) if hospital else Q()
+        context['user_roles'] = Role.objects.annotate(
+            count=Count('customuser_roles', filter=role_filter)
+        ).values('name', 'count').order_by('-count')
     except Exception:
         context['user_roles'] = []
 
