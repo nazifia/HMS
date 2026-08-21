@@ -4,8 +4,11 @@ from django.contrib.auth.models import Permission
 from django.test import RequestFactory, TestCase
 from django.contrib.messages.storage.fallback import FallbackStorage
 
+from django.http import Http404
+
 from accounts.models import CustomUser, Role
 from accounts.permissions import is_tenant_admin, user_has_permission
+from accounts.views import get_manageable_user
 from core.decorators import role_required
 from saas.models import Hospital
 
@@ -60,3 +63,55 @@ class TenantAdminAccessTest(TestCase):
         # Full function, one hospital: the admin flag must never imply superuser.
         self.assertFalse(self.admin.is_superuser)
         self.assertEqual(self.admin.hospital, self.h1)
+
+
+class ManageableUserTest(TestCase):
+    """Staff administration is open to a hospital admin, but only over that
+    hospital's own people."""
+
+    def setUp(self):
+        self.h1 = Hospital.objects.create(name="H1", subdomain="h1")
+        self.h2 = Hospital.objects.create(name="H2", subdomain="h2")
+        Role.objects.create(name="admin")
+
+        self.admin = CustomUser.objects.create_user(
+            phone_number="100", username="adm", password="pw", hospital=self.h1
+        )
+        self.admin.roles.add(Role.objects.get(name="admin"))
+        self.colleague = CustomUser.objects.create_user(
+            phone_number="101", username="nurse1", password="pw", hospital=self.h1
+        )
+        self.outsider = CustomUser.objects.create_user(
+            phone_number="200", username="nurse2", password="pw", hospital=self.h2
+        )
+        self.platform = CustomUser.objects.create_superuser(
+            phone_number="900", username="ops", password="pw"
+        )
+
+    def _as(self, user):
+        req = RequestFactory().get("/")
+        req.user = user
+        return req
+
+    def test_admin_may_manage_own_hospital_staff(self):
+        from saas.current import set_current_hospital
+
+        set_current_hospital(self.h1)
+        try:
+            got = get_manageable_user(self._as(self.admin), self.colleague.id)
+            self.assertEqual(got, self.colleague)
+
+            # Another hospital's staff: not visible through tenant_objects.
+            with self.assertRaises(Http404):
+                get_manageable_user(self._as(self.admin), self.outsider.id)
+
+            # Platform accounts sit above the tenant, so they stay off limits.
+            with self.assertRaises(Http404):
+                get_manageable_user(self._as(self.admin), self.platform.id)
+        finally:
+            set_current_hospital(None)
+
+    def test_superuser_may_manage_anyone(self):
+        req = self._as(self.platform)
+        self.assertEqual(get_manageable_user(req, self.colleague.id), self.colleague)
+        self.assertEqual(get_manageable_user(req, self.outsider.id), self.outsider)

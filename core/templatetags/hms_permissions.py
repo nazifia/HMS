@@ -8,6 +8,17 @@ from accounts.permissions import is_tenant_admin
 register = template.Library()
 
 
+@register.filter(name='is_tenant_admin')
+def is_tenant_admin_filter(user):
+    """True for the hospital's own admin (and platform superusers).
+
+    Registered here as well as in permission_tags so a template that already
+    loads hms_permissions need not load both (their has_permission filters
+    would shadow each other).
+    """
+    return is_tenant_admin(user)
+
+
 @register.filter
 def has_permission(user, permission_name):
     """

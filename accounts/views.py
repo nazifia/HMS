@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponse
+from django.http import Http404, JsonResponse, HttpResponse
 from django.contrib.auth.forms import UserCreationForm
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
@@ -1987,7 +1987,43 @@ def superuser_required(view_func):
     return _wrapped_view
 
 
-@superuser_required
+def tenant_admin_required(view_func):
+    """Gate for staff administration a hospital admin runs for its own staff.
+
+    Weaker than superuser_required on purpose: the views behind it read and
+    write through `User.tenant_objects`, so an admin only ever sees and edits
+    their own hospital's people. Platform operations (database, backups,
+    system config, the shared role catalog) stay on superuser_required.
+    """
+
+    def _wrapped_view(request, *args, **kwargs):
+        from accounts.permissions import is_tenant_admin
+
+        if not is_tenant_admin(request.user):
+            messages.error(request, "Access denied. Administrator privileges required.")
+            return redirect("accounts:login")
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped_view
+
+
+def get_manageable_user(request, user_id):
+    """The user `user_id` refers to, if the caller may administer them.
+
+    Two limits, both enforced here rather than at each call site: the lookup
+    runs through `tenant_objects` so it cannot reach another hospital's staff,
+    and a tenant admin may not act on a platform account — a superuser, or a
+    user with no hospital — since those exist above the tenant.
+    """
+    user = get_object_or_404(User.tenant_objects, id=user_id)
+    if not request.user.is_superuser and (
+        user.is_superuser or user.hospital_id is None
+    ):
+        raise Http404("No such user in this hospital.")
+    return user
+
+
+@tenant_admin_required
 def superuser_user_profiles(request):
     """View for superusers to edit any user profile"""
     users = User.tenant_objects.select_related("profile").order_by("username")
@@ -2021,7 +2057,7 @@ def superuser_user_profiles(request):
     )
 
 
-@superuser_required
+@tenant_admin_required
 def toggle_user_active_status(request, user_id):
     """Toggle user active/inactive status"""
     if request.method != "POST":
@@ -2029,7 +2065,7 @@ def toggle_user_active_status(request, user_id):
         return redirect("accounts:superuser_user_profiles")
 
     try:
-        user = User.tenant_objects.get(id=user_id)
+        user = get_manageable_user(request, user_id)
 
         # Prevent superusers from deactivating themselves
         if user.id == request.user.id:
@@ -2062,7 +2098,7 @@ def toggle_user_active_status(request, user_id):
             request, f"User {user.username} has been {action_description} successfully."
         )
 
-    except User.DoesNotExist:
+    except (Http404, User.DoesNotExist):
         messages.error(request, "User not found.")
     except Exception as e:
         messages.error(request, f"Error updating user status: {str(e)}")
@@ -2082,7 +2118,7 @@ def toggle_user_active_status(request, user_id):
     return redirect(redirect_url)
 
 
-@superuser_required
+@tenant_admin_required
 def superuser_dashboard(request):
     """Main superuser dashboard with system overview"""
     from django.db.models import Count
@@ -2132,10 +2168,10 @@ def superuser_dashboard(request):
     return render(request, "accounts/superuser/dashboard.html", context)
 
 
-@superuser_required
+@tenant_admin_required
 def superuser_edit_user_profile(request, user_id):
-    """Edit any user's profile as superuser"""
-    user = get_object_or_404(User, id=user_id)
+    """Edit a user's profile (own hospital's staff only, unless superuser)"""
+    user = get_manageable_user(request, user_id)
     profile = getattr(user, "profile", None)
 
     if request.method == "POST":
@@ -2175,7 +2211,7 @@ def superuser_edit_user_profile(request, user_id):
     )
 
 
-@superuser_required
+@tenant_admin_required
 def superuser_password_reset(request):
     """View to reset any user's password"""
     if request.method == "POST":
@@ -2184,7 +2220,7 @@ def superuser_password_reset(request):
         confirm_password = request.POST.get("confirm_password")
 
         if user_id and new_password:
-            user = get_object_or_404(User, id=user_id)
+            user = get_manageable_user(request, user_id)
 
             if new_password == confirm_password:
                 user.set_password(new_password)
@@ -2219,10 +2255,10 @@ def superuser_password_reset(request):
     )
 
 
-@superuser_required
+@tenant_admin_required
 def superuser_reset_user_password(request, user_id):
     """Direct password reset for a specific user"""
-    user = get_object_or_404(User, id=user_id)
+    user = get_manageable_user(request, user_id)
 
     if request.method == "POST":
         new_password = request.POST.get("new_password")
@@ -2256,7 +2292,7 @@ def superuser_reset_user_password(request, user_id):
     )
 
 
-@superuser_required
+@tenant_admin_required
 def superuser_bulk_operations(request):
     """Bulk operations on users"""
     if request.method == "POST":
@@ -2265,6 +2301,12 @@ def superuser_bulk_operations(request):
 
         if operation and user_ids:
             users = User.tenant_objects.filter(id__in=user_ids)
+            if not request.user.is_superuser:
+                # Platform accounts are out of a tenant admin's reach, in bulk
+                # exactly as they are one at a time (see get_manageable_user).
+                users = users.exclude(
+                    Q(is_superuser=True) | Q(hospital__isnull=True)
+                )
 
             if operation == "activate":
                 users.update(is_active=True)
@@ -2331,7 +2373,7 @@ def superuser_manage_user_permissions(request, user_id):
     from core.permissions import APP_PERMISSIONS
     from accounts.models import Role
 
-    user = get_object_or_404(User, id=user_id)
+    user = get_manageable_user(request, user_id)
     user_permissions = user.user_permissions.all()
 
     # Get all available roles

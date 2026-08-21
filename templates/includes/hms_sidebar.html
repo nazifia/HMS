@@ -737,12 +737,14 @@
         </li>
         {% endif %}
 
-        <!-- Nav Item - Superuser User Management (Available to superusers only) -->
-        {% if user.is_superuser %}
+        <!-- Nav Item - Staff administration: the user pages are open to a
+             hospital admin (their own staff only); the platform tools below
+             stay superuser-only. -->
+        {% if user|is_tenant_admin %}
         <li class="nav-item {% if '/accounts/superuser/' in request.path %}active{% endif %}">
             <a class="nav-link {% if not '/accounts/superuser/' in request.path %}collapsed{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseSuperuserManagement" aria-expanded="{% if '/accounts/superuser/' in request.path %}true{% else %}false{% endif %}" aria-controls="collapseSuperuserManagement">
                 <i class="fas fa-fw fa-user-shield text-white"></i>
-                <span class="text-white">Superuser Admin</span>
+                <span class="text-white">{% if user.is_superuser %}Superuser Admin{% else %}Staff Administration{% endif %}</span>
             </a>
             <div id="collapseSuperuserManagement" class="collapse {% if '/accounts/superuser/' in request.path %}show{% endif %}" aria-labelledby="headingSuperuserManagement">
                 <div class="bg-white py-2 collapse-inner rounded">
@@ -751,6 +753,7 @@
                     <a class="collapse-item {% if 'user_password_reset' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_password_reset' %}">Reset User Passwords</a>
                     <a class="collapse-item {% if 'user_bulk_operations' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_bulk_operations' %}">Bulk User Operations</a>
 
+                    {% if user.is_superuser %}
                     <div class="collapse-divider"></div>
                     <h6 class="collapse-header">System Administration:</h6>
                     <a class="collapse-item {% if 'system_config' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_system_config' %}">System Configuration</a>
@@ -764,6 +767,7 @@
                     <a class="collapse-item {% if 'mass_email' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_mass_email' %}">Mass Email Users</a>
                     <a class="collapse-item {% if 'api_management' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_api_management' %}">API Management</a>
                     <a class="collapse-item {% if 'logs_viewer' in request.path %}active{% endif %}" href="{% url 'accounts:superuser_logs_viewer' %}">System Logs Viewer</a>
+                    {% endif %}
                 </div>
             </div>
         </li>
