@@ -65,3 +65,6 @@ frontend/.firebase/
 
 # Local Claude tooling scratch
 claude/
+
+# Runtime uploads — test runs drop fixture files here too
+/media/
