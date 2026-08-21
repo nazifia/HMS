@@ -153,7 +153,7 @@ class PatientChildViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     pagination_class = PatientPagination
 
     def get_queryset(self):
-        queryset = self.queryset.select_related('patient')
+        queryset = super().get_queryset().select_related('patient')
         patient = self.request.query_params.get('patient')
         if patient:
             queryset = queryset.filter(patient_id=patient)

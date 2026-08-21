@@ -1,11 +1,8 @@
 from django.core.management.base import BaseCommand
-from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db import transaction
 from pharmacy.models import MedicationTransfer, BulkStoreInventory, ActiveStoreInventory
 from datetime import date
-
-User = get_user_model()
 
 
 class Command(BaseCommand):
@@ -27,31 +24,6 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(f'Found {in_transit_transfers.count()} in-transit transfers to deliver.')
         )
-
-        # Get an existing user or create system user
-        try:
-            system_user = User.objects.filter(username='admin').first()
-            if not system_user:
-                system_user = User.objects.first()
-            if not system_user:
-                # Create a system user with phone number
-                system_user = User.objects.create(
-                    username='system_delivery',
-                    phone_number='0000000000',  # Default phone number for system
-                    email='system@hms.local',
-                    first_name='System',
-                    last_name='User',
-                    is_staff=False,
-                    is_active=True,
-                )
-                system_user.set_password('system123!')
-                system_user.save()
-                self.stdout.write(self.style.SUCCESS('Created system user for processing'))
-            else:
-                self.stdout.write(self.style.SUCCESS(f'Using existing user: {system_user.username}'))
-        except Exception as e:
-            self.stdout.write(self.style.WARNING(f'Could not create system user: {str(e)}'))
-            system_user = None
 
         success_count = 0
         error_count = 0
@@ -140,7 +112,9 @@ class Command(BaseCommand):
 
                     # Mark transfer as delivered
                     transfer.status = 'delivered'
-                    transfer.delivered_by = system_user if system_user else transfer.requested_by
+                    # The requester belongs to the transfer's own hospital; a
+                    # global 'admin' pick would stamp another tenant's user.
+                    transfer.delivered_by = transfer.requested_by
                     transfer.delivered_at = timezone.now()
                     transfer.save()
 

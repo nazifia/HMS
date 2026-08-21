@@ -6,6 +6,7 @@ from core.patient_search_forms import PatientSearchForm
 from django.conf import settings
 from typing import Any, cast
 from core.clinical_notes import CLERKING_FIELDS, CLERKING_LABELS, clerking_widgets
+from saas.fields import TenantChoiceField
 
 
 class DentalRecordForm(forms.ModelForm):
@@ -108,7 +109,7 @@ class DentalRecordSearchForm(MedicalRecordSearchForm):
         help_text='Filter records up to this date'
     )
     
-    service = forms.ModelChoiceField(
+    service = TenantChoiceField(
         queryset=cast(Any, DentalService).objects.filter(is_active=True),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'}),

@@ -282,9 +282,9 @@ class AdmissionSearchForm(forms.Form):
         'placeholder': 'To Date'
     }))
     
-    doctor = forms.ModelChoiceField(
+    doctor = TenantChoiceField(
         required=False,
-        queryset=User.tenant_objects.filter(profile__specialization__isnull=False),
+        queryset=User.objects.filter(profile__specialization__isnull=False),
         widget=forms.Select(attrs={'class': 'form-select select2'})
     )
     

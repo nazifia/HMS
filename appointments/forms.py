@@ -61,7 +61,7 @@ class AppointmentForm(forms.ModelForm):
             
         return label
     
-    doctor = forms.ModelChoiceField(
+    doctor = TenantChoiceField(
         queryset=doctor_queryset(User.objects),
         widget=forms.Select(attrs={'class': 'form-select select2'}),
         empty_label="Select Doctor"
@@ -362,7 +362,7 @@ class AppointmentSearchForm(forms.Form):
                                'placeholder': 'Patient name or ID',
                                'class': 'form-control'
                            }))
-    doctor = forms.ModelChoiceField(
+    doctor = TenantChoiceField(
         queryset=doctor_queryset(User.objects),
         required=False,
         empty_label="All Doctors",

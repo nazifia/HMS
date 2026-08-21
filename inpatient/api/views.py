@@ -251,7 +251,7 @@ class _AdmissionChildViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     author_field = None
 
     def get_queryset(self):
-        queryset = self.queryset.select_related('admission__patient')
+        queryset = super().get_queryset().select_related('admission__patient')
         admission = self.request.query_params.get('admission')
         if admission:
             queryset = queryset.filter(admission_id=admission)
