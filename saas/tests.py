@@ -303,6 +303,16 @@ class SignupTests(TestCase):
         self.assertEqual(hospital.owner.hospital_id, hospital.id)
         self.assertIn("_auth_user_id", response.client.session)
 
+    def test_signup_seeds_a_dispensary_with_an_active_store(self):
+        # Without one the tenant has nowhere to hold stock.
+        from pharmacy.models import Dispensary
+
+        self._post()
+        hospital = Hospital.objects.get(subdomain="acme")
+        dispensary = Dispensary.all_objects.get(hospital=hospital)
+        self.assertIsNotNone(getattr(dispensary, "active_store", None))
+        self.assertEqual(dispensary.active_store.hospital_id, hospital.id)
+
     def test_same_username_allowed_in_a_second_hospital(self):
         self._post()
         response = self._post(

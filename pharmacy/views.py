@@ -317,6 +317,9 @@ def pharmacy_dashboard(request):
         "total_suppliers": total_suppliers,
         "total_dispensaries": total_dispensaries,
         "stock_entry_dispensaries": stock_entry_dispensaries,
+        # No dispensary yet (a tenant that predates dispensary seeding): offer
+        # to create one instead of showing an empty picker.
+        "can_add_dispensary": user_has_dispensary_edit_permission(request.user),
         "low_stock_items": low_stock_items,
         "recent_purchases": recent_purchases,
         "recent_prescriptions": recent_prescriptions,

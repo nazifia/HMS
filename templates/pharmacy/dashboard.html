@@ -24,6 +24,10 @@
                 {% endfor %}
             </ul>
         </div>
+        {% elif can_add_dispensary %}
+        <a class="btn btn-sm btn-primary" href="{% url 'pharmacy:add_dispensary' %}">
+            <i class="fas fa-plus-circle"></i> Create a dispensary
+        </a>
         {% endif %}
     </div>
 

@@ -85,14 +85,17 @@ def signup(request):
         status="pending",
         current_period_end=timezone.now(),
     )
-    # Each tenant gets its own department set, lab test catalog + specialties.
+    # Each tenant gets its own department set, lab test catalog, specialties
+    # and a dispensary (without one there is nowhere to hold stock).
     from accounts.department_seed import seed_departments_for
     from doctors.specialty_seed import seed_specialties_for
     from laboratory.lab_catalog_seed import seed_lab_catalog_for
+    from pharmacy.dispensary_seed import seed_dispensary_for
 
     seed_departments_for(hospital)
     seed_lab_catalog_for(hospital)
     seed_specialties_for(hospital)
+    seed_dispensary_for(hospital)
     # Log the owner straight in — they just proved the password. Backend is
     # explicit because several are configured.
     login(request, owner, backend="accounts.backends.PhoneNumberBackend")
