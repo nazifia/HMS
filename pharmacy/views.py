@@ -303,10 +303,20 @@ def pharmacy_dashboard(request):
         pending_referrals_count = referral_stats["pending_referrals"]
         pending_authorizations = referral_stats["requiring_authorization"]
 
+    # Dispensaries this user may add stock to, for the dashboard's direct
+    # stock-entry picker. Few rows, so filtering in Python beats rebuilding
+    # the permission rules as a query.
+    stock_entry_dispensaries = [
+        d
+        for d in Dispensary.objects.filter(is_active=True).select_related("manager")
+        if user_has_inventory_edit_permission(request.user, d)
+    ]
+
     context = {
         "total_medications": total_medications,
         "total_suppliers": total_suppliers,
         "total_dispensaries": total_dispensaries,
+        "stock_entry_dispensaries": stock_entry_dispensaries,
         "low_stock_items": low_stock_items,
         "recent_purchases": recent_purchases,
         "recent_prescriptions": recent_prescriptions,

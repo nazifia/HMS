@@ -88,3 +88,9 @@ class DirectStockEntryTest(TestCase):
         self.assertTrue(
             AuditLog.all_objects.filter(action="direct_stock_entry").exists()
         )
+
+    def test_dashboard_offers_the_dispensary(self):
+        response = self.client.get(reverse("pharmacy:dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.url)
+        self.assertContains(response, self.dispensary.name)

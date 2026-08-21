@@ -5,7 +5,27 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h1 class="h3 mb-4 text-gray-800">Pharmacy Dashboard</h1>
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Pharmacy Dashboard</h1>
+        {# Stock that arrives without procurement: donations, opening balances, top-ups. #}
+        {% if stock_entry_dispensaries %}
+        <div class="dropdown">
+            <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="addStockDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-plus-circle"></i> Add Stock
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="addStockDropdown">
+                <li><h6 class="dropdown-header">Add stock directly to</h6></li>
+                {% for dispensary in stock_entry_dispensaries %}
+                <li>
+                    <a class="dropdown-item" href="{% url 'pharmacy:add_dispensary_inventory_item' dispensary.id %}">
+                        {{ dispensary.name }}{% if dispensary == selected_dispensary %} <span class="badge bg-secondary">current</span>{% endif %}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
 
     <div class="row">
         <div class="col-xl-3 col-md-6 mb-4">
