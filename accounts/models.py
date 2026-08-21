@@ -283,6 +283,18 @@ class CustomUser(AbstractUser):
         profile, created = CustomUserProfile.objects.get_or_create(user=self)
         return profile
 
+    def is_hospital_admin(self):
+        """Check if user administers the hospital (admin role or superuser)."""
+        try:
+            if self.is_superuser:
+                return True
+            if hasattr(self, "profile") and self.profile:
+                if self.profile.role and self.profile.role.lower() == "admin":
+                    return True
+            return self.roles.filter(name__iexact="admin").exists()
+        except Exception:
+            return False
+
     def is_pharmacist(self):
         """Check if user has pharmacist role or permissions"""
         try:
@@ -340,6 +352,11 @@ class CustomUser(AbstractUser):
         offered on the selection page, and set_dispensary rejects whatever
         can_access_dispensary() denies.
         """
+        if self.is_hospital_admin():
+            from pharmacy.models import Dispensary
+
+            return list(Dispensary.objects.filter(is_active=True))
+
         if not self.is_pharmacist():
             return []
 
@@ -364,7 +381,7 @@ class CustomUser(AbstractUser):
 
     def can_access_dispensary(self, dispensary):
         """Check if pharmacist can access a specific dispensary"""
-        if self.is_superuser:
+        if self.is_hospital_admin():
             return True
 
         if not self.is_pharmacist():
