@@ -11,7 +11,6 @@ from ..views import user_has_inventory_edit_permission
 
 
 @login_required
-@csrf_exempt
 def check_medication_inventory(request):
     """
     API endpoint to check medication inventory availability for transfer

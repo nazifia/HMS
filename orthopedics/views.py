@@ -24,6 +24,7 @@ from core.department_dashboard_utils import (
 )
 from django.utils import timezone
 import json
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -90,10 +91,10 @@ def orthopedics_dashboard(request):
         'avg_pain_score': avg_pain,
         'followups_due': followups_due,
         'procedures_count': procedures_count,
-        'injury_labels': json.dumps(injury_labels),
-        'injury_counts': json.dumps(injury_counts),
-        'body_part_labels': json.dumps(body_part_labels),
-        'body_part_counts': json.dumps(body_part_counts),
+        'injury_labels': json_for_template(injury_labels),
+        'injury_counts': json_for_template(injury_counts),
+        'body_part_labels': json_for_template(body_part_labels),
+        'body_part_counts': json_for_template(body_part_counts),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
     })

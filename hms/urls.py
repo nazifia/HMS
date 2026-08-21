@@ -15,7 +15,9 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.contrib.auth.decorators import login_required
+from django.urls import path, include, re_path
+from django.views.static import serve
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponse
@@ -82,9 +84,24 @@ urlpatterns = [
     path('orthopedics/', include('orthopedics.urls')),
 ]
 
-# Serve media files in development
+# /media/ holds patient ID documents, lab result files, radiology images and
+# scanned reports. Serving it straight off the filesystem hands that PHI to
+# anyone who can guess a URL, so it goes through login_required instead.
+# NOTE for deployment: any web-server mapping that serves /media/ directly
+# (e.g. a PythonAnywhere static-files entry) bypasses this and must be removed.
+# ponytail: django.views.static.serve is slow but safe (safe_join blocks
+# traversal); swap in X-Accel-Redirect/X-Sendfile if media traffic ever matters.
+urlpatterns += [
+    re_path(
+        r"^media/(?P<path>.*)$",
+        login_required(serve),
+        {"document_root": settings.MEDIA_ROOT},
+        name="protected_media",
+    ),
+]
+
+# Serve static files in development
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
     if getattr(settings, "BROWSER_RELOAD", False):
         urlpatterns += [path("__reload__/", include("django_browser_reload.urls"))]

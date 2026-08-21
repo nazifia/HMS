@@ -15,6 +15,7 @@ from consultations.referral_mappings import (
     get_all_specialties_for_department,
 )
 import json
+from core.json_safe import json_for_template
 
 
 def model_has_field(model, field_name):
@@ -555,8 +556,8 @@ def get_daily_trend_data(record_model, days=7, date_field="created_at"):
         dates.append(date.strftime("%Y-%m-%d"))
 
     return {
-        "labels": json.dumps(labels),
-        "data": json.dumps(data),
+        "labels": json_for_template(labels),
+        "data": json_for_template(data),
         "dates": dates,
     }
 
@@ -580,9 +581,9 @@ def get_status_distribution(record_model, status_field="status"):
     # Return empty data if no status field
     if status_field is None:
         return {
-            "labels": json.dumps([]),
-            "data": json.dumps([]),
-            "colors": json.dumps([]),
+            "labels": json_for_template([]),
+            "data": json_for_template([]),
+            "colors": json_for_template([]),
         }
 
     status_data = (
@@ -616,9 +617,9 @@ def get_status_distribution(record_model, status_field="status"):
             colors.append(color_map.get(status, "#6c757d"))
 
     return {
-        "labels": json.dumps(labels),
-        "data": json.dumps(data),
-        "colors": json.dumps(colors),
+        "labels": json_for_template(labels),
+        "data": json_for_template(data),
+        "colors": json_for_template(colors),
     }
 
 

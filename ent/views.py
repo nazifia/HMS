@@ -25,6 +25,7 @@ from core.department_dashboard_utils import (
 )
 from django.utils import timezone
 import json
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -100,8 +101,8 @@ def ent_dashboard(request):
     context.update({
         'visits_today': visits_today,
         'followups_due': followups_due,
-        'diagnosis_labels': json.dumps(diagnosis_labels),
-        'diagnosis_counts': json.dumps(diagnosis_counts),
+        'diagnosis_labels': json_for_template(diagnosis_labels),
+        'diagnosis_counts': json_for_template(diagnosis_counts),
         'procedures_month': procedures_month,
         'surgery_required': surgery_required,
         'emergency_cases': emergency_cases,

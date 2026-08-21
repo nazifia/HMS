@@ -25,6 +25,7 @@ from core.department_dashboard_utils import (
 )
 from django.utils import timezone
 import json
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -119,8 +120,8 @@ def cardiology_dashboard(request):
         'avg_ef': avg_ef,
         'low_ef_patients': low_ef_patients,
         'hypertensive_patients': hypertensive_patients,
-        'diagnosis_labels': json.dumps(diagnosis_labels),
-        'diagnosis_counts': json.dumps(diagnosis_counts),
+        'diagnosis_labels': json_for_template(diagnosis_labels),
+        'diagnosis_counts': json_for_template(diagnosis_counts),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
     })

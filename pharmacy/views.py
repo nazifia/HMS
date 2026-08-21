@@ -1,4 +1,5 @@
 from accounts.permissions import is_tenant_admin
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.shortcuts import render, get_object_or_404, redirect
 from nhia.utils import NHIA_PATIENT_RATE, NHIA_COVERED_RATE
 from django.contrib.auth.decorators import login_required
@@ -79,6 +80,7 @@ from reporting.forms import PharmacySalesReportForm
 from django.forms import formset_factory
 from decimal import Decimal
 from billing.models import Invoice, InvoiceItem, Service, ServiceCategory
+from core.json_safe import json_for_template
 
 
 def no_doctor_prescribing(view_func):
@@ -179,8 +181,15 @@ def set_dispensary(request):
         request.session["selected_dispensary_name"] = dispensary.name
         messages.success(request, f"Dispensary set to '{dispensary.name}'.")
 
-        # Redirect to where they were going, or dashboard
-        next_url = request.GET.get("next", "pharmacy:pharmacy_dashboard")
+        # Redirect to where they were going, or dashboard. ?next= is
+        # attacker-supplied, so an unchecked value is an open redirect.
+        next_url = request.GET.get("next")
+        if not next_url or not url_has_allowed_host_and_scheme(
+            next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            next_url = "pharmacy:pharmacy_dashboard"
         return redirect(next_url)
 
     except Dispensary.DoesNotExist:
@@ -1555,21 +1564,21 @@ def test_revenue_charts_public(request):
     # Prepare chart data for monthly trends
     chart_months = [trend["month"] for trend in monthly_trends]
     chart_data = {
-        "months": json.dumps(chart_months),
-        "pharmacy": json.dumps([float(trend["pharmacy"]) for trend in monthly_trends]),
-        "laboratory": json.dumps(
+        "months": json_for_template(chart_months),
+        "pharmacy": json_for_template([float(trend["pharmacy"]) for trend in monthly_trends]),
+        "laboratory": json_for_template(
             [float(trend["laboratory"]) for trend in monthly_trends]
         ),
-        "consultations": json.dumps(
+        "consultations": json_for_template(
             [float(trend["consultations"]) for trend in monthly_trends]
         ),
-        "theatre": json.dumps([float(trend["theatre"]) for trend in monthly_trends]),
-        "admissions": json.dumps(
+        "theatre": json_for_template([float(trend["theatre"]) for trend in monthly_trends]),
+        "admissions": json_for_template(
             [float(trend["admissions"]) for trend in monthly_trends]
         ),
-        "general": json.dumps([float(trend["general"]) for trend in monthly_trends]),
-        "wallet": json.dumps([float(trend["wallet"]) for trend in monthly_trends]),
-        "total": json.dumps(
+        "general": json_for_template([float(trend["general"]) for trend in monthly_trends]),
+        "wallet": json_for_template([float(trend["wallet"]) for trend in monthly_trends]),
+        "total": json_for_template(
             [float(trend["total_revenue"]) for trend in monthly_trends]
         ),
     }
@@ -1794,21 +1803,21 @@ def simple_revenue_statistics(request):
     # Prepare chart data for monthly trends
     chart_months = [trend["month"] for trend in monthly_trends]
     chart_data = {
-        "months": json.dumps(chart_months),
-        "pharmacy": json.dumps([float(trend["pharmacy"]) for trend in monthly_trends]),
-        "laboratory": json.dumps(
+        "months": json_for_template(chart_months),
+        "pharmacy": json_for_template([float(trend["pharmacy"]) for trend in monthly_trends]),
+        "laboratory": json_for_template(
             [float(trend["laboratory"]) for trend in monthly_trends]
         ),
-        "consultations": json.dumps(
+        "consultations": json_for_template(
             [float(trend["consultations"]) for trend in monthly_trends]
         ),
-        "theatre": json.dumps([float(trend["theatre"]) for trend in monthly_trends]),
-        "admissions": json.dumps(
+        "theatre": json_for_template([float(trend["theatre"]) for trend in monthly_trends]),
+        "admissions": json_for_template(
             [float(trend["admissions"]) for trend in monthly_trends]
         ),
-        "general": json.dumps([float(trend["general"]) for trend in monthly_trends]),
-        "wallet": json.dumps([float(trend["wallet"]) for trend in monthly_trends]),
-        "total": json.dumps(
+        "general": json_for_template([float(trend["general"]) for trend in monthly_trends]),
+        "wallet": json_for_template([float(trend["wallet"]) for trend in monthly_trends]),
+        "total": json_for_template(
             [float(trend["total_revenue"]) for trend in monthly_trends]
         ),
     }
@@ -2151,14 +2160,14 @@ def pharmacy_dispensary_revenue(request):
         monthly_trends.append({"month": month_label, "total": float(month_total)})
 
     # Prepare chart data
-    chart_data = {"months": json.dumps(months_list), "dispensaries": {}}
+    chart_data = {"months": json_for_template(months_list), "dispensaries": {}}
 
     # Add each dispensary's monthly data to chart
     for dispensary_name, revenues in dispensary_monthly_data.items():
-        chart_data["dispensaries"][dispensary_name] = json.dumps(revenues)
+        chart_data["dispensaries"][dispensary_name] = json_for_template(revenues)
 
     # Total monthly revenue
-    chart_data["total"] = json.dumps([trend["total"] for trend in monthly_trends])
+    chart_data["total"] = json_for_template([trend["total"] for trend in monthly_trends])
 
     # Performance metrics
     performance_metrics = {
@@ -2901,7 +2910,7 @@ def active_store_detail(request, dispensary_id):
         "total_stock_value": total_stock_value,
         "bulk_stores": bulk_stores,
         "available_bulk_medications": available_bulk_medications,
-        "available_bulk_medications_json": json.dumps(available_bulk_medications_json),
+        "available_bulk_medications_json": json_for_template(available_bulk_medications_json),
         "bulk_transfer_form": bulk_transfer_form,
         "dispensary_transfer_form": dispensary_transfer_form,
         "pending_dispensary_transfers": pending_dispensary_transfers,

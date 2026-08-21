@@ -1,4 +1,5 @@
 from django.db import models
+from core.upload_validators import validate_document_upload
 from saas.models import TenantModel
 from django.utils import timezone
 from django.conf import settings
@@ -252,7 +253,12 @@ class TestResult(TenantModel):
         blank=True,
         related_name="collected_samples",
     )
-    result_file = models.FileField(upload_to="test_results/", blank=True, null=True)
+    result_file = models.FileField(
+        upload_to="test_results/",
+        blank=True,
+        null=True,
+        validators=[validate_document_upload],
+    )
     notes = models.TextField(blank=True, null=True)
     performed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

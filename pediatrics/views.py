@@ -25,6 +25,7 @@ from core.department_dashboard_utils import (
 )
 from django.utils import timezone
 import json
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -109,8 +110,8 @@ def pediatrics_dashboard(request):
         'malnourished_count': malnourished_count,
         'fever_count': fever_count,
         'premature_count': premature_count,
-        'diagnosis_labels': json.dumps(diagnosis_labels),
-        'diagnosis_counts': json.dumps(diagnosis_counts),
+        'diagnosis_labels': json_for_template(diagnosis_labels),
+        'diagnosis_counts': json_for_template(diagnosis_counts),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
     })

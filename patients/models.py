@@ -1,4 +1,5 @@
 from django.db import models
+from core.upload_validators import validate_document_upload
 from django.db.models import Sum, Count
 from django.utils import timezone
 from django.conf import settings
@@ -334,7 +335,12 @@ class Patient(TenantModel):
     notes = models.TextField(blank=True, null=True)
     # Consolidated profile image field (removed duplicate profile_picture)
     photo = models.ImageField(upload_to="profile_pics/", blank=True, null=True)
-    id_document = models.FileField(upload_to="id_documents/", blank=True, null=True)
+    id_document = models.FileField(
+        upload_to="id_documents/",
+        blank=True,
+        null=True,
+        validators=[validate_document_upload],
+    )
     is_active = models.BooleanField(default=True)
 
     # Metadata

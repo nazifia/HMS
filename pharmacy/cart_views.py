@@ -25,6 +25,7 @@ from core.audit_utils import log_audit_action
 
 # Cart rules live in cart_services so the HTML views and the mobile API share
 # one implementation of the money path.
+from core.json_safe import json_for_template
 from .cart_services import (
     CartActionError,
     CartExistsError,
@@ -252,7 +253,7 @@ def view_cart(request, cart_id):
         "wallet_balance_sufficient": patient_wallet.balance >= cart_payable_now,
         "can_edit_quantities": cart.status in ("active", "invoiced")
         and _cart_invoice_editable(cart),
-        "available_medications": json.dumps(available_medications),
+        "available_medications": json_for_template(available_medications),
         "page_title": f"Prescription Cart #{cart.id}",
         "active_nav": "pharmacy",
     }

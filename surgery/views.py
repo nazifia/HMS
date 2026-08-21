@@ -25,6 +25,7 @@ from core.department_dashboard_utils import (
 )
 from django.utils import timezone
 import json
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -111,8 +112,8 @@ def surgery_dashboard(request):
         'avg_blood_loss': avg_blood_loss,
         'complications_count': complications_count,
         'avg_postop_day': avg_postop_day,
-        'surgery_type_labels': json.dumps(surgery_type_labels),
-        'surgery_type_counts': json.dumps(surgery_type_counts),
+        'surgery_type_labels': json_for_template(surgery_type_labels),
+        'surgery_type_counts': json_for_template(surgery_type_counts),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
     })

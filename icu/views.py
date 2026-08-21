@@ -25,6 +25,7 @@ from core.department_dashboard_utils import (
 )
 from django.utils import timezone
 import json
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -110,10 +111,10 @@ def icu_dashboard(request):
         'discharges_today': discharges_today,
         'occupancy_rate': round(occupancy_rate, 1),
         'total_beds': total_beds,
-        'gcs_labels': json.dumps(gcs_labels),
-        'gcs_counts': json.dumps(gcs_counts),
-        'equipment_labels': json.dumps(equipment_labels),
-        'equipment_counts': json.dumps(equipment_counts),
+        'gcs_labels': json_for_template(gcs_labels),
+        'gcs_counts': json_for_template(gcs_counts),
+        'equipment_labels': json_for_template(equipment_labels),
+        'equipment_counts': json_for_template(equipment_counts),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
     })

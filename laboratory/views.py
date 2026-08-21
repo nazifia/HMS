@@ -51,6 +51,7 @@ from core.department_dashboard_utils import (
 )
 import os
 from core.models import send_notification_email, InternalNotification
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -149,9 +150,9 @@ def laboratory_dashboard(request):
         'avg_turnaround_hours': avg_turnaround_hours,
         'tests_needing_verification': tests_needing_verification,
         'categorized_referrals': categorized_referrals,
-        'priority_labels': json.dumps(priority_labels),
-        'priority_counts': json.dumps(priority_counts),
-        'priority_colors': json.dumps(priority_chart_colors),
+        'priority_labels': json_for_template(priority_labels),
+        'priority_counts': json_for_template(priority_counts),
+        'priority_colors': json_for_template(priority_chart_colors),
     })
 
     return render(request, 'laboratory/dashboard.html', context)
@@ -920,7 +921,7 @@ def create_test_request(request):
         'patient': patient,
         'test_categories': test_categories,
         'all_tests': all_tests,
-        'all_tests_json': json.dumps(all_tests_data),
+        'all_tests_json': json_for_template(all_tests_data),
         'title': 'Create New Test Request'
     }
     return render(request, 'laboratory/enhanced_test_request_form.html', context)

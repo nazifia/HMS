@@ -1,4 +1,5 @@
 from django.db import models
+from core.upload_validators import validate_radiology_upload
 from saas.models import TenantModel
 from django.utils import timezone
 from django.contrib.auth.models import User
@@ -322,7 +323,12 @@ class RadiologyResult(TenantModel):
     result_date = models.DateTimeField(default=timezone.now)
     findings = models.TextField()
     impression = models.TextField()
-    image_file = models.FileField(upload_to="radiology_images/", blank=True, null=True)
+    image_file = models.FileField(
+        upload_to="radiology_images/",
+        blank=True,
+        null=True,
+        validators=[validate_radiology_upload],
+    )
     is_abnormal = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -352,9 +358,17 @@ class RadiologyResult(TenantModel):
         max_digits=5, decimal_places=1, blank=True, null=True
     )
     recommendations = models.TextField(blank=True, null=True)
-    images = models.FileField(upload_to="radiology_studies/", blank=True, null=True)
+    images = models.FileField(
+        upload_to="radiology_studies/",
+        blank=True,
+        null=True,
+        validators=[validate_radiology_upload],
+    )
     report_file = models.FileField(
-        upload_to="radiology_reports/", blank=True, null=True
+        upload_to="radiology_reports/",
+        blank=True,
+        null=True,
+        validators=[validate_radiology_upload],
     )
     image_quality = models.CharField(
         max_length=20, choices=IMAGE_QUALITY_CHOICES, default="good"

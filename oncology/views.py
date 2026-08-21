@@ -25,6 +25,7 @@ from core.department_dashboard_utils import (
 )
 from django.utils import timezone
 import json
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -102,15 +103,15 @@ def oncology_dashboard(request):
     # Add to context
     context.update({
         'active_patients': active_patients,
-        'cancer_type_labels': json.dumps(cancer_type_labels),
-        'cancer_type_counts': json.dumps(cancer_type_counts),
+        'cancer_type_labels': json_for_template(cancer_type_labels),
+        'cancer_type_counts': json_for_template(cancer_type_counts),
         'stage_1': stage_1,
         'stage_2': stage_2,
         'stage_3': stage_3,
         'stage_4': stage_4,
-        'stage_labels': json.dumps(stage_labels),
-        'stage_counts': json.dumps(stage_counts),
-        'stage_colors': json.dumps(stage_colors),
+        'stage_labels': json_for_template(stage_labels),
+        'stage_counts': json_for_template(stage_counts),
+        'stage_colors': json_for_template(stage_colors),
         'chemo_sessions_month': chemo_sessions_month,
         'radiation_treatments_month': radiation_treatments_month,
         'metastasis_patients': metastasis_patients,

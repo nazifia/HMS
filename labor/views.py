@@ -28,6 +28,7 @@ from core.department_dashboard_utils import (
 )
 from django.utils import timezone
 import json
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -114,10 +115,10 @@ def labor_dashboard(request):
         'assisted_count': assisted_count,
         'active_labor': active_labor,
         'ruptured_membranes': ruptured_membranes,
-        'diagnosis_labels': json.dumps(diagnosis_labels),
-        'diagnosis_counts': json.dumps(diagnosis_counts),
-        'delivery_labels': json.dumps(delivery_labels),
-        'delivery_counts': json.dumps(delivery_counts),
+        'diagnosis_labels': json_for_template(diagnosis_labels),
+        'diagnosis_counts': json_for_template(diagnosis_counts),
+        'delivery_labels': json_for_template(delivery_labels),
+        'delivery_counts': json_for_template(delivery_counts),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
     })

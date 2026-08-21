@@ -24,6 +24,7 @@ from core.department_dashboard_utils import (
 )
 from django.utils import timezone
 import json
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -100,8 +101,8 @@ def emergency_dashboard(request):
         'avg_temperature': avg_temp,
         'avg_pulse_rate': avg_pulse,
         'avg_oxygen_saturation': avg_o2sat,
-        'triage_labels': json.dumps(triage_labels),
-        'triage_counts': json.dumps(triage_counts),
+        'triage_labels': json_for_template(triage_labels),
+        'triage_counts': json_for_template(triage_counts),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
     })

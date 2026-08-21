@@ -103,6 +103,16 @@ def select_service_point(request):
         )
         return redirect('dashboard:dashboard')
 
+    def _safe_next():
+        """?next= is attacker-supplied; an unchecked value is an open redirect."""
+        from django.utils.http import url_has_allowed_host_and_scheme
+
+        if next_url and url_has_allowed_host_and_scheme(
+            next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+        ):
+            return next_url
+        return None
+
     if request.method == 'POST':
         point = points.filter(id=request.POST.get('service_point_id')).first()
         if point is None:
@@ -110,19 +120,14 @@ def select_service_point(request):
         else:
             set_session_service_point(request, point)
             messages.success(request, f"You are now working at '{point.name}'.")
-            from django.utils.http import url_has_allowed_host_and_scheme
-            if next_url and url_has_allowed_host_and_scheme(
-                next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
-            ):
-                return redirect(next_url)
-            return redirect('dashboard:dashboard')
+            return redirect(_safe_next() or 'dashboard:dashboard')
 
     # Auto-select when the user has exactly one point and none chosen yet.
     if points.count() == 1 and not request.session.get('selected_service_point_id'):
         point = points.first()
         set_session_service_point(request, point)
         messages.success(request, f"Automatically signed in at '{point.name}'.")
-        return redirect(next_url or 'dashboard:dashboard')
+        return redirect(_safe_next() or 'dashboard:dashboard')
 
     return render(request, 'core/select_service_point.html', {
         'service_points': points,

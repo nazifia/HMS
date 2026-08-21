@@ -25,6 +25,7 @@ from core.department_dashboard_utils import (
 )
 from django.utils import timezone
 import json
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -84,8 +85,8 @@ def gynae_emergency_dashboard(request):
         'emergencies_today': emergencies_today,
         'total_emergencies': total_emergencies,
         'emergencies_this_week': emergencies_this_week,
-        'emergency_type_labels': json.dumps(emergency_type_labels),
-        'emergency_type_counts': json.dumps(emergency_type_counts),
+        'emergency_type_labels': json_for_template(emergency_type_labels),
+        'emergency_type_counts': json_for_template(emergency_type_counts),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
     })

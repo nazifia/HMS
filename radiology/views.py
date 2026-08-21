@@ -23,6 +23,7 @@ from core.department_dashboard_utils import (
     get_active_staff,
 )
 import json
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -236,8 +237,8 @@ def index(request):
             "avg_reporting_hours": avg_reporting_hours,
             "results_needing_verification": results_needing_verification,
             "orders_needing_results": orders_needing_results,
-            "modality_labels": json.dumps(modality_labels),
-            "modality_counts": json.dumps(modality_counts),
+            "modality_labels": json_for_template(modality_labels),
+            "modality_counts": json_for_template(modality_counts),
             "recent_orders": recent_orders,
             # Referral integration
             "pending_referrals": pending_referrals,

@@ -25,6 +25,7 @@ from core.department_dashboard_utils import (
 )
 from django.utils import timezone
 import json
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -101,8 +102,8 @@ def ophthalmic_dashboard(request):
     context.update({
         'visits_today': visits_today,
         'followups_due': followups_due,
-        'diagnosis_labels': json.dumps(diagnosis_labels),
-        'diagnosis_counts': json.dumps(diagnosis_counts),
+        'diagnosis_labels': json_for_template(diagnosis_labels),
+        'diagnosis_counts': json_for_template(diagnosis_counts),
         'poor_vision_right': poor_vision_right,
         'poor_vision_left': poor_vision_left,
         'surgery_required': surgery_required,

@@ -366,7 +366,6 @@ def execute_transfer(request, transfer_id):
 
 @login_required
 @permission_required('pharmacy.edit')
-@csrf_exempt
 @require_POST
 def approve_bulk_transfers(request):
     """Approve multiple transfers at once"""
@@ -402,7 +401,6 @@ def approve_bulk_transfers(request):
 
 @login_required
 @permission_required('pharmacy.view')
-@csrf_exempt
 def check_inventory_api(request):
     """API endpoint to check inventory availability"""
     
@@ -446,7 +444,6 @@ def check_inventory_api(request):
 
 @login_required
 @permission_required('pharmacy.view')
-@csrf_exempt
 def get_medication_inventory_ajax(request):
     """AJAX endpoint to get medication inventory for a specific dispensary"""
     

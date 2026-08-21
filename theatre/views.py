@@ -113,6 +113,7 @@ from .forms import (
     PreOperativeChecklistForm,
 )
 from .services import TheatreActionError, finalize_scheduling
+from core.json_safe import json_for_template
 
 
 # Operation Theatre Views
@@ -1501,11 +1502,11 @@ class TheatreDashboardView(
             {
                 "surgeries_today": surgeries_today,
                 "upcoming_count": upcoming_count,
-                "surgery_type_labels": json.dumps(surgery_type_labels),
-                "surgery_type_counts": json.dumps(surgery_type_counts),
-                "status_labels": json.dumps(status_labels),
-                "status_counts": json.dumps(status_counts),
-                "status_colors": json.dumps(status_colors),
+                "surgery_type_labels": json_for_template(surgery_type_labels),
+                "surgery_type_counts": json_for_template(surgery_type_counts),
+                "status_labels": json_for_template(status_labels),
+                "status_counts": json_for_template(status_counts),
+                "status_colors": json_for_template(status_colors),
                 "emergency_surgeries": emergency_surgeries,
             }
         )

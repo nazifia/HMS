@@ -56,7 +56,7 @@
                                 </tr>
                                 <tr>
                                     <td class="font-weight-bold text-muted">Description:</td>
-                                    <td>{{ object.description|default:"<span class='text-muted'>No description</span>"|safe }}</td>
+                                    <td>{% if object.description %}{{ object.description }}{% else %}<span class="text-muted">No description</span>{% endif %}</td>
                                 </tr>
                             </table>
                         </div>

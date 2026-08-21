@@ -551,12 +551,19 @@ def api_admin_users(request):
         try:
             data = json.loads(request.body)
             
-            # Validate required fields
-            if not data.get('username') or not data.get('first_name') or not data.get('last_name'):
+            # Validate required fields. phone_number is the USERNAME_FIELD, so
+            # CustomUserManager.create_user cannot be called without it.
+            if (
+                not data.get('username')
+                or not data.get('first_name')
+                or not data.get('last_name')
+                or not data.get('phone_number')
+            ):
                 return JsonResponse({'success': False, 'message': 'Missing required fields'}, status=400)
             
             # Create user
             user = User.objects.create_user(
+                phone_number=data['phone_number'],
                 username=data['username'],
                 email=data.get('email', ''),
                 first_name=data['first_name'],
@@ -565,10 +572,13 @@ def api_admin_users(request):
             )
             
             # Update additional fields
-            user.phone_number = data.get('phone_number', '')
             user.is_active = data.get('is_active', True)
-            user.is_staff = data.get('is_staff', False)
-            user.is_superuser = data.get('is_superuser', False)
+            # Only a real superuser may hand out staff/superuser. A hospital
+            # admin passes is_admin() but is scoped to one tenant; letting them
+            # set these would mint a platform-wide account from inside a tenant.
+            if request.user.is_superuser:
+                user.is_staff = data.get('is_staff', False)
+                user.is_superuser = data.get('is_superuser', False)
             user.save()
             
             # Update or create profile
@@ -620,10 +630,12 @@ def api_admin_user_detail(request, user_id):
                 user.email = data['email']
             if 'is_active' in data:
                 user.is_active = data['is_active']
-            if 'is_staff' in data:
-                user.is_staff = data['is_staff']
-            if 'is_superuser' in data:
-                user.is_superuser = data['is_superuser']
+            # See api_admin_users: tenant admins must not grant platform flags.
+            if request.user.is_superuser:
+                if 'is_staff' in data:
+                    user.is_staff = data['is_staff']
+                if 'is_superuser' in data:
+                    user.is_superuser = data['is_superuser']
             
             # Update password if provided
             if data.get('password'):

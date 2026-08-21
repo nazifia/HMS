@@ -27,6 +27,7 @@ from core.department_dashboard_utils import (
     get_active_staff
 )
 import json
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -104,15 +105,15 @@ def dental_dashboard(request):
     # Ensure we have the chart data needed by template
     if 'daily_trend' not in context:
         context['daily_trend'] = {
-            'labels': json.dumps(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']),
-            'data': json.dumps([0, 0, 0, 0, 0, 0, 0])
+            'labels': json_for_template(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']),
+            'data': json_for_template([0, 0, 0, 0, 0, 0, 0])
         }
     
     if 'status_distribution' not in context:
         context['status_distribution'] = {
-            'labels': json.dumps(['Planned', 'In Progress', 'Completed']),
-            'data': json.dumps([planned_treatments, in_progress_treatments, completed_treatments]),
-            'colors': json.dumps(['#6c757d', '#17a2b8', '#28a745'])
+            'labels': json_for_template(['Planned', 'In Progress', 'Completed']),
+            'data': json_for_template([planned_treatments, in_progress_treatments, completed_treatments]),
+            'colors': json_for_template(['#6c757d', '#17a2b8', '#28a745'])
         }
 
     # Add to context
@@ -127,8 +128,8 @@ def dental_dashboard(request):
         'appointments_today': appointments_today,
         'followups_due': followups_due,
         'emergency_cases': emergency_cases,
-        'procedure_labels': json.dumps(procedure_labels),
-        'procedure_counts': json.dumps(procedure_counts),
+        'procedure_labels': json_for_template(procedure_labels),
+        'procedure_counts': json_for_template(procedure_counts),
         'recent_records': recent_records,
         'categorized_referrals': categorized_referrals,
         'pending_referrals': categorized_referrals['ready_to_accept'] + categorized_referrals['awaiting_authorization'],

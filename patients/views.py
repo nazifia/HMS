@@ -1908,7 +1908,6 @@ def patient_dashboard(request, patient_id):
 
 
 @login_required
-@csrf_exempt
 def clear_patient_context(request):
     """
     View for clearing the current patient context from session.

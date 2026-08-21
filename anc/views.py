@@ -26,6 +26,7 @@ from core.department_dashboard_utils import (
 )
 from django.utils import timezone
 import json
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -107,8 +108,8 @@ def anc_dashboard(request):
         'followups_due': followups_due,
         'high_risk_pregnancies': high_risk_pregnancies,
         'due_soon': due_soon,
-        'diagnosis_labels': json.dumps(diagnosis_labels),
-        'diagnosis_counts': json.dumps(diagnosis_counts),
+        'diagnosis_labels': json_for_template(diagnosis_labels),
+        'diagnosis_counts': json_for_template(diagnosis_counts),
         'total_patients': total_patients,
         'avg_gravida': round(avg_gravida, 1),
         'recent_records': recent_records,

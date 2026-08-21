@@ -22,6 +22,7 @@ User = get_user_model()
 # Inline form classes to avoid import issues
 from django import forms
 from saas.fields import TenantChoiceField
+from core.json_safe import json_for_template
 
 class ActivityFilterForm(forms.Form):
     """Form for filtering user activities"""
@@ -194,7 +195,7 @@ def activity_dashboard(request):
         'top_activities': top_activities,
         'recent_alerts': recent_alerts,
         'active_sessions': active_sessions,
-        'chart_data': json.dumps(chart_data),
+        'chart_data': json_for_template(chart_data),
         'page_title': 'Activity Monitor Dashboard',
         'active_nav': 'activity_dashboard',
     }

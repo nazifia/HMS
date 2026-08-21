@@ -11,6 +11,7 @@ from django.http import Http404, JsonResponse, HttpResponse
 from django.contrib.auth.forms import UserCreationForm
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
+from django.core.cache import cache
 from .models import CustomUserProfile, Department, Role, AuditLog, CustomUser
 from .forms import (
     CustomLoginForm,
@@ -99,6 +100,30 @@ from django.http import JsonResponse
 from .forms import CustomLoginForm
 from .auth_wrapper import safe_authenticate
 
+# Brute-force throttle for the HTML login form (the API login has DRF's
+# ScopedRateThrottle). ponytail: a cache counter, not django-axes -- keyed by
+# IP *and* username so a spoofed X-Forwarded-For still cannot buy unlimited
+# tries against one account, and a shared clinic NAT cannot lock out everyone.
+LOGIN_ATTEMPT_LIMIT = 10
+LOGIN_ATTEMPT_WINDOW = 15 * 60  # seconds
+
+
+def _login_throttle_key(request):
+    from core.permissions import get_client_ip
+
+    username = (request.POST.get("username") or "").strip().lower()[:150]
+    return f"login_fail:{get_client_ip(request)}:{username}"
+
+
+def _login_attempts(key):
+    return cache.get(key) or 0
+
+
+def _record_login_failure(key):
+    # get+set, not incr: incr raises when the key has expired between calls,
+    # and losing the odd racing attempt does not weaken the limit meaningfully.
+    cache.set(key, _login_attempts(key) + 1, LOGIN_ATTEMPT_WINDOW)
+
 
 @never_cache
 def custom_login_view(request):
@@ -136,13 +161,23 @@ def custom_login_view(request):
                 request, "Your session has ended. Please log in again to continue."
             )
 
-    if request.method == "POST":
+    throttle_key = _login_throttle_key(request) if request.method == "POST" else None
+
+    if request.method == "POST" and _login_attempts(throttle_key) >= LOGIN_ATTEMPT_LIMIT:
+        messages.error(
+            request,
+            "Too many failed login attempts. Please try again in 15 minutes.",
+        )
+        form = CustomLoginForm()
+    elif request.method == "POST":
         form = CustomLoginForm(request=request, data=request.POST)
         if form.is_valid():
             # Form already authenticated the user in clean() via safe_authenticate
             # and verified the account is active (confirm_login_allowed). Reuse the
             # cached user instead of authenticating a second time.
             user = form.get_user()
+
+            cache.delete(throttle_key)
 
             # Clear any existing pharmacy dispensary session on new login
             request.session.pop("selected_dispensary_id", None)
@@ -194,6 +229,8 @@ def custom_login_view(request):
                 return redirect(select_url)
 
             return redirect(next_page)
+        else:
+            _record_login_failure(throttle_key)
     else:
         form = CustomLoginForm()
 
@@ -2522,11 +2559,28 @@ def superuser_database_management(request):
     )
 
 
+def _validated_table_name(table_name):
+    """Return table_name only if the database really has such a table.
+
+    These views interpolate the name straight into SQL (identifiers cannot be
+    bound as parameters), so without this check the URL segment is arbitrary
+    SQL -- "x WHERE 1=1; ..." -- for anyone who reaches a superuser session.
+    """
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        known = set(connection.introspection.table_names(cursor))
+    return table_name if table_name in known else None
+
+
 @superuser_required
 def view_table_details(request, table_name):
     """AJAX endpoint to view table structure and sample data"""
     from django.db import connection
     import json
+
+    if _validated_table_name(table_name) is None:
+        return JsonResponse({"error": "Unknown table"}, status=404)
 
     try:
         with connection.cursor() as cursor:
@@ -2585,6 +2639,10 @@ def export_table(request, table_name):
         messages.error(request, "Invalid request method.")
         return redirect("accounts:superuser_database_management")
 
+    if _validated_table_name(table_name) is None:
+        messages.error(request, "Unknown table.")
+        return redirect("accounts:superuser_database_management")
+
     try:
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = (
@@ -2633,6 +2691,10 @@ def clear_table(request, table_name):
 
     if any(protected in table_name.lower() for protected in protected_tables):
         messages.error(request, f"Cannot clear protected system table: {table_name}")
+        return redirect("accounts:superuser_database_management")
+
+    if _validated_table_name(table_name) is None:
+        messages.error(request, "Unknown table.")
         return redirect("accounts:superuser_database_management")
 
     try:
@@ -3148,10 +3210,10 @@ def superuser_logs_viewer(request):
 @superuser_required
 def superuser_read_log_file(request):
     """Read a specific log file (AJAX endpoint)"""
-    import os
+    from pathlib import Path
+
     from django.conf import settings
     from django.http import JsonResponse
-    from django.views.decorators.csrf import csrf_exempt
 
     if (
         request.method == "POST"
@@ -3159,28 +3221,26 @@ def superuser_read_log_file(request):
     ):
         file_path = request.POST.get("file_path")
 
-        # Security check - ensure file is in allowed directory
-        log_dir = os.path.join(settings.BASE_DIR, "logs")
-        if not os.path.exists(log_dir):
-            log_dir = os.path.join(settings.BASE_DIR)  # Fallback to base dir
-
-        # Validate the file path to prevent directory traversal
         if not file_path:
             return JsonResponse({"error": "No file path provided"}, status=400)
 
-        # Ensure file path is within allowed directories
-        is_allowed = (
-            file_path.startswith(log_dir)
-            or file_path.startswith(settings.BASE_DIR)
-            and (
-                file_path.endswith(".log")
-                or file_path.endswith(".txt")
-                or "logs" in file_path
-            )
-        )
-
-        if not is_allowed:
+        # Resolve before comparing: a prefix check on the raw string lets
+        # "<BASE_DIR>/logs/../../../secrets" through, which turned this into an
+        # arbitrary-file read (.env carries SECRET_KEY and the DB password).
+        log_dir = Path(settings.BASE_DIR, "logs").resolve()
+        if not log_dir.is_dir():
+            log_dir = Path(settings.BASE_DIR).resolve()
+        try:
+            resolved = Path(file_path).resolve(strict=True)
+        except (OSError, ValueError):
             return JsonResponse({"error": "Access denied"}, status=403)
+
+        if not resolved.is_relative_to(log_dir) or resolved.suffix.lower() not in (
+            ".log",
+            ".txt",
+        ):
+            return JsonResponse({"error": "Access denied"}, status=403)
+        file_path = str(resolved)
 
         try:
             # Read last N lines of log file for performance

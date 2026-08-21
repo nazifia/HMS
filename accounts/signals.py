@@ -18,11 +18,12 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
         # Create profile for new user
         CustomUserProfile.objects.create(user=instance)
     else:
-        # Ensure profile exists and save it for existing users
-        try:
-            instance.profile.save()
-        except CustomUserProfile.DoesNotExist:
-            # Create profile if it doesn't exist
+        # Ensure a profile exists, but never write instance.profile back: it can
+        # be a stale cached copy, and saving it silently reverts profile edits
+        # made since it was loaded. Every user.save() runs this -- login alone
+        # stamps last_login -- so a role granted a moment earlier was being
+        # undone by the next save.
+        if not CustomUserProfile.objects.filter(user=instance).exists():
             CustomUserProfile.objects.create(user=instance)
 
 

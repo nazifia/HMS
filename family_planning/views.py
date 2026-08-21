@@ -25,6 +25,7 @@ from core.department_dashboard_utils import (
 )
 from django.utils import timezone
 import json
+from core.json_safe import json_for_template
 
 
 @login_required
@@ -91,8 +92,8 @@ def family_planning_dashboard(request):
     # Add to context
     context.update({
         'visits_today': visits_today,
-        'method_labels': json.dumps(method_labels),
-        'method_counts': json.dumps(method_counts),
+        'method_labels': json_for_template(method_labels),
+        'method_counts': json_for_template(method_counts),
         'education_sessions_month': education_sessions_month,
         'new_clients_month': new_clients_month,
         'followups_due': followups_due,

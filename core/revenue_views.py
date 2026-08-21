@@ -26,6 +26,7 @@ from patients.models import WalletTransaction
 
 # Import existing reporting components for compatibility
 from reporting.models import Report
+from core.json_safe import json_for_template
 # from reporting.forms import ReportFilterForm  # This form doesn't exist, commented out
 
 
@@ -237,7 +238,7 @@ def revenue_trends_view(request):
 
         context = {
             'trends': trends,
-            'trends_json': json.dumps(trends_json),
+            'trends_json': json_for_template(trends_json),
             'months': months,
             'start_month': start_month,
             'start_year': start_year,
@@ -258,7 +259,7 @@ def revenue_trends_view(request):
         context = {
             'error': str(e),
             'trends': [],
-            'trends_json': json.dumps([]),
+            'trends_json': json_for_template([]),
             'start_month': start_month,
             'start_year': start_year,
             'end_month': end_month,

@@ -79,7 +79,8 @@ class StrictAccessControlMiddleware(MiddlewareMixin):
             "/accounts/password-reset-confirm/",
             "/accounts/password-reset-complete/",
             "/static/",
-            "/media/",
+            # /media/ is NOT public: it holds patient documents and result
+            # files. hms.urls serves it behind login_required.
             "/favicon.ico",
             "/admin/login/",
             "/admin/logout/",

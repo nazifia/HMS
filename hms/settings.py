@@ -51,9 +51,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get(
-    "SECRET_KEY", "o39@*p9_djglfvp(r8&m9+hl*2+xnz0#fm-uk%cqg-32655$22"
-)
+# No literal fallback: a key committed to the repository is public, and any
+# deployment that forgets to set SECRET_KEY would silently sign sessions,
+# password-reset tokens and CSRF with it.
+SECRET_KEY = os.environ.get("SECRET_KEY", "")
 if not SECRET_KEY:
     if os.environ.get("DEBUG", "False") == "True":
         SECRET_KEY = "django-dev-key-change-in-production-make-it-very-long-and-random-at-least-50-chars"

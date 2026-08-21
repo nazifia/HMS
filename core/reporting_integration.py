@@ -14,6 +14,7 @@ import json
 from reporting.models import Report, Dashboard, DashboardWidget, ReportExecution
 from .revenue_point_analyzer import RevenuePointBreakdownAnalyzer, RevenuePointFilterHelper
 from .department_revenue_utils import DepartmentRevenueCalculator
+from core.json_safe import json_for_template
 
 
 class RevenueReportGenerator:
@@ -32,7 +33,7 @@ class RevenueReportGenerator:
                 'description': 'Comprehensive breakdown of revenue by department and service point',
                 'category': 'financial',
                 'query': 'revenue_point_breakdown',
-                'parameters': json.dumps({
+                'parameters': json_for_template({
                     'date_filter': 'current_month',
                     'department_filter': 'all',
                     'include_trends': True
@@ -43,7 +44,7 @@ class RevenueReportGenerator:
                 'description': 'Detailed analysis of clinical services revenue including pharmacy, laboratory, and consultations',
                 'category': 'clinical',
                 'query': 'clinical_services_revenue',
-                'parameters': json.dumps({
+                'parameters': json_for_template({
                     'date_filter': 'current_month',
                     'include_details': True
                 })
@@ -53,7 +54,7 @@ class RevenueReportGenerator:
                 'description': 'Performance analysis of specialty departments including ANC, ENT, ICU, etc.',
                 'category': 'operational',
                 'query': 'specialty_departments_revenue',
-                'parameters': json.dumps({
+                'parameters': json_for_template({
                     'date_filter': 'current_month',
                     'department_filter': 'specialty'
                 })
@@ -63,7 +64,7 @@ class RevenueReportGenerator:
                 'description': 'Monthly revenue trends across all departments',
                 'category': 'financial',
                 'query': 'revenue_trends',
-                'parameters': json.dumps({
+                'parameters': json_for_template({
                     'months': 12,
                     'include_growth_rates': True
                 })
@@ -73,7 +74,7 @@ class RevenueReportGenerator:
                 'description': 'Analysis of revenue distribution by payment methods',
                 'category': 'financial',
                 'query': 'payment_method_analysis',
-                'parameters': json.dumps({
+                'parameters': json_for_template({
                     'date_filter': 'current_month',
                     'include_percentages': True
                 })
@@ -83,7 +84,7 @@ class RevenueReportGenerator:
                 'description': 'Comparative analysis of departmental revenue performance',
                 'category': 'operational',
                 'query': 'department_comparison',
-                'parameters': json.dumps({
+                'parameters': json_for_template({
                     'date_filter': 'current_month',
                     'comparison_period': 'previous_month'
                 })

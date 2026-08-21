@@ -1,4 +1,5 @@
 from django.db import models
+from core.upload_validators import validate_document_upload
 from saas.models import TenantModel
 from django.conf import settings
 from patients.models import Patient
@@ -615,7 +616,10 @@ class EquipmentMaintenanceLog(TenantModel):
         help_text="Calibration certificate number",
     )
     document_file = models.FileField(
-        upload_to="maintenance_docs/%Y/%m/", blank=True, null=True
+        upload_to="maintenance_docs/%Y/%m/",
+        blank=True,
+        null=True,
+        validators=[validate_document_upload],
     )
 
     # Metadata

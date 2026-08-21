@@ -299,7 +299,6 @@ def inpatient_medication_list(request, admission_id):
 
 @login_required
 @require_POST
-@csrf_exempt  # Only for this AJAX endpoint - consider using CSRF token in production
 def ajax_process_outstanding_admission_payment(request, admission_id):
     """AJAX endpoint for processing outstanding admission payment from patient wallet"""
     try:
