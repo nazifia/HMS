@@ -14,6 +14,7 @@ from hr.models import Department as HRDepartment # Assuming 'Department' from hr
 from inpatient.models import Admission, Bed, Ward
 from accounts.models import CustomUserProfile # Assuming UserProfile holds role and department for staff
 from accounts.models import CustomUser
+from dashboard.cache import get_version
 
 # Import models for new modules
 from ophthalmic.models import OphthalmicRecord
@@ -51,9 +52,13 @@ def dashboard(request):
         range_days = 7
 
     # Cache key carries the tenant: a platform user roaming between hospitals
-    # must not be served another hospital's numbers from their own key.
+    # must not be served another hospital's numbers from their own key. The
+    # version stamp retires the tenant's entries as soon as one of its rows
+    # changes (see dashboard/cache.py).
     hospital = getattr(request, 'hospital', None)
-    cache_key = f'dashboard_data_{request.user.id}_{hospital.id if hospital else 0}_{today}_{range_days}'
+    hospital_id = hospital.id if hospital else 0
+    version = get_version(hospital_id)
+    cache_key = f'dashboard_data_{request.user.id}_{hospital_id}_{version}_{today}_{range_days}'
     cached_data = cache.get(cache_key)
 
     if cached_data:
@@ -264,7 +269,8 @@ def system_overview(request):
     from django.core.cache import cache
 
     hospital = getattr(request, 'hospital', None)
-    cache_key = f'system_overview_data_{hospital.id if hospital else 0}'
+    hospital_id = hospital.id if hospital else 0
+    cache_key = f'system_overview_data_{hospital_id}_{get_version(hospital_id)}'
     cached = cache.get(cache_key)
     if cached:
         return render(request, 'dashboard/system_overview.html', cached)
