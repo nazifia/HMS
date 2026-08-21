@@ -939,6 +939,41 @@ class ActiveStoreInventoryForm(forms.ModelForm):
         }
 
 
+class DispensaryStockEntryForm(ActiveStoreInventoryForm):
+    """Direct stock entry into one dispensary's active store.
+
+    Used when stock arrives without a procurement trail: donations, opening
+    balances, emergency top-ups. The active store comes from the URL, never
+    from the POST, so a manager cannot push stock into another dispensary.
+    """
+
+    class Meta(ActiveStoreInventoryForm.Meta):
+        fields = [
+            "medication",
+            "stock_quantity",
+            "reorder_level",
+            "batch_number",
+            "expiry_date",
+            "unit_cost",
+        ]
+        labels = {"stock_quantity": "Quantity to Add"}
+        help_texts = {
+            "stock_quantity": "Added to the quantity the dispensary already holds.",
+        }
+
+    def clean_stock_quantity(self):
+        quantity = self.cleaned_data.get("stock_quantity")
+        if quantity is None or quantity < 1:
+            raise ValidationError("Quantity to add must be at least 1.")
+        return quantity
+
+    def clean_expiry_date(self):
+        expiry_date = self.cleaned_data.get("expiry_date")
+        if expiry_date and expiry_date < timezone.now().date():
+            raise ValidationError("Expiry date has already passed.")
+        return expiry_date
+
+
 class PharmacyDashboardSearchForm(forms.Form):
     """Comprehensive search form for pharmacy dashboard"""
 

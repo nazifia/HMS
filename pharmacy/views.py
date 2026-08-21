@@ -69,6 +69,7 @@ from .forms import (
     PrescriptionItemForm,
     DispensaryForm,
     ActiveStoreInventoryForm,
+    DispensaryStockEntryForm,
     PrescriptionSearchForm,
     MedicationSearchForm,
     DispensarySearchForm,
@@ -7056,7 +7057,12 @@ def dispensary_inventory(request, dispensary_id):
 
 @login_required
 def add_dispensary_inventory_item(request, dispensary_id):
-    """View for adding a dispensary inventory item"""
+    """Add stock straight into a dispensary, bypassing purchase and transfer.
+
+    For stock that arrives with no procurement trail - donations, opening
+    balances, emergency top-ups. The quantity is added to whatever the
+    dispensary already holds and the entry is written to the audit log.
+    """
     dispensary = get_object_or_404(Dispensary, id=dispensary_id, is_active=True)
 
     if not user_has_inventory_edit_permission(request.user, dispensary):
@@ -7080,24 +7086,68 @@ def add_dispensary_inventory_item(request, dispensary_id):
         )
         return redirect("pharmacy:dispensary_inventory", dispensary_id=dispensary.id)
 
+    from core.audit_utils import log_audit_action
+
     if request.method == "POST":
-        form = ActiveStoreInventoryForm(request.POST)
+        form = DispensaryStockEntryForm(request.POST)
         if form.is_valid():
-            new_item = form.save(commit=False)
-            if hasattr(new_item, "active_store") and not new_item.active_store:
-                new_item.active_store = active_store
-            new_item.save()
-            messages.success(request, "Inventory item added successfully.")
+            entry = form.save(commit=False)
+            quantity = entry.stock_quantity
+            with transaction.atomic():
+                inventory, created = ActiveStoreInventory.objects.get_or_create(
+                    medication=entry.medication,
+                    active_store=active_store,
+                    defaults={
+                        "stock_quantity": quantity,
+                        "reorder_level": entry.reorder_level,
+                        "batch_number": entry.batch_number,
+                        "expiry_date": entry.expiry_date,
+                        "unit_cost": entry.unit_cost,
+                        "last_restock_date": timezone.now(),
+                    },
+                )
+                if not created:
+                    # Top up the existing row instead of tripping the
+                    # (medication, active_store) unique constraint. F() so two
+                    # concurrent entries cannot lose each other's quantity.
+                    inventory.stock_quantity = F("stock_quantity") + quantity
+                    inventory.reorder_level = entry.reorder_level
+                    if entry.batch_number:
+                        inventory.batch_number = entry.batch_number
+                    if entry.expiry_date:
+                        inventory.expiry_date = entry.expiry_date
+                    if entry.unit_cost:
+                        inventory.unit_cost = entry.unit_cost
+                    inventory.last_restock_date = timezone.now()
+                    inventory.save()
+                    inventory.refresh_from_db()
+
+                # Stock with no purchase order behind it still needs a trail.
+                log_audit_action(
+                    request.user,
+                    "direct_stock_entry",
+                    inventory,
+                    f"Added {quantity} x {entry.medication.name} directly to "
+                    f"{dispensary.name} (no procurement); batch "
+                    f"{entry.batch_number or 'n/a'}, new balance "
+                    f"{inventory.stock_quantity}",
+                )
+
+            messages.success(
+                request,
+                f"Added {quantity} units of {entry.medication.name}. "
+                f"{dispensary.name} now holds {inventory.stock_quantity}.",
+            )
             return redirect(
                 "pharmacy:dispensary_inventory", dispensary_id=dispensary.id
             )
     else:
-        form = ActiveStoreInventoryForm(initial={"active_store": active_store.id})
+        form = DispensaryStockEntryForm()
 
     context = {
         "form": form,
         "dispensary": dispensary,
-        "page_title": f"Add Inventory Item - {dispensary.name}",
+        "page_title": f"Add Stock Directly - {dispensary.name}",
         "active_nav": "pharmacy",
     }
     return render(request, "pharmacy/add_dispensary_inventory_item.html", context)
