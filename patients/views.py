@@ -200,8 +200,13 @@ def register_patient(request):
 
             with transaction.atomic():
                 patient = form.save()
-                # Apply registration-fee policy (sets is_active per type/payment).
-                invoice = create_registration_fee(patient, request.user)
+                # Registration + first consultation fee on one invoice
+                # (sets is_active per type/payment).
+                invoice = create_registration_fee(
+                    patient,
+                    request.user,
+                    clinic_type=form.cleaned_data.get("clinic_type"),
+                )
 
             if patient.patient_type == "nhia":
                 messages.success(
@@ -211,14 +216,14 @@ def register_patient(request):
             elif patient.patient_type == "retainership":
                 messages.success(
                     request,
-                    f"Retainership patient {patient.get_full_name()} registered. Registration fee paid from wallet; patient is active.",
+                    f"Retainership patient {patient.get_full_name()} registered. Registration and consultation fees paid from wallet; patient is active.",
                 )
             elif invoice:
                 messages.warning(
                     request,
-                    f"Patient {patient.get_full_name()} registered. A registration fee invoice "
-                    f"(#{invoice.invoice_number}, ₦{invoice.total_amount}) was created. The patient becomes "
-                    f"active once this fee is paid.",
+                    f"Patient {patient.get_full_name()} registered. One invoice for the registration "
+                    f"and consultation fees (#{invoice.invoice_number}, ₦{invoice.total_amount}) was "
+                    f"created. The patient becomes active once it is paid.",
                 )
             else:
                 messages.success(

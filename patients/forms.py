@@ -273,8 +273,21 @@ class PatientForm(forms.ModelForm):
             'notes': forms.Textarea(attrs={'rows': 2}),
         }
 
+    # Not a Patient field: picks which consultation fee is billed with the
+    # registration fee on the single registration-visit invoice.
+    clinic_type = forms.ChoiceField(
+        choices=ClinicalNote.CLINIC_TYPE_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Clinic (for consultation fee)',
+        help_text='Consultation fee billed together with the registration fee',
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Fee choice only applies at registration.
+        if self.instance.pk:
+            self.fields.pop('clinic_type', None)
         if 'service_point' in self.fields:
             from core.models import ServicePoint
             self.fields['service_point'].queryset = ServicePoint.objects.filter(is_active=True)

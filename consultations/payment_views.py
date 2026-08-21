@@ -25,14 +25,9 @@ def _find_consultation_invoice(consultation):
         if invoice:
             return invoice
     # ponytail: latest consultation invoice for patient; scope per-consultation if patients ever carry several open ones
-    return (
-        Invoice.objects.filter(
-            patient=consultation.patient,
-            source_app__in=['consultation', 'appointment'],
-        )
-        .order_by('-created_at')
-        .first()
-    )
+    from billing.fee_utils import consultation_invoices
+
+    return consultation_invoices(consultation.patient).order_by('-created_at').first()
 
 
 @login_required

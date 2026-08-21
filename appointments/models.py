@@ -94,7 +94,11 @@ class Appointment(TenantModel):
 
     def consultation_invoice(self):
         """Latest consultation-fee invoice for this appointment (or the
-        patient's latest unlinked one, for invoices created before linking)."""
+        patient's latest unlinked one, for invoices created before linking).
+        Includes the combined registration invoice, which bills the first
+        consultation fee together with the registration fee."""
+        from billing.fee_utils import consultation_invoices
+
         invoice = (
             self.invoices.filter(source_app__in=['consultation', 'appointment'])
             .order_by('-created_at')
@@ -103,10 +107,8 @@ class Appointment(TenantModel):
         if invoice:
             return invoice
         return (
-            self.patient.invoices.filter(
-                source_app__in=['consultation', 'appointment'],
-                appointment__isnull=True,
-            )
+            consultation_invoices(self.patient)
+            .filter(appointment__isnull=True)
             .order_by('-created_at')
             .first()
         )

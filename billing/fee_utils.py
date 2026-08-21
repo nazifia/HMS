@@ -17,6 +17,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import F, Q, Sum
 from django.utils import timezone
 
 from .models import Invoice, InvoiceItem, Payment, Service, ServiceCategory
@@ -75,16 +76,26 @@ def get_consultation_fee_service(clinic_type=None):
     )
 
 
-def create_service_invoice(patient, service, source_app, created_by=None, due_days=7):
+def create_service_invoice(patient, services, source_app, created_by=None, due_days=7):
     """
-    Build a single-item, ``pending`` invoice for ``service`` billed to ``patient``.
+    Build a ``pending`` invoice for ``services`` billed to ``patient``.
 
-    Reuses ``InvoiceItem.save()`` to compute tax/total, then re-saves the invoice
-    so its subtotal/tax/total reflect the item.
+    ``services`` is a single Service, or an iterable whose entries are either a
+    Service (billed at its own price) or a ``(service, price, description)``
+    tuple for a partial charge such as a clinic top-up.
     """
-    tax_percentage = service.tax_percentage or Decimal("0")
-    subtotal = service.price
-    tax_amount = (subtotal * tax_percentage) / 100
+    if isinstance(services, Service):
+        services = [services]
+    lines = [
+        (entry, entry.price, entry.name) if isinstance(entry, Service) else tuple(entry)
+        for entry in services
+    ]
+
+    subtotal = Decimal("0")
+    tax_amount = Decimal("0")
+    for service, price, _description in lines:
+        subtotal += price
+        tax_amount += (price * (service.tax_percentage or Decimal("0"))) / 100
 
     invoice = Invoice.objects.create(
         patient=patient,
@@ -97,16 +108,18 @@ def create_service_invoice(patient, service, source_app, created_by=None, due_da
         total_amount=subtotal + tax_amount,
         created_by=created_by,
     )
-    InvoiceItem.objects.create(
-        invoice=invoice,
-        service=service,
-        description=service.name,
-        quantity=1,
-        unit_price=service.price,
-        tax_percentage=tax_percentage,
-        tax_amount=tax_amount,
-        total_amount=subtotal + tax_amount,
-    )
+    for service, price, description in lines:
+        item_tax = (price * (service.tax_percentage or Decimal("0"))) / 100
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            service=service,
+            description=description,
+            quantity=1,
+            unit_price=price,
+            tax_percentage=service.tax_percentage or Decimal("0"),
+            tax_amount=item_tax,
+            total_amount=price + item_tax,
+        )
     return invoice
 
 
@@ -130,6 +143,53 @@ def pay_invoice_from_wallet(invoice, user=None):
     )
 
 
+def consultation_service_names():
+    """Every service name that counts as a consultation fee."""
+    return [CONSULTATION_FEE_SERVICE_NAME] + [
+        name for name, _price in CLINIC_CONSULTATION_FEES.values()
+    ]
+
+
+def consultation_invoices(patient, since=None):
+    """
+    Invoices that bill this patient a consultation fee.
+
+    Matches the standalone consultation/appointment invoices *and* the combined
+    registration invoice (registration + consultation billed together), which
+    carries source_app='registration' but holds a consultation-fee item.
+    """
+    qs = Invoice.objects.filter(patient=patient).filter(
+        Q(source_app__in=["consultation", "appointment"])
+        | Q(items__service__name__in=consultation_service_names())
+    ).distinct()
+    if since is not None:
+        qs = qs.filter(invoice_date__gte=since)
+    return qs
+
+
+def consultation_amount_billed(patient, since=None):
+    """
+    Consultation fee (pre-tax) already billed to ``patient`` since ``since``.
+
+    ``None`` when nothing was billed - which is how callers tell "no fee yet"
+    apart from "fee billed at ₦0". Sums the standalone consultation invoices,
+    the consultation item of a combined registration invoice, and any earlier
+    clinic top-up, so a second top-up measures against the running total.
+    """
+    items = InvoiceItem.objects.filter(
+        invoice__in=consultation_invoices(patient, since=since).exclude(
+            status="cancelled"
+        )
+    ).filter(
+        Q(service__name__in=consultation_service_names())
+        | Q(invoice__source_app__in=["consultation", "appointment"])
+    )
+    total = items.aggregate(
+        billed=Sum(F("unit_price") * F("quantity"))
+    )["billed"]
+    return None if total is None else Decimal(total)
+
+
 def _has_open_invoice(patient, source_app, since=None):
     """True if patient already has a non-cancelled, unpaid invoice of this type."""
     qs = Invoice.objects.filter(
@@ -143,9 +203,14 @@ def _has_open_invoice(patient, source_app, since=None):
 
 
 @transaction.atomic
-def create_registration_fee(patient, user=None):
+def create_registration_fee(patient, user=None, clinic_type=None):
     """
     Apply the registration-fee policy for a freshly registered/converted patient.
+
+    The invoice bills the registration fee *and* the first consultation fee
+    together, so the patient settles both at one counter visit. ``clinic_type``
+    ('mopd'/'sopd'/'popd') picks the matching consultation fee, else the generic
+    one.
 
     Returns the invoice (or None for NHIA). Side effect: sets ``patient.is_active``
     according to type and payment.
@@ -161,9 +226,12 @@ def create_registration_fee(patient, user=None):
     if _has_open_invoice(patient, "registration"):
         return None
 
-    service = get_registration_fee_service()
+    services = [get_registration_fee_service()]
+    # Same-visit consultation fee for the patient types that self-pay it.
+    if patient.patient_type in ("regular", RETAINERSHIP_TYPE):
+        services.append(get_consultation_fee_service(clinic_type))
     invoice = create_service_invoice(
-        patient, service, source_app="registration", created_by=user
+        patient, services, source_app="registration", created_by=user
     )
 
     if patient.patient_type == RETAINERSHIP_TYPE:
@@ -192,29 +260,32 @@ def create_consultation_fee(patient, user=None, service_point=None, clinic_type=
     ``clinic_type`` ('mopd'/'sopd') selects the matching consultation fee, else
     the generic fee. Regular patients get a pending invoice; retainership
     patients get the invoice auto-paid from the (shared) wallet. NHIA goes
-    through authorization instead. Idempotent for the same day.
+    through authorization instead.
+
+    Same day, the fee is charged once: if a consultation fee was already billed
+    (standalone or on the combined registration invoice) this returns None, or
+    an invoice for the difference when the clinic seen costs more than what was
+    billed. A cheaper clinic is not refunded.
     """
     if patient.patient_type not in ("regular", RETAINERSHIP_TYPE):
         return None
 
     today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    if _has_open_invoice(patient, "consultation", since=today_start):
-        return None
-
-    # Retainership invoices are paid instantly, so an open-invoice check can't
-    # dedupe them - block on any non-cancelled consultation invoice today.
-    if patient.patient_type == RETAINERSHIP_TYPE and (
-        Invoice.objects.filter(
-            patient=patient, source_app="consultation", invoice_date__gte=today_start
-        )
-        .exclude(status="cancelled")
-        .exists()
-    ):
-        return None
-
     service = get_consultation_fee_service(clinic_type)
+    # Paid invoices count as billed too, else a settled fee is charged twice.
+    billed = consultation_amount_billed(patient, since=today_start)
+
+    if billed is None:
+        lines = [service]
+    else:
+        shortfall = service.price - billed
+        if shortfall <= 0:
+            return None
+        # ponytail: bill only the gap; no refund when the clinic seen is cheaper
+        lines = [(service, shortfall, f"{service.name} (clinic top-up)")]
+
     invoice = create_service_invoice(
-        patient, service, source_app="consultation", created_by=user
+        patient, lines, source_app="consultation", created_by=user
     )
 
     if patient.patient_type == RETAINERSHIP_TYPE:
