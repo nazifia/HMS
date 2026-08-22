@@ -2209,38 +2209,30 @@ def superuser_dashboard(request):
 def superuser_edit_user_profile(request, user_id):
     """Edit a user's profile (own hospital's staff only, unless superuser)"""
     user = get_manageable_user(request, user_id)
-    profile = getattr(user, "profile", None)
 
     if request.method == "POST":
-        form = UserProfileForm(request.POST, instance=user, request_user=request.user)
-        user_form = StaffCreationForm(request.POST, instance=user)
+        # ponytail: one form. StaffCreationForm is a UserCreationForm - it
+        # demands password1/password2 this page never renders, so pairing it
+        # here made every POST fail validation silently.
+        form = UserProfileForm(
+            request.POST, request.FILES, instance=user, request_user=request.user
+        )
 
-        if form.is_valid() and user_form.is_valid():
-            # Save user basic info
-            user_form.save()
-
-            # Save or update profile
-            if profile:
-                form.save()
-            else:
-                profile = form.save(commit=False)
-                profile.user = user
-                profile.save()
-
+        if form.is_valid():
+            form.save()
             messages.success(
                 request, f"Profile for {user.username} updated successfully."
             )
             return redirect("accounts:superuser_user_profiles")
+        messages.error(request, "Please correct the errors below.")
     else:
         form = UserProfileForm(instance=user, request_user=request.user)
-        user_form = StaffCreationForm(instance=user)
 
     return render(
         request,
         "accounts/superuser/edit_user_profile.html",
         {
             "form": form,
-            "user_form": user_form,
             "target_user": user,
             "page_title": f"Edit Profile: {user.username}",
             "active_nav": "user_profiles",

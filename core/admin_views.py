@@ -589,6 +589,8 @@ def api_admin_users(request):
                     from accounts.models import Department
                     dept = Department.objects.get(id=data['department'])
                     profile.department = dept
+                    profile.departments.add(dept)
+                    profile.sync_department_assignments()
                 except Department.DoesNotExist:
                     pass
             profile.save()
@@ -652,6 +654,8 @@ def api_admin_user_detail(request, user_id):
                     from accounts.models import Department
                     dept = Department.objects.get(id=data['department'])
                     profile.department = dept
+                    profile.departments.add(dept)
+                    profile.sync_department_assignments()
                 except Department.DoesNotExist:
                     pass
             profile.save()

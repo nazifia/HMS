@@ -495,6 +495,39 @@ class CustomUserProfile(models.Model):
     def __str__(self):
         return str(self.user)  # Calls CustomUser.__str__
 
+    def sync_department_assignments(self):
+        """Mirror the departments M2M into StaffDepartmentAssignment history.
+
+        The M2M is what access checks read (core.decorators,
+        core.department_dashboard_utils); the assignment rows are the dated
+        record of it. Adding a department opens an active assignment, removing
+        one ends the open assignment instead of deleting the history.
+        """
+        from django.utils import timezone
+
+        now = timezone.now()
+        current = set(self.departments.all())
+        open_rows = StaffDepartmentAssignment.objects.filter(
+            staff=self.user, is_active=True
+        ).select_related("department")
+
+        assigned = set()
+        for row in open_rows:
+            if row.department in current:
+                assigned.add(row.department)
+            else:
+                row.end_date = now
+                row.save()  # save() flips is_active off when end_date is set
+
+        for department in current - assigned:
+            StaffDepartmentAssignment.objects.create(
+                staff=self.user,
+                department=department,
+                start_date=now,
+                is_active=True,
+                notes="Assigned from the user edit page.",
+            )
+
     @property
     def get_role(self):
         """Get the first role name from the user's roles"""

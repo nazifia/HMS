@@ -11,6 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from .models import CustomUserProfile, Department, CustomUser, Role
 from saas.fields import TenantChoiceField, TenantMultipleChoiceField
+from core.validators import NigerianPhoneFormField, validate_nigerian_phone
 
 # Get the User model (CustomUser in this case)
 User = CustomUser
@@ -259,6 +260,18 @@ class UserProfileForm(forms.ModelForm):
         max_length=150,
         widget=forms.TextInput(attrs={"class": "form-control"}),
     )
+    email = forms.EmailField(
+        label="Email",
+        required=False,
+        widget=forms.EmailInput(attrs={"class": "form-control"}),
+    )
+    phone_number = NigerianPhoneFormField(
+        label="Phone Number (Login ID)",
+        max_length=15,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "type": "tel"}),
+        help_text="This is the login ID. Staff/admin editors only.",
+    )
 
     # Fields from CustomUserProfile model
     contact_phone_number = forms.CharField(
@@ -357,6 +370,8 @@ class UserProfileForm(forms.ModelForm):
             initial_data["username"] = getattr(user_instance, "username", "")
             initial_data["first_name"] = getattr(user_instance, "first_name", "")
             initial_data["last_name"] = getattr(user_instance, "last_name", "")
+            initial_data["email"] = getattr(user_instance, "email", "")
+            initial_data["phone_number"] = getattr(user_instance, "phone_number", "")
             # initial_data['phone_number'] = getattr(user_instance, 'phone_number', '') # If editable
 
             # Admin/Staff fields
@@ -434,6 +449,26 @@ class UserProfileForm(forms.ModelForm):
                 # Hiding is simpler if it shouldn't be seen at all
                 del self.fields["roles"]
 
+        # The login ID is only editable by a staff/admin editor.
+        if not (
+            self.request_user
+            and (self.request_user.is_staff or is_tenant_admin(self.request_user))
+        ):
+            self.fields.pop("phone_number", None)
+
+    def clean_phone_number(self):
+        """Login ID: NCC format, and unique across every user."""
+        phone = self.cleaned_data.get("phone_number")
+        if not phone:
+            return phone
+        validate_nigerian_phone(phone)
+        taken = CustomUser.objects.filter(phone_number=phone)
+        if self.instance and self.instance.pk:
+            taken = taken.exclude(pk=self.instance.pk)
+        if taken.exists():
+            raise ValidationError("A user with that phone number already exists.")
+        return phone
+
     def clean_username(self):
         # Username is disabled and read-only, so just return the original value
         username = self.cleaned_data.get("username")
@@ -496,9 +531,14 @@ class UserProfileForm(forms.ModelForm):
         user_instance.last_name = self.cleaned_data.get(
             "last_name", user_instance.last_name
         )
+        user_instance.email = self.cleaned_data.get("email", user_instance.email)
 
-        # CRITICAL: Set the phone_number from database - never allow it to be NULL
-        if phone_number_from_db:
+        # A staff/admin editor may change the login ID; everyone else keeps the
+        # stored one. Never allow it to be NULL.
+        new_phone = self.cleaned_data.get("phone_number") if self.is_bound else None
+        if new_phone:
+            user_instance.phone_number = new_phone
+        elif phone_number_from_db:
             user_instance.phone_number = phone_number_from_db
 
         # Admin/Staff fields
@@ -514,6 +554,7 @@ class UserProfileForm(forms.ModelForm):
                 "username",
                 "first_name",
                 "last_name",
+                "email",
                 "phone_number",
                 "is_active",
             ]
@@ -551,20 +592,27 @@ class UserProfileForm(forms.ModelForm):
                 profile.phone_number = phone_number_value
 
             profile.address = self.cleaned_data.get("address")
-            if (
-                self.cleaned_data.get("profile_picture") is not False
-            ):  # False means "clear"
-                profile.profile_picture = self.cleaned_data.get(
-                    "profile_picture", profile.profile_picture
-                )
+            # Only touch the picture when one was uploaded (or explicitly
+            # cleared) - a page that does not render the field must not wipe it.
+            picture = self.cleaned_data.get("profile_picture")
+            if picture is False:  # False means "clear"
+                profile.profile_picture = None
+            elif picture:
+                profile.profile_picture = picture
             profile.date_of_birth = self.cleaned_data.get("date_of_birth")
             profile.department = self.cleaned_data.get(
                 "department"
             )  # Assumes this matches profile field type
 
-            # Handle multiple departments
+            # Handle multiple departments. The primary department is kept in the
+            # M2M too, so every access check (core.decorators,
+            # core.department_dashboard_utils) sees one complete list.
             if "departments" in self.cleaned_data and commit:
-                profile.departments.set(self.cleaned_data.get("departments", []))
+                departments = list(self.cleaned_data.get("departments", []))
+                if profile.department and profile.department not in departments:
+                    departments.append(profile.department)
+                profile.departments.set(departments)
+                profile.sync_department_assignments()
 
             # Handle employee_id - convert empty string to None to avoid UNIQUE constraint violations
             employee_id_value = self.cleaned_data.get("employee_id")
@@ -774,6 +822,9 @@ class StaffCreationForm(
             # Create/Update CustomUserProfile
             profile = user.profile
             profile.department = self.cleaned_data.get("department_profile")
+            if profile.department:
+                profile.departments.add(profile.department)
+                profile.sync_department_assignments()
 
             # Handle employee_id - convert empty string to None to avoid UNIQUE constraint violations
             employee_id_value = self.cleaned_data.get("employee_id_profile")
