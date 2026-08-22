@@ -121,7 +121,7 @@
                                                     title="View Full Referral Details">
                                                 <i class="fas fa-eye"></i> Details
                                             </button>
-                                            <a href="{% url 'consultations:create_consultation' referral.patient.id %}"
+                                            <a href="{% url 'patients:add_clinical_note' referral.patient.id %}"
                                                class="btn btn-outline-success btn-sm"
                                                title="Start Consultation">
                                                 <i class="fas fa-stethoscope"></i> Consult

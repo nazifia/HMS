@@ -154,7 +154,7 @@
                                         <i class="fas fa-plus"></i> Add to Wait
                                     </a>
                                     {% else %}
-                                        <a href="{% url 'consultations:create_consultation' patient.id %}" class="btn btn-sm btn-success">
+                                        <a href="{% url 'patients:add_clinical_note' patient.id %}" class="btn btn-sm btn-success">
                                         <i class="fas fa-stethoscope"></i> Consult
                                     </a>
                                     {% endif %}

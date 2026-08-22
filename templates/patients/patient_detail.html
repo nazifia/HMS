@@ -465,8 +465,8 @@
                                 </a>
                                 {% endif %}
 
-                                {% if user|has_permission:'create_appointment' or user.is_superuser %}
-                                <a href="{% url 'consultations:create_consultation' patient.id %}" class="qa-item">
+                                {% if user|has_permission:'medical.create' or user.is_superuser %}
+                                <a href="{% url 'patients:add_clinical_note' patient.id %}" class="qa-item">
                                     <i class="fas fa-stethoscope" style="color:var(--p-success);"></i>
                                     Consult
                                 </a>

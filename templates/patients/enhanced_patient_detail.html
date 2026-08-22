@@ -34,7 +34,7 @@
                     <i class="fas fa-plus me-2"></i>New
                 </button>
                 <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="{% url 'consultations:create_consultation' patient.id %}">
+                    <li><a class="dropdown-item" href="{% url 'patients:add_clinical_note' patient.id %}">
                         <i class="fas fa-stethoscope me-2"></i>Consultation
                     </a></li>
                     {% if user|has_any_role:"doctor" and not user.is_superuser %}
@@ -456,7 +456,7 @@
 {% block extra_js %}
 <script>
 function createConsultation() {
-    window.location.href = `{% url 'consultations:create_consultation' patient.id %}`;
+    window.location.href = `{% url 'patients:add_clinical_note' patient.id %}`;
 }
 
 function createPrescription() {
