@@ -656,6 +656,8 @@
     if (!data || !data.revenue_labels) return; // stale cached context without chart data
 
     const gridColor = '#e2e8f0';
+    const BAR_COLORS = ['#2563eb', '#7c3aed', '#be185d', '#0e7490', '#15803d',
+                        '#c2410c', '#dc2626', '#0891b2', '#d97706'];
     const tickColor = '#64748b';
 
     // Drilldown helpers: click a mark to navigate, pointer cursor on hover
@@ -759,7 +761,9 @@
                 datasets: [{
                     label: 'Patients registered',
                     data: data.registration_values,
-                    backgroundColor: '#0891b2',
+                    // ponytail: cycle palette per bar; no per-day color mapping needed
+                    backgroundColor: data.registration_values.map(
+                        (_, i) => BAR_COLORS[i % BAR_COLORS.length]),
                     borderRadius: 4,
                     maxBarThickness: 42,
                 }]
@@ -795,7 +799,8 @@
                 datasets: [{
                     label: 'Records',
                     data: data.dept_values,
-                    backgroundColor: ['#2563eb', '#7c3aed', '#be185d', '#0e7490', '#15803d', '#c2410c', '#dc2626', '#0891b2', '#d97706'],
+                    backgroundColor: data.dept_values.map(
+                        (_, i) => BAR_COLORS[i % BAR_COLORS.length]),
                     borderRadius: 4,
                     maxBarThickness: 42,
                 }]
