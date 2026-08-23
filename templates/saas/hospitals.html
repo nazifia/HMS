@@ -8,38 +8,66 @@
     topbar.
   </p>
 
-  <div class="list-group mb-3">
+  <input type="search" id="hospitalFilter" class="form-control mb-3"
+         placeholder="Filter by name or subdomain" autocomplete="off">
+
+  <div class="list-group mb-3" id="hospitalList">
     {% for h in hospitals %}
-    <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center{% if h.id == current_id %} active{% endif %}"
-       href="/t/{{ h.subdomain }}/dashboard/">
-      <span>
-        <strong>{{ h.name }}</strong>
-        <small class="{% if h.id == current_id %}text-white-50{% else %}text-muted{% endif %}">/t/{{ h.subdomain }}/</small>
-        {% if h.id == current_id %}<span class="badge bg-light text-dark ms-1">current</span>{% endif %}
-      </span>
-      <span>
-        {% if not h.is_active %}<span class="badge bg-secondary">inactive</span>{% endif %}
-        {% if h.subscription %}
-        <span class="badge bg-{% if h.subscription.is_current %}success{% else %}warning text-dark{% endif %}">
-          {{ h.subscription.plan.name }} · {{ h.subscription.get_status_display }}
+    <form method="post" action="/saas/act-as/">
+      {% csrf_token %}
+      <input type="hidden" name="subdomain" value="{{ h.subdomain }}">
+      <button type="submit"
+              class="list-group-item list-group-item-action w-100 d-flex justify-content-between align-items-center{% if h.id == current_id %} active{% endif %}"
+              data-search="{{ h.name|lower }} {{ h.subdomain }}">
+        <span>
+          <strong>{{ h.name }}</strong>
+          <small class="{% if h.id == current_id %}text-white-50{% else %}text-muted{% endif %}">/t/{{ h.subdomain }}/</small>
+          {% if h.id == current_id %}<span class="badge bg-light text-dark ms-1">current</span>{% endif %}
         </span>
-        {% else %}
-        <span class="badge bg-danger">no subscription</span>
-        {% endif %}
-      </span>
-    </a>
+        <span>
+          {% if not h.is_active %}<span class="badge bg-secondary">inactive</span>{% endif %}
+          {% if h.subscription %}
+          <span class="badge bg-{% if h.subscription.is_current %}success{% else %}warning text-dark{% endif %}">
+            {{ h.subscription.plan.name }} · {{ h.subscription.get_status_display }}
+          </span>
+          {% else %}
+          <span class="badge bg-danger">no subscription</span>
+          {% endif %}
+        </span>
+      </button>
+    </form>
     {% empty %}
     <div class="list-group-item text-muted">No hospitals yet.</div>
     {% endfor %}
   </div>
+  <p class="text-muted small d-none" id="hospitalEmpty">No hospital matches that.</p>
 
   <div class="d-flex gap-2 flex-wrap">
-    <a href="/dashboard/" class="btn btn-outline-secondary btn-sm">
-      <i class="fas fa-globe"></i> Platform view (all hospitals)
-    </a>
+    <form method="post" action="/saas/act-as/">
+      {% csrf_token %}
+      <input type="hidden" name="subdomain" value="">
+      <button type="submit" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-globe"></i> Platform view (all hospitals)
+      </button>
+    </form>
     <a href="/admin/saas/hospital/" class="btn btn-outline-secondary btn-sm">
       <i class="fas fa-cog"></i> Manage hospitals &amp; subscriptions
     </a>
   </div>
 </div>
+
+<script>
+// Client-side filter: the whole list is already on the page, so searching it
+// needs no round trip. Move to a server-side query if the list ever paginates.
+document.getElementById('hospitalFilter').addEventListener('input', function () {
+  var q = this.value.trim().toLowerCase();
+  var hits = 0;
+  document.querySelectorAll('#hospitalList button[data-search]').forEach(function (btn) {
+    var match = btn.dataset.search.indexOf(q) !== -1;
+    btn.closest('form').classList.toggle('d-none', !match);
+    if (match) hits++;
+  });
+  document.getElementById('hospitalEmpty').classList.toggle('d-none', hits !== 0);
+});
+</script>
 {% endblock %}

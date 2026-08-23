@@ -7,6 +7,7 @@ app_name = "saas"
 urlpatterns = [
     path("signup/", views.signup, name="signup"),
     path("hospitals/", views.hospitals, name="hospitals"),
+    path("act-as/", views.act_as, name="act_as"),
     path("billing/", views.billing, name="billing"),
     path("branding/", views.branding, name="branding"),
     path("checkout/", views.checkout, name="checkout"),

@@ -21,6 +21,7 @@ from django.views.decorators.http import require_POST
 
 from django import forms
 
+from .middleware import ACT_AS_KEY
 from .models import Hospital, Plan, Subscription
 
 User = get_user_model()
@@ -291,3 +292,25 @@ def hospitals(request):
         "saas/hospitals.html",
         {"hospitals": rows, "current_id": current.id if current else None},
     )
+
+
+@require_POST
+@user_passes_test(lambda u: u.is_superuser)
+def act_as(request):
+    """Enter a hospital from the picker (blank subdomain leaves them all).
+
+    Entering both sends the superuser to /t/<sub>/, which scopes the request by
+    URL, and remembers the choice in the session so un-prefixed paths — links
+    built without the tenant prefix, /dashboard/ typed by hand — scope to the
+    same hospital instead of falling open across every tenant.
+    """
+    sub = request.POST.get("subdomain", "").strip().lower()
+    if not sub:
+        request.session.pop(ACT_AS_KEY, None)
+        return redirect("/dashboard/")
+    hospital = Hospital.objects.filter(subdomain=sub, is_active=True).first()
+    if hospital is None:
+        messages.error(request, "No such hospital.")
+        return redirect("/saas/hospitals/")
+    request.session[ACT_AS_KEY] = hospital.id
+    return redirect(f"/t/{hospital.subdomain}/dashboard/")

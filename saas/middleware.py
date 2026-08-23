@@ -19,6 +19,10 @@ from .models import Hospital
 
 _TENANT_PATH = re.compile(r"^/t/([\w-]+)(/.*)?$")
 
+# Session key holding the hospital a superuser picked, so bare-host URLs scope
+# to it too instead of falling open across every tenant.
+ACT_AS_KEY = "act_as_hospital_id"
+
 # Path prefixes (post-strip) a tenant may hit even with a lapsed subscription.
 _ALLOWED_WHEN_LAPSED = (
     "/saas/billing",
@@ -74,6 +78,8 @@ class TenantMiddleware:
         if not getattr(user, "is_authenticated", False):
             return None
         if user.is_superuser:
+            if request.hospital is None and not request.is_tenant_host:
+                request.hospital = self._acting_hospital(request)
             return None
         if user.hospital_id is None:
             return None
@@ -84,6 +90,19 @@ class TenantMiddleware:
         if request.hospital.id != user.hospital_id:
             return HttpResponseForbidden("This account belongs to another hospital.")
         return None
+
+    @staticmethod
+    def _acting_hospital(request):
+        """The hospital a superuser picked in the switcher, if any.
+
+        A /t/<sub>/ prefix always wins over this: the URL is the explicit
+        choice, the session is only the fallback for un-prefixed paths.
+        """
+        session = getattr(request, "session", None)
+        hospital_id = session.get(ACT_AS_KEY) if session else None
+        if not hospital_id:
+            return None
+        return Hospital.objects.filter(id=hospital_id, is_active=True).first()
 
     @staticmethod
     def _block_django_admin(request):

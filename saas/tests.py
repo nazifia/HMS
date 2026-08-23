@@ -584,7 +584,7 @@ class SuperuserRoamingTests(TestCase):
         )
         self.addCleanup(clear_current_hospital)
 
-    def _run(self, path, user):
+    def _run(self, path, user, session=None):
         from saas.current import get_current_hospital
         from saas.middleware import TenantMiddleware
 
@@ -596,6 +596,8 @@ class SuperuserRoamingTests(TestCase):
 
         request = self.rf.get(path)
         request.user = user
+        if session is not None:
+            request.session = session
         return TenantMiddleware(view)(request), seen.get("hospital")
 
     def test_superuser_enters_any_tenant(self):
@@ -645,3 +647,51 @@ class SuperuserRoamingTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["current_id"], self.h2.id)
         self.assertContains(response, "current")
+
+
+class SuperuserActAsTests(SuperuserRoamingTests):
+    """The picked hospital sticks to un-prefixed paths too."""
+
+    def test_picking_a_hospital_scopes_the_bare_host(self):
+        from saas.middleware import ACT_AS_KEY
+
+        client = Client()
+        client.force_login(self.root)
+        response = client.post("/saas/act-as/", {"subdomain": "h2"})
+        self.assertRedirects(response, "/t/h2/dashboard/", fetch_redirect_response=False)
+        self.assertEqual(client.session[ACT_AS_KEY], self.h2.id)
+
+        _, scoped = self._run("/patients/", self.root, {ACT_AS_KEY: self.h2.id})
+        self.assertEqual(scoped, self.h2)
+
+    def test_a_url_prefix_beats_the_session(self):
+        from saas.middleware import ACT_AS_KEY
+
+        _, scoped = self._run("/t/h1/patients/", self.root, {ACT_AS_KEY: self.h2.id})
+        self.assertEqual(scoped, self.h1)
+
+    def test_platform_view_clears_the_choice(self):
+        from saas.middleware import ACT_AS_KEY
+
+        client = Client()
+        client.force_login(self.root)
+        client.post("/saas/act-as/", {"subdomain": "h2"})
+        response = client.post("/saas/act-as/", {"subdomain": ""})
+        self.assertRedirects(response, "/dashboard/", fetch_redirect_response=False)
+        self.assertNotIn(ACT_AS_KEY, client.session)
+
+    def test_act_as_is_superuser_only_and_post_only(self):
+        client = Client()
+        client.force_login(self.staff)
+        self.assertEqual(client.post("/saas/act-as/", {"subdomain": "h2"}).status_code, 302)
+        client.force_login(self.root)
+        self.assertEqual(client.get("/saas/act-as/").status_code, 405)
+
+    def test_unknown_hospital_is_rejected(self):
+        from saas.middleware import ACT_AS_KEY
+
+        client = Client()
+        client.force_login(self.root)
+        response = client.post("/saas/act-as/", {"subdomain": "nope"})
+        self.assertRedirects(response, "/saas/hospitals/", fetch_redirect_response=False)
+        self.assertNotIn(ACT_AS_KEY, client.session)
