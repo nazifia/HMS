@@ -210,7 +210,14 @@ def custom_login_view(request):
                 allowed_hosts={request.get_host()},
                 require_https=request.is_secure(),
             ):
-                next_page = "dashboard:dashboard"
+                # A platform superuser owns no hospital, so the bare-host
+                # dashboard mixes every tenant's rows. Send them to the tenant
+                # picker instead; each entry logs them into one hospital.
+                next_page = (
+                    "saas:hospitals"
+                    if user.is_superuser and user.hospital_id is None
+                    else "dashboard:dashboard"
+                )
 
             # Service-point staff (receptionist, records, cashier/accountant)
             # sign in to their desk before proceeding. Auto-selects when the

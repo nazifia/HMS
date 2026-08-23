@@ -16,8 +16,9 @@ def _tenant_allowed(user, request):
     """Tenant gate: hospital staff may only authenticate on their own
     hospital's subdomain. Platform users (hospital is None) log in anywhere.
     When no tenant is resolved (localhost / bare domain) there is nothing to
-    gate against, so allow. request.hospital is set by saas.TenantMiddleware."""
-    if user.hospital_id is None:
+    gate against, so allow. Superusers are platform staff and log in on any
+    hospital's URL. request.hospital is set by saas.TenantMiddleware."""
+    if user.hospital_id is None or user.is_superuser:
         return True
     req_hospital = getattr(request, "hospital", None)
     return req_hospital is None or req_hospital.id == user.hospital_id

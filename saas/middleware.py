@@ -65,10 +65,17 @@ class TenantMiddleware:
         isolate an authenticated user: staff of hospital A could walk to
         /t/b/... and read B's rows, or drop the prefix entirely and hit the
         bare host, where TenantManager falls open and returns every tenant's
-        rows. Platform users (hospital_id None) keep roaming.
+        rows. Platform users (hospital_id None) keep roaming, and so do
+        superusers: they are platform staff and may enter any tenant by typing
+        /t/<sub>/ (see saas.views.hospitals for the picker), even if a
+        hospital was stamped on their row at creation time.
         """
         user = getattr(request, "user", None)
-        if not getattr(user, "is_authenticated", False) or user.hospital_id is None:
+        if not getattr(user, "is_authenticated", False):
+            return None
+        if user.is_superuser:
+            return None
+        if user.hospital_id is None:
             return None
         if request.hospital is None:
             if not request.is_tenant_host:
@@ -137,6 +144,9 @@ class TenantMiddleware:
         # Gate on the resolved hospital, not on the URL shape: a lapsed tenant
         # must not slip past the paywall by dropping the /t/<sub> prefix (the
         # user binding above still scopes them to their own hospital).
+        user = getattr(request, "user", None)
+        if getattr(user, "is_superuser", False):
+            return None  # platform staff inspect lapsed tenants too
         path = request.path_info  # already stripped of /t/<sub>
         hospital = request.hospital
         if hospital is None:

@@ -271,3 +271,18 @@ def branding(request):
         return redirect(reverse("saas:branding"))
 
     return render(request, "saas/branding.html", {"hospital": hospital, "form": BrandingForm(instance=hospital)})
+
+
+@user_passes_test(lambda u: u.is_superuser)
+def hospitals(request):
+    """Tenant picker for platform superusers: one link per hospital.
+
+    A superuser has no hospital of their own, so the bare host shows them every
+    tenant's rows mixed together. Entering a tenant through /t/<sub>/ pins the
+    request to that hospital, which is what "log in to a hospital" means here.
+    """
+    rows = (
+        Hospital.objects.select_related("subscription__plan")
+        .order_by("-is_active", "name")
+    )
+    return render(request, "saas/hospitals.html", {"hospitals": rows})

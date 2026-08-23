@@ -1,0 +1,31 @@
+{% extends "saas/base_public.html" %}
+{% block title %}Hospitals{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h1 class="h4 mb-3">Hospitals</h1>
+  <p class="text-muted small">Pick a hospital to work inside it. You can switch back here any time.</p>
+  <div class="list-group">
+    {% for h in hospitals %}
+    <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+       href="/t/{{ h.subdomain }}/dashboard/">
+      <span>
+        <strong>{{ h.name }}</strong>
+        <small class="text-muted">/t/{{ h.subdomain }}/</small>
+      </span>
+      <span>
+        {% if not h.is_active %}<span class="badge bg-secondary">inactive</span>{% endif %}
+        {% if h.subscription %}
+        <span class="badge bg-{% if h.subscription.is_current %}success{% else %}warning text-dark{% endif %}">
+          {{ h.subscription.plan.name }} · {{ h.subscription.get_status_display }}
+        </span>
+        {% else %}
+        <span class="badge bg-danger">no subscription</span>
+        {% endif %}
+      </span>
+    </a>
+    {% empty %}
+    <div class="list-group-item text-muted">No hospitals yet.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

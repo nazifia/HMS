@@ -180,6 +180,13 @@
                     <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
                     Activity Log
                 </a>
+                {% if user.is_superuser %}
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="/saas/hospitals/">
+                    <i class="fas fa-hospital fa-sm fa-fw mr-2 text-gray-400"></i>
+                    Switch Hospital
+                </a>
+                {% endif %}
                 <div class="dropdown-divider"></div>
                 <form method="post" action="{% url 'accounts:logout' %}" class="dropdown-item p-0">
                     {% csrf_token %}

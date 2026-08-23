@@ -228,7 +228,9 @@ class CustomUser(AbstractUser):
         # lookups must run unscoped), but a user created inside a tenant request
         # belongs to that tenant, and the username constraints need the hospital
         # set before the INSERT.
-        if self._state.adding and self.hospital_id is None:
+        # Superusers are platform staff and roam every tenant, so never pin
+        # one to the hospital that happened to be active at creation time.
+        if self._state.adding and self.hospital_id is None and not self.is_superuser:
             from saas.current import get_current_hospital
 
             current = get_current_hospital()

@@ -552,3 +552,88 @@ class ImportTimeQuerysetScopingTests(TestCase):
                 fields = ["patient"]
 
         self.assertEqual(list(_Form().fields["patient"].queryset), [self.mine])
+
+
+class SuperuserRoamingTests(TestCase):
+    """A platform superuser may enter any hospital via /t/<sub>/."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from django.test import RequestFactory
+
+        self.rf = RequestFactory()
+        self.h1 = Hospital.objects.create(name="H1", subdomain="h1")
+        self.h2 = Hospital.objects.create(name="H2", subdomain="h2")
+        plan = Plan.objects.create(name="Free", price=0)
+        for h in (self.h1, self.h2):
+            Subscription.objects.create(
+                hospital=h, plan=plan, status="active",
+                current_period_end=timezone.now() + timedelta(days=30),
+            )
+        User = get_user_model()
+        self.root = User.objects.create_superuser(
+            phone_number="08020000001", username="root", password="pw"
+        )
+        # A superuser whose row carries a hospital must still roam.
+        self.stamped = User.objects.create_superuser(
+            phone_number="08020000002", username="root2", password="pw",
+            hospital=self.h1,
+        )
+        self.staff = User.objects.create_user(
+            phone_number="08020000003", username="s1", password="pw", hospital=self.h1
+        )
+        self.addCleanup(clear_current_hospital)
+
+    def _run(self, path, user):
+        from saas.current import get_current_hospital
+        from saas.middleware import TenantMiddleware
+
+        seen = {}
+
+        def view(request):
+            seen["hospital"] = get_current_hospital()
+            return HttpResponse("ok")
+
+        request = self.rf.get(path)
+        request.user = user
+        return TenantMiddleware(view)(request), seen.get("hospital")
+
+    def test_superuser_enters_any_tenant(self):
+        for sub, hospital in (("h1", self.h1), ("h2", self.h2)):
+            response, scoped = self._run(f"/t/{sub}/patients/", self.root)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(scoped, hospital)
+
+    def test_stamped_superuser_still_roams(self):
+        response, scoped = self._run("/t/h2/patients/", self.stamped)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(scoped, self.h2)
+
+    def test_lapsed_subscription_does_not_block_superuser(self):
+        sub = self.h2.subscription
+        sub.current_period_end = timezone.now() - timedelta(days=1)
+        sub.save(update_fields=["current_period_end"])
+        response, scoped = self._run("/t/h2/patients/", self.root)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(scoped, self.h2)
+        # ...while ordinary staff of that hospital still hit the paywall.
+        blocked, _ = self._run("/t/h2/patients/", self.staff)
+        self.assertEqual(blocked.status_code, 403)  # wrong hospital for this user
+
+    def test_superuser_is_not_stamped_with_a_tenant(self):
+        from django.contrib.auth import get_user_model
+
+        set_current_hospital(self.h1)
+        root = get_user_model().objects.create_superuser(
+            phone_number="08020000004", username="root3", password="pw"
+        )
+        self.assertIsNone(root.hospital_id)
+
+    def test_picker_is_superuser_only(self):
+        client = Client()
+        client.force_login(self.staff)
+        self.assertEqual(client.get("/saas/hospitals/").status_code, 302)
+        client.force_login(self.root)
+        response = client.get("/saas/hospitals/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "/t/h2/")
