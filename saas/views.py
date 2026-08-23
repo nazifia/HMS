@@ -285,4 +285,9 @@ def hospitals(request):
         Hospital.objects.select_related("subscription__plan")
         .order_by("-is_active", "name")
     )
-    return render(request, "saas/hospitals.html", {"hospitals": rows})
+    current = getattr(request, "hospital", None)
+    return render(
+        request,
+        "saas/hospitals.html",
+        {"hospitals": rows, "current_id": current.id if current else None},
+    )

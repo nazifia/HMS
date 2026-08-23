@@ -637,3 +637,11 @@ class SuperuserRoamingTests(TestCase):
         response = client.get("/saas/hospitals/")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "/t/h2/")
+
+    def test_picker_marks_the_hospital_being_viewed(self):
+        client = Client()
+        client.force_login(self.root)
+        response = client.get("/t/h2/saas/hospitals/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["current_id"], self.h2.id)
+        self.assertContains(response, "current")
