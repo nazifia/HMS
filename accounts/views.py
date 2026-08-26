@@ -125,6 +125,18 @@ def _record_login_failure(key):
     cache.set(key, _login_attempts(key) + 1, LOGIN_ATTEMPT_WINDOW)
 
 
+def _post_login_url(user):
+    """Where a just-authenticated user lands.
+
+    A platform superuser roams every tenant, so the bare-host dashboard mixes
+    all of their rows together. Send superusers to the tenant picker instead;
+    entering one there is what "log in to a hospital" means (saas.views.act_as).
+    Stamped-with-a-hospital superusers included: the middleware lets them roam
+    regardless, so the picker is still the right first screen.
+    """
+    return "saas:hospitals" if user.is_superuser else "dashboard:dashboard"
+
+
 @never_cache
 def custom_login_view(request):
     """
@@ -134,7 +146,7 @@ def custom_login_view(request):
     """
     # Redirect if already logged in - with safety check for request.user
     if hasattr(request, "user") and request.user.is_authenticated:
-        return redirect("dashboard:dashboard")
+        return redirect(_post_login_url(request.user))
 
     # Handle auto logout scenarios
     auto_logout = request.GET.get("auto_logout")
@@ -210,14 +222,7 @@ def custom_login_view(request):
                 allowed_hosts={request.get_host()},
                 require_https=request.is_secure(),
             ):
-                # A platform superuser owns no hospital, so the bare-host
-                # dashboard mixes every tenant's rows. Send them to the tenant
-                # picker instead; each entry logs them into one hospital.
-                next_page = (
-                    "saas:hospitals"
-                    if user.is_superuser and user.hospital_id is None
-                    else "dashboard:dashboard"
-                )
+                next_page = _post_login_url(user)
 
             # Service-point staff (receptionist, records, cashier/accountant)
             # sign in to their desk before proceeding. Auto-selects when the

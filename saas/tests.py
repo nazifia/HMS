@@ -649,6 +649,30 @@ class SuperuserRoamingTests(TestCase):
         self.assertContains(response, "current")
 
 
+    def test_login_sends_a_superuser_to_the_picker(self):
+        client = Client()
+        for user in (self.root, self.stamped):
+            response = client.post(
+                "/accounts/login/",
+                {"username": user.phone_number, "password": "pw"},
+            )
+            self.assertRedirects(response, "/saas/hospitals/", fetch_redirect_response=False)
+            client.logout()
+
+    def test_login_page_bounces_a_signed_in_superuser_to_the_picker(self):
+        client = Client()
+        client.force_login(self.root)
+        response = client.get("/accounts/login/")
+        self.assertRedirects(response, "/saas/hospitals/", fetch_redirect_response=False)
+
+    def test_login_still_sends_tenant_staff_to_the_dashboard(self):
+        client = Client()
+        response = client.post(
+            "/accounts/login/", {"username": self.staff.phone_number, "password": "pw"}
+        )
+        self.assertRedirects(response, "/dashboard/", fetch_redirect_response=False)
+
+
 class SuperuserActAsTests(SuperuserRoamingTests):
     """The picked hospital sticks to un-prefixed paths too."""
 
