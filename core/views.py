@@ -19,7 +19,9 @@ def home_view(request):
     Home page view - redirects authenticated users to dashboard or shows login
     """
     if request.user.is_authenticated:
-        return redirect("dashboard:dashboard")
+        from accounts.views import _post_login_url
+
+        return redirect(_post_login_url(request.user))
     else:
         return redirect("accounts:login")
 

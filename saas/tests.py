@@ -659,6 +659,31 @@ class SuperuserRoamingTests(TestCase):
             self.assertRedirects(response, "/saas/hospitals/", fetch_redirect_response=False)
             client.logout()
 
+    def test_a_stored_next_does_not_beat_the_picker(self):
+        # Bouncing off /dashboard/ while logged out stores next in the session
+        # (accounts.strict_access_control); it must not pull a superuser past
+        # the picker afterwards.
+        client = Client()
+        session = client.session
+        session["next"] = "/dashboard/"
+        session.save()
+        response = client.post(
+            "/accounts/login/", {"username": self.root.phone_number, "password": "pw"}
+        )
+        self.assertRedirects(response, "/saas/hospitals/", fetch_redirect_response=False)
+        self.assertNotIn("next", client.session)
+
+    def test_home_sends_a_signed_in_superuser_to_the_picker(self):
+        client = Client()
+        client.force_login(self.root)
+        self.assertRedirects(
+            client.get("/"), "/saas/hospitals/", fetch_redirect_response=False
+        )
+        client.force_login(self.staff)
+        self.assertRedirects(
+            client.get("/"), "/dashboard/", fetch_redirect_response=False
+        )
+
     def test_login_page_bounces_a_signed_in_superuser_to_the_picker(self):
         client = Client()
         client.force_login(self.root)

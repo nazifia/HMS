@@ -211,11 +211,16 @@ def custom_login_view(request):
 
             # Resolve post-login redirect: ?next=, POST next, then session next
             # (set by strict access control middleware), defaulting to dashboard.
+            stored_next = request.session.pop("next", None)
             next_page = (
-                request.GET.get("next")
-                or request.POST.get("next")
-                or request.session.pop("next", None)
+                request.GET.get("next") or request.POST.get("next") or stored_next
             )
+            # A superuser always starts at the tenant picker: whatever bounced
+            # them to the login page (usually / or /dashboard/) is a bare-host
+            # page that mixes every tenant's rows, and entering a hospital from
+            # the picker redirects into that tenant anyway.
+            if user.is_superuser:
+                next_page = None
             # Guard against open redirects to external hosts.
             if not next_page or not url_has_allowed_host_and_scheme(
                 next_page,
