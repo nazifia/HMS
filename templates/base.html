@@ -392,8 +392,11 @@
             enforced by middleware, not by which links are drawn.
             ponytail: per-path keys are fine, nav targets are a small set; detail pages just
             miss and render as before.
+            tenant_sub is in the key because the middleware strips /t/<sub> from
+            request.path, and the cached links carry that prefix: without it a
+            superuser who switched hospitals kept getting the previous one's menu.
             {% endcomment %}
-            {% cache 300 hms_sidebar user.id request.path %}
+            {% cache 300 hms_sidebar user.id request.tenant_sub request.path %}
                 {% include 'includes/hms_sidebar.html' %}
             {% endcache %}
         {% endif %}

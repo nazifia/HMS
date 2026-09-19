@@ -713,6 +713,19 @@ class SuperuserActAsTests(SuperuserRoamingTests):
         _, scoped = self._run("/patients/", self.root, {ACT_AS_KEY: self.h2.id})
         self.assertEqual(scoped, self.h2)
 
+    def test_sidebar_links_follow_a_hospital_switch(self):
+        # base.html caches the sidebar per (user, path); the path is stripped
+        # of /t/<sub>, so without the tenant in the key the menu rendered under
+        # h1 (links to /t/h1/...) was served on h2 pages and sent them back.
+        client = Client()
+        client.force_login(self.root)
+        client.post("/saas/act-as/", {"subdomain": "h1"})
+        client.get("/t/h1/dashboard/")
+        client.post("/saas/act-as/", {"subdomain": "h2"})
+        html = client.get("/t/h2/dashboard/").content.decode()
+        self.assertNotIn('href="/t/h1/', html)
+        self.assertIn('href="/t/h2/', html)
+
     def test_a_url_prefix_beats_the_session(self):
         from saas.middleware import ACT_AS_KEY
 
